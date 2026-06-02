@@ -1,0 +1,51 @@
+{% extends 'store/base.html' %}
+{% block title %}Edit Order #ORD-{{ order.id }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold"><i class="bi bi-pencil-square text-warning me-2"></i>Edit Order #ORD-{{ order.id }}</h3>
+            <a href="{% url 'order_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Cancel</a>
+        </div>
+
+        <div class="card shadow-sm border-0 border-top border-warning border-4">
+            <div class="card-body p-4">
+                <form method="POST" action="">
+                    {% csrf_token %}
+
+                    <h5 class="fw-bold text-primary mb-3">Update Customer Info</h5>
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Customer Name</label>
+                            <input type="text" name="customer_name" class="form-control" value="{{ order.customer.name }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Phone Number</label>
+                            <input type="text" name="customer_phone" class="form-control" value="{{ order.customer.phone }}" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Delivery Address</label>
+                            <textarea name="customer_address" class="form-control" rows="2" required>{{ order.customer.address }}</textarea>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-bold text-success mb-3">Update Order Total</h5>
+                    <div class="row mb-4">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label fw-bold">Total Amount (৳)</label>
+                            <input type="number" step="0.01" name="total_amount" class="form-control form-control-lg text-success fw-bold" value="{{ order.total_amount }}" required>
+                        </div>
+                    </div>
+
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-sm text-dark">
+                            <i class="bi bi-save me-2"></i> Update Order
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

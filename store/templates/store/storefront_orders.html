@@ -1,0 +1,112 @@
+{% extends 'store/base.html' %}
+{% block title %}Online Orders{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="fw-bold mb-0"><i class="bi bi-globe me-2 text-primary"></i>Online Orders <span class="badge bg-primary ms-2">{{ sf_orders.count }}</span></h3>
+  <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
+</div>
+
+<div class="card shadow-sm border-0 mb-3">
+  <div class="card-body py-2">
+    <form class="row g-2 align-items-center" method="GET">
+      <div class="col-md-4">
+        <input type="text" name="q" value="{{ search }}" class="form-control form-control-sm" placeholder="🔍 Search by name or phone...">
+      </div>
+      <div class="col-md-3">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All Status</option>
+          <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
+          <option value="Confirmed" {% if status_filter == 'Confirmed' %}selected{% endif %}>Confirmed</option>
+          <option value="Shipped" {% if status_filter == 'Shipped' %}selected{% endif %}>Shipped</option>
+          <option value="Delivered" {% if status_filter == 'Delivered' %}selected{% endif %}>Delivered</option>
+          <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary btn-sm w-100">Filter</button>
+      </div>
+      {% if search or status_filter %}
+      <div class="col-md-2">
+        <a href="{% url 'storefront_orders' %}" class="btn btn-outline-secondary btn-sm w-100">Clear</a>
+      </div>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>#Order</th>
+          <th>Customer</th>
+          <th>Phone</th>
+          <th>Address</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th>Date</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in sf_orders %}
+        <tr>
+          <td><span class="badge bg-light text-dark border fw-bold">#SF-{{ order.id }}</span></td>
+          <td class="fw-semibold">{{ order.customer_name }}</td>
+          <td><a href="tel:{{ order.customer_phone }}">{{ order.customer_phone }}</a></td>
+          <td style="max-width:180px; font-size:13px;">{{ order.customer_address|truncatechars:50 }}</td>
+          <td class="fw-bold text-primary">৳{{ order.total_amount|floatformat:0 }}</td>
+          <td>
+            {% if order.status == 'Pending' %}<span class="badge bg-warning text-dark">Pending</span>
+            {% elif order.status == 'Confirmed' %}<span class="badge bg-info text-white">Confirmed</span>
+            {% elif order.status == 'Shipped' %}<span class="badge bg-primary">Shipped</span>
+            {% elif order.status == 'Delivered' %}<span class="badge bg-success">Delivered</span>
+            {% elif order.status == 'Cancelled' %}<span class="badge bg-danger">Cancelled</span>
+            {% endif %}
+          </td>
+          <td style="font-size:12px; color:#6c757d;">{{ order.created_at|date:"d M, H:i" }}</td>
+          <td>
+            <form method="POST" action="{% url 'storefront_order_status' order.id %}" class="d-flex gap-1">
+              {% csrf_token %}
+              <select name="status" class="form-select form-select-sm" style="width:120px;">
+                <option value="Pending" {% if order.status == 'Pending' %}selected{% endif %}>Pending</option>
+                <option value="Confirmed" {% if order.status == 'Confirmed' %}selected{% endif %}>Confirmed</option>
+                <option value="Shipped" {% if order.status == 'Shipped' %}selected{% endif %}>Shipped</option>
+                <option value="Delivered" {% if order.status == 'Delivered' %}selected{% endif %}>Delivered</option>
+                <option value="Cancelled" {% if order.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+              </select>
+              <button type="submit" class="btn btn-sm btn-primary">✓</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center py-5 text-muted">
+          <i class="bi bi-inbox" style="font-size:40px; display:block; margin-bottom:10px;"></i>
+          No online orders yet. Share your store link to get orders!
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+{% if sf_orders.has_other_pages %}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3 px-1 pb-2">
+  <small class="text-muted">
+    মোট <strong>{{ sf_orders.paginator.count }}</strong> অর্ডার —
+    পাতা <strong>{{ sf_orders.number }}</strong> / {{ sf_orders.paginator.num_pages }}
+  </small>
+  <div class="d-flex gap-2">
+    {% if sf_orders.has_previous %}
+      <a href="?page={{ sf_orders.previous_page_number }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+         class="btn btn-sm btn-outline-secondary px-3">← আগের</a>
+    {% endif %}
+    {% if sf_orders.has_next %}
+      <a href="?page={{ sf_orders.next_page_number }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+         class="btn btn-sm btn-outline-primary px-3">পরের →</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard{% endblock %} — SohojSell</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&display=swap" rel="stylesheet">
+
+    <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sb-w: 220px;
+      --sb-bg: #0c0e14;
+      --sb-border: rgba(255,255,255,0.07);
+      --sb-text: #64748b;
+      --sb-hover-bg: rgba(255,255,255,0.05);
+      --accent: #3b82f6;
+      --accent-rgb: 59,130,246;
+      --accent-glow: rgba(59,130,246,0.15);
+      --green: #22c55e;
+      --red: #ef4444;
+      --page-bg: #f0f2f6;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text2: #64748b;
+      --border: #e2e8f0;
+      --fn-head: 'Syne', sans-serif;
+      --fn-body: 'DM Sans', sans-serif;
+      --r: 12px;
+      --r-sm: 8px;
+      --sh: 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: var(--fn-body);
+      background: var(--page-bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* ──────────────────────────────
+       LAYOUT SHELL
+    ────────────────────────────── */
+    .app-shell {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ──────────────────────────────
+       SIDEBAR
+    ────────────────────────────── */
+    .sidebar {
+      width: var(--sb-w);
+      min-height: 100vh;
+      background: var(--sb-bg);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      border-right: 1px solid var(--sb-border);
+      scrollbar-width: none;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth Transition */
+    }
+    .sidebar::-webkit-scrollbar { display: none; }
+
+    /* subtle dot-grid texture */
+    .sidebar {
+      background-image:
+        radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
+      background-size: 24px 24px;
+      background-color: var(--sb-bg);
+    }
+
+    /* ──────────────────────────────
+       COLLAPSED STATE (MINIMIZED)
+    ────────────────────────────── */
+    .sidebar.collapsed {
+      --sb-w: 76px; /* Minimized Width */
+    }
+    .sidebar.collapsed .sb-text-hide,
+    .sidebar.collapsed .sb-logo-text,
+    .sidebar.collapsed .sb-logo-sub,
+    .sidebar.collapsed .sb-label,
+    .sidebar.collapsed .badge {
+      display: none;
+    }
+    .sidebar.collapsed .sb-logo-row {
+      justify-content: center;
+    }
+    .sidebar.collapsed .sb-link {
+      justify-content: center;
+      padding: 12px 0;
+    }
+    .sidebar.collapsed .sb-link i {
+      font-size: 18px;
+    }
+    .sidebar.collapsed .sb-user {
+      justify-content: center;
+      padding: 10px 0;
+    }
+    .sidebar.collapsed .sb-user > div:nth-child(2) {
+      display: none; /* Hide User Info Text */
+    }
+    .sidebar.collapsed .sb-logout {
+      justify-content: center;
+    }
+
+    /* Logo */
+    .sb-logo {
+      padding: 22px 16px 18px;
+      border-bottom: 1px solid var(--sb-border);
+      flex-shrink: 0;
+    }
+    .sb-logo-row { display: flex; align-items: center; gap: 10px; }
+    .sb-logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+      box-shadow: 0 4px 14px rgba(99,102,241,.45);
+    }
+    .sb-logo-text { font-family: var(--fn-head); font-size: 17px; font-weight: 800; color: #fff; letter-spacing: -.3px; }
+    .sb-logo-sub { font-size: 10px; color: rgba(255,255,255,.25); letter-spacing: .4px; margin-top: 1px; font-weight: 400; }
+
+    /* Nav scroll area */
+    .sb-nav { flex: 1; padding: 10px 10px; overflow-y: auto; scrollbar-width: none; }
+    .sb-nav::-webkit-scrollbar { display: none; }
+
+    /* Section label */
+    .sb-label {
+      font-size: 9px; font-weight: 700; letter-spacing: 1.4px;
+      text-transform: uppercase; color: rgba(255,255,255,.18);
+      padding: 14px 8px 5px;
+    }
+
+    /* Divider */
+    .sb-sep { height: 1px; background: var(--sb-border); margin: 6px 0; }
+
+    /* Nav link */
+    .sb-link {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px; border-radius: var(--r-sm);
+      color: var(--sb-text); font-size: 13px; font-weight: 500;
+      text-decoration: none;
+      transition: background .15s, color .15s;
+      position: relative;
+      margin-bottom: 1px;
+      white-space: nowrap;
+    }
+    .sb-link i { font-size: 15px; flex-shrink: 0; width: 18px; text-align: center; }
+    .sb-link:hover { background: var(--sb-hover-bg); color: rgba(255,255,255,.75); }
+    .sb-link.active {
+      background: var(--accent-glow);
+      color: #fff;
+    }
+    .sb-link.active i { color: var(--accent); }
+    .sb-link.active::after {
+      content: '';
+      position: absolute; left: 0; top: 25%; bottom: 25%;
+      width: 2.5px; border-radius: 0 2px 2px 0;
+      background: var(--accent);
+    }
+
+    /* POS pill */
+    .sb-link.pos {
+      background: rgba(34,197,94,.1);
+      color: #4ade80;
+      border: 1px solid rgba(34,197,94,.15);
+    }
+    .sb-link.pos i { color: #4ade80; }
+    .sb-link.pos:hover { background: rgba(34,197,94,.16); }
+    .sb-link.pos.active { background: rgba(34,197,94,.2); color: #4ade80; }
+    .sb-link.pos.active::after { background: var(--green); }
+
+    /* Bottom */
+    .sb-bottom {
+      padding: 10px;
+      border-top: 1px solid var(--sb-border);
+      flex-shrink: 0;
+    }
+    .sb-user {
+      display: flex; align-items: center; gap: 9px;
+      padding: 9px 10px; border-radius: var(--r-sm);
+      background: rgba(255,255,255,.04);
+      margin-bottom: 6px;
+    }
+    .sb-avatar {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: #fff; font-weight: 700;
+      font-family: var(--fn-head); flex-shrink: 0;
+    }
+    .sb-u-name { font-size: 12px; font-weight: 600; color: #e2e8f0; line-height: 1.3; }
+    .sb-u-role { font-size: 10px; color: rgba(255,255,255,.25); }
+    .sb-logout {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; border-radius: var(--r-sm);
+      color: #f87171; font-size: 12.5px; font-weight: 500;
+      text-decoration: none; transition: background .15s;
+    }
+    .sb-logout i { font-size: 14px; }
+    .sb-logout:hover { background: rgba(239,68,68,.1); color: #f87171; }
+
+    /* ──────────────────────────────
+       MAIN AREA
+    ────────────────────────────── */
+    .main-area {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Topbar */
+    .topbar {
+      height: 56px;
+      background: rgba(240,242,246,.9);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 24px; gap: 14px;
+      position: sticky; top: 0; z-index: 100;
+      flex-shrink: 0;
+    }
+
+    /* Desktop Toggle Button */
+    .desktop-toggle {
+      background: none; border: none; font-size: 22px; color: var(--text2);
+      cursor: pointer; padding: 4px; line-height: 1; margin-right: 8px;
+      transition: color 0.2s;
+    }
+    .desktop-toggle:hover { color: var(--accent); }
+
+    .topbar-burger {
+      display: none; background: none; border: none;
+      font-size: 20px; color: var(--text); cursor: pointer; padding: 4px; line-height: 1;
+    }
+    .topbar-title {
+      font-family: var(--fn-head);
+      font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -.2px;
+    }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .live-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 12px;
+      font-size: 11.5px; font-weight: 600; color: var(--text2);
+    }
+    .live-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 3px rgba(34,197,94,.2);
+      animation: pulse 2s ease infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
+      50% { box-shadow: 0 0 0 5px rgba(34,197,94,.08); }
+    }
+
+    /* Page content */
+    .page-content {
+      flex: 1;
+      padding: 26px 28px 48px;
+      animation: fadeUp .3s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ──────────────────────────────
+       MOBILE
+    ────────────────────────────── */
+    .sb-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.55); z-index: 998;
+      backdrop-filter: blur(3px);
+    }
+    .sb-overlay.on { display: block; }
+
+    @media (max-width: 900px) {
+      .app-shell { display: block; }
+      .desktop-toggle { display: none; } /* Hide desktop toggle on mobile */
+      .sidebar {
+        position: fixed; top: 0; left: 0; z-index: 999;
+        height: 100vh;
+        transform: translateX(-100%);
+        transition: transform .28s cubic-bezier(.4,0,.2,1);
+      }
+      .sidebar.open { transform: translateX(0); }
+
+      /* Reset collapsed state on mobile just in case */
+      .sidebar.collapsed { --sb-w: 220px; }
+      .sidebar.collapsed .sb-text-hide,
+      .sidebar.collapsed .sb-logo-text,
+      .sidebar.collapsed .sb-logo-sub,
+      .sidebar.collapsed .sb-label,
+      .sidebar.collapsed .badge { display: inline-block; }
+      .sidebar.collapsed .sb-logo-row, .sidebar.collapsed .sb-link, .sidebar.collapsed .sb-user { justify-content: flex-start; }
+
+      .main-area { min-height: 100vh; }
+      .topbar { position: sticky; }
+      .topbar-burger { display: flex; align-items: center; }
+      .page-content { padding: 18px 16px 40px; }
+    }
+    </style>
+</head>
+<body>
+
+<div class="sb-overlay" id="sbOverlay" onclick="sbClose()"></div>
+
+<div class="app-shell">
+
+  <aside class="sidebar" id="sidebar">
+
+    <div class="sb-logo">
+      <div class="sb-logo-row">
+        <div class="sb-logo-icon">🚀</div>
+        <div>
+          <div class="sb-logo-text">SohojSell</div>
+          <div class="sb-logo-sub">Business Dashboard</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sb-nav">
+
+      {% if request.user.is_superuser %}
+
+        <div class="sb-label">Master</div>
+        <a href="{% url 'master_dashboard' %}" class="sb-link {% if '/saas-master/' in request.path %}active{% endif %}">
+          <i class="bi bi-rocket-takeoff-fill"></i> <span class="sb-text-hide">Master HQ</span>
+        </a>
+        <a href="{% url 'manage_shops' %}" class="sb-link"><i class="bi bi-shop-window"></i> <span class="sb-text-hide">Manage Shops</span></a>
+        <a href="{% url 'all_users' %}" class="sb-link"><i class="bi bi-people-fill"></i> <span class="sb-text-hide">All Users</span></a>
+        <a href="{% url 'master_billing' %}" class="sb-link"><i class="bi bi-wallet2"></i> <span class="sb-text-hide">Packages & Billing</span></a>
+        <a href="{% url 'master_settings' %}" class="sb-link"><i class="bi bi-chat-dots-fill"></i> <span class="sb-text-hide">Master Setting</span></a>
+
+      {% else %}
+
+        <div class="sb-label">Main</div>
+        <a href="{% url 'dashboard' %}" class="sb-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+          <i class="bi bi-grid-1x2-fill"></i> <span class="sb-text-hide">Dashboard</span>
+        </a>
+
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_use_pos %}
+        <a href="{% url 'pos' %}" class="sb-link pos {% if request.resolver_match.url_name == 'pos' %}active{% endif %}">
+          <i class="bi bi-display-fill"></i> <span class="sb-text-hide">POS System</span>
+        </a>
+        {% endif %}
+
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_products %}
+        <div class="sb-sep"></div>
+        <div class="sb-label">Inventory</div>
+        <a href="{% url 'product_list' %}" class="sb-link {% if request.resolver_match.url_name == 'product_list' %}active{% endif %}">
+          <i class="bi bi-box-seam"></i> <span class="sb-text-hide">Products</span>
+        </a>
+        <a href="{% url 'category_list' %}" class="sb-link {% if request.resolver_match.url_name == 'category_list' %}active{% endif %}">
+          <i class="bi bi-tags"></i> <span class="sb-text-hide">Categories</span>
+        </a>
+        <a href="{% url 'barcode_print' %}" class="sb-link {% if request.resolver_match.url_name == 'barcode_print' %}active{% endif %}">
+          <i class="bi bi-upc-scan"></i> <span class="sb-text-hide">Barcode Print</span>
+        </a>
+        {% endif %}
+
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_orders or request.user.staff_profile.can_manage_customers %}
+        <div class="sb-sep"></div>
+        <div class="sb-label">Sales</div>
+
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_orders %}
+        <a href="{% url 'order_list' %}" class="sb-link {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}">
+          <i class="bi bi-cart-check"></i> <span class="sb-text-hide">Orders</span>
+        </a>
+        <a href="{% url 'storefront_orders' %}" class="sb-link {% if request.resolver_match.url_name == 'storefront_orders' %}active{% endif %}">
+          <i class="bi bi-globe"></i> <span class="sb-text-hide">Online Orders</span>
+        </a>
+        <a href="{% url 'courier' %}" class="sb-link {% if request.resolver_match.url_name == 'courier' %}active{% endif %}">
+          <i class="bi bi-truck"></i> <span class="sb-text-hide">Courier</span>
+        </a>
+        {% endif %}
+
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_customers %}
+        <a href="{% url 'customer_list' %}" class="sb-link {% if request.resolver_match.url_name == 'customer_list' %}active{% endif %}">
+          <i class="bi bi-people"></i> <span class="sb-text-hide">Customers</span>
+        </a>
+        {% endif %}
+        {% endif %}
+
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_view_reports or request.user.staff_profile.can_manage_settings %}
+        <div class="sb-sep"></div>
+        <div class="sb-label">Manage</div>
+
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_settings %}
+        <a href="{% url 'staff_list' %}" class="sb-link {% if 'staff' in request.path %}active{% endif %}">
+          <i class="bi bi-person-vcard"></i> <span class="sb-text-hide">Staff Accounts</span>
+        </a>
+        {% endif %}
+
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_view_reports %}
+        <a href="{% url 'reports' %}" class="sb-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
+          <i class="bi bi-graph-up"></i> <span class="sb-text-hide">Reports</span>
+        </a>
+        {% endif %}
+
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_settings %}
+        <a href="{% url 'banner_list' %}" class="sb-link {% if request.resolver_match.url_name == 'banner_list' %}active{% endif %}">
+          <i class="bi bi-image"></i> <span class="sb-text-hide">Store Banners</span>
+        </a>
+        <a href="{% url 'billing' %}" class="sb-link {% if request.resolver_match.url_name == 'billing' %}active{% endif %}" style="{% if shop.is_locked %}background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);{% endif %}">
+          <i class="bi bi-{% if shop.is_locked %}lock-fill text-danger{% else %}wallet2{% endif %}"></i>
+          <span class="sb-text-hide">Billing{% if shop.is_locked %} 🔒{% endif %}</span>
+          {% if shop.days_remaining > 0 and shop.days_remaining <= 7 %}
+          <span class="badge bg-warning text-dark ms-auto" style="font-size:10px;">{{ shop.days_remaining }}d</span>
+          {% endif %}
+        </a>
+        <a href="{% url 'settings' %}" class="sb-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+          <i class="bi bi-gear"></i> <span class="sb-text-hide">Settings</span>
+        </a>
+        {% endif %}
+        {% endif %}
+
+      {% endif %}
+    </nav>
+
+    <div class="sb-bottom">
+      <div class="sb-user">
+        <div class="sb-avatar">{{ request.user.name|default:"U"|first|upper }}</div>
+        <div>
+          <div class="sb-u-name">{{ request.user.name|default:request.user.phone_number }}</div>
+          <div class="sb-u-role">
+            {% if request.user.is_superuser %}Super Admin
+            {% elif request.user.is_shop_staff %}Staff
+            {% else %}Shop Owner{% endif %}
+          </div>
+        </div>
+      </div>
+      <a href="{% url 'logout' %}" class="sb-logout">
+        <i class="bi bi-box-arrow-right"></i> <span class="sb-text-hide">Logout</span>
+      </a>
+    </div>
+
+  </aside>
+
+  <div class="main-area">
+
+    <div class="topbar">
+      <!-- Desktop Toggle Button -->
+      <button class="desktop-toggle" onclick="toggleDesktopSidebar()" aria-label="Toggle Sidebar" title="Minimize Sidebar">
+        <i class="bi bi-layout-sidebar-inset"></i>
+      </button>
+
+      <!-- Mobile Hamburger Button -->
+      <button class="topbar-burger" onclick="sbOpen()" aria-label="Menu">
+        <i class="bi bi-list"></i>
+      </button>
+
+      <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+      <div class="topbar-right">
+        <div class="live-pill">
+          <span class="live-dot"></span> Live
+        </div>
+      </div>
+    </div>
+
+    <div class="page-content">
+      {% block content %}{% endblock %}
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+/* Mobile Sidebar Logic */
+function sbOpen()  { document.getElementById('sidebar').classList.add('open');    document.getElementById('sbOverlay').classList.add('on'); }
+function sbClose() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sbOverlay').classList.remove('on'); }
+
+/* Desktop Sidebar Toggle Logic with LocalStorage */
+function toggleDesktopSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.classList.toggle('collapsed');
+
+  // Save preference to browser memory
+  if (sidebar.classList.contains('collapsed')) {
+    localStorage.setItem('sohojsell_sidebar', 'collapsed');
+  } else {
+    localStorage.setItem('sohojsell_sidebar', 'expanded');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Check memory on load and collapse if previously saved
+  if (localStorage.getItem('sohojsell_sidebar') === 'collapsed') {
+    document.getElementById('sidebar').classList.add('collapsed');
+  }
+
+  // SweetAlert Setup
+  const Toast = Swal.mixin({
+    toast: true, position: 'top-end',
+    showConfirmButton: false, timer: 3500, timerProgressBar: true,
+    didOpen: t => { t.addEventListener('mouseenter', Swal.stopTimer); t.addEventListener('mouseleave', Swal.resumeTimer); }
+  });
+
+  {% if messages %}
+    {% for message in messages %}
+      (function(){
+        var tag = "{{ message.tags }}";
+        var icon = ['error','warning','success'].includes(tag) ? tag : 'info';
+        Toast.fire({ icon: icon, title: "{{ message|escapejs }}" });
+      })();
+    {% endfor %}
+  {% endif %}
+});
+
+/* sidebar scroll save/restore */
+(function(){
+  var nav = document.querySelector('.sb-nav');
+  if(!nav) return;
+  var s = sessionStorage.getItem('sb_scroll');
+  if(s) nav.scrollTop = parseInt(s,10);
+  nav.addEventListener('scroll',function(){ sessionStorage.setItem('sb_scroll', nav.scrollTop); },{passive:true});
+  window.addEventListener('beforeunload',function(){ sessionStorage.setItem('sb_scroll', nav.scrollTop); });
+})();
+</script>
+</body>
+</html>

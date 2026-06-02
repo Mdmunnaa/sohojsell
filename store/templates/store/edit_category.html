@@ -1,0 +1,42 @@
+{% extends 'store/base.html' %}
+{% block title %}Edit Category - {{ request.user.shop.name }}{% endblock %}
+
+{% block content %}
+<style>
+    .form-wrapper { max-width: 500px; margin: 40px auto; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .premium-card { background: #fff; border-radius: 24px; border: 1px solid #E2E8F0; padding: 32px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); }
+    
+    .form-label { font-size: 12px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .premium-input { width: 100%; padding: 14px 16px; border: 1.5px solid #E2E8F0; border-radius: 12px; font-size: 15px; font-weight: 700; color: #0F172A; background: #F8FAFC; transition: 0.2s; outline: none; }
+    .premium-input:focus { border-color: #3B82F6; background: #fff; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); }
+    
+    .btn-save { background: linear-gradient(135deg, #3B82F6, #1D4ED8); color: #fff; border: none; border-radius: 12px; padding: 14px; font-weight: 800; font-size: 15px; width: 100%; margin-top: 20px; transition: 0.2s; box-shadow: 0 4px 15px rgba(59,130,246,0.3); }
+    .btn-save:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(59,130,246,0.4); color: #fff; }
+    
+    .btn-cancel { background: #F1F5F9; color: #475569; text-align: center; display: block; border-radius: 12px; padding: 14px; font-weight: 800; font-size: 15px; margin-top: 12px; text-decoration: none; transition: 0.2s; }
+    .btn-cancel:hover { background: #E2E8F0; color: #0F172A; }
+</style>
+
+<div class="form-wrapper">
+    <div class="text-center mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle mb-3" style="width: 70px; height: 70px;">
+            <i class="bi bi-pencil-square fs-2"></i>
+        </div>
+        <h3 class="fw-bold text-dark mb-1">Edit Category</h3>
+        <p class="text-muted small fw-semibold">Rename your product category below.</p>
+    </div>
+
+    <div class="premium-card">
+        <form method="POST">
+            {% csrf_token %}
+            <div>
+                <label class="form-label">Category Name <span class="text-danger">*</span></label>
+                <input type="text" name="name" value="{{ category.name }}" class="premium-input" required autofocus>
+            </div>
+            
+            <button type="submit" class="btn-save"><i class="bi bi-check2-circle me-1"></i> Update Category</button>
+            <a href="{% url 'category_list' %}" class="btn-cancel">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

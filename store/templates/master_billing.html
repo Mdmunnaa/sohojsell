@@ -1,0 +1,61 @@
+{% extends 'store/base.html' %}
+{% block title %}Packages & Billing - Master HQ{% endblock %}
+{% block content %}
+<div class="mb-4">
+  <h3 class="fw-bold"><i class="bi bi-wallet2 text-warning me-2"></i>Packages & Billing</h3>
+  <p class="text-muted">All payment requests from shop owners.</p>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead style="background:#f8fafc;">
+        <tr style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;">
+          <th class="px-4 py-3">Date</th>
+          <th>Shop</th>
+          <th>Plan</th>
+          <th>Amount</th>
+          <th>TxID / Sender</th>
+          <th>Status</th>
+          <th class="text-center">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in page_obj %}
+        <tr {% if req.status == 'Pending' %}style="background:#fffbeb;"{% endif %}>
+          <td class="px-4" style="font-size:13px;">{{ req.created_at|date:"d M Y, H:i" }}</td>
+          <td class="fw-bold text-dark">{{ req.shop.name }}</td>
+          <td><span class="badge bg-primary rounded-pill">{{ req.plan_name }}</span></td>
+          <td class="fw-bold text-success">৳{{ req.amount|floatformat:0 }} <small class="text-muted">({{ req.payment_method }})</small></td>
+          <td>
+             <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;">{{ req.transaction_id }}</code><br>
+             <small class="text-muted">{{ req.sender_number }}</small>
+          </td>
+          <td>
+            {% if req.status == 'Approved' %}<span class="badge bg-success rounded-pill">Approved</span>
+            {% elif req.status == 'Rejected' %}<span class="badge bg-danger rounded-pill">Rejected</span>
+            {% else %}<span class="badge bg-warning text-dark rounded-pill">Pending</span>{% endif %}
+          </td>
+          <td class="text-center">
+            {% if req.status == 'Pending' %}
+            <form method="POST" action="{% url 'approve_payment' req.id %}" class="d-inline">
+              {% csrf_token %}
+              <div class="d-flex align-items-center gap-1 justify-content-center">
+                <input type="number" name="advance_days" value="30" class="form-control form-control-sm rounded-pill text-center" style="width:60px;" title="Days">
+                <button type="submit" class="btn btn-success btn-sm rounded-pill"><i class="bi bi-check-lg"></i></button>
+                <a href="{% url 'reject_payment' req.id %}" class="btn btn-outline-danger btn-sm rounded-pill" onclick="return confirm('Reject this payment?')"><i class="bi bi-x-lg"></i></a>
+              </div>
+            </form>
+            {% else %}
+              <span class="text-muted" style="font-size:12px;">Processed</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center py-4 text-muted">No payment requests found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

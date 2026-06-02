@@ -1,0 +1,62 @@
+{% extends 'store/base.html' %}
+{% block title %}Manage Shops - Master HQ{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="fw-bold"><i class="bi bi-shop-window text-primary me-2"></i>Manage Shops</h3>
+  <form method="GET" class="d-flex gap-2">
+    <input type="text" name="q" value="{{ search }}" class="form-control rounded-pill" placeholder="Search shop or phone...">
+    <button type="submit" class="btn btn-primary rounded-pill px-4">Search</button>
+  </form>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead style="background:#f8fafc;">
+        <tr style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;">
+          <th class="px-4 py-3">Shop Name</th>
+          <th>Phone</th>
+          <th>Plan</th>
+          <th>Valid Until</th>
+          <th>SMS Balance</th>
+          <th>Status</th>
+          <th class="text-center">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for shop in page_obj %}
+        <tr>
+          <td class="px-4">
+            <div class="fw-bold text-dark" style="font-size:14px;">{{ shop.name }}</div>
+            <div style="font-size:11px;color:#94a3b8;">/shop/{{ shop.slug }}/</div>
+          </td>
+          <td style="font-size:13px;">{{ shop.phone|default:"—" }}</td>
+          <td><span class="badge rounded-pill bg-primary">{{ shop.subscription_plan }}</span></td>
+          <td style="font-size:13px; font-weight:600; color:{% if shop.is_locked %}#ef4444{% else %}#10b981{% endif %};">
+            {% if shop.valid_until %}{{ shop.valid_until|date:"d M Y" }}{% else %}Trial: {{ shop.trial_ends_at|date:"d M Y" }}{% endif %}
+          </td>
+          <td style="font-size:13px;font-weight:800;">{{ shop.sms_balance }}</td>
+          <td>
+            {% if shop.is_locked %}<span class="badge bg-danger rounded-pill">Locked</span>
+            {% else %}<span class="badge bg-success rounded-pill">Active</span>{% endif %}
+          </td>
+          <td class="text-center">
+             <form method="POST" action="{% url 'manual_unlock' shop.id %}" class="d-inline">
+               {% csrf_token %}
+               <div class="d-flex align-items-center gap-1 justify-content-center">
+                 <input type="number" name="advance_days" value="30" class="form-control form-control-sm rounded-pill text-center" style="width:65px;" placeholder="Days">
+                 <button type="submit" class="btn btn-warning btn-sm rounded-pill text-dark fw-bold" title="Extend/Unlock">
+                   <i class="bi bi-unlock-fill"></i>
+                 </button>
+               </div>
+             </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center py-4 text-muted">No shops found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

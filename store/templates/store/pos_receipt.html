@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Receipt #ORD-{{ order.id }}</title>
+<style>
+  @media print { .no-print { display: none !important; } body { margin: 0; } }
+  body { font-family: 'Courier New', monospace; max-width: 320px; margin: 0 auto; padding: 20px; background: #fff; font-size: 13px; }
+  .center { text-align: center; }
+  .shop-name { font-size: 20px; font-weight: 900; letter-spacing: 1px; margin-bottom: 2px; }
+  .divider { border-top: 1px dashed #333; margin: 8px 0; }
+  .row { display: flex; justify-content: space-between; margin: 3px 0; }
+  .row.bold { font-weight: 700; font-size: 15px; }
+  .item-name { flex: 1; }
+  .item-qty { min-width: 40px; text-align: center; }
+  .item-total { min-width: 70px; text-align: right; }
+  .thank-you { text-align: center; margin-top: 16px; font-size: 12px; color: #555; }
+  .actions { display: flex; gap: 10px; margin-top: 20px; justify-content: center; }
+  .btn { padding: 9px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+  .btn-print { background: #1a1a2e; color: #fff; }
+  .btn-new { background: #0d6efd; color: #fff; }
+</style>
+</head>
+<body>
+<div class="center">
+  <div class="shop-name">{{ shop.name }}</div>
+  {% if shop.phone %}<div>📞 {{ shop.phone }}</div>{% endif %}
+  {% if shop.address %}<div style="font-size:11px;">{{ shop.address }}</div>{% endif %}
+</div>
+
+<div class="divider"></div>
+
+<div class="row"><span>Order</span><span>#ORD-{{ order.id }}</span></div>
+<div class="row"><span>Date</span><span>{{ order.created_at|date:"d M Y, H:i" }}</span></div>
+<div class="row"><span>Customer</span><span>{{ order.customer.name }}</span></div>
+{% if order.customer.phone != '00000000000' %}
+<div class="row"><span>Phone</span><span>{{ order.customer.phone }}</span></div>
+{% endif %}
+<div class="row"><span>Payment</span><span>{{ order.payment_method }}</span></div>
+
+<div class="divider"></div>
+
+<div class="row" style="font-weight:700; font-size:11px; color:#555;">
+  <span class="item-name">ITEM</span>
+  <span class="item-qty">QTY</span>
+  <span class="item-total">AMOUNT</span>
+</div>
+<div class="divider"></div>
+
+{% for item in order_items %}
+<div class="row">
+  <span class="item-name">{{ item.product.name }}</span>
+  <span class="item-qty">×{{ item.quantity }}</span>
+  <span class="item-total">৳{{ item.price|floatformat:0 }}</span>
+</div>
+{% endfor %}
+
+<div class="divider"></div>
+
+{% if order.discount > 0 %}
+<div class="row"><span>Subtotal</span><span>৳{{ order.total_amount|floatformat:0 }}</span></div>
+<div class="row"><span>Discount</span><span>-৳{{ order.discount|floatformat:0 }}</span></div>
+{% endif %}
+<div class="row bold"><span>TOTAL</span><span>৳{{ order.total_amount|floatformat:0 }}</span></div>
+
+<div class="divider"></div>
+<div class="thank-you">
+  ধন্যবাদ আপনার কেনাকাটার জন্য!<br>
+  Thank you for shopping with us!
+</div>
+
+<div class="actions no-print">
+  <button class="btn btn-print" onclick="window.print()">🖨️ Print</button>
+  <button class="btn btn-new" onclick="window.location.href='{% url 'pos' %}'">+ New Sale</button>
+</div>
+</body>
+</html>

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ shop.name }} — Offline</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; }
+  .box { background: #fff; border-radius: 20px; padding: 48px 36px; max-width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+  h2 { font-weight: 800; color: #1a1a2e; margin: 16px 0 8px; }
+</style>
+</head>
+<body>
+<div class="box">
+  <div style="font-size:60px;">🛑</div>
+  <h2>{{ shop.name }}</h2>
+  <p style="color:#6c757d;">This shop's online store is currently offline.<br>Please contact them directly.</p>
+  {% if shop.phone %}<p style="font-weight:700;">📞 {{ shop.phone }}</p>{% endif %}
+  {% if shop.facebook_page_url %}<a href="{{ shop.facebook_page_url }}" style="color:#0d6efd;">Facebook Page →</a>{% endif %}
+</div>
+</body>
+</html>

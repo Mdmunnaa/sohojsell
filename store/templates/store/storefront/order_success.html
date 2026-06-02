@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>অর্ডার কনফার্ম — {{ shop.name }}</title>
+{% if shop.logo %}<link rel="icon" href="{{ shop.logo.url }}" type="image/png">{% endif %}
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<!-- PDF Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root {
+  --brand: #F57224; --brand-dark: #D4601A; --brand-light: #FFF3ED;
+  --green: #16A34A; --green-bg: #ECFDF5;
+  --bg: #F0F2F5; --white: #fff; --text: #1A1A2E; --muted: #8A8A9A;
+  --border: #EBEBEB; --r: 14px; --rsm: 9px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); font-family: 'Poppins', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-x: hidden; }
+
+/* CONFETTI */
+#cfwrap { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.cf { position: absolute; border-radius: 2px; animation: fall linear forwards; }
+@keyframes fall { 0% { transform: translateY(-10px) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+
+/* CARD */
+.card { background: var(--white); border-radius: 22px; max-width: 490px; width: 100%; box-shadow: 0 24px 64px rgba(0,0,0,.1); border: 1px solid var(--border); position: relative; z-index: 1; overflow: hidden; animation: cardIn .6s cubic-bezier(.16,1,.3,1) both; }
+@keyframes cardIn { from { transform: translateY(28px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.card-stripe { height: 5px; background: linear-gradient(90deg, var(--brand), #FF8C42, #FFD60A); }
+
+/* TICK */
+.tick-zone { padding: 30px 26px 0; text-align: center; }
+.tick-ring { width: 84px; height: 84px; border-radius: 50%; background: var(--green-bg); display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; box-shadow: 0 0 0 14px rgba(22,163,74,.08), 0 0 0 28px rgba(22,163,74,.04); animation: tickIn .55s cubic-bezier(.16,1,.3,1) .1s both; }
+@keyframes tickIn { from { transform: scale(.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.tick-ring i { font-size: 40px; color: var(--green); }
+.title { font-size: 24px; font-weight: 900; color: var(--text); margin-bottom: 5px; }
+.subtitle { font-size: 14px; color: var(--muted); font-weight: 600; line-height: 1.65; }
+.subtitle b { color: var(--text); font-weight: 800; }
+
+/* ORDER BOX */
+.order-box { margin: 20px 22px 0; background: linear-gradient(135deg, var(--brand-light), #FFE8D4); border: 2px dashed var(--brand); border-radius: var(--r); padding: 14px 16px; text-align: center; }
+.order-lbl { font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+.order-num { font-size: 24px; font-weight: 900; color: var(--brand); letter-spacing: .5px; }
+.order-shop { font-size: 12px; font-weight: 700; color: var(--muted); margin-top: 3px; }
+
+/* STEPS */
+.steps-zone { padding: 18px 22px 0; }
+.steps { display: flex; align-items: center; }
+.step { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.step-ico { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; margin-bottom: 4px; }
+.step-ico.done { background: var(--green); color: #fff; }
+.step-ico.now { background: var(--brand); color: #fff; box-shadow: 0 0 0 5px var(--brand-light); }
+.step-ico.wait { background: var(--border); color: var(--muted); }
+.step-lbl { font-size: 9px; font-weight: 800; color: var(--muted); text-align: center; line-height: 1.3; }
+.step-line { flex: 1; height: 2px; margin: 0 3px; margin-bottom: 26px; }
+.step-line.done { background: var(--green); }
+.step-line.wait { background: var(--border); }
+
+/* RECEIPT */
+.receipt { margin: 16px 22px 0; background: var(--bg); border-radius: var(--rsm); border: 1px solid var(--border); overflow: hidden; }
+.rrow { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 13px; border-bottom: 1px solid var(--border); gap: 10px; }
+.rrow:last-child { border-bottom: none; }
+.rlbl { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 700; flex-shrink: 0; }
+.rlbl i { color: var(--brand); font-size: 13px; }
+.rval { font-size: 12px; font-weight: 800; color: var(--text); text-align: right; word-break: break-word; max-width: 58%; }
+.cod-tag { display: flex; align-items: center; gap: 6px; background: var(--green-bg); border-radius: 7px; padding: 8px 12px; margin: 0 13px 12px; }
+.cod-tag i { color: var(--green); font-size: 15px; }
+.cod-tag span { font-size: 12px; font-weight: 800; color: #166534; }
+.rtotal { background: var(--brand-light); padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; border-top: 2px dashed var(--brand); }
+.rtotal-lbl { font-size: 14px; font-weight: 900; color: var(--text); }
+.rtotal-val { font-size: 26px; font-weight: 900; color: var(--brand); }
+
+/* NOTE */
+.note { text-align: center; font-size: 12.5px; color: var(--muted); font-weight: 600; line-height: 1.65; padding: 12px 22px 0; }
+
+/* ACTIONS */
+.actions { padding: 16px 22px 22px; display: flex; flex-direction: column; gap: 9px; }
+.btn-main { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 14px; background: linear-gradient(135deg, var(--brand), #FF8C42); color: #fff; border: none; border-radius: var(--rsm); font-size: 15px; font-weight: 800; font-family: 'Poppins', sans-serif; cursor: pointer; text-decoration: none; box-shadow: 0 4px 14px rgba(245,114,36,.3); transition: transform 0.2s; }
+.btn-main:hover { color: #fff; transform: translateY(-2px); }
+.btn-out { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: var(--rsm); background: none; font-size: 13.5px; font-weight: 700; font-family: 'Poppins', sans-serif; cursor: pointer; color: var(--muted); transition: .2s; }
+.btn-out:hover { border-color: var(--brand); color: var(--brand); }
+.btn-out.green-out { border-color: #BBF7D0; color: #166534; background: var(--green-bg); }
+.btn-out.green-out:hover { border-color: var(--green); color: var(--green); }
+
+/* PDF LOADER */
+#pdf-loader { display: none; position: fixed; inset: 0; background: rgba(255,255,255,.9); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+#pdf-loader.on { display: flex; }
+.spinner { width: 44px; height: 44px; border: 4px solid var(--border); border-top-color: var(--brand); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* =========================================
+   ULTRA-PROFESSIONAL A4 PDF INVOICE TEMPLATE
+   ========================================= */
+#pdf-tpl {
+  position: fixed; left: -9999px; top: 0; width: 800px; /* Standard proportions */
+  background: #fff; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; /* Web-safe font for PDF */
+  padding: 50px 60px; box-sizing: border-box; color: #333;
+}
+.pdf-watermark {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-35deg);
+  font-size: 140px; font-weight: 900; color: rgba(245, 114, 36, 0.04);
+  z-index: 0; pointer-events: none; white-space: nowrap; font-family: 'Poppins', sans-serif;
+}
+.pdf-content { position: relative; z-index: 1; }
+
+/* Header Section */
+.pdf-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #E2E8F0; padding-bottom: 25px; margin-bottom: 35px; }
+.pdf-logo-area { display: flex; gap: 18px; align-items: center; }
+.pdf-logo-area img { max-height: 70px; border-radius: 8px; border: 1px solid #f1f5f9; }
+.pdf-shop-details h2 { margin: 0 0 4px 0; color: #0F172A; font-weight: 800; font-size: 26px; text-transform: uppercase; letter-spacing: -0.5px; }
+.pdf-shop-details p { margin: 2px 0 0; color: #64748B; font-size: 13px; line-height: 1.5; font-weight: 500; }
+
+.pdf-invoice-title { text-align: right; }
+.pdf-invoice-title h1 { margin: 0 0 5px 0; color: var(--brand); font-size: 38px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; line-height: 1; }
+.pdf-invoice-title p { margin: 4px 0 0; font-size: 14px; color: #475569; font-weight: 600; }
+.pdf-badge { display: inline-block; background: var(--green-bg); color: #166534; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 20px; margin-top: 8px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #BBF7D0; }
+
+/* Info Section */
+.pdf-info-row { display: flex; justify-content: space-between; margin-bottom: 40px; }
+.pdf-info-box { width: 48%; background: #F8FAFC; padding: 20px; border-radius: 12px; border: 1px solid #E2E8F0; }
+.pdf-info-box h3 { font-size: 12px; color: #94A3B8; text-transform: uppercase; letter-spacing: 1.5px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px; margin-top: 0; margin-bottom: 12px; font-weight: 700; }
+.pdf-info-box p { font-size: 14px; line-height: 1.6; margin: 0; color: #1E293B; font-weight: 500; }
+.pdf-info-box strong { font-weight: 800; font-size: 16px; color: #0F172A; display: block; margin-bottom: 4px; }
+
+/* Table Section */
+.pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+.pdf-table th { background: #0F172A; color: #fff; padding: 14px 16px; text-align: left; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+.pdf-table th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+.pdf-table th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; text-align: right; }
+.pdf-table td { padding: 14px 16px; border-bottom: 1px solid #E2E8F0; font-size: 14px; color: #334155; font-weight: 500; }
+.pdf-table td:last-child { text-align: right; font-weight: 700; color: #0F172A; }
+.pdf-table tr:last-child td { border-bottom: 2px solid #E2E8F0; }
+
+/* Totals Section */
+.pdf-bottom-area { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 20px; }
+.pdf-barcode { padding-top: 10px; }
+.pdf-totals { width: 45%; background: #F8FAFC; padding: 20px; border-radius: 12px; border: 1px solid #E2E8F0; }
+.pdf-total-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; color: #475569; font-weight: 600; }
+.pdf-total-row.grand-total { font-size: 20px; font-weight: 900; color: var(--brand); border-top: 2px dashed #CBD5E1; padding-top: 15px; margin-top: 10px; }
+
+/* Footer */
+.pdf-footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #E2E8F0; text-align: center; }
+.pdf-footer h4 { margin: 0 0 5px; font-size: 16px; color: #0F172A; font-weight: 800; }
+.pdf-footer p { margin: 0; font-size: 12px; color: #64748B; font-weight: 500; }
+.pdf-footer .disclaimer { margin-top: 15px; font-size: 10px; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px; }
+</style>
+</head>
+<body>
+
+<div id="cfwrap"></div>
+<div id="pdf-loader"><div class="spinner"></div><p style="font-size:14px;font-weight:700;color:var(--text);">Generating Invoice...</p></div>
+
+<!-- SUCCESS CARD -->
+<div class="card">
+  <div class="card-stripe"></div>
+
+  <div class="tick-zone">
+    <div class="tick-ring"><i class="bi bi-check-lg"></i></div>
+    <div class="title">অর্ডার কনফার্ম! 🎉</div>
+    <p class="subtitle">ধন্যবাদ, <b>{{ order.customer_name }}</b>!<br>আপনার অর্ডারটি সফলভাবে গৃহীত হয়েছে।</p>
+  </div>
+
+  <div class="order-box">
+    <div class="order-lbl">অর্ডার নম্বর</div>
+    <div class="order-num">#SF-{{ order.id }}</div>
+    <div class="order-shop"><i class="bi bi-shop"></i> {{ shop.name }}</div>
+  </div>
+
+  <!-- TRACKING STEPS -->
+  <div class="steps-zone">
+    <div class="steps">
+      <div class="step">
+        <div class="step-ico done"><i class="bi bi-check-lg"></i></div>
+        <div class="step-lbl">অর্ডার<br>গৃহীত</div>
+      </div>
+      <div class="step-line done"></div>
+      <div class="step">
+        <div class="step-ico now"><i class="bi bi-box-seam"></i></div>
+        <div class="step-lbl">প্যাক<br>হচ্ছে</div>
+      </div>
+      <div class="step-line wait"></div>
+      <div class="step">
+        <div class="step-ico wait"><i class="bi bi-truck"></i></div>
+        <div class="step-lbl">পথে<br>আছে</div>
+      </div>
+      <div class="step-line wait"></div>
+      <div class="step">
+        <div class="step-ico wait"><i class="bi bi-house-door"></i></div>
+        <div class="step-lbl">ডেলিভারি<br>সম্পন্ন</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECEIPT -->
+  <div class="receipt">
+    <div class="rrow">
+      <span class="rlbl"><i class="bi bi-telephone-fill"></i> ফোন</span>
+      <span class="rval">{{ order.customer_phone }}</span>
+    </div>
+    <div class="rrow">
+      <span class="rlbl"><i class="bi bi-geo-alt-fill"></i> ঠিকানা</span>
+      <span class="rval">{{ order.customer_address }}</span>
+    </div>
+    <div class="rrow">
+      <span class="rlbl"><i class="bi bi-calendar-check"></i> তারিখ</span>
+      <span class="rval">{{ order.created_at|date:"d M Y, h:i A" }}</span>
+    </div>
+    <div class="cod-tag">
+      <i class="bi bi-cash-coin"></i>
+      <span>পেমেন্ট: ক্যাশ অন ডেলিভারি</span>
+    </div>
+    <div class="rtotal">
+      <span class="rtotal-lbl">মোট পরিমাণ</span>
+      <span class="rtotal-val">৳{{ order.total_amount|floatformat:0 }}</span>
+    </div>
+  </div>
+
+  <p class="note">আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব।<br>We will contact you soon to confirm delivery.</p>
+
+  <div class="actions">
+    <button class="btn-out green-out" onclick="downloadPDF()">
+      <i class="bi bi-file-earmark-pdf-fill"></i> Download Invoice PDF
+    </button>
+    <a href="/shop/{{ shop.slug }}/" class="btn-main">
+      <i class="bi bi-arrow-left-circle-fill"></i> কেনাকাটা চালিয়ে যান
+    </a>
+    <button class="btn-out" onclick="shareOrder()">
+      <i class="bi bi-share"></i> অর্ডার শেয়ার করুন
+    </button>
+  </div>
+</div>
+
+<!-- =========================================
+     ULTRA-PROFESSIONAL PDF INVOICE (Hidden)
+     ========================================= -->
+<div id="pdf-tpl">
+  <div class="pdf-watermark">CONFIRMED</div>
+  <div class="pdf-content">
+
+    <!-- Header -->
+    <div class="pdf-header">
+      <div class="pdf-logo-area">
+        {% if shop.logo %}<img src="{{ shop.logo.url }}" alt="Logo">{% endif %}
+        <div class="pdf-shop-details">
+          <h2>{{ shop.name }}</h2>
+          <p>{{ shop.address|default:"Online Retail Store" }}</p>
+          {% if shop.phone %}<p>Support: {{ shop.phone }}</p>{% endif %}
+        </div>
+      </div>
+      <div class="pdf-invoice-title">
+        <h1>INVOICE</h1>
+        <p>Order No: <strong>#SF-{{ order.id }}</strong></p>
+        <p>Date: {{ order.created_at|date:"d M Y, h:i A" }}</p>
+        <div class="pdf-badge">Cash on Delivery</div>
+      </div>
+    </div>
+
+    <!-- Info Boxes -->
+    <div class="pdf-info-row">
+      <div class="pdf-info-box">
+        <h3>Billed To</h3>
+        <p>
+          <strong>{{ order.customer_name }}</strong>
+          Phone: {{ order.customer_phone }}<br>
+          Address: {{ order.customer_address }}
+        </p>
+      </div>
+      <div class="pdf-info-box" style="text-align: right;">
+        <h3>Payment Status</h3>
+        <p>
+          <strong>Pending Collection</strong>
+          Method: Cash on Delivery (COD)<br>
+          Currency: BDT (৳)
+        </p>
+      </div>
+    </div>
+
+    <!-- Items Table -->
+    <table class="pdf-table">
+      <thead>
+        <tr>
+          <th style="width: 5%;">#</th>
+          <th style="width: 55%;">Product Description</th>
+          <th style="width: 15%; text-align: center;">Quantity</th>
+          <th style="width: 25%;">Total Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in order.items.all %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td><strong>{{ item.product.name }}</strong></td>
+          <td style="text-align: center;">{{ item.quantity }}</td>
+          <td>৳{{ item.get_total|floatformat:0 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" style="text-align:center;">No items found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Bottom Area (Barcode & Totals) -->
+    <div class="pdf-bottom-area">
+      <div class="pdf-barcode">
+        <!-- Dynamic Barcode from tec-it API -->
+        <img src="https://barcode.tec-it.com/barcode.ashx?data=SF-{{ order.id }}&code=Code128&translate-esc=on" alt="Barcode" style="height: 50px; opacity: 0.8;">
+      </div>
+
+      <div class="pdf-totals">
+        <div class="pdf-total-row">
+          <span>Delivery Charge:</span>
+          <span>৳{{ order.delivery_charge|floatformat:0 }}</span>
+        </div>
+        <div class="pdf-total-row grand-total">
+          <span>Grand Total:</span>
+          <span>৳{{ order.total_amount|floatformat:0 }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="pdf-footer">
+      <h4>Thank you for shopping with {{ shop.name }}!</h4>
+      <p>If you have any questions concerning this invoice, please contact our support team.</p>
+      <p class="disclaimer">This is a system generated document and does not require a physical signature.</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// CONFETTI
+(function(){
+  const colors=['#F57224','#FFB800','#16A34A','#3B82F6','#EC4899','#8B5CF6','#EF4444','#06B6D4'];
+  const wrap=document.getElementById('cfwrap');
+  for(let i=0;i<80;i++){
+    const el=document.createElement('div');
+    el.className='cf';
+    const s=6+Math.random()*10;
+    el.style.cssText=`left:${Math.random()*100}%;top:-15px;width:${s}px;height:${s}px;background:${colors[Math.floor(Math.random()*colors.length)]};border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${2+Math.random()*3}s;animation-delay:${Math.random()*2}s;`;
+    wrap.appendChild(el);
+  }
+  // cart clear
+  try{Object.keys(localStorage).filter(k=>k.startsWith('sohojsell_')).forEach(k=>localStorage.removeItem(k));}catch(e){}
+})();
+
+// ULTRA PRO PDF DOWNLOAD WITH A4 RATIO
+async function downloadPDF(){
+  const loader=document.getElementById('pdf-loader');
+  loader.classList.add('on');
+  try {
+    const {jsPDF} = window.jspdf;
+    const el = document.getElementById('pdf-tpl');
+
+    // Show element temporarily for rendering
+    el.style.left = '0';
+    el.style.zIndex = '-1';
+
+    // Wait for external images (like barcode and logo) to load
+    await new Promise(r => setTimeout(r, 800));
+
+    const canvas = await html2canvas(el, {
+      scale: 3, // High resolution
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false
+    });
+
+    // Hide element again
+    el.style.left = '-9999px';
+
+    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+
+    // Create A4 PDF (210mm x 297mm)
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save('Invoice_SF-{{ order.id }}_{{ shop.name|escapejs }}.pdf');
+
+  } catch(e) {
+    console.error(e);
+    alert('PDF তৈরিতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।');
+  } finally {
+    loader.classList.remove('on');
+  }
+}
+
+function shareOrder(){
+  const txt='🎉 অর্ডার কনফার্ম!\n\nঅর্ডার নং: #SF-{{ order.id }}\nশপ: {{ shop.name }}\nমোট: ৳{{ order.total_amount|floatformat:0 }}\n\nধন্যবাদ! 🛍️';
+  if(navigator.share){navigator.share({title:'অর্ডার কনফার্ম',text:txt});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>alert('কপি হয়েছে!'));}
+}
+</script>
+</body>
+</html>

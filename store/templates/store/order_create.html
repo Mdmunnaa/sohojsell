@@ -1,0 +1,257 @@
+{% extends 'store/base.html' %}
+
+{% block title %}Create New Order - {{ request.user.shop.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <h3 class="fw-bolder text-dark mb-1"><i class="bi bi-cart-plus text-primary me-2"></i>Create New Order</h3>
+            <p class="text-muted fw-medium mb-0">Fill in the details to generate a new customer order.</p>
+        </div>
+        <a href="{% url 'order_list' %}" class="btn btn-light shadow-sm fw-bold px-4 py-2 rounded-pill hover-lift">
+            <i class="bi bi-arrow-left me-2"></i>Back to Orders
+        </a>
+    </div>
+
+    <form method="POST" action="" id="orderForm">
+        {% csrf_token %}
+        <div class="row">
+
+            <div class="col-lg-8 mb-4">
+
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-bottom-0 py-3 px-4 rounded-top-4">
+                        <h5 class="fw-bolder text-primary mb-0"><i class="bi bi-person-lines-fill me-2"></i>Customer Information</h5>
+                    </div>
+                    <div class="card-body px-4 pb-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-muted small">Customer Name <span class="text-danger">*</span></label>
+                                <input type="text" name="customer_name" class="form-control bg-light border-0 py-2" placeholder="e.g. Depook Kumar" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-muted small">Phone Number <span class="text-danger">*</span></label>
+                                <input type="text" name="customer_phone" class="form-control bg-light border-0 py-2" placeholder="e.g. 01712345678" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold text-muted small">Delivery Address <span class="text-danger">*</span></label>
+                                <textarea name="customer_address" class="form-control bg-light border-0" rows="2" placeholder="Full address for courier delivery" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-header bg-white border-bottom-0 py-3 px-4 rounded-top-4 d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bolder text-success mb-0"><i class="bi bi-box-seam me-2"></i>Order Details</h5>
+                        <button type="button" id="addProductBtn" class="btn btn-sm btn-success rounded-pill fw-bold shadow-sm px-3">
+                            <i class="bi bi-plus-lg me-1"></i> Add Product
+                        </button>
+                    </div>
+                    <div class="card-body px-4 pb-4">
+                        <div class="table-responsive">
+                            <table class="table table-borderless align-middle mb-0" id="productTable">
+                                <thead class="border-bottom text-muted small text-uppercase fw-bold">
+                                    <tr>
+                                        <th style="width: 45%;">Select Product</th>
+                                        <th style="width: 20%;">Price (Tk)</th>
+                                        <th style="width: 20%;">Quantity</th>
+                                        <th style="width: 15%; text-align: right;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productBody">
+                                    <tr class="product-row border-bottom">
+                                        <td class="py-3">
+                                            <select name="product[]" class="form-select bg-light border-0 product-select" required>
+                                                <option value="" data-price="0">-- Choose a Product --</option>
+                                                {% for product in products %}
+                                                <option value="{{ product.id }}" data-price="{{ product.price|default:'0' }}">{{ product.name }} (Stock: {{ product.stock_quantity }})</option>
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td class="py-3">
+                                            <input type="number" name="price[]" class="form-control bg-light border-0 product-price" min="0" step="0.01" required>
+                                        </td>
+                                        <td class="py-3">
+                                            <input type="number" name="quantity[]" class="form-control bg-light border-0 product-qty" value="1" min="1" required>
+                                        </td>
+                                        <td class="py-3 text-end">
+                                            <button type="button" class="btn btn-sm btn-light text-danger rounded-circle shadow-sm remove-row-btn" style="width: 35px; height: 35px;" disabled>
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="col-lg-4 mb-4">
+
+                <div class="card border-0 shadow-sm rounded-4 sticky-top" style="top: 20px;">
+                    <div class="card-header bg-white border-bottom-0 py-3 px-4 rounded-top-4">
+                        <h5 class="fw-bolder text-dark mb-0"><i class="bi bi-calculator me-2"></i>Order Summary</h5>
+                    </div>
+                    <div class="card-body px-4 pb-4">
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-muted small">Delivery Charge (Tk)</label>
+                            <input type="number" name="delivery_charge" id="deliveryCharge" class="form-control bg-light border-0 py-2 calculate-input" value="0" min="0">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted small">Discount (Tk)</label>
+                            <input type="number" name="discount" id="discount" class="form-control bg-light border-0 py-2 calculate-input" value="0" min="0">
+                        </div>
+
+                        <div class="bg-light p-3 rounded-3 mb-4">
+                            <div class="d-flex justify-content-between mb-2 text-muted fw-medium">
+                                <span>Subtotal:</span>
+                                <span>Tk. <span id="summarySubtotal">0.00</span></span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2 text-muted fw-medium">
+                                <span>Delivery:</span>
+                                <span>+ Tk. <span id="summaryDelivery">0.00</span></span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2 text-success fw-medium border-bottom pb-2">
+                                <span>Discount:</span>
+                                <span>- Tk. <span id="summaryDiscount">0.00</span></span>
+                            </div>
+                            <div class="d-flex justify-content-between mt-2 fw-bolder text-dark fs-5">
+                                <span>Grand Total:</span>
+                                <span>Tk. <span id="summaryTotal">0.00</span></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted small">Payment Method <span class="text-danger">*</span></label>
+                            <select name="payment_method" class="form-select bg-light border-0 py-2 fw-bold text-primary" required>
+                                <option value="COD">Cash on Delivery (COD)</option>
+                                <option value="Full Paid">Full Paid (bKash/Bank)</option>
+                                <option value="Partial Paid">Partial Paid (Advance)</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 fw-bold rounded-pill shadow-sm py-3 fs-5 transition-all hover-lift">
+                            <i class="bi bi-check-circle-fill me-2"></i>Confirm Order
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const productBody = document.getElementById("productBody");
+        const addProductBtn = document.getElementById("addProductBtn");
+
+        const summarySubtotal = document.getElementById("summarySubtotal");
+        const summaryDelivery = document.getElementById("summaryDelivery");
+        const summaryDiscount = document.getElementById("summaryDiscount");
+        const summaryTotal = document.getElementById("summaryTotal");
+
+        const deliveryInput = document.getElementById("deliveryCharge");
+        const discountInput = document.getElementById("discount");
+
+        // --- ডাইনামিক রো অ্যাড করা ---
+        addProductBtn.addEventListener("click", function() {
+            // প্রথম রো-টাকে টেমপ্লেট হিসেবে ধরছি
+            const firstRow = document.querySelector(".product-row");
+            const newRow = firstRow.cloneNode(true);
+
+            // ভ্যালুগুলো রিসেট করা
+            newRow.querySelector('.product-select').value = "";
+            newRow.querySelector('.product-price').value = "";
+            newRow.querySelector('.product-qty').value = "1";
+
+            // ডিলিট বাটন এনাবল করা
+            const deleteBtn = newRow.querySelector('.remove-row-btn');
+            deleteBtn.disabled = false;
+
+            productBody.appendChild(newRow);
+            attachRowEvents(newRow); // নতুন রো তে ইভেন্ট বসানো
+            calculateGrandTotal(); // টোটাল রিক্যালকুলেট
+        });
+
+        // --- রো ডিলিট করা ---
+        productBody.addEventListener("click", function(e) {
+            if (e.target.closest(".remove-row-btn")) {
+                const btn = e.target.closest(".remove-row-btn");
+                if (!btn.disabled) {
+                    btn.closest(".product-row").remove();
+                    calculateGrandTotal();
+                }
+            }
+        });
+
+        // --- লাইভ ক্যালকুলেশন ফাংশন ---
+        function calculateGrandTotal() {
+            let subtotal = 0;
+
+            // সবগুলো রো এর প্রাইস * কোয়ান্টিটি যোগ করা
+            document.querySelectorAll(".product-row").forEach(row => {
+                const price = parseFloat(row.querySelector(".product-price").value) || 0;
+                const qty = parseInt(row.querySelector(".product-qty").value) || 1;
+                subtotal += (price * qty);
+            });
+
+            const delivery = parseFloat(deliveryInput.value) || 0;
+            const discount = parseFloat(discountInput.value) || 0;
+
+            const grandTotal = (subtotal + delivery) - discount;
+
+            // UI তে আপডেট করা
+            summarySubtotal.innerText = subtotal.toFixed(2);
+            summaryDelivery.innerText = delivery.toFixed(2);
+            summaryDiscount.innerText = discount.toFixed(2);
+            summaryTotal.innerText = Math.max(0, grandTotal).toFixed(2); // মাইনাস যাতে না হয়
+        }
+
+        // --- ইনপুট দিলে যাতে অটো হিসাব হয় ---
+        function attachRowEvents(row) {
+            const select = row.querySelector(".product-select");
+            const priceInput = row.querySelector(".product-price");
+            const qtyInput = row.querySelector(".product-qty");
+
+            // প্রোডাক্ট সিলেক্ট করলে অটো প্রাইস বসে যাবে (ফাইনাল ফিক্স)
+            select.addEventListener("change", function() {
+                if (this.value === "") {
+                    priceInput.value = ""; // যদি "Choose a Product" সিলেক্ট করে
+                } else {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const price = selectedOption.getAttribute("data-price");
+                    priceInput.value = price ? parseFloat(price).toFixed(2) : "0.00";
+                }
+                calculateGrandTotal();
+            });
+
+            // প্রাইস বা কোয়ান্টিটি চেঞ্জ করলে অটো হিসাব হবে
+            priceInput.addEventListener("input", calculateGrandTotal);
+            qtyInput.addEventListener("input", calculateGrandTotal);
+        }
+
+        // ডেলিভারি বা ডিসকাউন্ট চেঞ্জ করলেও হিসাব হবে
+        deliveryInput.addEventListener("input", calculateGrandTotal);
+        discountInput.addEventListener("input", calculateGrandTotal);
+
+        // পেজ লোড হওয়ার সাথে সাথে প্রথম রো-তে ইভেন্ট বসিয়ে দেওয়া
+        attachRowEvents(document.querySelector(".product-row"));
+    });
+</script>
+
+<script>
+  // Modal Freeze Fix (Moves modal to body to avoid z-index trap)
+  document.addEventListener('DOMContentLoaded', function() {
+    var bulkModal = document.getElementById('bulkUploadModal');
+    if (bulkModal) {
+      document.body.appendChild(bulkModal);
+    }
+  });
+</script>
+{% endblock %}

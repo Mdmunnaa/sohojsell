@@ -1,0 +1,98 @@
+{% extends 'store/base.html' %}
+{% block title %}Courier{% endblock %}
+{% block page_title %}🚚 Courier{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h4 class="fw-bold mb-1">Courier Shipments</h4>
+    <p class="text-muted mb-0" style="font-size:13px;">{{ page_obj.paginator.count }} total shipments via Steadfast</p>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+  {% for label, count, color, icon in courier_stats %}
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm rounded-3 p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div style="width:42px;height:42px;border-radius:12px;background:{{ color }}20;display:flex;align-items:center;justify-content:center;font-size:20px;color:{{ color }};">
+          <i class="bi bi-{{ icon }}"></i>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;">{{ label }}</div>
+          <div style="font-size:20px;font-weight:800;color:#0f172a;">{{ count }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card border-0 shadow-sm rounded-4">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead style="background:#f8fafc;">
+        <tr style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">
+          <th class="px-4 py-3">Order</th>
+          <th class="py-3">Customer</th>
+          <th class="py-3">Phone</th>
+          <th class="py-3">Tracking</th>
+          <th class="py-3 text-end">Amount</th>
+          <th class="py-3 text-center">Status</th>
+          <th class="py-3">Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in page_obj %}
+        <tr>
+          <td class="px-4 py-3">
+            <span class="badge rounded-pill" style="background:#f1f5f9;color:#475569;font-weight:700;font-size:12px;">#ORD-{{ order.id }}</span>
+          </td>
+          <td class="fw-semibold" style="font-size:14px;">{{ order.customer.name }}</td>
+          <td style="font-size:13px;color:#3b82f6;">{{ order.customer.phone }}</td>
+          <td>
+            {% if order.steadfast_tracking_code %}
+            <a href="https://steadfast.com.bd/t/{{ order.steadfast_tracking_code }}" target="_blank"
+               class="badge rounded-pill text-decoration-none" style="background:#e8f0fe;color:#1a73e8;font-weight:700;font-size:11px;">
+              <i class="bi bi-truck me-1"></i>{{ order.steadfast_tracking_code }}
+            </a>
+            {% else %}
+            <span style="color:#94a3b8;font-size:13px;">—</span>
+            {% endif %}
+          </td>
+          <td class="text-end fw-bold">৳{{ order.total_amount|floatformat:0 }}</td>
+          <td class="text-center">
+            {% if order.status == 'Delivered' %}<span class="badge bg-success rounded-pill">Delivered</span>
+            {% elif order.status == 'Shipped' %}<span class="badge bg-primary rounded-pill">Shipped</span>
+            {% elif order.status == 'Cancelled' %}<span class="badge bg-danger rounded-pill">Cancelled</span>
+            {% else %}<span class="badge bg-warning text-dark rounded-pill">{{ order.status }}</span>{% endif %}
+          </td>
+          <td style="font-size:12px;color:#64748b;">{{ order.created_at|date:"d M Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center py-5">
+            <i class="bi bi-truck" style="font-size:48px;color:#e2e8f0;display:block;margin-bottom:12px;"></i>
+            <div class="fw-bold text-muted">No shipments yet</div>
+            <div style="font-size:13px;color:#94a3b8;">Send orders to Steadfast from the Orders page</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj.has_other_pages %}
+  <div class="px-4 py-3 border-top d-flex justify-content-between align-items-center" style="background:#fafafa;">
+    <span style="font-size:13px;color:#64748b;">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</span>
+    <nav><ul class="pagination pagination-sm mb-0 gap-1">
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link rounded-pill px-3" href="?page={{ page_obj.previous_page_number }}">←</a></li>{% endif %}
+      {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}<li class="page-item active"><span class="page-link rounded-pill px-3">{{ num }}</span></li>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}<li class="page-item"><a class="page-link rounded-pill px-3" href="?page={{ num }}">{{ num }}</a></li>{% endif %}
+      {% endfor %}
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link rounded-pill px-3" href="?page={{ page_obj.next_page_number }}">→</a></li>{% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

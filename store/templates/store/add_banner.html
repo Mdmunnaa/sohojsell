@@ -1,0 +1,109 @@
+{% extends 'store/base.html' %}
+{% block title %}Add Banner - {{ request.user.shop.name }}{% endblock %}
+
+{% block content %}
+<style>
+    /* Premium Form Styles */
+    .form-wrapper { max-width: 550px; margin: 0 auto; padding-top: 20px; }
+
+    .form-card {
+        background: #fff; border-radius: 24px; border: 1px solid #E2E8F0;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.04); padding: 32px;
+        transition: 0.3s;
+    }
+
+    .page-title { font-weight: 900; color: #0F172A; letter-spacing: -0.5px; margin: 0; font-size: 24px; }
+
+    .btn-back {
+        background: #F8FAFC; color: #475569; border: 1px solid #E2E8F0; border-radius: 12px;
+        padding: 10px 20px; font-weight: 800; font-size: 14px; text-decoration: none;
+        transition: 0.2s; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-back:hover { background: #F1F5F9; color: #0F172A; transform: translateX(-2px); }
+
+    .form-label { font-weight: 800; color: #334155; font-size: 14px; margin-bottom: 8px; }
+
+    /* Styling Django's Auto Inputs */
+    input[type="text"], input[type="file"] {
+        width: 100%; padding: 14px 16px; border: 1.5px solid #E2E8F0; border-radius: 12px;
+        font-size: 14px; font-weight: 600; background: #F8FAFC; transition: 0.2s;
+        outline: none; font-family: 'Plus Jakarta Sans', sans-serif; color: #0F172A;
+    }
+    input[type="text"]:focus, input[type="file"]:focus {
+        border-color: #F57224; background: #fff; box-shadow: 0 0 0 4px rgba(245,114,36,0.1);
+    }
+
+    /* Custom File Button */
+    input[type="file"] { padding: 10px; cursor: pointer; }
+    input[type="file"]::file-selector-button {
+        background: #F1F5F9; border: none; padding: 8px 16px; border-radius: 8px;
+        color: #334155; font-weight: 800; cursor: pointer; margin-right: 12px; transition: 0.2s;
+    }
+    input[type="file"]::file-selector-button:hover { background: #E2E8F0; color: #0F172A; }
+
+    /* iOS Style Toggle Switch */
+    .form-switch { padding-left: 3rem; margin-top: 10px; }
+    .form-switch .form-check-input {
+        width: 3rem; height: 1.5rem; cursor: pointer; border: none; background-color: #CBD5E1;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+    }
+    .form-switch .form-check-input:checked { background-color: #10B981; }
+    .form-check-label { font-weight: 800; color: #0F172A; padding-top: 4px; cursor: pointer; font-size: 15px;}
+
+    /* Submit Button */
+    .btn-submit {
+        background: linear-gradient(135deg, #F57224, #FF8C42); color: #fff; border: none;
+        border-radius: 14px; padding: 16px; font-size: 16px; font-weight: 900; width: 100%;
+        cursor: pointer; transition: 0.2s; box-shadow: 0 8px 20px rgba(245,114,36,0.25);
+        font-family: 'Plus Jakarta Sans', sans-serif; margin-top: 10px;
+    }
+    .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(245,114,36,0.35); }
+
+    @media (max-width: 768px) {
+        .form-wrapper { padding-top: 0; }
+        .form-card { padding: 24px; border-radius: 20px; }
+        .page-title { font-size: 20px; }
+    }
+</style>
+
+<div class="form-wrapper">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="page-title"><i class="bi bi-image text-primary me-2"></i>Add Banner</h3>
+        <a href="{% url 'banner_list' %}" class="btn-back"><i class="bi bi-arrow-left"></i> Back</a>
+    </div>
+
+    <div class="form-card">
+        <div class="text-center mb-4">
+            <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle mb-3" style="width: 70px; height: 70px;">
+                <i class="bi bi-cloud-arrow-up-fill fs-2"></i>
+            </div>
+            <h5 class="fw-bold text-dark mb-1">Upload New Banner</h5>
+            <p class="text-muted small fw-semibold">Showcase your best offers on the storefront.</p>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="mb-4">
+                <label class="form-label">Banner Image <span class="text-danger">*</span></label>
+                {{ form.image }}
+                <div class="form-text mt-2 small fw-semibold text-muted"><i class="bi bi-info-circle me-1"></i>Recommended size: 1200×400px (JPG/PNG)</div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">Banner Title <span class="text-muted fw-normal">(Optional)</span></label>
+                {{ form.title }}
+            </div>
+
+            <div class="mb-4 form-check form-switch bg-light p-3 rounded-3 border">
+                {{ form.is_active }}
+                <label class="form-check-label ms-2" for="{{ form.is_active.id_for_label }}">Active (Show on store)</label>
+            </div>
+
+            <button type="submit" class="btn-submit">
+                <i class="bi bi-check-circle-fill me-2"></i> Save Banner
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

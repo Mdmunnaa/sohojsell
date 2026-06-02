@@ -1,0 +1,277 @@
+{% extends 'store/base.html' %}
+{% block title %}Master HQ{% endblock %}
+{% block page_title %}🚀 Master HQ{% endblock %}
+{% block content %}
+
+<!-- STATS -->
+<div class="row g-3 mb-4">
+  {% for label, value, icon, color in stats_list %}
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm rounded-4 p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div style="width:46px;height:46px;border-radius:14px;background:{{ color }}18;display:flex;align-items:center;justify-content:center;font-size:22px;">
+          <i class="bi bi-{{ icon }}" style="color:{{ color }};"></i>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">{{ label }}</div>
+          <div style="font-size:22px;font-weight:900;color:#0f172a;">{{ value }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm rounded-4 p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div style="width:46px;height:46px;border-radius:14px;background:#3b82f618;display:flex;align-items:center;justify-content:center;font-size:22px;">
+          <i class="bi bi-shop" style="color:#3b82f6;"></i>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#64748b;font-weight:700;">TOTAL SHOPS</div>
+          <div style="font-size:22px;font-weight:900;">{{ total_shops }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm rounded-4 p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div style="width:46px;height:46px;border-radius:14px;background:#22c55e18;display:flex;align-items:center;justify-content:center;font-size:22px;">
+          <i class="bi bi-people-fill" style="color:#22c55e;"></i>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#64748b;font-weight:700;">TOTAL USERS</div>
+          <div style="font-size:22px;font-weight:900;">{{ total_users }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm rounded-4 p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div style="width:46px;height:46px;border-radius:14px;background:#f59e0b18;display:flex;align-items:center;justify-content:center;font-size:22px;">
+          <i class="bi bi-cart-check-fill" style="color:#f59e0b;"></i>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#64748b;font-weight:700;">TOTAL ORDERS</div>
+          <div style="font-size:22px;font-weight:900;">{{ total_platform_orders }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm rounded-4 p-3">
+      <div class="d-flex align-items-center gap-3">
+        <div style="width:46px;height:46px;border-radius:14px;background:#8b5cf618;display:flex;align-items:center;justify-content:center;font-size:22px;">
+          <i class="bi bi-currency-dollar" style="color:#8b5cf6;"></i>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#64748b;font-weight:700;">TOTAL SALES</div>
+          <div style="font-size:22px;font-weight:900;">৳{{ total_sales_volume|floatformat:0 }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- PENDING PAYMENT REQUESTS -->
+{% if pending_payments %}
+<div class="card border-0 rounded-4 mb-4" style="border:2px solid #f59e0b !important;box-shadow:0 4px 20px rgba(245,158,11,.15);">
+  <div class="card-body p-0">
+    <div class="px-4 py-3 d-flex align-items-center justify-content-between" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border-radius:14px 14px 0 0;">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-bell-fill text-warning" style="font-size:18px;"></i>
+        <span class="fw-bold" style="font-size:15px;">Pending Payment Requests</span>
+        <span class="badge rounded-pill bg-warning text-dark px-3">{{ pending_payments.count }}</span>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead style="background:#fffdf0;">
+          <tr style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;">
+            <th class="px-4 py-3">Shop</th>
+            <th>Plan</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>TxID</th>
+            <th>Sender</th>
+            <th>Date</th>
+            <th class="text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for req in pending_payments %}
+          <tr>
+            <td class="px-4 fw-semibold">{{ req.shop.name }}</td>
+            <td><span class="badge rounded-pill" style="background:#e8f0fe;color:#1a73e8;font-weight:700;">{{ req.plan_name }}</span></td>
+            <td class="fw-bold text-success">৳{{ req.amount|floatformat:0 }}</td>
+            <td style="font-size:13px;">{{ req.payment_method }}</td>
+            <td><code style="font-size:11px;background:#f1f5f9;padding:2px 8px;border-radius:4px;">{{ req.transaction_id }}</code></td>
+            <td style="font-size:13px;">{{ req.sender_number }}</td>
+            <td style="font-size:12px;color:#64748b;">{{ req.created_at|date:"d M, H:i" }}</td>
+            <td class="text-center">
+              <!-- Approve Form -->
+              <form method="POST" action="{% url 'approve_payment' req.id %}" class="d-inline" onsubmit="return confirmApprove('{{ req.shop.name }}', '{{ req.plan_name }}')">
+                {% csrf_token %}
+                <div class="d-flex align-items-center gap-1 justify-content-center">
+                  <input type="number" name="advance_days" value="30" min="1" max="365"
+                    class="form-control form-control-sm rounded-pill text-center"
+                    style="width:65px;" title="Days to add">
+                  <button type="submit" class="btn btn-success btn-sm rounded-pill px-3 fw-bold">
+                    <i class="bi bi-check-lg"></i> Approve
+                  </button>
+                  <a href="{% url 'reject_payment' req.id %}"
+                    class="btn btn-outline-danger btn-sm rounded-pill"
+                    onclick="return confirm('Reject করবেন?')">
+                    <i class="bi bi-x-lg"></i>
+                  </a>
+                </div>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- LOCKED SHOPS -->
+{% if locked_shops %}
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+  <div class="card-body p-0">
+    <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2">
+      <i class="bi bi-lock-fill text-danger"></i>
+      <span class="fw-bold">Locked Shops</span>
+      <span class="badge bg-danger rounded-pill">{{ locked_shops.count }}</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead style="background:#f8fafc;">
+          <tr style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;">
+            <th class="px-4 py-3">Shop</th>
+            <th>Plan</th>
+            <th>Valid Until</th>
+            <th>Phone</th>
+            <th class="text-center">Manual Unlock</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for shop in locked_shops %}
+          <tr>
+            <td class="px-4 fw-semibold">{{ shop.name }}</td>
+            <td><span class="badge rounded-pill bg-secondary">{{ shop.subscription_plan }}</span></td>
+            <td style="font-size:13px;color:#ef4444;">
+              {% if shop.valid_until %}{{ shop.valid_until|date:"d M Y" }}{% else %}Trial Expired{% endif %}
+            </td>
+            <td style="font-size:13px;">{{ shop.phone|default:"—" }}</td>
+            <td class="text-center">
+              <form method="POST" action="{% url 'manual_unlock' shop.id %}" class="d-inline">
+                {% csrf_token %}
+                <div class="d-flex align-items-center gap-1 justify-content-center">
+                  <input type="number" name="advance_days" value="30" min="1" max="365"
+                    class="form-control form-control-sm rounded-pill text-center" style="width:65px;">
+                  <button type="submit" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold text-dark">
+                    <i class="bi bi-unlock-fill me-1"></i>Unlock
+                  </button>
+                </div>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ALL SHOPS -->
+<div class="card border-0 shadow-sm rounded-4">
+  <div class="card-body p-0">
+    <div class="px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-shop text-primary"></i>
+        <span class="fw-bold">All Shops</span>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead style="background:#f8fafc;">
+          <tr style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;">
+            <th class="px-4 py-3">Shop</th>
+            <th>Plan</th>
+            <th>Valid Until</th>
+            <th>Status</th>
+            <th>SMS</th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for shop in recent_shops %}
+          <tr>
+            <td class="px-4">
+              <div class="fw-semibold" style="font-size:14px;">{{ shop.name }}</div>
+              <div style="font-size:11px;color:#94a3b8;">/shop/{{ shop.slug }}/</div>
+            </td>
+            <td>
+              <span class="badge rounded-pill" style="
+                {% if shop.subscription_plan == 'Premium' %}background:#fef3c7;color:#d97706;
+                {% elif shop.subscription_plan == 'Standard' %}background:#e8f0fe;color:#1a73e8;
+                {% elif shop.subscription_plan == 'Basic' %}background:#f0fdf4;color:#16a34a;
+                {% else %}background:#f1f5f9;color:#475569;{% endif %}
+                font-weight:700;">{{ shop.subscription_plan }}</span>
+            </td>
+            <td style="font-size:13px;">
+              {% if shop.valid_until %}
+                {% if shop.days_remaining > 7 %}
+                <span class="text-success fw-semibold">{{ shop.valid_until|date:"d M Y" }}</span>
+                {% elif shop.days_remaining > 0 %}
+                <span class="text-warning fw-semibold">{{ shop.valid_until|date:"d M Y" }} ⚠️</span>
+                {% else %}
+                <span class="text-danger fw-semibold">Expired</span>
+                {% endif %}
+              {% else %}
+              <span style="color:#94a3b8;">Trial: {{ shop.trial_ends_at|date:"d M Y" }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if shop.is_locked %}
+              <span class="badge bg-danger rounded-pill"><i class="bi bi-lock-fill me-1"></i>Locked</span>
+              {% else %}
+              <span class="badge bg-success rounded-pill"><i class="bi bi-check-circle-fill me-1"></i>Active</span>
+              {% endif %}
+            </td>
+            <td style="font-size:13px;font-weight:700;">{{ shop.sms_balance }}</td>
+            <td class="text-center">
+              <!-- Quick SMS Recharge -->
+              <form method="POST" action="{% url 'recharge_sms' %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="shop_id" value="{{ shop.id }}">
+                <div class="d-flex align-items-center gap-1 justify-content-center">
+                  <input type="number" name="amount" value="50" min="1"
+                    class="form-control form-control-sm rounded-pill text-center" style="width:60px;">
+                  <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill" title="Recharge SMS">
+                    <i class="bi bi-chat-fill"></i>
+                  </button>
+                </div>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center py-4 text-muted">No shops yet</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function confirmApprove(shopName, plan) {
+  return confirm(`"${shopName}" এর ${plan} Plan approve করবেন?`);
+}
+</script>
+{% endblock %}

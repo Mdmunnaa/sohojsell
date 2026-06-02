@@ -1,0 +1,317 @@
+{% extends 'store/base.html' %}
+{% block title %}Settings — {{ request.user.shop.name }}{% endblock %}
+{% block content %}
+
+<style>
+    /* Ultra-Premium Settings Styles */
+    .settings-wrapper { max-width: 1100px; margin: 0 auto; padding-bottom: 80px; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    .page-title-box { margin-bottom: 24px; }
+    .page-title { font-weight: 900; color: #0F172A; letter-spacing: -0.5px; margin: 0; font-size: 26px; }
+    .page-subtitle { color: #64748B; font-weight: 500; font-size: 14px; margin-top: 4px; }
+
+    /* Custom Alert */
+    .alert-premium { border: none; border-radius: 16px; padding: 16px 20px; font-weight: 700; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); }
+    .alert-success-soft { background: #ECFDF5; color: #065F46; border-left: 4px solid #10B981; }
+    .alert-danger-soft { background: #FEF2F2; color: #991B1B; border-left: 4px solid #EF4444; }
+
+    /* Settings Card */
+    .settings-card { background: #fff; border-radius: 24px; border: 1px solid #E2E8F0; box-shadow: 0 10px 30px rgba(0,0,0,0.03); margin-bottom: 24px; overflow: hidden; }
+    .sc-header { padding: 20px 24px; border-bottom: 1px solid #F1F5F9; background: rgba(248, 250, 252, 0.5); display: flex; align-items: center; gap: 10px; }
+    .sc-title { font-size: 16px; font-weight: 900; color: #0F172A; margin: 0; }
+    .sc-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .sc-body { padding: 24px; }
+
+    /* Form Controls */
+    .form-label { font-weight: 800; color: #334155; font-size: 13px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;}
+    input[type="text"], input[type="url"], textarea, input[type="file"], input[type="password"] {
+        width: 100%; padding: 14px 16px; border: 1.5px solid #E2E8F0; border-radius: 12px;
+        font-size: 14px; font-weight: 600; background: #F8FAFC; transition: 0.2s; outline: none; color: #0F172A;
+    }
+    input:focus, textarea:focus { border-color: #3B82F6; background: #fff; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); }
+    textarea { resize: vertical; min-height: 80px; }
+
+    /* Input Group */
+    .input-group-premium { display: flex; overflow: hidden; border-radius: 12px; border: 1.5px solid #E2E8F0; transition: 0.2s; }
+    .input-group-premium:focus-within { border-color: #10B981; box-shadow: 0 0 0 4px rgba(16,185,129,0.1); }
+    .ig-text { background: #F8FAFC; border: none; padding: 14px 16px; color: #64748B; font-weight: 700; border-right: 1px solid #E2E8F0; }
+    .input-group-premium input { border: none; border-radius: 0; box-shadow: none; background: #fff; }
+    .ig-btn { background: #10B981; color: #fff; border: none; padding: 0 20px; font-weight: 800; text-decoration: none; display: flex; align-items: center; transition: 0.2s; }
+    .ig-btn:hover { background: #059669; color: #fff; }
+
+    /* Custom Toggle Switch for SMS */
+    .form-switch .form-check-input { width: 2.5rem; height: 1.25rem; cursor: pointer; margin-top: 0; }
+    .form-switch .form-check-input:checked { background-color: #10B981; border-color: #10B981; box-shadow: 0 2px 8px rgba(16,185,129,0.3); }
+
+    /* Logo Upload Area */
+    .logo-upload-box { text-align: center; padding: 10px; }
+    .logo-preview-wrap { position: relative; width: 120px; height: 120px; margin: 0 auto 16px; border-radius: 50%; padding: 4px; border: 2px dashed #CBD5E1; background: #F8FAFC; }
+    .logo-preview-wrap img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    .logo-placeholder { width: 100%; height: 100%; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; font-size: 40px; color: #94A3B8; }
+
+    input[type="file"] { padding: 10px; cursor: pointer; border: 1px dashed #CBD5E1; background: #fff; }
+    input[type="file"]::file-selector-button { background: #F1F5F9; border: none; padding: 8px 16px; border-radius: 8px; color: #334155; font-weight: 800; cursor: pointer; margin-right: 12px; transition: 0.2s; }
+    input[type="file"]::file-selector-button:hover { background: #E2E8F0; color: #0F172A; }
+
+    /* Premium Plan Card */
+    .plan-card { background: linear-gradient(135deg, #0F172A, #1E293B); border-radius: 24px; padding: 30px 24px; text-align: center; color: #fff; position: relative; overflow: hidden; box-shadow: 0 15px 35px rgba(15,23,42,0.2); }
+    .plan-card::before { content: ''; position: absolute; top: -50%; left: -20%; width: 70%; height: 120%; background: rgba(255,255,255,0.05); transform: rotate(30deg); }
+    .plan-icon { font-size: 48px; line-height: 1; margin-bottom: 10px; display: inline-block; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2)); }
+    .plan-label { font-size: 12px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; }
+    .plan-name { font-size: 28px; font-weight: 900; margin: 4px 0 16px; letter-spacing: -0.5px; }
+    .btn-upgrade { background: linear-gradient(135deg, #F59E0B, #D97706); color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 800; font-size: 14px; text-decoration: none; display: inline-block; transition: 0.2s; box-shadow: 0 4px 15px rgba(245,158,11,0.3); }
+    .btn-upgrade:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(245,158,11,0.4); color: #fff; }
+
+    /* Floating Save Bar */
+    .save-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); padding: 12px 20px; border-radius: 100px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.5); z-index: 1000; display: flex; align-items: center; gap: 16px; }
+    .save-bar span { font-weight: 700; color: #475569; font-size: 14px; display: none; }
+    .btn-save { background: linear-gradient(135deg, #3B82F6, #1D4ED8); color: #fff; border: none; padding: 12px 32px; border-radius: 30px; font-weight: 900; font-size: 15px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(59,130,246,0.3); display: flex; align-items: center; gap: 8px; font-family: 'Plus Jakarta Sans', sans-serif;}
+    .btn-save:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(59,130,246,0.4); }
+
+    @media (min-width: 768px) { .save-bar span { display: block; } }
+</style>
+
+<div class="settings-wrapper">
+
+    <div class="page-title-box">
+        <h2 class="page-title">⚙️ App Settings</h2>
+        <p class="page-subtitle">Manage your store details, domain, and integrations.</p>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert-premium alert-success-soft mb-4">
+            <i class="bi bi-check-circle-fill fs-5"></i> {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if form.errors %}
+    <div class="alert-premium alert-danger-soft mb-4 flex-column align-items-start">
+        <div class="d-flex align-items-center gap-2"><i class="bi bi-exclamation-triangle-fill fs-5"></i> <strong>Please fix the errors below:</strong></div>
+        <div class="small mt-1">{{ form.errors }}</div>
+    </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" id="settingsForm">
+        {% csrf_token %}
+
+        <div class="row g-4">
+            <!-- LEFT COLUMN -->
+            <div class="col-lg-8">
+
+                <!-- Business Info -->
+                <div class="settings-card">
+                    <div class="sc-header">
+                        <div class="sc-icon" style="background:#eff6ff; color:#3B82F6;"><i class="bi bi-shop"></i></div>
+                        <h4 class="sc-title">Business Information</h4>
+                    </div>
+                    <div class="sc-body">
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Shop Name <span class="text-danger">*</span></label>
+                                {{ form.name }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Contact Phone</label>
+                                {{ form.phone }}
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Shop Address <span class="text-muted text-capitalize fw-semibold" style="font-size:10px;">(Appears on Invoice)</span></label>
+                            {{ form.address }}
+                        </div>
+
+                        <!-- Social Links (New Addition) -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label text-primary"><i class="bi bi-facebook me-1"></i> Facebook</label>
+                                {{ form.facebook_page_url }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" style="color: #E4405F;"><i class="bi bi-instagram me-1"></i> Instagram</label>
+                                {{ form.instagram_link }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-danger"><i class="bi bi-youtube me-1"></i> YouTube</label>
+                                {{ form.youtube_link }}
+                            </div>
+                        </div>
+
+                        <!-- Policies (New Addition) -->
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-success"><i class="bi bi-shield-check me-1"></i> Privacy Policy</label>
+                                {{ form.privacy_policy }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-warning"><i class="bi bi-arrow-return-left me-1"></i> Return Policy</label>
+                                {{ form.return_policy }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Domain Settings -->
+                <div class="settings-card">
+                    <div class="sc-header">
+                        <div class="sc-icon" style="background:#ecfdf5; color:#10B981;"><i class="bi bi-globe2"></i></div>
+                        <h4 class="sc-title">Online Store & Domain</h4>
+                        {% if request.user.shop.subscription_plan not in "Standard,Premium" %}
+                        <span class="badge bg-warning text-dark ms-auto fw-bold px-3 py-2 rounded-pill">Standard Plan Required</span>
+                        {% endif %}
+                    </div>
+                    <div class="sc-body">
+                        <div class="mb-4">
+                            <label class="form-label">Your Store Link</label>
+                            <div class="input-group-premium">
+                                <span class="ig-text"><i class="bi bi-link-45deg fs-5"></i></span>
+                                <input type="text" value="{{ request.scheme }}://{{ request.get_host }}/shop/{{ request.user.shop.slug }}/" readonly>
+                                <a href="/shop/{{ request.user.shop.slug }}/" target="_blank" class="ig-btn">Open</a>
+                            </div>
+                            <div class="form-text mt-2 small fw-semibold text-muted">Share this official link with your customers.</div>
+                        </div>
+                        <div>
+                            <label class="form-label">Custom Domain <span class="text-muted text-capitalize fw-semibold" style="font-size:10px;">(Optional)</span></label>
+                            {{ form.custom_domain }}
+                            <div class="form-text mt-2 small fw-semibold text-muted">
+                                Point your domain's A-Record to our server IP. Example: <code>www.yourshop.com</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Integrations -->
+                <div class="settings-card">
+                    <div class="sc-header">
+                        <div class="sc-icon" style="background:#fffbeb; color:#F59E0B;"><i class="bi bi-plug-fill"></i></div>
+                        <h4 class="sc-title">API Integrations</h4>
+                    </div>
+                    <div class="sc-body">
+                        <!-- Steadfast -->
+                        <h6 class="fw-bold text-success mb-3"><i class="bi bi-truck me-2"></i>Steadfast Integration</h6>
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Steadfast API Key</label>
+                                {{ form.steadfast_api_key }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Steadfast Secret Key</label>
+                                {{ form.steadfast_secret_key }}
+                            </div>
+                        </div>
+
+                        <!-- Pathao -->
+                        <hr class="text-muted opacity-25 my-4">
+                        <h6 class="fw-bold text-danger mb-3"><i class="bi bi-bicycle me-2"></i>Pathao Integration</h6>
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Store ID</label>
+                                {{ form.pathao_store_id }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Access Token</label>
+                                {{ form.pathao_access_token }}
+                            </div>
+                        </div>
+
+                        <!-- RedX -->
+                        <hr class="text-muted opacity-25 my-4">
+                        <h6 class="fw-bold mb-3" style="color:#d92128 !important;"><i class="bi bi-box-seam me-2"></i>RedX Integration</h6>
+                        <div class="mb-4">
+                            <label class="form-label">RedX Access Token</label>
+                            {{ form.redx_access_token }}
+                        </div>
+
+                        <!-- SMS Integration & Toggle -->
+                        <hr class="text-muted opacity-25 my-4">
+                        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-chat-dots-fill me-2"></i>SMS Settings</h6>
+                        <div class="p-3 rounded-4" style="background:#F8FAFC; border:1px dashed #CBD5E1;">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <span class="badge bg-primary px-3 py-2 rounded-pill fw-bold" style="font-size: 14px;"><i class="bi bi-envelope-paper-fill me-1"></i> {{ request.user.shop.sms_balance }} SMS Left</span>
+                                <span class="small fw-semibold text-muted">Current Balance</span>
+                            </div>
+
+                            <!-- iOS Style Toggle for SMS -->
+                            <div class="form-check form-switch bg-white p-3 rounded-3 border d-flex align-items-center mb-0" style="padding-left: 1rem !important;">
+                                {{ form.is_sms_active }}
+                                <label class="form-check-label fw-bold ms-3" for="{{ form.is_sms_active.id_for_label }}" style="margin-top: 1px;">
+                                    Enable Order Confirmation SMS
+                                    <span class="text-muted fw-normal d-block" style="font-size: 12px; margin-top: 2px;">Deducts 1 SMS (0.40 Tk) per order</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN -->
+            <div class="col-lg-4">
+
+                <!-- Logo Upload -->
+                <div class="settings-card">
+                    <div class="sc-header justify-content-center border-0 pb-0 bg-transparent">
+                        <h4 class="sc-title">Store Logo</h4>
+                    </div>
+                    <div class="sc-body logo-upload-box pt-2">
+                        <div class="logo-preview-wrap">
+                            {% if request.user.shop.logo %}
+                            <img src="{{ request.user.shop.logo.url }}" alt="Logo">
+                            {% else %}
+                            <div class="logo-placeholder"><i class="bi bi-shop"></i></div>
+                            {% endif %}
+                        </div>
+                        <div class="text-start">
+                            {{ form.logo }}
+                            <div class="form-text mt-2 small fw-semibold text-muted text-center">JPG/PNG (Max 1MB)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subscription Plan -->
+                <div class="plan-card">
+                    <div class="plan-icon">
+                        {% if request.user.shop.subscription_plan == 'Premium' %}👑
+                        {% elif request.user.shop.subscription_plan == 'Standard' %}🚀
+                        {% elif request.user.shop.subscription_plan == 'Basic' %}📱
+                        {% else %}🆓{% endif %}
+                    </div>
+                    <div class="plan-label">Active Plan</div>
+                    <div class="plan-name">{{ request.user.shop.subscription_plan }}</div>
+                    <p class="small text-white-50 fw-semibold mb-4">Unlock more features to grow your business.</p>
+                    <a href="{% url 'billing' %}" class="btn-upgrade">Upgrade Plan <i class="bi bi-arrow-right fw-bold"></i></a>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Floating Save Bar -->
+        <div class="save-bar">
+            <span>You have unsaved changes.</span>
+            <button type="submit" class="btn-save">
+                <i class="bi bi-check2-circle fs-5"></i> Save Changes
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Optional: Only show save bar if inputs change
+    document.addEventListener("DOMContentLoaded", function() {
+        const form = document.getElementById('settingsForm');
+        const saveBar = document.querySelector('.save-bar');
+
+        // Hide initially
+        saveBar.style.transform = 'translate(-50%, 150%)';
+        saveBar.style.opacity = '0';
+        saveBar.style.transition = '0.3s cubic-bezier(0.25, 1, 0.5, 1)';
+
+        // Show on change
+        form.addEventListener('input', function() {
+            saveBar.style.transform = 'translate(-50%, 0)';
+            saveBar.style.opacity = '1';
+        });
+    });
+</script>
+{% endblock %}

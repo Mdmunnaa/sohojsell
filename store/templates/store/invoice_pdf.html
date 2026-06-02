@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page { size: A4; margin: 1cm; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; color: #333; }
+        .invoice-box { max-width: 100%; margin: auto; padding: 20px; }
+
+        /* Header */
+        .header-table { width: 100%; margin-bottom: 30px; border-bottom: 2px solid #0d6efd; padding-bottom: 10px; }
+        .header-table td { vertical-align: middle; }
+        .shop-name { font-size: 28px; font-weight: bold; color: #0d6efd; margin: 0; }
+        .invoice-title { font-size: 24px; font-weight: bold; color: #444; text-align: right; margin: 0;}
+        .invoice-meta { text-align: right; color: #777; font-size: 12px; }
+
+        /* Info Boxes */
+        .info-table { width: 100%; margin-bottom: 30px; }
+        .info-table td { vertical-align: top; width: 50%; }
+        .info-box { background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #eee; margin-right: 10px; }
+        .info-box.right { margin-right: 0; margin-left: 10px; }
+        .info-title { font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 5px; letter-spacing: 1px; }
+
+        /* Items Table */
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .items-table th { background-color: #0d6efd; color: #fff; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; }
+        .items-table td { padding: 12px; border-bottom: 1px solid #eee; }
+        .items-table .amount { text-align: right; }
+        .items-table th.amount { text-align: right; }
+
+        /* Totals */
+        .totals-table { width: 45%; float: right; border-collapse: collapse; }
+        .totals-table td { padding: 8px 12px; text-align: right; border-bottom: 1px solid #eee; }
+        .totals-table .total-label { color: #666; }
+        .totals-table .grand-total { font-size: 16px; font-weight: bold; color: #0d6efd; border-bottom: none; border-top: 2px solid #0d6efd; }
+
+        /* Footer */
+        .footer { clear: both; margin-top: 60px; text-align: center; color: #888; font-size: 11px; padding-top: 20px; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <div class="invoice-box">
+        <table class="header-table">
+            <tr>
+                <td>
+                    <div class="shop-name">{{ shop.name }}</div>
+                    <div style="color: #666; margin-top: 5px;">{{ shop.facebook_page_url }}</div>
+                </td>
+                <td align="right">
+                    <div class="invoice-title">INVOICE</div>
+                    <div class="invoice-meta">
+                        <strong>#ORD-{{ order.id }}</strong><br>
+                        Date: {{ order.created_at|date:"d M, Y" }}
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <table class="info-table">
+            <tr>
+                <td style="padding-right: 10px;">
+                    <div class="info-box">
+                        <div class="info-title">Billed To:</div>
+                        <strong style="font-size: 15px;">{{ order.customer.name }}</strong><br>
+                        Phone: {{ order.customer.phone }}<br>
+                        Address: {{ order.customer.address }}
+                    </div>
+                </td>
+                <td style="padding-left: 10px;">
+                    <div class="info-box right">
+                        <div class="info-title">Payment Info:</div>
+                        <strong>Cash on Delivery (COD)</strong><br>
+                        Status: <span style="color: #f39c12;">{{ order.status }}</span><br>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th style="text-align: center;">Qty</th>
+                    <th class="amount">Unit Price</th>
+                    <th class="amount">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td><strong>{{ item.product.name }}</strong></td>
+                    <td style="text-align: center;">{{ item.quantity }}</td>
+                    <td class="amount">Tk. {{ item.price }}</td>
+                    <td class="amount">Tk. {% widthratio item.price 1 item.quantity %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <table class="totals-table">
+            <tr>
+                <td class="total-label">Subtotal:</td>
+                <td>Tk. {{ subtotal|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td class="total-label">Delivery Charge:</td>
+                <td>Tk. {{ delivery_charge|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td class="total-label" style="font-weight: bold; color: #333;">Grand Total (COD):</td>
+                <td class="grand-total">Tk. {{ order.total_amount }}</td>
+            </tr>
+        </table>
+        <div class="footer">
+            <strong>Thank you for your business!</strong><br>
+            Generated automatically by SohojSell 🚀
+        </div>
+    </div>
+</body>
+</html>

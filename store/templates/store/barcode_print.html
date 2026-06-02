@@ -1,0 +1,497 @@
+{% extends 'store/base.html' %}
+{% block title %}Print Barcodes{% endblock %}
+{% block content %}
+
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --ink: #0f1117;
+  --ink2: #3d4152;
+  --ink3: #7c8091;
+  --surface: #ffffff;
+  --surface2: #f6f7f9;
+  --surface3: #eef0f4;
+  --accent: #2563eb;
+  --accent-light: #eff4ff;
+  --accent-mid: #bfcffe;
+  --green: #16a34a;
+  --green-light: #f0fdf4;
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.14);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-lg: 0 4px 6px rgba(0,0,0,0.04), 0 10px 40px rgba(0,0,0,0.1);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.bp-wrap { padding: 24px 20px 40px; max-width: 1200px; margin: 0 auto; }
+
+/* ── Header ── */
+.bp-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; margin-bottom: 28px; flex-wrap: wrap;
+}
+.bp-header-left { display: flex; align-items: center; gap: 14px; }
+.bp-icon-wrap {
+  width: 48px; height: 48px; border-radius: 14px;
+  background: var(--green-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: var(--green); flex-shrink: 0;
+}
+.bp-title { font-size: 22px; font-weight: 800; color: var(--ink); letter-spacing: -.4px; }
+.bp-subtitle { font-size: 13px; color: var(--ink3); margin-top: 2px; font-weight: 400; }
+.bp-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+.btn-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 16px; border-radius: var(--radius-sm);
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--ink2); font-size: 13px; font-weight: 600;
+  text-decoration: none; transition: all .15s;
+}
+.btn-back:hover { background: var(--surface3); }
+.btn-print {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 22px; border-radius: var(--radius-sm);
+  background: var(--green); border: none;
+  color: #fff; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: all .15s; letter-spacing: -.1px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.btn-print:hover { background: #15803d; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(22,163,74,.35); }
+.btn-print:active { transform: translateY(0); }
+
+/* ── Layout ── */
+.bp-body { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+
+/* ── Panel ── */
+.bp-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.bp-panel-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.bp-panel-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+.bp-panel-body { padding: 16px 20px; }
+
+/* ── Search ── */
+.bp-search-wrap { position: relative; margin-bottom: 14px; }
+.bp-search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink3); font-size: 16px; }
+.bp-search {
+  width: 100%; padding: 9px 12px 9px 36px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border2); background: var(--surface2);
+  font-size: 13px; color: var(--ink); font-family: inherit; outline: none;
+  transition: border .15s, box-shadow .15s;
+}
+.bp-search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); background: var(--surface); }
+
+/* ── Product list ── */
+.bp-product-list { max-height: 420px; overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
+.bp-product-list::-webkit-scrollbar { width: 4px; }
+.bp-product-list::-webkit-scrollbar-track { background: transparent; }
+.bp-product-list::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 4px; }
+
+/* ── Product item ── */
+.psi {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  border: 1.5px solid transparent; background: var(--surface2);
+  cursor: pointer; transition: all .15s; margin-bottom: 6px;
+}
+.psi:hover { background: var(--accent-light); border-color: var(--accent-mid); }
+.psi.selected { background: var(--accent-light); border-color: var(--accent); }
+.psi-chk {
+  width: 18px; height: 18px; border: 2px solid var(--border2);
+  border-radius: 5px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; background: var(--surface); transition: all .15s;
+}
+.psi.selected .psi-chk { background: var(--accent); border-color: var(--accent); }
+.psi-chk-mark { display: none; color: #fff; font-size: 11px; font-weight: 700; }
+.psi.selected .psi-chk-mark { display: block; }
+.psi-info { flex: 1; min-width: 0; }
+.psi-name { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.psi-meta { font-size: 11px; color: var(--ink3); margin-top: 1px; display: flex; align-items: center; gap: 5px; }
+.psi-price { font-weight: 600; color: var(--accent); }
+.psi-barcode { font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+.psi-nobc { color: #f59e0b; font-size: 10px; }
+.psi-qty {
+  width: 52px; padding: 5px 6px; border: 1.5px solid var(--border2);
+  border-radius: 6px; font-size: 13px; text-align: center;
+  font-family: inherit; font-weight: 600; color: var(--ink);
+  background: var(--surface); transition: border .15s; outline: none;
+}
+.psi-qty:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+
+/* ── Bulk actions ── */
+.bp-bulk { display: flex; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.btn-bulk {
+  padding: 7px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border2); background: var(--surface);
+  font-size: 12px; font-weight: 600; color: var(--ink2);
+  cursor: pointer; transition: all .15s; font-family: inherit;
+}
+.btn-bulk:hover { background: var(--surface2); }
+.bp-count {
+  margin-left: auto; font-size: 12px; font-weight: 600;
+  color: var(--accent); background: var(--accent-light);
+  padding: 4px 10px; border-radius: 20px; display: flex; align-items: center;
+}
+
+/* ── Preview panel ── */
+.bp-preview-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap;
+}
+.bp-col-row { display: flex; align-items: center; gap: 8px; }
+.bp-col-row label { font-size: 12px; color: var(--ink3); font-weight: 500; }
+.col-btn {
+  width: 30px; height: 30px; border-radius: 6px;
+  border: 1.5px solid var(--border2); background: var(--surface2);
+  font-size: 12px; font-weight: 700; color: var(--ink2);
+  cursor: pointer; transition: all .15s; display: flex; align-items: center; justify-content: center;
+}
+.col-btn.active, .col-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.bp-canvas {
+  padding: 16px; min-height: 300px;
+  background: repeating-linear-gradient(
+    45deg, var(--surface2) 0px, var(--surface2) 1px, transparent 1px, transparent 12px
+  );
+}
+.bp-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 260px; gap: 12px; color: var(--ink3);
+}
+.bp-empty-icon { font-size: 48px; opacity: .25; }
+.bp-empty-text { font-size: 13px; font-weight: 500; }
+
+/* ── Sticker grid ── */
+.sticker-grid { display: grid; gap: 10px; }
+
+/* ── Sticker ── */
+.sticker {
+  background: #fff; border: 1.5px dashed #d1d5db;
+  border-radius: 10px; padding: 10px 8px 8px; text-align: center;
+  break-inside: avoid; position: relative; overflow: hidden;
+}
+.sticker::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, #2563eb, #7c3aed);
+}
+.s-name {
+  font-size: 10px; font-weight: 700; color: #111827;
+  margin-bottom: 5px; line-height: 1.35; font-family: 'Plus Jakarta Sans', sans-serif;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.s-svg-wrap { margin: 2px auto; }
+.s-svg-wrap svg { width: 100%; height: 44px; }
+.s-price {
+  font-size: 14px; font-weight: 800; color: #2563eb;
+  margin-top: 4px; font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.s-shop {
+  font-size: 8px; color: #9ca3af; margin-top: 2px;
+  font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: .3px; text-transform: uppercase;
+}
+
+/* ── Print styles ── */
+@media print {
+  @page { margin: 8mm; size: A4; }
+
+  html, body { height: auto !important; overflow: visible !important; }
+  body * { visibility: hidden !important; }
+
+  #bp-print-area, #bp-print-area * { visibility: visible !important; }
+
+  #bp-print-area {
+    position: absolute !important;
+    top: 0 !important; left: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    background: #fff !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  .sticker-grid {
+    display: grid !important;
+    gap: 6px !important;
+    width: 100% !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .sticker {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    border: 1px dashed #aaa !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+  .sticker::before { display: none !important; }
+
+  .bp-canvas {
+    background: none !important;
+    padding: 0 !important;
+    border: none !important;
+    overflow: visible !important;
+    min-height: unset !important;
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .bp-body { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .bp-wrap { padding: 14px 12px 32px; }
+  .bp-header { flex-direction: column; }
+  .bp-actions { width: 100%; }
+  .btn-print { width: 100%; justify-content: center; }
+  .bp-title { font-size: 18px; }
+  .bp-preview-top { gap: 8px; }
+}
+</style>
+
+<div class="bp-wrap no-print">
+
+  <!-- Header -->
+  <div class="bp-header">
+    <div class="bp-header-left">
+      <div class="bp-icon-wrap">
+        <i class="bi bi-upc-scan"></i>
+      </div>
+      <div>
+        <div class="bp-title">Barcode Sticker Print</div>
+        <div class="bp-subtitle">Product select করে print দিন — product-এর গায়ে লাগান</div>
+      </div>
+    </div>
+    <div class="bp-actions">
+      <a href="{% url 'pos' %}" class="btn-back"><i class="bi bi-arrow-left"></i> POS</a>
+      <button class="btn-print" onclick="generateAndPrint()">
+        <i class="bi bi-printer-fill"></i> Print Stickers
+      </button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="bp-body">
+
+    <!-- LEFT: Product Selection -->
+    <div class="bp-panel">
+      <div class="bp-panel-header">
+        <span class="bp-panel-title">Products Select করুন</span>
+      </div>
+      <div class="bp-panel-body">
+        <div class="bp-search-wrap">
+          <i class="bi bi-search"></i>
+          <input type="text" id="prod-search" class="bp-search" placeholder="Search product...">
+        </div>
+        <div class="bp-product-list" id="product-list">
+          {% for product in products %}
+          <div class="psi" id="psi-{{ product.id }}"
+               onclick="toggleProduct({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, '{{ product.barcode|default:'' }}')">
+            <div class="psi-chk">
+              <span class="psi-chk-mark">✓</span>
+            </div>
+            <div class="psi-info">
+              <div class="psi-name">{{ product.name }}</div>
+              <div class="psi-meta">
+                <span class="psi-price">৳{{ product.price }}</span>
+                {% if product.barcode %}
+                  <span>·</span>
+                  <span class="psi-barcode">{{ product.barcode }}</span>
+                {% else %}
+                  <span class="psi-nobc">⚠ No barcode</span>
+                {% endif %}
+              </div>
+            </div>
+            <input type="number" class="psi-qty" id="qty-{{ product.id }}"
+                   value="1" min="1" max="100" onclick="event.stopPropagation()">
+          </div>
+          {% empty %}
+          <p style="text-align:center; color:var(--ink3); padding: 24px 0; font-size:13px;">No products found.</p>
+          {% endfor %}
+        </div>
+        <div class="bp-bulk">
+          <button class="btn-bulk" onclick="selectAll()">Select All</button>
+          <button class="btn-bulk" onclick="clearAll()">Clear</button>
+          <div class="bp-count" id="sel-count">0 selected</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Preview -->
+    <div class="bp-panel" style="overflow:hidden;">
+      <div class="bp-preview-top">
+        <span class="bp-panel-title">Preview</span>
+        <div class="bp-col-row">
+          <label>Columns:</label>
+          <button class="col-btn" onclick="setCol(2)" id="col-2">2</button>
+          <button class="col-btn active" onclick="setCol(4)" id="col-4">4</button>
+          <button class="col-btn" onclick="setCol(5)" id="col-5">5</button>
+        </div>
+      </div>
+      <div class="bp-canvas" id="bp-print-area">
+        <div id="sticker-grid" class="sticker-grid">
+          <div class="bp-empty">
+            <div class="bp-empty-icon"><i class="bi bi-upc"></i></div>
+            <div class="bp-empty-text">Left side থেকে product select করুন</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script>
+const SHOP_NAME = '{{ shop.name|escapejs }}';
+let selected = {};
+let currentCols = 4;
+
+function setCol(n) {
+  currentCols = n;
+  document.querySelectorAll('.col-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('col-' + n)?.classList.add('active');
+  updatePreview();
+}
+
+function updateCount() {
+  const total = Object.keys(selected).length;
+  document.getElementById('sel-count').textContent = total + ' selected';
+}
+
+function toggleProduct(id, name, price, barcode) {
+  const item = document.getElementById('psi-' + id);
+  if (selected[id]) {
+    delete selected[id];
+    item.classList.remove('selected');
+  } else {
+    const qty = parseInt(document.getElementById('qty-' + id).value) || 1;
+    selected[id] = { name, price, barcode, qty };
+    item.classList.add('selected');
+  }
+  updateCount();
+  updatePreview();
+}
+
+function selectAll() {
+  document.querySelectorAll('.psi:not([style*="none"])').forEach(item => {
+    const id = item.id.replace('psi-', '');
+    const nameEl = item.querySelector('.psi-name');
+    const priceEl = item.querySelector('.psi-price');
+    const bcEl = item.querySelector('.psi-barcode');
+    if (!nameEl) return;
+    const name = nameEl.textContent.trim();
+    const price = parseFloat((priceEl?.textContent || '0').replace('৳', '')) || 0;
+    const barcode = bcEl ? bcEl.textContent.trim() : '';
+    const qty = parseInt(document.getElementById('qty-' + id)?.value) || 1;
+    selected[id] = { name, price, barcode, qty };
+    item.classList.add('selected');
+  });
+  updateCount();
+  updatePreview();
+}
+
+function clearAll() {
+  selected = {};
+  document.querySelectorAll('.psi').forEach(item => item.classList.remove('selected'));
+  updateCount();
+  updatePreview();
+}
+
+function makeStickerHTML(name, price, barcode, idx) {
+  return `<div class="sticker">
+    <div class="s-name">${name}</div>
+    <div class="s-svg-wrap"><svg id="bc-${idx}"></svg></div>
+    <div class="s-price">৳${parseFloat(price).toLocaleString('en-BD')}</div>
+    <div class="s-shop">${SHOP_NAME}</div>
+  </div>`;
+}
+
+function updatePreview() {
+  const grid = document.getElementById('sticker-grid');
+  const keys = Object.keys(selected);
+
+  if (!keys.length) {
+    grid.style.gridTemplateColumns = '';
+    grid.innerHTML = `<div class="bp-empty">
+      <div class="bp-empty-icon"><i class="bi bi-upc"></i></div>
+      <div class="bp-empty-text">Left side থেকে product select করুন</div>
+    </div>`;
+    return;
+  }
+
+  grid.style.gridTemplateColumns = `repeat(${currentCols}, 1fr)`;
+  let html = ''; let idx = 0;
+  keys.forEach(id => {
+    const item = selected[id];
+    const qty = parseInt(document.getElementById('qty-' + id)?.value) || 1;
+    for (let i = 0; i < qty; i++) {
+      html += makeStickerHTML(item.name, item.price, item.barcode, idx++);
+    }
+  });
+  grid.innerHTML = html;
+
+  setTimeout(() => {
+    let idx2 = 0;
+    keys.forEach(id => {
+      const item = selected[id];
+      const qty = parseInt(document.getElementById('qty-' + id)?.value) || 1;
+      const code = item.barcode || ('SS' + String(id).padStart(8, '0'));
+      for (let i = 0; i < qty; i++) {
+        const el = document.getElementById('bc-' + idx2);
+        if (el) {
+          try {
+            JsBarcode(el, code, {
+              format: 'CODE128', width: 1.4, height: 36,
+              displayValue: true, fontSize: 7, margin: 2, background: 'transparent'
+            });
+          } catch(e) {}
+        }
+        idx2++;
+      }
+    });
+  }, 80);
+}
+
+function generateAndPrint() {
+  if (!Object.keys(selected).length) {
+    alert('কোনো product select করা হয়নি!');
+    return;
+  }
+  window.print();
+}
+
+document.getElementById('prod-search').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.psi').forEach(item => {
+    const name = item.querySelector('.psi-name')?.textContent.toLowerCase() || '';
+    item.style.display = name.includes(q) ? '' : 'none';
+  });
+});
+
+// qty change re-renders preview
+document.querySelectorAll('.psi-qty').forEach(inp => {
+  inp.addEventListener('change', () => {
+    const id = inp.id.replace('qty-', '');
+    if (selected[id]) {
+      selected[id].qty = parseInt(inp.value) || 1;
+      updatePreview();
+    }
+  });
+});
+</script>
+
+{% endblock %}

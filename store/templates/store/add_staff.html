@@ -1,0 +1,118 @@
+{% extends 'store/base.html' %}
+{% block title %}{% if staff %}Edit{% else %}Add{% endif %} Staff - {{ request.user.shop.name }}{% endblock %}
+
+{% block content %}
+<style>
+    .staff-wrapper { max-width: 650px; margin: 0 auto; font-family: 'Plus Jakarta Sans', sans-serif; padding-bottom: 40px;}
+    .page-title { font-size: 24px; font-weight: 900; color: #0F172A; letter-spacing: -0.5px; margin-bottom: 5px; }
+    
+    /* Card Styles */
+    .premium-card { background: #fff; border-radius: 20px; border: 1px solid #E2E8F0; box-shadow: 0 10px 30px rgba(0,0,0,0.03); margin-bottom: 24px; overflow: hidden; }
+    .card-header-soft { padding: 18px 24px; border-bottom: 1px solid #F1F5F9; background: #F8FAFC; font-weight: 800; color: #334155; display: flex; align-items: center; gap: 8px; }
+    .card-body-soft { padding: 24px; }
+
+    /* Inputs */
+    .form-label { font-weight: 800; color: #64748B; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .premium-input { width: 100%; padding: 14px 16px; border: 1.5px solid #E2E8F0; border-radius: 12px; font-size: 15px; font-weight: 600; color: #0F172A; background: #fff; transition: 0.2s; outline: none; }
+    .premium-input:focus { border-color: #3B82F6; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); }
+
+    /* iOS Toggle Switch */
+    .perm-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px dashed #E2E8F0; }
+    .perm-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .perm-info h6 { margin: 0; font-size: 15px; font-weight: 800; color: #0F172A; }
+    .perm-info p { margin: 2px 0 0 0; font-size: 12px; font-weight: 600; color: #64748B; }
+    
+    .form-switch { padding-left: 0; margin: 0; }
+    .form-switch .form-check-input { width: 46px; height: 24px; cursor: pointer; border: none; background-color: #CBD5E1; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e"); transition: background-color 0.2s, transform 0.2s; float: right; margin-left: 0; }
+    .form-switch .form-check-input:checked { background-color: #10B981; }
+
+    /* Button */
+    .btn-save { background: linear-gradient(135deg, #0F172A, #334155); color: #fff; border: none; padding: 16px; border-radius: 14px; font-weight: 900; font-size: 16px; width: 100%; transition: 0.2s; box-shadow: 0 8px 20px rgba(15,23,42,0.2); }
+    .btn-save:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(15,23,42,0.3); }
+</style>
+
+<div class="staff-wrapper">
+    <div class="mb-4">
+        <h2 class="page-title">{% if staff %}Edit Staff Account{% else %}Add New Staff{% endif %} 👨‍💼</h2>
+        <p class="text-muted fw-semibold mb-0">Set up credentials and control what they can access.</p>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+        
+        <!-- STEP 1: Credentials -->
+        <div class="premium-card">
+            <div class="card-header-soft"><i class="bi bi-person-badge text-primary fs-5"></i> Account Details</div>
+            <div class="card-body-soft">
+                <div class="mb-3">
+                    <label class="form-label">Staff Name <span class="text-danger">*</span></label>
+                    <input type="text" name="name" class="premium-input" value="{{ staff.user.name|default:'' }}" placeholder="e.g. Rahim Uddin" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Phone Number (Login ID) <span class="text-danger">*</span></label>
+                    <input type="tel" name="phone" class="premium-input" value="{{ staff.user.phone_number|default:'' }}" placeholder="e.g. 017XXXXXXXX" required {% if staff %}readonly style="background:#F1F5F9; color:#94A3B8;"{% endif %}>
+                    {% if staff %}<div class="form-text mt-1 fw-bold text-warning"><i class="bi bi-info-circle"></i> Phone number cannot be changed once created.</div>{% endif %}
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Password {% if not staff %}<span class="text-danger">*</span>{% endif %}</label>
+                    <input type="text" name="password" class="premium-input" placeholder="{% if staff %}Enter new password to reset...{% else %}Set a strong password...{% endif %}" {% if not staff %}required{% endif %}>
+                    {% if staff %}<div class="form-text mt-1 fw-bold text-success"><i class="bi bi-shield-lock"></i> Leave this blank if you don't want to change the password.</div>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2: Permissions -->
+        <div class="premium-card">
+            <div class="card-header-soft"><i class="bi bi-shield-check text-success fs-5"></i> Access Permissions</div>
+            <div class="card-body-soft">
+                
+                <div class="perm-row">
+                    <div class="perm-info">
+                        <h6><i class="bi bi-display text-primary me-2"></i>POS System</h6>
+                        <p>Allow staff to create orders from the POS interface.</p>
+                    </div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="can_use_pos" {% if staff.can_use_pos or not staff %}checked{% endif %}></div>
+                </div>
+
+                <div class="perm-row">
+                    <div class="perm-info">
+                        <h6><i class="bi bi-box-seam text-warning me-2"></i>Manage Products</h6>
+                        <p>Allow staff to add, edit, or delete inventory.</p>
+                    </div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="can_manage_products" {% if staff.can_manage_products %}checked{% endif %}></div>
+                </div>
+
+                <div class="perm-row">
+                    <div class="perm-info">
+                        <h6><i class="bi bi-cart-check text-success me-2"></i>Manage Orders</h6>
+                        <p>Allow staff to change order status or process couriers.</p>
+                    </div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="can_manage_orders" {% if staff.can_manage_orders %}checked{% endif %}></div>
+                </div>
+
+                <div class="perm-row">
+                    <div class="perm-info">
+                        <h6><i class="bi bi-people text-info me-2"></i>Manage Customers</h6>
+                        <p>Allow staff to view customer database and history.</p>
+                    </div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="can_manage_customers" {% if staff.can_manage_customers %}checked{% endif %}></div>
+                </div>
+
+                <div class="perm-row">
+                    <div class="perm-info">
+                        <h6><i class="bi bi-graph-up text-danger me-2"></i>View Reports</h6>
+                        <p>Allow staff to see total revenue and net profit data.</p>
+                    </div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="can_view_reports" {% if staff.can_view_reports %}checked{% endif %}></div>
+                </div>
+
+            </div>
+        </div>
+
+        <button type="submit" class="btn-save">
+            <i class="bi bi-check-circle-fill me-2"></i> {% if staff %}Update Staff Account{% else %}Create Staff Account{% endif %}
+        </button>
+
+    </form>
+</div>
+{% endblock %}

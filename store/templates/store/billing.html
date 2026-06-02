@@ -1,0 +1,324 @@
+{% extends 'store/base.html' %}
+{% block title %}Billing & Plans{% endblock %}
+{% block page_title %}💳 Billing & Plans{% endblock %}
+{% block content %}
+
+{% if request.GET.locked == '1' or shop.is_locked %}
+<!-- LOCKED NOTICE -->
+<div class="alert alert-danger border-0 rounded-4 shadow-sm p-4 mb-4 d-flex align-items-center gap-3">
+  <div class="bg-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 50px; height: 50px;">
+      <i class="bi bi-lock-fill fs-4 text-danger"></i>
+  </div>
+  <div>
+      <h5 class="fw-bold mb-1 text-dark">Store Access Locked</h5>
+      <p class="mb-0 text-muted">
+          আপনার অ্যাকাউন্টের মেয়াদ শেষ হয়ে গেছে। ড্যাশবোর্ডে পুনরায় প্রবেশ করতে অনুগ্রহ করে একটি প্ল্যান রিনিউ করুন।
+      </p>
+  </div>
+</div>
+{% endif %}
+
+<!-- CURRENT STATUS -->
+<div class="card border-0 shadow-sm rounded-4 mb-4 p-4" style="background:linear-gradient(135deg,#1a1a2e,#2d3561);">
+  <div class="row align-items-center g-3">
+    <div class="col-md-3 text-center">
+      <div style="font-size:48px;">
+        {% if shop.subscription_plan == 'Premium' %}👑
+        {% elif shop.subscription_plan == 'Standard' %}🚀
+        {% elif shop.subscription_plan == 'Basic' %}📱
+        {% else %}🆓{% endif %}
+      </div>
+      <div class="badge rounded-pill mt-2 px-3 py-2" style="background:rgba(255,255,255,.15);color:#fff;font-size:14px;font-weight:800;">
+        {{ shop.subscription_plan }} Plan
+      </div>
+    </div>
+    <div class="col-md-5">
+      {% if shop.is_locked %}
+      <div style="color:#f87171;font-weight:800;font-size:15px;"><i class="bi bi-lock-fill me-2"></i>Account Locked</div>
+      <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:4px;">Payment করুন এবং নিচে request submit করুন</div>
+      {% else %}
+      <div style="color:#4ade80;font-weight:800;font-size:15px;"><i class="bi bi-check-circle-fill me-2"></i>Account Active</div>
+
+      {% if shop.subscription_plan == 'Free' %}
+      <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:4px;">Free Trial Active (৩০ দিন)</div>
+      {% else %}
+      <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:4px;">
+        {% if shop.valid_until %} <b style="color:#fbbf24;">{{ shop.valid_until|date:"d M Y" }}</b> পর্যন্ত মেয়াদ আছে{% endif %}
+      </div>
+      {% endif %}
+
+      {% endif %}
+    </div>
+    <div class="col-md-4 text-md-end">
+      {% if pending_request %}
+      <div class="badge rounded-pill py-2 px-3" style="background:rgba(251,191,36,.2);color:#fbbf24;font-size:13px;">
+        <i class="bi bi-clock-fill me-1"></i>Payment Review-এ আছে
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- PRICING PLANS -->
+<div class="row g-4 mb-4">
+
+  <!-- Basic -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100 rounded-4 {% if shop.subscription_plan == 'Basic' and not shop.is_locked %}border-primary border-2{% endif %}">
+      {% if shop.subscription_plan == 'Basic' and not shop.is_locked %}
+      <div class="text-center py-2 rounded-top-4" style="background:#3b82f6;color:#fff;font-size:12px;font-weight:800;">✓ CURRENT PLAN</div>
+      {% endif %}
+      <div class="card-body p-4">
+        <div class="text-center mb-4">
+          <div style="font-size:36px;">📱</div>
+          <h5 class="fw-900 mt-2 mb-1">Basic</h5>
+          <div style="font-size:13px;color:#64748b;font-weight:600;">Facebook Sellers</div>
+          <div style="font-size:28px;font-weight:900;color:#3b82f6;margin-top:10px;">৳499<small style="font-size:14px;color:#94a3b8;">/মাস</small></div>
+          <div style="font-size:12px;color:#94a3b8;">বা ৳5,000/বছর</div>
+        </div>
+        <ul class="list-unstyled" style="font-size:13px;">
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>SohojSell Subdomain</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>POS System</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>100 Products</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Courier Integration</li>
+          <li class="mb-2" style="color:#94a3b8;"><i class="bi bi-x-circle me-2"></i>Custom Domain নেই</li>
+        </ul>
+        <button class="btn btn-outline-primary w-100 rounded-pill fw-bold mt-2"
+          onclick="showPaymentForm('Basic', 499)"
+          {% if shop.subscription_plan == 'Basic' and not shop.is_locked %}disabled{% endif %}>
+          {% if shop.subscription_plan == 'Basic' and not shop.is_locked %}Active{% else %}Get Basic{% endif %}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Standard -->
+  <div class="col-md-4">
+    <div class="card border-0 h-100 rounded-4" style="box-shadow:0 8px 30px rgba(59,130,246,.2);border:2px solid #3b82f6 !important;">
+      <div class="text-center py-2 rounded-top-4" style="background:#3b82f6;color:#fff;font-size:12px;font-weight:800;">
+        {% if shop.subscription_plan == 'Standard' and not shop.is_locked %}✓ CURRENT PLAN{% else %}⭐ MOST POPULAR{% endif %}
+      </div>
+      <div class="card-body p-4">
+        <div class="text-center mb-4">
+          <div style="font-size:36px;">🚀</div>
+          <h5 class="fw-900 mt-2 mb-1">Standard</h5>
+          <div style="font-size:13px;color:#64748b;font-weight:600;">Online + Offline</div>
+          <div style="font-size:28px;font-weight:900;color:#3b82f6;margin-top:10px;">৳999<small style="font-size:14px;color:#94a3b8;">/মাস</small></div>
+          <div style="font-size:12px;color:#94a3b8;">বা ৳10,000/বছর</div>
+        </div>
+        <ul class="list-unstyled" style="font-size:13px;">
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Custom Domain</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Live E-commerce Store</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Full POS System</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>200 Products</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Inventory Sync</li>
+        </ul>
+        <button class="btn btn-primary w-100 rounded-pill fw-bold mt-2"
+          onclick="showPaymentForm('Standard', 999)"
+          {% if shop.subscription_plan == 'Standard' and not shop.is_locked %}disabled{% endif %}>
+          {% if shop.subscription_plan == 'Standard' and not shop.is_locked %}Active{% else %}Get Standard{% endif %}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Premium -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100 rounded-4 {% if shop.subscription_plan == 'Premium' and not shop.is_locked %}border-warning border-2{% endif %}">
+      {% if shop.subscription_plan == 'Premium' and not shop.is_locked %}
+      <div class="text-center py-2 rounded-top-4" style="background:#f59e0b;color:#fff;font-size:12px;font-weight:800;">✓ CURRENT PLAN</div>
+      {% endif %}
+      <div class="card-body p-4">
+        <div class="text-center mb-4">
+          <div style="font-size:36px;">👑</div>
+          <h5 class="fw-900 mt-2 mb-1">Premium</h5>
+          <div style="font-size:13px;color:#64748b;font-weight:600;">Enterprise</div>
+          <div style="font-size:28px;font-weight:900;color:#f59e0b;margin-top:10px;">৳1,999<small style="font-size:14px;color:#94a3b8;">/মাস</small></div>
+          <div style="font-size:12px;color:#94a3b8;">বা ৳20,000/বছর</div>
+        </div>
+        <ul class="list-unstyled" style="font-size:13px;">
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Standard-এর সব</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Unlimited Products</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Multi-Branch POS</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Advanced Reports</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Priority Support</li>
+        </ul>
+        <button class="btn w-100 rounded-pill fw-bold mt-2" style="background:#f59e0b;color:#fff;"
+          onclick="showPaymentForm('Premium', 1999)"
+          {% if shop.subscription_plan == 'Premium' and not shop.is_locked %}disabled{% endif %}>
+          {% if shop.subscription_plan == 'Premium' and not shop.is_locked %}Active{% else %}Get Premium{% endif %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BUY SMS BUNDLE -->
+<div class="row mb-4 mt-4">
+  <div class="col-12">
+    <div class="card border-0 shadow-sm rounded-4" style="background:#f0fdf4; border:2px solid #22c55e !important;">
+      <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+          <h5 class="fw-bold mb-1" style="color:#15803d;"><i class="bi bi-envelope-paper-fill me-2"></i>Buy SMS Package</h5>
+          <p class="text-muted mb-0" style="font-size:13px;">Flat rate: 0.40 Tk per SMS. Engage your customers instantly!</p>
+        </div>
+        <div class="d-flex gap-2 mt-3 mt-md-0">
+          <button class="btn btn-outline-success fw-bold rounded-pill px-4" onclick="showPaymentForm('SMS Recharge', 200)">
+            500 SMS (200 Tk)
+          </button>
+          <button class="btn btn-success fw-bold rounded-pill px-4" onclick="showPaymentForm('SMS Recharge', 400)">
+            1000 SMS (400 Tk)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAYMENT REQUEST FORM (hidden by default) -->
+<div id="paymentFormCard" style="display:none;">
+  <div class="card border-0 shadow-lg rounded-4 mb-4" style="border:2px solid #3b82f6 !important;">
+    <div class="card-body p-4">
+      <h5 class="fw-bold mb-1"><i class="bi bi-cash-coin me-2 text-primary"></i>Payment Submit করুন</h5>
+      <p class="text-muted mb-4" style="font-size:13px;">নিচের নম্বরে payment করুন, তারপর transaction ID দিয়ে submit করুন।</p>
+
+      <!-- Payment Numbers -->
+      <div class="row g-3 mb-4">
+        <div class="col-sm-4">
+          <div class="rounded-3 p-3 text-center" style="background:#e8f5e9;border:1px solid #a5d6a7;">
+            <div style="font-size:22px;">📱</div>
+            <div class="fw-bold" style="color:#2e7d32;font-size:14px;">bKash</div>
+            <div class="fw-bold" style="font-size:16px;letter-spacing:1px;">01923513404</div>
+            <div style="font-size:11px;color:#66bb6a;">Personal</div>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="rounded-3 p-3 text-center" style="background:#fff3e0;border:1px solid #ffcc80;">
+            <div style="font-size:22px;">💰</div>
+            <div class="fw-bold" style="color:#e65100;font-size:14px;">Nagad</div>
+            <div class="fw-bold" style="font-size:16px;letter-spacing:1px;">01923513404</div>
+            <div style="font-size:11px;color:#ffa726;">Personal</div>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="rounded-3 p-3 text-center" style="background:#e3f2fd;border:1px solid #90caf9;">
+            <div style="font-size:22px;">🏦</div>
+            <div class="fw-bold" style="color:#1565c0;font-size:14px;">Bank Transfer</div>
+            <div class="fw-bold" style="font-size:13px;">Contact Admin</div>
+            <div style="font-size:11px;color:#42a5f5;">বিস্তারিত জানতে</div>
+          </div>
+        </div>
+      </div>
+
+      <form method="POST" action="{% url 'submit_payment_request' %}">
+        {% csrf_token %}
+        <input type="hidden" name="plan_name" id="form_plan_name">
+        <input type="hidden" name="amount" id="form_amount">
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold" style="font-size:13px;">Package <span class="text-danger">*</span></label>
+            <input type="text" id="form_plan_display" class="form-control rounded-pill bg-light" readonly>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold" style="font-size:13px;">Amount <span class="text-danger">*</span></label>
+            <input type="text" id="form_amount_display" class="form-control rounded-pill bg-light" readonly>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold" style="font-size:13px;">Payment Method <span class="text-danger">*</span></label>
+            <select name="payment_method" class="form-select rounded-pill" required>
+              <option value="">-- Select --</option>
+              <option value="bKash">bKash</option>
+              <option value="Nagad">Nagad</option>
+              <option value="Bank">Bank Transfer</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold" style="font-size:13px;">Sender Number <span class="text-danger">*</span></label>
+            <input type="text" name="sender_number" class="form-control rounded-pill" placeholder="01XXXXXXXXX" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold" style="font-size:13px;">Transaction ID <span class="text-danger">*</span></label>
+            <input type="text" name="transaction_id" class="form-control rounded-pill" placeholder="e.g. 8KJ9TY2Q1X" required>
+            <div class="form-text">bKash/Nagad থেকে payment করার পর Transaction ID টা দিন।</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold" style="font-size:13px;">Note (optional)</label>
+            <input type="text" name="note" class="form-control rounded-pill" placeholder="কোনো বিশেষ তথ্য থাকলে লিখুন...">
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+          <button type="submit" class="btn btn-primary rounded-pill fw-bold px-5">
+            <i class="bi bi-send-fill me-2"></i>Submit Payment Request
+          </button>
+          <button type="button" class="btn btn-outline-secondary rounded-pill" onclick="hidePaymentForm()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- PENDING REQUESTS -->
+{% if payment_history %}
+<div class="card border-0 shadow-sm rounded-4">
+  <div class="card-body p-0">
+    <div class="px-4 py-3 border-bottom">
+      <h6 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Payment History</h6>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead style="background:#f8fafc;">
+          <tr style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;">
+            <th class="px-4 py-3">Date</th>
+            <th>Plan/Package</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>TxID</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for req in payment_history %}
+          <tr>
+            <td class="px-4" style="font-size:13px;color:#64748b;">{{ req.created_at|date:"d M Y" }}</td>
+            <td><span class="badge rounded-pill" style="background:#e8f0fe;color:#1a73e8;font-weight:700;">{{ req.plan_name }}</span></td>
+            <td class="fw-bold">৳{{ req.amount|floatformat:0 }}</td>
+            <td style="font-size:13px;">{{ req.payment_method }}</td>
+            <td><code style="font-size:12px;background:#f1f5f9;padding:2px 8px;border-radius:4px;">{{ req.transaction_id }}</code></td>
+            <td>
+              {% if req.status == 'Approved' %}<span class="badge bg-success rounded-pill">✓ Approved</span>
+              {% elif req.status == 'Rejected' %}<span class="badge bg-danger rounded-pill">✗ Rejected</span>
+              {% else %}<span class="badge bg-warning text-dark rounded-pill">⏳ Pending</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+function showPaymentForm(plan, amount) {
+  document.getElementById('form_plan_name').value = plan;
+  document.getElementById('form_amount').value = amount;
+
+  if (plan === 'SMS Recharge') {
+      document.getElementById('form_plan_display').value = plan;
+      document.getElementById('form_amount_display').value = '৳' + amount.toLocaleString();
+  } else {
+      document.getElementById('form_plan_display').value = plan + ' Plan';
+      document.getElementById('form_amount_display').value = '৳' + amount.toLocaleString() + '/মাস';
+  }
+
+  const card = document.getElementById('paymentFormCard');
+  card.style.display = 'block';
+  card.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function hidePaymentForm() {
+  document.getElementById('paymentFormCard').style.display = 'none';
+}
+</script>
+{% endblock %}

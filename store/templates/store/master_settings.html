@@ -1,0 +1,71 @@
+{% extends 'store/base.html' %} {% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bolder text-dark"><i class="bi bi-gear-wide-connected text-danger me-2"></i>Master API Settings</h2>
+        <a href="{% url 'master_dashboard' %}" class="btn btn-outline-dark rounded-pill shadow-sm px-4 fw-bold">Back to HQ</a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show rounded-3">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST" action="">
+        {% csrf_token %}
+        <div class="row g-4">
+
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-header bg-white border-bottom-0 pt-4 px-4 pb-0">
+                        <h5 class="fw-bold text-dark"><i class="bi bi-credit-card-fill text-primary me-2"></i>Payment Gateway (bKash/SSL/AamarPay)</h5>
+                        <p class="text-muted small">Insert your merchant API keys here to receive payments.</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small">Store ID / App Key</label>
+                            <input type="text" name="payment_store_id" class="form-control bg-light" value="{{ setting.payment_store_id|default_if_none:'' }}" placeholder="e.g. sohojsell_store">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small">Secret Key / Store Password</label>
+                            <input type="password" name="payment_secret_key" class="form-control bg-light" value="{{ setting.payment_secret_key|default_if_none:'' }}" placeholder="Enter secret key">
+                        </div>
+                        <div class="form-check form-switch mt-4">
+                            <input class="form-check-input" type="checkbox" name="is_payment_live" id="liveSwitch" {% if setting.is_payment_live %}checked{% endif %}>
+                            <label class="form-check-label fw-bold ms-2" for="liveSwitch">Live Mode (Production)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-header bg-white border-bottom-0 pt-4 px-4 pb-0">
+                        <h5 class="fw-bold text-dark"><i class="bi bi-chat-left-text-fill text-success me-2"></i>SMS Gateway Provider</h5>
+                        <p class="text-muted small">Configure your bulk SMS provider details.</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small">Client ID</label>
+                            <input type="text" name="sms_client_id" class="form-control bg-light" value="{{ setting.sms_client_id|default_if_none:'' }}" placeholder="e.g. client_qmdJI">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small">SMS API Key</label>
+                            <input type="text" name="sms_api_key" class="form-control bg-light" value="{{ setting.sms_api_key|default_if_none:'' }}" placeholder="e.g. A4Fn52tCWYc6JErGxuts">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small">Sender ID</label>
+                            <input type="text" name="sms_sender_id" class="form-control bg-light" value="{{ setting.sms_sender_id|default_if_none:'' }}" placeholder="e.g. MyBrand">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 text-end mt-4">
+                <button type="submit" class="btn btn-primary btn-lg rounded-pill shadow px-5 fw-bold"><i class="bi bi-save2-fill me-2"></i>Save Master Configurations</button>
+            </div>
+
+        </div>
+    </form>
+</div>
+{% endblock %}
