@@ -1991,3 +1991,125 @@ def import_bulk_products(request):
             messages.error(request, f'Import failed — {skipped_count} rows had invalid data. Please check your CSV format.')
 
     return redirect('product_list')
+
+# ============================================================
+# FACEBOOK LOGIN & PAGE SELECTION (নতুন যোগ হয়েছে)
+# ============================================================
+from allauth.socialaccount.models import SocialToken, SocialAccount
+from .facebook_helpers import get_user_pages, get_long_lived_token, get_page_long_lived_token
+from .models import FacebookPageConnection
+from django.conf import settings as django_settings
+
+
+@login_required(login_url='/accounts/login/')
+def fb_page_select(request):
+    """
+    Facebook Login সফল হওয়ার পর এই page-এ আসবে।
+    ইউজারের সব Facebook Page দেখাবে। সে একটা select করবে।
+    """
+    shop = getattr(request.user, 'shop', None)
+    if not shop:
+        messages.error(request, "আগে আপনার শপ সেটআপ করুন!")
+        return redirect('setup_shop')
+
+    # ইতিমধ্যে কোনো পেইজ connect আছে কিনা
+    existing_connection = FacebookPageConnection.objects.filter(shop=shop).first()
+
+    # allauth থেকে Facebook access token নেওয়া
+    try:
+        social_account = SocialAccount.objects.get(user=request.user, provider='facebook')
+        social_token = SocialToken.objects.get(account=social_account)
+        short_token = social_token.token
+    except (SocialAccount.DoesNotExist, SocialToken.DoesNotExist):
+        messages.error(request, "Facebook login পাওয়া যায়নি। আবার Facebook দিয়ে লগইন করুন।")
+        return redirect('fb_connect')
+
+    # Short token → Long-lived token বানাও
+    fb_provider = django_settings.SOCIALACCOUNT_PROVIDERS.get('facebook', {})
+    app_id = ''
+    app_secret = ''
+    try:
+        from allauth.socialaccount.models import SocialApp
+        fb_app = SocialApp.objects.get(provider='facebook')
+        app_id = fb_app.client_id
+        app_secret = fb_app.secret
+    except Exception:
+        pass
+
+    long_token = get_long_lived_token(short_token, app_id, app_secret)
+
+    # ইউজারের সব পেইজ লিস্ট আনো
+    pages = get_user_pages(long_token)
+
+    if request.method == 'POST':
+        selected_page_id = request.POST.get('page_id')
+        if not selected_page_id:
+            messages.error(request, "একটি পেইজ সিলেক্ট করুন!")
+            return redirect('fb_page_select')
+
+        # সিলেক্ট করা পেইজের তথ্য খোঁজো
+        selected_page = next((p for p in pages if p['id'] == selected_page_id), None)
+        if not selected_page:
+            messages.error(request, "পেইজটি পাওয়া যায়নি!")
+            return redirect('fb_page_select')
+
+        # পেইজের permanent access token নাও
+        page_token = get_page_long_lived_token(selected_page_id, long_token)
+        if not page_token:
+            # fallback: পেইজ থেকে সরাসরি নেওয়া token
+            page_token = selected_page.get('access_token', '')
+
+        # Picture URL বের করো
+        picture_url = ''
+        if 'picture' in selected_page:
+            pic_data = selected_page.get('picture', {})
+            if isinstance(pic_data, dict):
+                picture_url = pic_data.get('data', {}).get('url', '')
+            elif isinstance(pic_data, str):
+                picture_url = pic_data
+
+        # DB-তে save করো (আগেরটা replace করবে)
+        FacebookPageConnection.objects.update_or_create(
+            shop=shop,
+            defaults={
+                'page_id': selected_page_id,
+                'page_name': selected_page.get('name', ''),
+                'page_access_token': page_token,
+                'page_picture': picture_url,
+                'fan_count': selected_page.get('fan_count', 0),
+                'category': selected_page.get('category', ''),
+                'user_access_token': long_token,
+                'is_active': True,
+            }
+        )
+
+        messages.success(
+            request,
+            f"✅ '{selected_page.get('name')}' পেইজ সফলভাবে কানেক্ট হয়েছে!"
+        )
+        return redirect('dashboard')
+
+    context = {
+        'pages': pages,
+        'shop': shop,
+        'existing_connection': existing_connection,
+    }
+    return render(request, 'store/fb_page_select.html', context)
+
+
+@login_required(login_url='/accounts/login/')
+def fb_disconnect(request):
+    """Facebook Page disconnect করার view"""
+    shop = getattr(request.user, 'shop', None)
+    if shop:
+        FacebookPageConnection.objects.filter(shop=shop).delete()
+        messages.success(request, "Facebook Page disconnect করা হয়েছে।")
+    return redirect('settings')
+
+
+@login_required(login_url='/accounts/login/')
+def fb_connect(request):
+    """Facebook এর সাথে connect করার redirect page"""
+    return render(request, 'store/fb_connect.html', {
+        'shop': getattr(request.user, 'shop', None)
+    })

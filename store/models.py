@@ -303,3 +303,37 @@ class PageView(models.Model):
 
     def __str__(self):
         return f"{self.shop.name} - {'Product: ' + self.product.name if self.product else 'Storefront'}"
+
+# ============================================================
+# FACEBOOK PAGE CONNECTION (নতুন যোগ হয়েছে)
+# ============================================================
+class FacebookPageConnection(models.Model):
+    """
+    সেলারের সাথে তার Facebook Page-এর connection সংরক্ষণ করবে।
+    একজন সেলার একটাই পেইজ connect করতে পারবে।
+    """
+    shop = models.OneToOneField(
+        Shop,
+        on_delete=models.CASCADE,
+        related_name='fb_page'
+    )
+    page_id = models.CharField(max_length=50, verbose_name='Facebook Page ID')
+    page_name = models.CharField(max_length=200, verbose_name='Page Name')
+    page_access_token = models.TextField(verbose_name='Page Access Token')
+    page_picture = models.URLField(blank=True, null=True, verbose_name='Page Profile Picture')
+    fan_count = models.PositiveIntegerField(default=0, verbose_name='Page Followers')
+    category = models.CharField(max_length=100, blank=True, null=True)
+
+    # User-level token (Page select করার সময় সেভ হবে)
+    user_access_token = models.TextField(blank=True, null=True)
+
+    is_active = models.BooleanField(default=True)
+    connected_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.page_name} → {self.shop.name}"
+
+    class Meta:
+        verbose_name = 'Facebook Page Connection'
+        verbose_name_plural = 'Facebook Page Connections'

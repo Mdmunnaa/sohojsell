@@ -73,3 +73,13 @@ class PaymentRequestAdmin(admin.ModelAdmin):
                     shop.save(update_fields=['subscription_plan'])
 
         super().save_model(request, obj, form, change)
+
+# Facebook Page Connection
+from .models import FacebookPageConnection
+
+@admin.register(FacebookPageConnection)
+class FacebookPageConnectionAdmin(admin.ModelAdmin):
+    list_display = ['shop', 'page_name', 'page_id', 'fan_count', 'is_active', 'connected_at']
+    list_filter = ['is_active']
+    search_fields = ['page_name', 'shop__name']
+    readonly_fields = ['connected_at', 'updated_at']

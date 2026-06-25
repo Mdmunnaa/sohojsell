@@ -100,4 +100,9 @@ urlpatterns = [
 
     path('products/download-template/', views.download_csv_template, name='download_csv_template'),
     path('products/import-csv/', views.import_bulk_products, name='import_bulk_products'),
+
+    # Facebook Integration (নতুন)
+    path('facebook/connect/', views.fb_connect, name='fb_connect'),
+    path('facebook/pages/', views.fb_page_select, name='fb_page_select'),
+    path('facebook/disconnect/', views.fb_disconnect, name='fb_disconnect'),
 ]

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>পেইজ সিলেক্ট করুন — SohojSell</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
+            min-height: 100vh;
+            padding: 40px 0;
+        }
+        .page-card {
+            border: 2px solid #e0e7ff;
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.25s;
+            background: white;
+            margin-bottom: 16px;
+        }
+        .page-card:hover {
+            border-color: #1877F2;
+            box-shadow: 0 8px 24px rgba(24,119,242,0.15);
+            transform: translateY(-2px);
+        }
+        .page-card.selected {
+            border-color: #1877F2;
+            background: #f0f6ff;
+            box-shadow: 0 0 0 4px rgba(24,119,242,0.15);
+        }
+        .page-card input[type="radio"] { display: none; }
+        .page-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #e0e7ff;
+        }
+        .page-avatar-placeholder {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #e7f0ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #1877F2;
+        }
+        .btn-connect {
+            background: #1877F2;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-weight: 600;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        .btn-connect:hover:not(:disabled) {
+            background: #145dbf;
+            transform: translateY(-2px);
+            color: white;
+        }
+        .btn-connect:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .check-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #1877F2;
+            color: white;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+        .page-card.selected .check-badge { display: flex; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-7 col-md-9">
+            
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <div style="width:70px;height:70px;background:#e7f0ff;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                    <i class="bi bi-facebook" style="font-size:2rem;color:#1877F2;"></i>
+                </div>
+                <h3 class="fw-bold">কোন পেইজটি কানেক্ট করবেন?</h3>
+                <p class="text-muted">আপনার Facebook অ্যাকাউন্টের সাথে যুক্ত পেইজগুলো নিচে দেখানো হচ্ছে</p>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} rounded-3 small">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Existing Connection Banner -->
+            {% if existing_connection %}
+            <div class="alert alert-info rounded-3 mb-4">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                এখন <strong>{{ existing_connection.page_name }}</strong> কানেক্ট আছে।
+                নতুন পেইজ সিলেক্ট করলে পুরনোটা রিপ্লেস হবে।
+            </div>
+            {% endif %}
+
+            <!-- Pages List -->
+            {% if pages %}
+            <form method="POST" id="pageForm">
+                {% csrf_token %}
+                
+                {% for page in pages %}
+                <label class="page-card d-block position-relative" onclick="selectPage(this, '{{ page.id }}')">
+                    <input type="radio" name="page_id" value="{{ page.id }}">
+                    <div class="check-badge"><i class="bi bi-check"></i></div>
+                    <div class="d-flex align-items-center gap-3">
+                        {% if page.picture %}
+                            {% if page.picture.data %}
+                                <img src="{{ page.picture.data.url }}" class="page-avatar" alt="{{ page.name }}">
+                            {% else %}
+                                <div class="page-avatar-placeholder"><i class="bi bi-facebook"></i></div>
+                            {% endif %}
+                        {% else %}
+                            <div class="page-avatar-placeholder"><i class="bi bi-facebook"></i></div>
+                        {% endif %}
+                        <div class="flex-grow-1">
+                            <div class="fw-bold text-dark">{{ page.name }}</div>
+                            <div class="text-muted small">
+                                {% if page.category %}
+                                    <span class="badge bg-light text-secondary me-2">{{ page.category }}</span>
+                                {% endif %}
+                                {% if page.fan_count %}
+                                    <i class="bi bi-people-fill me-1"></i>{{ page.fan_count }} followers
+                                {% endif %}
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </div>
+                </label>
+                {% endfor %}
+
+                <button type="submit" class="btn btn-connect w-100 mt-3" id="connectBtn" disabled>
+                    <i class="bi bi-plug-fill me-2"></i> এই পেইজটি কানেক্ট করুন
+                </button>
+            </form>
+
+            {% else %}
+            <!-- No Pages Found -->
+            <div class="card border-0 shadow-sm p-4 text-center">
+                <i class="bi bi-exclamation-triangle text-warning" style="font-size:3rem;"></i>
+                <h5 class="mt-3">কোনো পেইজ পাওয়া যায়নি</h5>
+                <p class="text-muted small">
+                    আপনার Facebook অ্যাকাউন্টে কোনো পেইজ নেই, অথবা আপনি সেই পেইজের Admin না।<br>
+                    Facebook-এ পেইজ তৈরি করে আবার চেষ্টা করুন।
+                </p>
+                <a href="{% url 'fb_connect' %}" class="btn btn-outline-primary mt-2">
+                    <i class="bi bi-arrow-repeat me-1"></i> আবার চেষ্টা করুন
+                </a>
+            </div>
+            {% endif %}
+
+            <div class="text-center mt-4">
+                <a href="{% url 'dashboard' %}" class="text-muted small text-decoration-none">
+                    <i class="bi bi-arrow-left me-1"></i> এখন না, পরে করব
+                </a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function selectPage(label, pageId) {
+    // সব কার্ড থেকে selected সরাও
+    document.querySelectorAll('.page-card').forEach(c => c.classList.remove('selected'));
+    // এই কার্ডে selected দাও
+    label.classList.add('selected');
+    // radio select করো
+    label.querySelector('input[type="radio"]').checked = true;
+    // Connect button enable করো
+    document.getElementById('connectBtn').disabled = false;
+    document.getElementById('connectBtn').innerHTML = 
+        '<i class="bi bi-plug-fill me-2"></i> কানেক্ট করুন';
+}
+
+// Form submit এ loading দেখাও
+document.getElementById('pageForm')?.addEventListener('submit', function() {
+    const btn = document.getElementById('connectBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> কানেক্ট হচ্ছে...';
+});
+</script>
+</body>
+</html>

@@ -3,6 +3,56 @@
 {% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
+
+    <!-- Facebook Connection Status -->
+    {% if shop.fb_page %}
+    <div class="alert d-flex align-items-center justify-content-between mb-4" 
+         style="background:#e7f3ff;border:1px solid #b3d4ff;border-radius:14px;">
+        <div class="d-flex align-items-center gap-3">
+            {% if shop.fb_page.page_picture %}
+            <img src="{{ shop.fb_page.page_picture }}" width="44" height="44" 
+                 style="border-radius:50%;border:2px solid #1877F2;" alt="page">
+            {% else %}
+            <div style="width:44px;height:44px;background:#1877F2;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                <i class="bi bi-facebook text-white fs-5"></i>
+            </div>
+            {% endif %}
+            <div>
+                <div class="fw-bold text-dark small">{{ shop.fb_page.page_name }}</div>
+                <div class="text-muted" style="font-size:0.78rem;">
+                    <span class="badge" style="background:#e7f3ff;color:#1877F2;border:1px solid #b3d4ff;">
+                        <i class="bi bi-circle-fill text-success me-1" style="font-size:0.5rem;"></i>Facebook কানেক্টেড
+                    </span>
+                    {% if shop.fb_page.fan_count %}
+                    <span class="ms-2"><i class="bi bi-people-fill"></i> {{ shop.fb_page.fan_count }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <a href="{% url 'fb_page_select' %}" class="btn btn-sm" 
+           style="background:#1877F2;color:white;border-radius:8px;font-size:0.8rem;">
+            <i class="bi bi-arrow-repeat me-1"></i> পেইজ পরিবর্তন
+        </a>
+    </div>
+    {% else %}
+    <div class="alert d-flex align-items-center justify-content-between mb-4"
+         style="background:#fff8e7;border:1px solid #ffd77a;border-radius:14px;">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#fff3cd;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                <i class="bi bi-facebook" style="color:#e09400;font-size:1.4rem;"></i>
+            </div>
+            <div>
+                <div class="fw-bold text-dark small">Facebook পেইজ কানেক্ট করুন</div>
+                <div class="text-muted" style="font-size:0.78rem;">কমেন্ট বট ও অটো পোস্ট ফিচার পেতে পেইজ কানেক্ট করুন</div>
+            </div>
+        </div>
+        <a href="{% url 'fb_connect' %}" class="btn btn-sm btn-warning text-dark fw-bold" style="border-radius:8px;font-size:0.8rem;">
+            <i class="bi bi-plug-fill me-1"></i> এখনই কানেক্ট করুন
+        </a>
+    </div>
+    {% endif %}
+
+
 <style>
 /* ═══════════════════════════════════════
    DASHBOARD — ULTRA PREMIUM (Typography Fixed)
