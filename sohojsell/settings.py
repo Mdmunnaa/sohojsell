@@ -7,7 +7,7 @@ SECRET_KEY = 'django-insecure-q11n*d#z()f8tg3*3@9%0m)5o&e#6*bp)*wpbb6!7=1qitsio^
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', '.sohojsell.com']
+ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', '.sohojsell.com', '.pythonanywhere.com']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -16,6 +16,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',          # allauth-এর জন্য দরকার
+    'allauth',                        # নতুন
+    'allauth.account',                # নতুন
+    'allauth.socialaccount',          # নতুন
+    'allauth.socialaccount.providers.facebook',  # নতুন - Facebook provider
     'accounts',
     'store',
 ]
@@ -26,10 +31,10 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',   # নতুন — allauth-এর middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'store.subscription_middleware.SubscriptionMiddleware',
-    # Custom subdomain middleware (uncomment after domain setup)
     'store.middleware.ShopSubdomainMiddleware',
     'store.middleware.StaffAccessMiddleware',
 ]
@@ -60,18 +65,6 @@ DATABASES = {
     }
 }
 
-# PostgreSQL config (uncomment for production)
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.environ.get('DB_NAME', 'sohojsell'),
-#         'USER': os.environ.get('DB_USER', 'postgres'),
-#         'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-#         'HOST': os.environ.get('DB_HOST', 'localhost'),
-#         'PORT': os.environ.get('DB_PORT', '5432'),
-#     }
-# }
-
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -95,9 +88,63 @@ AUTH_USER_MODEL = 'accounts.User'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Session
-SESSION_COOKIE_AGE = 86400 * 30  # 30 days
+SESSION_COOKIE_AGE = 86400 * 30
 SESSION_SAVE_EVERY_REQUEST = True
 
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
+
+# ============================================================
+# django-allauth কনফিগ
+# ============================================================
+SITE_ID = 1
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',          # Phone/password login
+    'allauth.account.auth_backends.AuthenticationBackend', # Facebook login
+]
+
+# allauth সেটিংস
+ACCOUNT_EMAIL_REQUIRED = False
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'username'
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_REQUIRED = False
+
+# Facebook login সফল হলে কোথায় যাবে
+SOCIALACCOUNT_LOGIN_ON_GET = True
+
+# Facebook App — Meta Developer Console থেকে নেবে
+SOCIALACCOUNT_PROVIDERS = {
+    'facebook': {
+        'METHOD': 'oauth2',
+        'SDK_URL': '//connect.facebook.net/{locale}/sdk.js',
+        'SCOPE': [
+            'email',
+            'public_profile',
+            'pages_show_list',          # পেইজ লিস্ট দেখার জন্য
+            'pages_read_engagement',    # পোস্টে কমেন্ট পড়ার জন্য
+            'pages_manage_posts',       # পোস্ট করার জন্য
+            'pages_messaging',          # ইনবক্সে মেসেজ পাঠানোর জন্য
+        ],
+        'AUTH_PARAMS': {
+            'auth_type': 'reauthenticate',
+        },
+        'INIT_PARAMS': {'cookie': True},
+        'FIELDS': [
+            'id',
+            'name',
+            'email',
+            'picture',
+        ],
+        'EXCHANGE_TOKEN': True,
+        'LOCALE_FUNC': 'store.facebook_helpers.get_fb_locale',
+        'VERIFIED_EMAIL': False,
+        'VERSION': 'v21.0',
+        'GRAPH_API_URL': 'https://graph.facebook.com/v21.0',
+    }
+}
+
+# Custom Adapters
+ACCOUNT_ADAPTER = 'accounts.adapters.AccountAdapter'
+SOCIALACCOUNT_ADAPTER = 'accounts.adapters.SocialAccountAdapter'
