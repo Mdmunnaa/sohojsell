@@ -1517,147 +1517,9 @@ def delete_banner(request, pk):
     return redirect('banner_list')
 
 # ============================================================
-# SSLCOMMERZ PAYMENT GATEWAY
+# অনলাইন পেমেন্ট এখন PayStation দিয়ে: store/payment_views.py আর store/payments.py
+# (আগের SSLCommerz কোড সরানো হয়েছে — success URL-এর প্ল্যান/শপ যাচাই না করেই আপগ্রেড করত)
 # ============================================================
-import uuid
-
-@login_required(login_url='/accounts/login/')
-def initiate_payment(request, plan_name):
-    """Initiate SSLCommerz payment for plan upgrade"""
-    shop = request.user.shop
-
-    PLAN_PRICES = {
-        'Basic': 499,
-        'Standard': 999,
-        'Premium': 1999,
-    }
-
-    amount = PLAN_PRICES.get(plan_name)
-    if not amount:
-        messages.error(request, "Invalid plan!")
-        return redirect('billing')
-
-    try:
-        setting = MasterSetting.objects.get(id=1)
-        store_id = setting.payment_store_id
-        store_passwd = setting.payment_secret_key
-        is_live = setting.is_payment_live
-    except MasterSetting.DoesNotExist:
-        messages.error(request, "Payment gateway not configured!")
-        return redirect('billing')
-
-    if not store_id or not store_passwd:
-        messages.error(request, "Payment gateway not configured! Contact admin.")
-        return redirect('billing')
-
-    tran_id = f"SS-{shop.id}-{plan_name[:3].upper()}-{uuid.uuid4().hex[:8].upper()}"
-    base_url = request.build_absolute_uri('/').rstrip('/')
-
-    post_data = {
-        'store_id': store_id,
-        'store_passwd': store_passwd,
-        'total_amount': amount,
-        'currency': 'BDT',
-        'tran_id': tran_id,
-        'success_url': f'{base_url}/payment/success/{plan_name}/{tran_id}/',
-        'fail_url': f'{base_url}/payment/fail/',
-        'cancel_url': f'{base_url}/billing/',
-        'ipn_url': f'{base_url}/payment/ipn/',
-        'cus_name': shop.name,
-        'cus_email': f'{shop.slug}@sohojsell.com',
-        'cus_add1': shop.address or 'Bangladesh',
-        'cus_city': 'Dhaka',
-        'cus_country': 'Bangladesh',
-        'cus_phone': shop.phone or '01700000000',
-        'product_name': f'SohojSell {plan_name} Plan',
-        'product_category': 'SaaS Subscription',
-        'product_profile': 'non-physical-goods',
-        'shipping_method': 'NO',
-        'num_of_item': 1,
-        'emi_option': 0,
-    }
-
-    ssl_url = 'https://securepay.sslcommerz.com/gwprocess/v4/api.php' if is_live else 'https://sandbox.sslcommerz.com/gwprocess/v4/api.php'
-
-    try:
-        response = requests.post(ssl_url, data=post_data, timeout=30)
-        result = response.json()
-
-        if result.get('status') == 'SUCCESS':
-            return redirect(result.get('GatewayPageURL'))
-        else:
-            messages.error(request, f"Payment gateway error: {result.get('failedreason', 'Unknown error')}")
-            return redirect('billing')
-    except Exception as e:
-        messages.error(request, f"Payment failed: {str(e)}")
-        return redirect('billing')
-
-
-@csrf_exempt
-def payment_success_ssl(request, plan_name, tran_id):
-    """SSLCommerz success callback"""
-    val_id = request.POST.get('val_id') or request.GET.get('val_id')
-
-    if not val_id:
-        messages.error(request, "Payment validation failed!")
-        return redirect('billing')
-
-    # Validate transaction
-    try:
-        setting = MasterSetting.objects.get(id=1)
-        store_id = setting.payment_store_id
-        store_passwd = setting.payment_secret_key
-        is_live = setting.is_payment_live
-    except MasterSetting.DoesNotExist:
-        messages.error(request, "Configuration error!")
-        return redirect('billing')
-
-    validate_url = (
-        f'https://securepay.sslcommerz.com/validator/api/validationserverAPI.php'
-        if is_live else
-        f'https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php'
-    )
-
-    try:
-        resp = requests.get(validate_url, params={
-            'val_id': val_id,
-            'store_id': store_id,
-            'store_passwd': store_passwd,
-            'format': 'json',
-        }, timeout=30)
-        result = resp.json()
-
-        if result.get('status') == 'VALID' or result.get('status') == 'VALIDATED':
-            # Find shop by tran_id pattern SS-{shop_id}-...
-            parts = tran_id.split('-')
-            shop_id = parts[1] if len(parts) > 1 else None
-            if shop_id:
-                shop = Shop.objects.get(id=shop_id)
-                shop.subscription_plan = plan_name
-                shop.is_paid = True
-                SMS_BONUS = {'Basic': 120, 'Standard': 250, 'Premium': 600}
-                shop.sms_balance += SMS_BONUS.get(plan_name, 0)
-                shop.save()
-                messages.success(request, f"🎉 Payment successful! Upgraded to {plan_name} Plan!")
-                return redirect('dashboard')
-        else:
-            messages.error(request, "Payment validation failed! Contact support.")
-            return redirect('billing')
-    except Exception as e:
-        messages.error(request, f"Validation error: {str(e)}")
-        return redirect('billing')
-
-
-@csrf_exempt
-def payment_fail(request):
-    messages.error(request, "❌ Payment failed! Please try again.")
-    return redirect('billing')
-
-
-@csrf_exempt
-def payment_ipn(request):
-    """IPN handler for SSLCommerz"""
-    return JsonResponse({'status': 'ok'})
 
 
 from django.contrib.auth import get_user_model
@@ -1760,13 +1622,24 @@ from .models import PaymentRequest
 # submit_payment_request moved below
 @login_required(login_url='/accounts/login/')
 def billing_page(request):
+    from .payments import online_payment_available, recheck_pending
+    from . import paystation
+
     shop = request.user.shop
+    # callback হারিয়ে গেলেও টাকা কাটা পেমেন্ট যেন ঝুলে না থাকে — পেইজ খুললেই আবার যাচাই
+    for payment in recheck_pending(shop):
+        messages.success(request, f"✅ আপনার {payment.plan_name} পেমেন্ট নিশ্চিত হয়েছে।")
+        shop.refresh_from_db()
+
     pending_request = shop.payment_requests.filter(status='Pending').first()
     payment_history = shop.payment_requests.all().order_by('-created_at')[:10]
     return render(request, 'store/billing.html', {
         'shop': shop,
         'pending_request': pending_request,
         'payment_history': payment_history,
+        'online_payment_available': online_payment_available(shop),
+        'paystation_sandbox': paystation.current_environment() == 'sandbox',
+        'online_payments': shop.online_payments.all()[:10],
     })
 
 
@@ -2095,11 +1968,18 @@ def fb_page_select(request):
 
 @login_required(login_url='/accounts/login/')
 def fb_disconnect(request):
-    """Facebook Page disconnect করার view"""
+    """
+    Facebook Page disconnect — পেইজের সংযোগ আর সেভ করা Facebook টোকেন মুছে দেয়।
+    (Data Deletion পেইজে এটাই লেখা আছে।) শুধু POST, যাতে কোনো লিংকে ক্লিক করিয়ে
+    কেউ ডিসকানেক্ট করাতে না পারে।
+    """
+    if request.method != 'POST':
+        return redirect('settings')
     shop = getattr(request.user, 'shop', None)
     if shop:
         FacebookPageConnection.objects.filter(shop=shop).delete()
-        messages.success(request, "Facebook Page disconnect করা হয়েছে।")
+        SocialToken.objects.filter(account__user=request.user, account__provider='facebook').delete()
+        messages.success(request, "Facebook Page disconnect করা হয়েছে, আর সেভ করা Facebook টোকেন মুছে ফেলা হয়েছে।")
     return redirect('settings')
 
 

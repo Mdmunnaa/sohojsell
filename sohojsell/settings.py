@@ -94,6 +94,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'store.context_processors.facebook_login',
+                'store.context_processors.site_info',
             ],
         },
     },
@@ -186,6 +187,34 @@ SESSION_SAVE_EVERY_REQUEST = True
 
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
+
+# ============================================================
+# ব্যবসার তথ্য — পাবলিক পেইজের footer, যোগাযোগ আর নীতিমালায় দেখায়।
+# Render-এর Environment-এ বসাবেন; ফাঁকা থাকলে ওই লাইনটা দেখাবে না।
+# ============================================================
+SITE_NAME = 'SohojSell'
+SUPPORT_PHONE = os.environ.get('SUPPORT_PHONE', '')            # যেমন 01XXXXXXXXX
+SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', '')            # যেমন support@yourdomain.com
+SUPPORT_WHATSAPP = os.environ.get('SUPPORT_WHATSAPP', '')      # দেশের কোডসহ, যেমন 8801XXXXXXXXX
+BUSINESS_LEGAL_NAME = os.environ.get('BUSINESS_LEGAL_NAME', '')  # ট্রেড লাইসেন্সে যে নাম
+BUSINESS_ADDRESS = os.environ.get('BUSINESS_ADDRESS', '')
+FACEBOOK_PAGE_URL = os.environ.get('FACEBOOK_PAGE_URL', '')
+POLICY_UPDATED_ON = '৩ নভেম্বর ২০২৬'
+
+# ============================================================
+# PayStation পেমেন্ট গেটওয়ে (paystation.com.bd)
+# ============================================================
+# ডিফল্ট মানগুলো PayStation-এর পাবলিক sandbox (টেস্ট) অ্যাকাউন্ট — আসল টাকা কাটে না।
+# Merchant অ্যাকাউন্ট পেলে Render-এ এই চারটা বসাবেন:
+#   PAYSTATION_MERCHANT_ID, PAYSTATION_PASSWORD, PAYSTATION_ENVIRONMENT=live, PAYSTATION_PAY_WITH_CHARGE=0
+PAYSTATION_MERCHANT_ID = os.environ.get('PAYSTATION_MERCHANT_ID', '104-1653730183')
+PAYSTATION_PASSWORD = os.environ.get('PAYSTATION_PASSWORD', 'gamecoderstorepass')
+PAYSTATION_ENVIRONMENT = os.environ.get('PAYSTATION_ENVIRONMENT', 'sandbox')  # 'sandbox' বা 'live'
+# 0 = গেটওয়ে চার্জ আমরা দেব, 1 = কাস্টমার দেবে
+PAYSTATION_PAY_WITH_CHARGE = os.environ.get('PAYSTATION_PAY_WITH_CHARGE', '0')
+# sandbox চলার সময় শুধু এই শপগুলো (slug, কমা দিয়ে) অনলাইন পেমেন্ট বাটন দেখবে —
+# যাতে টেস্ট মোডে কোনো আসল সেলার বিনা টাকায় প্ল্যান চালু করতে না পারে।
+PAYSTATION_TEST_SHOPS = env_list('PAYSTATION_TEST_SHOPS')
 
 # Render-এর Logs-এ error দেখার জন্য
 LOGGING = {

@@ -18,6 +18,12 @@ ALLOWED_URLS = [
     '/media/',
     '/shop/',
     '/api/',
+    # মেয়াদ শেষ হলেও সেলার যেন নীতিমালা আর যোগাযোগের পেইজ দেখতে পারে
+    '/privacy-policy/',
+    '/terms/',
+    '/refund-policy/',
+    '/data-deletion/',
+    '/contact/',
 ]
 
 

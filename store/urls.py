@@ -1,9 +1,18 @@
 from django.urls import path
+from django.views.generic import TemplateView
 from . import views
+from . import payment_views
 
 urlpatterns = [
     # Landing
     path('', views.landing_page, name='landing_page'),
+
+    # নীতিমালা ও যোগাযোগ (সবার জন্য খোলা — Meta আর PayStation এগুলো দেখতে চায়)
+    path('privacy-policy/', TemplateView.as_view(template_name='store/legal/privacy.html'), name='privacy_policy'),
+    path('terms/', TemplateView.as_view(template_name='store/legal/terms.html'), name='terms'),
+    path('refund-policy/', TemplateView.as_view(template_name='store/legal/refund.html'), name='refund_policy'),
+    path('data-deletion/', TemplateView.as_view(template_name='store/legal/data_deletion.html'), name='data_deletion'),
+    path('contact/', TemplateView.as_view(template_name='store/legal/contact.html'), name='contact'),
 
     # Dashboard
     path('dashboard/', views.seller_dashboard, name='dashboard'),
@@ -65,11 +74,11 @@ urlpatterns = [
     path('banners/add/', views.add_banner, name='add_banner'),
     path('banners/delete/<int:pk>/', views.delete_banner, name='delete_banner'),
 
-    # SSLCommerz Payment Gateway
-    path('payment/initiate/<str:plan_name>/', views.initiate_payment, name='initiate_payment'),
-    path('payment/success/<str:plan_name>/<str:tran_id>/', views.payment_success_ssl, name='payment_success_ssl'),
-    path('payment/fail/', views.payment_fail, name='payment_fail'),
-    path('payment/ipn/', views.payment_ipn, name='payment_ipn'),
+    # PayStation অনলাইন পেমেন্ট (আগের SSLCommerz পথ সরানো হয়েছে — সেখানে যাচাইয়ের ফাঁক ছিল)
+    path('payment/paystation/start/', payment_views.paystation_start, name='paystation_start'),
+    path('payment/paystation/callback/', payment_views.paystation_callback, name='paystation_callback'),
+    # PayStation-কে IPN URL হিসেবে এটা দিতে হবে: https://<domain>/payment/ipn/
+    path('payment/ipn/', payment_views.paystation_ipn, name='paystation_ipn'),
 
     # Webhooks
     path('api/webhook/steadfast/', views.steadfast_webhook, name='steadfast_webhook'),

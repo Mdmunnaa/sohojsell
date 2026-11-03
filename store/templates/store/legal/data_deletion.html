@@ -1,0 +1,35 @@
+{% extends 'store/legal/_layout.html' %}
+{% block title %}ডেটা মুছে ফেলার নির্দেশনা | {{ site.name }}{% endblock %}
+{% block meta_description %}{{ site.name }} থেকে Facebook-এর তথ্য বা পুরো অ্যাকাউন্টের তথ্য কীভাবে মুছে ফেলবেন।{% endblock %}
+{% block page_title %}ডেটা মুছে ফেলার নির্দেশনা (Data Deletion){% endblock %}
+
+{% block legal_body %}
+<p>আপনি যেকোনো সময় {{ site.name }}-এ রাখা আপনার Facebook-এর তথ্য, অথবা পুরো অ্যাকাউন্টের সব তথ্য মুছে ফেলতে পারেন।</p>
+
+<h2>১. শুধু Facebook-এর তথ্য মুছতে</h2>
+<p><strong>{{ site.name }} থেকে:</strong></p>
+<ol>
+  <li>{{ site.name }}-এ লগইন করুন।</li>
+  <li><strong>Settings</strong> পেইজে গিয়ে <strong>Facebook Page Disconnect</strong> চাপুন।</li>
+  <li>সাথে সাথে আপনার পেইজের তথ্য আর Facebook অ্যাক্সেস টোকেন আমাদের সার্ভার থেকে মুছে যাবে, আর আমরা আপনার পেইজে কোনো কাজ করতে পারব না।</li>
+</ol>
+<p><strong>Facebook থেকেও সরাতে চাইলে:</strong></p>
+<ol>
+  <li>Facebook-এ <strong>Settings &amp; privacy → Settings</strong> খুলুন।</li>
+  <li><strong>Apps and websites</strong>-এ যান।</li>
+  <li>তালিকা থেকে {{ site.name }} বেছে <strong>Remove</strong> চাপুন।</li>
+</ol>
+
+<h2>২. পুরো অ্যাকাউন্ট আর সব তথ্য মুছতে</h2>
+<p>নিচের যোগাযোগের মাধ্যমে "অ্যাকাউন্ট মুছে ফেলতে চাই" লিখে আপনার অ্যাকাউন্টের মোবাইল নম্বর পাঠান। মালিকানা নিশ্চিত করতে আমরা ওই নম্বরে যোগাযোগ করব। নিশ্চিত হওয়ার পর <strong>৩০ দিনের মধ্যে</strong> এগুলো মুছে ফেলা হবে:</p>
+<ul>
+  <li>আপনার অ্যাকাউন্ট আর স্টাফ অ্যাকাউন্ট</li>
+  <li>দোকানের তথ্য, প্রোডাক্ট, ছবি আর ব্যানার</li>
+  <li>কাস্টমার আর অর্ডারের তথ্য</li>
+  <li>Facebook পেইজের সংযোগ আর টোকেন</li>
+</ul>
+<p>শুধু পেমেন্টের রেকর্ড আইন ও হিসাবের প্রয়োজনে যতদিন দরকার ততদিন রাখা হতে পারে। মুছে ফেলার আগে চাইলে আপনার তথ্যের একটা কপি নিতে পারবেন।</p>
+
+<h2>৩. যোগাযোগ</h2>
+{% include 'store/legal/_contact_box.html' %}
+{% endblock %}

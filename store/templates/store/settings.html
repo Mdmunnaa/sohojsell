@@ -269,6 +269,26 @@
                     </div>
                 </div>
 
+                <!-- Facebook Page সংযোগ -->
+                <div class="settings-card">
+                    <div class="sc-body p-4">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-facebook me-2" style="color:#1877F2;"></i>Facebook Page</h6>
+                        {% if request.user.shop.fb_page %}
+                            <p class="small mb-1 fw-semibold">{{ request.user.shop.fb_page.page_name }}</p>
+                            <p class="small text-muted mb-3">কানেক্টেড। ডিসকানেক্ট করলে পেইজের তথ্য আর Facebook টোকেন আমাদের সার্ভার থেকে মুছে যাবে।</p>
+                            <button type="submit" form="fb-disconnect-form" class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                    onclick="return confirm('Facebook পেইজ ডিসকানেক্ট করবেন?');">
+                                <i class="bi bi-x-circle me-1"></i> Facebook Page Disconnect
+                            </button>
+                        {% else %}
+                            <p class="small text-muted mb-3">কোনো পেইজ কানেক্ট করা নেই।</p>
+                            <a href="{% url 'fb_connect' %}" class="btn btn-sm btn-primary rounded-pill px-3">
+                                <i class="bi bi-plug me-1"></i> পেইজ কানেক্ট করুন
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+
                 <!-- Subscription Plan -->
                 <div class="plan-card">
                     <div class="plan-icon">
@@ -294,6 +314,8 @@
             </button>
         </div>
     </form>
+    <!-- মূল ফর্মের বাইরে আলাদা ফর্ম (ফর্মের ভেতরে ফর্ম রাখা যায় না) -->
+    <form id="fb-disconnect-form" method="POST" action="{% url 'fb_disconnect' %}">{% csrf_token %}</form>
 </div>
 
 <script>

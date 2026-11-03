@@ -1,0 +1,8 @@
+<div class="legal-contact">
+  <div><strong>{{ site.name }}</strong>{% if site.legal_name %} ({{ site.legal_name }}){% endif %}</div>
+  {% if site.address %}<div><i class="bi bi-geo-alt me-2"></i>{{ site.address }}</div>{% endif %}
+  {% if site.phone %}<div><i class="bi bi-telephone me-2"></i><a href="tel:{{ site.phone }}">{{ site.phone }}</a></div>{% endif %}
+  {% if site.email %}<div><i class="bi bi-envelope me-2"></i><a href="mailto:{{ site.email }}">{{ site.email }}</a></div>{% endif %}
+  {% if site.whatsapp_url %}<div><i class="bi bi-whatsapp me-2"></i><a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener">WhatsApp-এ মেসেজ দিন</a></div>{% endif %}
+  {% if not site.phone and not site.email and not site.whatsapp_url %}<div>যোগাযোগের তথ্য শিগগিরই যোগ করা হবে।</div>{% endif %}
+</div>

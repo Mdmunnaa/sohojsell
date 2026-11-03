@@ -1,97 +1,98 @@
-<!DOCTYPE html>
-<html lang="bn">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Free Shop - SohojSell</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <style>
-        body { background: linear-gradient(135deg, #f4f7f6 0%, #e0eafc 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', sans-serif; padding: 20px 0; }
-        .login-card { border: none; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.08); overflow: hidden; background: #fff; max-width: 900px; width: 100%; }
-        .login-left { background: linear-gradient(135deg, #fd7e14 0%, #d9534f 100%); color: white; padding: 50px; display: flex; flex-direction: column; justify-content: center; }
-        .login-right { padding: 50px; }
-        .form-control { border-radius: 10px; padding: 12px 15px; border: 1px solid #dee2e6; background-color: #f8f9fa; }
-        .form-control:focus { border-color: #fd7e14; box-shadow: 0 0 0 0.25rem rgba(253, 126, 20, 0.2); background-color: #fff; }
-        .btn-signup { border-radius: 10px; padding: 12px; font-weight: bold; background-color: #fd7e14; color: white; border: none;}
-        .btn-signup:hover { background-color: #e86b0c; color: white;}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="login-card row g-0">
-                    <div class="col-md-6 login-left d-none d-md-flex">
-                        <h2 class="fw-bolder mb-3"><i class="bi bi-rocket-takeoff-fill text-light me-2"></i>SohojSell</h2>
-                        <h4 class="fw-bold opacity-75 mb-4">Step 1: Create Account</h4>
-                        <ul class="list-unstyled opacity-75 mt-4">
-                            <li class="mb-3"><i class="bi bi-check-circle-fill text-light me-2"></i> 14 Days Free Trial</li>
-                            <li class="mb-3"><i class="bi bi-check-circle-fill text-light me-2"></i> Register with Phone Number</li>
-                        </ul>
-                    </div>
-                    <div class="col-md-6 login-right">
-                        <div class="text-center mb-4">
-                            <h3 class="fw-bolder text-dark">Register 🚀</h3>
-                            <p class="text-muted small">ফোন নম্বর দিয়ে একাউন্ট তৈরি করুন</p>
-                        </div>
-                        {% if messages %}
-                            {% for message in messages %}
-                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show rounded-3 small">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
-                            {% endfor %}
-                        {% endif %}
+{% extends 'store/public_base.html' %}
+{% block title %}Create Free Shop - {{ site.name }}{% endblock %}
 
-                        <form method="POST" action="{% url 'signup' %}">
-                            {% csrf_token %}
-                            <div class="mb-3">
-                                <label class="form-label fw-bold text-secondary small">Mobile Number</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-telephone-fill"></i></span>
-                                    <input type="text" name="phone" class="form-control border-start-0" placeholder="e.g. 01712345678" required>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold text-secondary small">Password</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock-fill"></i></span>
-                                    <input type="password" name="password" class="form-control border-start-0" placeholder="Create a password" required>
-                                </div>
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label fw-bold text-secondary small">Retype Password</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock-fill"></i></span>
-                                    <input type="password" name="confirm_password" class="form-control border-start-0" placeholder="Retype password" required>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-signup w-100 shadow-sm"><i class="bi bi-arrow-right-circle-fill me-2"></i> Next: Setup Shop</button>
-                        </form>
+{% block extra_css %}
+<style>
+    .auth-wrap { padding: 48px 16px 8px; }
+    .login-card { border: none; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.08); overflow: hidden; background: #fff; max-width: 900px; width: 100%; margin: 0 auto; }
+    .login-left { background: linear-gradient(135deg, #fd7e14 0%, #d9534f 100%); color: white; padding: 50px; display: flex; flex-direction: column; justify-content: center; }
+    .login-right { padding: 50px; }
+    .form-control { border-radius: 10px; padding: 12px 15px; border: 1px solid #dee2e6; background-color: #f8f9fa; }
+    .form-control:focus { border-color: #fd7e14; box-shadow: 0 0 0 0.25rem rgba(253, 126, 20, 0.2); background-color: #fff; }
+    .btn-signup { border-radius: 10px; padding: 12px; font-weight: bold; background-color: #fd7e14; color: white; border: none; }
+    .btn-signup:hover { background-color: #e86b0c; color: white; }
+    .consent-note { font-size: 12.5px; color: #6c757d; }
+    .consent-note a { color: #d9534f; }
+    @media (max-width: 576px) { .login-right { padding: 32px 22px; } }
+</style>
+{% endblock %}
 
-                        <!-- Facebook Signup Option (Admin-এ Facebook Social App যোগ করলে তবেই দেখাবে) -->
-                        {% if facebook_login_enabled %}
-                        <div class="text-center my-3">
-                            <div class="d-flex align-items-center gap-2 mb-3">
-                                <hr class="flex-grow-1">
-                                <span class="text-muted small">অথবা সহজে</span>
-                                <hr class="flex-grow-1">
-                            </div>
-                            <a href="/accounts/facebook/login/?process=login" 
-                               class="btn w-100 d-flex align-items-center justify-content-center gap-2"
-                               style="background:#1877F2;color:white;border-radius:10px;padding:12px;font-weight:600;border:none;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                                </svg>
-                                Facebook দিয়ে শুরু করুন (সবচেয়ে সহজ)
-                            </a>
-                        </div>
-                        {% endif %}
-                        <div class="text-center mt-4 pt-3 border-top">
-                            <p class="text-muted small mb-0">আগে থেকেই একাউন্ট আছে? <a href="/accounts/login/" class="fw-bold text-decoration-none" style="color: #fd7e14;">Login Here</a></p>
-                        </div>
+{% block messages %}{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+    <div class="login-card row g-0">
+        <div class="col-md-6 login-left d-none d-md-flex">
+            <h2 class="fw-bolder mb-3"><i class="bi bi-rocket-takeoff-fill text-light me-2"></i>{{ site.name }}</h2>
+            <h4 class="fw-bold opacity-75 mb-4">Step 1: Create Account</h4>
+            <ul class="list-unstyled opacity-75 mt-4">
+                <li class="mb-3"><i class="bi bi-check-circle-fill text-light me-2"></i> ৩০ দিনের ফ্রি ট্রায়াল</li>
+                <li class="mb-3"><i class="bi bi-check-circle-fill text-light me-2"></i> শুধু মোবাইল নম্বর দিয়ে রেজিস্ট্রেশন</li>
+            </ul>
+        </div>
+        <div class="col-md-6 login-right">
+            <div class="text-center mb-4">
+                <h3 class="fw-bolder text-dark">Register 🚀</h3>
+                <p class="text-muted small">ফোন নম্বর দিয়ে একাউন্ট তৈরি করুন</p>
+            </div>
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show rounded-3 small">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="POST" action="{% url 'signup' %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary small" for="signup-phone">Mobile Number</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-telephone-fill"></i></span>
+                        <input type="tel" id="signup-phone" name="phone" class="form-control border-start-0" placeholder="e.g. 01712345678" autocomplete="tel" required>
                     </div>
                 </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary small" for="signup-password">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock-fill"></i></span>
+                        <input type="password" id="signup-password" name="password" class="form-control border-start-0" placeholder="Create a password" autocomplete="new-password" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary small" for="signup-password2">Retype Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock-fill"></i></span>
+                        <input type="password" id="signup-password2" name="confirm_password" class="form-control border-start-0" placeholder="Retype password" autocomplete="new-password" required>
+                    </div>
+                </div>
+                <p class="consent-note mb-3">
+                    অ্যাকাউন্ট খুলে আপনি আমাদের <a href="{% url 'terms' %}" target="_blank">শর্তাবলি</a> আর
+                    <a href="{% url 'privacy_policy' %}" target="_blank">প্রাইভেসি পলিসি</a> মেনে নিচ্ছেন।
+                </p>
+                <button type="submit" class="btn btn-signup w-100 shadow-sm"><i class="bi bi-arrow-right-circle-fill me-2"></i> Next: Setup Shop</button>
+            </form>
+
+            <!-- Facebook Signup Option (Admin-এ Facebook Social App যোগ করলে তবেই দেখাবে) -->
+            {% if facebook_login_enabled %}
+            <div class="text-center my-3">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <hr class="flex-grow-1">
+                    <span class="text-muted small">অথবা সহজে</span>
+                    <hr class="flex-grow-1">
+                </div>
+                <a href="/accounts/facebook/login/?process=login"
+                   class="btn w-100 d-flex align-items-center justify-content-center gap-2"
+                   style="background:#1877F2;color:white;border-radius:10px;padding:12px;font-weight:600;border:none;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    Facebook দিয়ে শুরু করুন (সবচেয়ে সহজ)
+                </a>
+            </div>
+            {% endif %}
+            <div class="text-center mt-4 pt-3 border-top">
+                <p class="text-muted small mb-0">আগে থেকেই একাউন্ট আছে? <a href="{% url 'login' %}" class="fw-bold text-decoration-none" style="color: #fd7e14;">Login Here</a></p>
             </div>
         </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

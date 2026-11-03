@@ -1,0 +1,24 @@
+{% extends 'store/legal/_layout.html' %}
+{% block title %}যোগাযোগ | {{ site.name }}{% endblock %}
+{% block meta_description %}{{ site.name }}-এর সাথে যোগাযোগ — ফোন, ইমেইল, WhatsApp আর ঠিকানা।{% endblock %}
+{% block page_title %}যোগাযোগ (Contact){% endblock %}
+
+{% block legal_body %}
+<p>অ্যাকাউন্ট, বিল, রিফান্ড বা যেকোনো সমস্যায় আমাদের জানান। সাধারণত ১ কর্মদিবসের মধ্যে উত্তর দেওয়া হয়।</p>
+{% include 'store/legal/_contact_box.html' %}
+
+<h2>দ্রুত সাহায্যের জন্য যা জানাবেন</h2>
+<ul>
+  <li>দোকানের নাম আর অ্যাকাউন্টের মোবাইল নম্বর</li>
+  <li>সমস্যাটা কী, আর কোন পেইজে হচ্ছে</li>
+  <li>পেমেন্ট নিয়ে হলে পরিমাণ আর লেনদেন নম্বর (TrxID)</li>
+</ul>
+
+<h2>নীতিমালা</h2>
+<ul>
+  <li><a href="{% url 'privacy_policy' %}">প্রাইভেসি পলিসি</a></li>
+  <li><a href="{% url 'terms' %}">শর্তাবলি</a></li>
+  <li><a href="{% url 'refund_policy' %}">রিফান্ড পলিসি</a></li>
+  <li><a href="{% url 'data_deletion' %}">ডেটা মুছে ফেলার নির্দেশনা</a></li>
+</ul>
+{% endblock %}

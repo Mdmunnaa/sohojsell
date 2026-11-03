@@ -83,3 +83,22 @@ class FacebookPageConnectionAdmin(admin.ModelAdmin):
     list_filter = ['is_active']
     search_fields = ['page_name', 'shop__name']
     readonly_fields = ['connected_at', 'updated_at']
+
+
+from .models import OnlinePayment
+
+
+@admin.register(OnlinePayment)
+class OnlinePaymentAdmin(admin.ModelAdmin):
+    """PayStation পেমেন্ট দেখার জন্য — সম্পন্ন হয় শুধু PayStation যাচাই করে, তাই এখানে হাতে বদলানো যায় না।"""
+    list_display = ['invoice_number', 'shop', 'plan_name', 'amount', 'status', 'environment', 'trx_id',
+                    'payment_method', 'created_at', 'completed_at']
+    list_filter = ['status', 'kind', 'environment']
+    search_fields = ['invoice_number', 'trx_id', 'shop__name']
+    readonly_fields = [f.name for f in OnlinePayment._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

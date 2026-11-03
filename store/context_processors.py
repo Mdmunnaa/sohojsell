@@ -1,4 +1,22 @@
+from django.conf import settings
 from django.core.cache import cache
+
+
+def site_info(request):
+    """পাবলিক পেইজের footer, যোগাযোগ আর নীতিমালায় ব্যবসার তথ্য (settings / env থেকে)।"""
+    whatsapp = ''.join(ch for ch in settings.SUPPORT_WHATSAPP if ch.isdigit())
+    return {
+        'site': {
+            'name': settings.SITE_NAME,
+            'phone': settings.SUPPORT_PHONE,
+            'email': settings.SUPPORT_EMAIL,
+            'whatsapp_url': f'https://wa.me/{whatsapp}' if whatsapp else '',
+            'legal_name': settings.BUSINESS_LEGAL_NAME,
+            'address': settings.BUSINESS_ADDRESS,
+            'facebook_url': settings.FACEBOOK_PAGE_URL,
+            'policy_updated_on': settings.POLICY_UPDATED_ON,
+        }
+    }
 
 
 def facebook_login(request):

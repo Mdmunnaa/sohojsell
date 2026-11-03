@@ -627,7 +627,7 @@ footer{background:#fff;border-top:1px solid var(--border);padding:56px 24px 32px
         <div class="footer-col-title">Support</div>
         <div class="footer-links">
           <a href="#">Help Center</a>
-          <a href="#">Contact Us</a>
+          <a href="{% url 'contact' %}">Contact Us</a>
           <a href="#">WhatsApp Support</a>
           <a href="#">Video Tutorials</a>
         </div>
@@ -635,9 +635,10 @@ footer{background:#fff;border-top:1px solid var(--border);padding:56px 24px 32px
       <div>
         <div class="footer-col-title">Legal</div>
         <div class="footer-links">
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
-          <a href="#">Refund Policy</a>
+          <a href="{% url 'privacy_policy' %}">Privacy Policy</a>
+          <a href="{% url 'terms' %}">Terms of Service</a>
+          <a href="{% url 'refund_policy' %}">Refund Policy</a>
+          <a href="{% url 'data_deletion' %}">Data Deletion</a>
         </div>
       </div>
     </div>

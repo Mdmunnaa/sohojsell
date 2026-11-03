@@ -337,3 +337,49 @@ class FacebookPageConnection(models.Model):
     class Meta:
         verbose_name = 'Facebook Page Connection'
         verbose_name_plural = 'Facebook Page Connections'
+
+
+# ============================================================
+# অনলাইন পেমেন্ট (PayStation) — প্ল্যান কেনা বা SMS কেনা
+# ============================================================
+class OnlinePayment(models.Model):
+    """
+    প্রতিটা অনলাইন পেমেন্টের চেষ্টা একটা রেকর্ড। invoice_number আমরা নিজে বানাই আর
+    PayStation-এ পাঠাই; পরে callback বা IPN এলে ওই নম্বর দিয়েই রেকর্ড খুঁজে PayStation-এর
+    সার্ভারে যাচাই করা হয়। কী কেনা হচ্ছে আর কত টাকা — সব এখানে আমাদের দিকেই লেখা থাকে,
+    ব্রাউজার থেকে আসা কোনো মান বিশ্বাস করা হয় না।
+    """
+    KIND_PLAN = 'plan'
+    KIND_SMS = 'sms'
+    KIND_CHOICES = ((KIND_PLAN, 'Subscription plan'), (KIND_SMS, 'SMS recharge'))
+
+    STATUS_PENDING = 'Pending'
+    STATUS_COMPLETED = 'Completed'
+    STATUS_FAILED = 'Failed'
+    STATUS_CHOICES = (
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_COMPLETED, 'Completed'),
+        (STATUS_FAILED, 'Failed'),
+    )
+
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='online_payments')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    plan_name = models.CharField(max_length=50, help_text='Basic / Standard / Premium, অথবা SMS প্যাকের নাম')
+    days = models.PositiveIntegerField(default=0, help_text='প্ল্যান হলে কত দিন যোগ হবে')
+    sms_count = models.PositiveIntegerField(default=0, help_text='SMS প্যাক হলে কতটা SMS যোগ হবে')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    invoice_number = models.CharField(max_length=64, unique=True)
+    environment = models.CharField(max_length=10, default='sandbox', help_text='sandbox না live')
+    trx_id = models.CharField(max_length=64, blank=True, default='')
+    payment_method = models.CharField(max_length=40, blank=True, default='')
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.invoice_number} — {self.shop.name} — {self.plan_name} — {self.status}"

@@ -179,6 +179,28 @@
 <div id="paymentFormCard" style="display:none;">
   <div class="card border-0 shadow-lg rounded-4 mb-4" style="border:2px solid #3b82f6 !important;">
     <div class="card-body p-4">
+      {% if online_payment_available %}
+      <!-- অনলাইন পেমেন্ট (PayStation) — সাথে সাথে প্ল্যান/SMS চালু হয় -->
+      <div class="rounded-4 p-4 mb-4" style="background:linear-gradient(135deg,#eef6ff,#f5f3ff);border:1px solid #c7d2fe;">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <h5 class="fw-bold mb-0"><i class="bi bi-lightning-charge-fill me-2 text-primary"></i>অনলাইনে পেমেন্ট করুন</h5>
+          {% if paystation_sandbox %}<span class="badge bg-warning text-dark">টেস্ট মোড (sandbox)</span>{% endif %}
+        </div>
+        <p class="text-muted mb-3" style="font-size:13px;">bKash, Nagad, Rocket বা কার্ড দিয়ে দিন। পেমেন্ট হলেই সাথে সাথে চালু হয়ে যাবে, অপেক্ষা করতে হবে না।</p>
+        <form method="POST" action="{% url 'paystation_start' %}">
+          {% csrf_token %}
+          <input type="hidden" name="item" id="online_item">
+          <button type="submit" class="btn btn-primary rounded-pill fw-bold px-4">
+            <i class="bi bi-credit-card-2-front me-2"></i><span id="online_btn_text">অনলাইনে পেমেন্ট করুন</span>
+          </button>
+        </form>
+        <div class="small text-muted mt-2">পেমেন্ট নেয় PayStation। কার্ড নম্বর বা PIN আমরা কখনো দেখি না।</div>
+      </div>
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <hr class="flex-grow-1"><span class="text-muted small">অথবা নিজে পাঠিয়ে লেনদেন নম্বর দিন</span><hr class="flex-grow-1">
+      </div>
+      {% endif %}
+
       <h5 class="fw-bold mb-1"><i class="bi bi-cash-coin me-2 text-primary"></i>Payment Submit করুন</h5>
       <p class="text-muted mb-4" style="font-size:13px;">নিচের নম্বরে payment করুন, তারপর transaction ID দিয়ে submit করুন।</p>
 
@@ -259,6 +281,50 @@
   </div>
 </div>
 
+<!-- ONLINE PAYMENTS (PayStation) -->
+{% if online_payments %}
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+  <div class="card-body p-0">
+    <div class="px-4 py-3 border-bottom">
+      <h6 class="fw-bold mb-0"><i class="bi bi-credit-card me-2 text-primary"></i>অনলাইন পেমেন্ট</h6>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead style="background:#f8fafc;">
+          <tr style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;">
+            <th class="px-4 py-3">Date</th>
+            <th>Plan/Package</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>TrxID</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in online_payments %}
+          <tr>
+            <td class="px-4" style="font-size:13px;color:#64748b;">{{ p.created_at|date:"d M Y, h:i A" }}</td>
+            <td>
+              <span class="badge rounded-pill" style="background:#e8f0fe;color:#1a73e8;font-weight:700;">{{ p.plan_name }}</span>
+              {% if p.environment == 'sandbox' %}<span class="badge bg-warning text-dark ms-1">test</span>{% endif %}
+            </td>
+            <td class="fw-bold">৳{{ p.amount|floatformat:0 }}</td>
+            <td style="font-size:13px;">{{ p.payment_method|default:"—" }}</td>
+            <td>{% if p.trx_id %}<code style="font-size:12px;background:#f1f5f9;padding:2px 8px;border-radius:4px;">{{ p.trx_id }}</code>{% else %}—{% endif %}</td>
+            <td>
+              {% if p.status == 'Completed' %}<span class="badge bg-success rounded-pill">✓ সম্পন্ন</span>
+              {% elif p.status == 'Failed' %}<span class="badge bg-secondary rounded-pill">✗ হয়নি</span>
+              {% else %}<span class="badge bg-warning text-dark rounded-pill">⏳ যাচাই চলছে</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- PENDING REQUESTS -->
 {% if payment_history %}
 <div class="card border-0 shadow-sm rounded-4">
@@ -304,6 +370,13 @@
 function showPaymentForm(plan, amount) {
   document.getElementById('form_plan_name').value = plan;
   document.getElementById('form_amount').value = amount;
+
+  // অনলাইন পেমেন্টে শুধু প্যাকেজের কোড যায়; দাম সার্ভার নিজে ঠিক করে
+  const onlineItem = document.getElementById('online_item');
+  if (onlineItem) {
+    onlineItem.value = (plan === 'SMS Recharge') ? (amount >= 400 ? 'SMS-1000' : 'SMS-500') : plan;
+    document.getElementById('online_btn_text').textContent = 'অনলাইনে ৳' + amount.toLocaleString() + ' পেমেন্ট করুন';
+  }
 
   if (plan === 'SMS Recharge') {
       document.getElementById('form_plan_display').value = plan;
