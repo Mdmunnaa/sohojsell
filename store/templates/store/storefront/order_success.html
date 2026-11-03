@@ -1,3 +1,4 @@
+{% load store_links %}
 <!DOCTYPE html>
 <html lang="bn">
 <head>
@@ -223,7 +224,7 @@ body { background: var(--bg); font-family: 'Poppins', sans-serif; min-height: 10
     <button class="btn-out green-out" onclick="downloadPDF()">
       <i class="bi bi-file-earmark-pdf-fill"></i> Download Invoice PDF
     </button>
-    <a href="/shop/{{ shop.slug }}/" class="btn-main">
+    <a href="{% shop_url 'storefront_home' shop %}" class="btn-main">
       <i class="bi bi-arrow-left-circle-fill"></i> কেনাকাটা চালিয়ে যান
     </a>
     <button class="btn-out" onclick="shareOrder()">

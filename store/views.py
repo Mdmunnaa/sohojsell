@@ -22,6 +22,7 @@ from .plans import (
     staff_limit, storefront_closes_on, storefront_is_open, upgrade_message,
 )
 from .forms import ShopSetupForm, ProductForm, OrderCreateForm, ShopSettingsForm
+from .links import storefront_link
 
 
 # ============================================================
@@ -1154,7 +1155,7 @@ def storefront_product_detail(request, shop_slug, product_id):
     shop = get_object_or_404(Shop, slug=shop_slug)
 
     if not storefront_is_open(shop):
-        return redirect('storefront_home', shop_slug=shop_slug)
+        return redirect(storefront_link(shop, request=request))
 
     product = get_object_or_404(Product, id=product_id, shop=shop, is_active=True)
 
@@ -1213,7 +1214,7 @@ def storefront_checkout(request, shop_slug):
 
     # Plan check — Free/Basic shops don't have storefront checkout
     if not storefront_is_open(shop):
-        return redirect('storefront_home', shop_slug=shop_slug)
+        return redirect(storefront_link(shop, request=request))
 
     # ── BUG FIX: cart validation — cart data comes from JS/localStorage
     # The actual cart is sent via POST in storefront_place_order.
@@ -1255,7 +1256,10 @@ def storefront_place_order(request, shop_slug):
 
         # Validate stock first
         for item in cart_items:
-            product = get_object_or_404(Product, id=item['id'], shop=shop)
+            product = get_object_or_404(Product, id=item['id'], shop=shop, is_active=True)
+            # শূন্য বা মাইনাস পরিমাণ দিয়ে স্টক বাড়ানো বা দাম কমানো যাবে না
+            if int(item['qty']) < 1:
+                return JsonResponse({'success': False, 'error': 'পরিমাণ ঠিক নেই।'})
             if product.stock_quantity < int(item['qty']):
                 return JsonResponse({'success': False, 'error': f"'{product.name}' has only {product.stock_quantity} items left!"})
             subtotal += float(product.price) * int(item['qty'])
@@ -1315,6 +1319,10 @@ def storefront_place_order(request, shop_slug):
             shop.sms_balance -= 1
             shop.save()
 
+        # অর্ডার-সফল পেইজে কাস্টমারের নাম-ঠিকানা থাকে; শুধু যে ব্রাউজার থেকে অর্ডার হয়েছে সে-ই দেখতে পাবে
+        placed = request.session.get('sf_orders', [])
+        request.session['sf_orders'] = (placed + [sf_order.id])[-20:]
+
         return JsonResponse({
             'success': True,
             'order_id': sf_order.id,
@@ -1329,6 +1337,9 @@ def storefront_place_order(request, shop_slug):
 def storefront_order_success(request, shop_slug, order_id):
     """Order success page"""
     shop = get_object_or_404(Shop, slug=shop_slug)
+    # অন্য কেউ নম্বর বদলে অন্যের অর্ডারের তথ্য দেখতে না পারে
+    if order_id not in request.session.get('sf_orders', []):
+        return redirect(storefront_link(shop, request=request))
     order = get_object_or_404(StorefrontOrder, id=order_id, shop=shop)
     return render(request, 'store/storefront/order_success.html', {'shop': shop, 'order': order})
 

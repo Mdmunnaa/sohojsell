@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>দোকান পাওয়া যায়নি</title>
+<style>
+  body { font-family: 'Hind Siliguri', 'Segoe UI', sans-serif; background: #f4f6f9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 16px; text-align: center; }
+  .box { background: #fff; border-radius: 20px; padding: 44px 32px; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+  h2 { font-weight: 800; color: #1a1a2e; margin: 16px 0 8px; }
+  code { background: #f1f5f9; padding: 2px 8px; border-radius: 6px; }
+  a.btn { display: inline-block; margin-top: 18px; background: #4f46e5; color: #fff; text-decoration: none; padding: 10px 22px; border-radius: 999px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="box">
+  <div style="font-size:56px;">🔍</div>
+  <h2>এই ঠিকানায় কোনো দোকান নেই</h2>
+  <p style="color:#6c757d;"><code>{{ subdomain }}</code> নামে কোনো দোকান খুঁজে পাওয়া যায়নি। ঠিকানার বানান আরেকবার দেখে নিন।</p>
+  <a class="btn" href="{{ main_url }}">{{ site.name|default:"SohojSell" }}-এ যান</a>
+</div>
+</body>
+</html>

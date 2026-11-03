@@ -1,62 +1,105 @@
 # ============================================================
-# SohojSell — Subdomain/Custom Domain Middleware
+# SohojSell — দোকানের সাবডোমেইন / নিজের ডোমেইন
 # ============================================================
-# কীভাবে কাজ করে:
-# 1. shop.sohojsell.com → সেই shop-এর storefront দেখাবে
-# 2. www.moanashop.com (custom domain) → সেই shop-এর storefront দেখাবে
-# 3. Normal requests → unchanged
+# কীভাবে কাজ করে (STORE_BASE_DOMAIN = sohojsell.com ধরে):
+# 1. munnafashion.sohojsell.com/product/5/ → ভেতরে /shop/munnafashion/product/5/ চালানো হয়,
+#    কিন্তু ব্রাউজারে ছোট ঠিকানাটাই থাকে।
+# 2. www.munnashop.com (Premium-এর নিজের ডোমেইন) → একইভাবে সেই দোকান।
+# 3. মূল সাইটে পুরনো /shop/munnafashion/... লিংকে ঢুকলে সাবডোমেইনে পাঠিয়ে দেয়,
+#    তাই আগে Facebook-এ শেয়ার করা লিংকও কাজ করে।
+# 4. বাকি সব (ড্যাশবোর্ড, ল্যান্ডিং পেইজ) আগের মতো।
 # ============================================================
+import re
 
-from django.shortcuts import redirect
-from django.http import Http404
+from django.conf import settings
+from django.contrib import messages
+from django.http import HttpResponsePermanentRedirect, HttpResponseRedirect
+from django.shortcuts import redirect, render
+
 from .models import Shop
+
+# দোকানের সাইটেও এগুলো মূল অ্যাপ থেকে আসবে
+PASSTHROUGH_PREFIXES = ('/static/', '/media/', '/favicon.ico', '/robots.txt')
+OLD_SHOP_PATH_RE = re.compile(r'^/shop/(?P<slug>[a-z0-9-]+)(?P<rest>/.*)?$')
+# এই সাবডোমেইনগুলো দোকান না, মূল সাইট হিসেবেই চলবে
+MAIN_SUBDOMAINS = {'www'}
+
+
+def _with_query(request, path):
+    query = request.META.get('QUERY_STRING', '')
+    return f'{path}?{query}' if query else path
 
 
 class ShopSubdomainMiddleware:
-    """
-    Handles subdomain routing: fashion.sohojsell.com → /shop/fashion/
-    """
-    MAIN_DOMAINS = ['sohojsell.com', 'www.sohojsell.com', 'localhost', '127.0.0.1']
-
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
+        request.storefront_shop_id = None
         host = request.get_host().split(':')[0].lower()
+        base = getattr(settings, 'STORE_BASE_DOMAIN', '')
 
-        # Check if it's a subdomain of sohojsell.com
-        if host.endswith('.sohojsell.com') and host not in self.MAIN_DOMAINS:
-            subdomain = host.replace('.sohojsell.com', '')
-            # Ignore www, api, admin subdomains
-            if subdomain not in ['www', 'api', 'admin', 'mail']:
-                try:
-                    shop = Shop.objects.get(slug=subdomain)
-                    # Rewrite the path to go to the storefront
-                    if not request.path.startswith(f'/shop/{subdomain}/'):
-                        # Keep query string and path but route to storefront
-                        new_path = f'/shop/{subdomain}' + request.path
-                        request.path_info = new_path
-                        request.META['PATH_INFO'] = new_path
-                except Shop.DoesNotExist:
-                    pass
+        if base and host.endswith('.' + base):
+            sub = host[:-(len(base) + 1)]
+            if sub not in MAIN_SUBDOMAINS and '.' not in sub:
+                shop = Shop.objects.filter(slug=sub).only('id', 'slug').first()
+                if shop is None:
+                    return render(request, 'store/storefront/not_found.html',
+                                  {'subdomain': sub, 'main_url': f'https://{base}/'}, status=404)
+                return self._serve_shop(request, shop)
+        elif self._may_be_custom_domain(host, base):
+            bare = host[4:] if host.startswith('www.') else host
+            shop = Shop.objects.filter(custom_domain__in=[bare, f'www.{bare}']).first()
+            if shop is not None:
+                from .plans import has_custom_domain
+                if has_custom_domain(shop):
+                    return self._serve_shop(request, shop)
+                # Premium শেষ হলে নিজের ডোমেইনের কাস্টমারদের সাবডোমেইনে পাঠানো
+                return HttpResponseRedirect(shop.storefront_url)
+        elif base and request.method in ('GET', 'HEAD'):
+            redirect_response = self._redirect_old_shop_link(request, base)
+            if redirect_response is not None:
+                return redirect_response
 
-        # Check custom domain
-        elif host not in self.MAIN_DOMAINS and '.' in host:
-            try:
-                shop = Shop.objects.get(custom_domain=host)
-                if not request.path.startswith(f'/shop/{shop.slug}/'):
-                    new_path = f'/shop/{shop.slug}' + request.path
-                    request.path_info = new_path
-                    request.META['PATH_INFO'] = new_path
-            except (Shop.DoesNotExist, AttributeError):
-                pass
+        return self.get_response(request)
 
-        response = self.get_response(request)
-        return response
+    @staticmethod
+    def _may_be_custom_domain(host, base):
+        if '.' not in host or host in ('localhost', '127.0.0.1', 'testserver'):
+            return False
+        if base and host in (base, f'www.{base}'):
+            return False
+        if host == getattr(settings, 'RENDER_EXTERNAL_HOSTNAME', None) or host.endswith('.onrender.com'):
+            return False
+        return not host.endswith('.sohojsell.com') and host != 'sohojsell.com'
 
+    def _serve_shop(self, request, shop):
+        request.storefront_shop_id = shop.pk
+        path = request.path_info
+        if path.startswith(PASSTHROUGH_PREFIXES):
+            return self.get_response(request)
 
-from django.shortcuts import redirect
-from django.contrib import messages
+        prefix = f'/shop/{shop.slug}'
+        if path == prefix or path.startswith(prefix + '/'):
+            if request.method in ('GET', 'HEAD'):
+                # সাবডোমেইনেও পুরনো ধাঁচের লিংক এলে ছোট ঠিকানায়
+                return HttpResponsePermanentRedirect(_with_query(request, path[len(prefix):] or '/'))
+        else:
+            new_path = prefix + path
+            request.path_info = new_path
+            request.META['PATH_INFO'] = new_path
+        return self.get_response(request)
+
+    @staticmethod
+    def _redirect_old_shop_link(request, base):
+        match = OLD_SHOP_PATH_RE.match(request.path_info)
+        if not match:
+            return None
+        slug = match.group('slug')
+        if not Shop.objects.filter(slug=slug).exists():
+            return None
+        # ঠিকানা বদলানো যেতে পারে তাই স্থায়ী (301) না, সাধারণ redirect
+        return HttpResponseRedirect(_with_query(request, f"https://{slug}.{base}{match.group('rest') or '/'}"))
 
 
 class StaffAccessMiddleware:
@@ -88,7 +131,7 @@ class StaffAccessMiddleware:
                     (('/settings/', '/staff/', '/banners/', '/billing/'), staff.can_manage_settings, "Shop Settings"),
                 ]
 
-                # যদি লিংকে ঢোকার পারমিশন না থাকে, তবে ড্যাশবোর্ডে পাঠিয়ে দাও
+                # যদি লিংকে ঢোকার পারমিশন না থাকে, তবে ড্যাশবোর্ডে পাঠিয়ে দাও
                 for paths, has_permission, feature_name in restrictions:
                     if any(path.startswith(p) for p in paths) and not has_permission:
                         messages.error(request, f"Access Denied: You do not have permission for {feature_name}!")

@@ -83,8 +83,8 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'store.middleware.ShopSubdomainMiddleware',          # দোকানের সাবডোমেইন → সেই দোকানের ওয়েবসাইট
     'store.subscription_middleware.SubscriptionMiddleware',
-    'store.middleware.ShopSubdomainMiddleware',
     'store.middleware.StaffAccessMiddleware',
 ]
 

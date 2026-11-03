@@ -1,3 +1,4 @@
+{% load store_links %}
 <!DOCTYPE html>
 <html lang="bn">
 <head>
@@ -237,7 +238,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 
 <!-- MOBILE HEADER -->
 <div class="mob-header">
-  <a href="{% url 'storefront_home' shop.slug %}" class="mob-btn"><i class="bi bi-chevron-left"></i></a>
+  <a href="{% shop_url 'storefront_home' shop %}" class="mob-btn"><i class="bi bi-chevron-left"></i></a>
   <div style="display:flex; gap:8px;">
     <button class="mob-btn" onclick="shareProduct()"><i class="bi bi-share"></i></button>
     <button class="mob-btn" onclick="openCart()"><i class="bi bi-cart3"></i><span class="mob-badge" id="mob-cart-badge">0</span></button>
@@ -246,7 +247,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 
 <!-- DESKTOP HEADER -->
 <div class="desk-header">
-  <a href="{% url 'storefront_home' shop.slug %}" class="desk-store-link">
+  <a href="{% shop_url 'storefront_home' shop %}" class="desk-store-link">
     {% if shop.logo %}
       <div class="desk-store-logo"><img src="{{ shop.logo.url }}" alt="{{ shop.name }}"></div>
     {% else %}
@@ -333,7 +334,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
       <div class="card-title" style="padding:0 20px;">Similar Products</div>
       <div class="related-grid">
         {% for rp in related_products %}
-        <a href="{% url 'storefront_product_detail' shop.slug rp.id %}" class="rel-card">
+        <a href="{% shop_url 'storefront_product_detail' shop rp.id %}" class="rel-card">
           <div class="rel-img">
             {% if rp.image %}<img src="{{ rp.image.url }}" loading="lazy">{% else %}<i class="bi bi-box fs-1 text-muted"></i>{% endif %}
           </div>
@@ -380,7 +381,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 
 <!-- MOBILE BOTTOM BAR -->
 <div class="bottom-bar">
-  <a href="{% url 'storefront_home' shop.slug %}" class="bar-icon-btn"><i class="bi bi-shop"></i></a>
+  <a href="{% shop_url 'storefront_home' shop %}" class="bar-icon-btn"><i class="bi bi-shop"></i></a>
   <button class="bar-icon-btn" onclick="openCart()"><i class="bi bi-cart3"></i></button>
   <button class="btn-buy" onclick="addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{% if product.image %}{{ product.image.url }}{% else %}{% endif %}'); openCheckout();">Buy Now</button>
 </div>
@@ -458,6 +459,8 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 <script>
 const SHOP_ID = '{{ shop.id }}';
 const SHOP_SLUG = '{{ shop.slug }}';
+const PLACE_ORDER_URL = '{% shop_url "storefront_place_order" shop %}';
+const ORDER_SUCCESS_URL = '{% shop_url "storefront_order_success" shop 0 %}';
 const DELIVERY = 80;
 let cart = JSON.parse(localStorage.getItem('sohojsell_' + SHOP_ID) || '{}');
 
@@ -548,7 +551,7 @@ async function placeOrder() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Placing order...';
   try {
-    const res = await fetch(`/shop/${SHOP_SLUG}/place-order/`, {
+    const res = await fetch(PLACE_ORDER_URL, {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
       body: JSON.stringify({ cart: items, name, phone, address, note })
@@ -556,7 +559,7 @@ async function placeOrder() {
     const data = await res.json();
     if (data.success) {
       localStorage.removeItem('sohojsell_' + SHOP_ID);
-      window.location.href = `/shop/${SHOP_SLUG}/order/${data.order_id}/success/`;
+      window.location.href = ORDER_SUCCESS_URL.replace('/0/success/', '/' + data.order_id + '/success/');
     } else {
       showToast('❌ ' + (data.error || 'Failed!')); btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Confirm Order';
     }

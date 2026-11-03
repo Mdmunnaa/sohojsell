@@ -92,17 +92,18 @@ class Shop(models.Model):
         কাস্টমারকে দেওয়ার মতো দোকানের লিংক।
         STORE_BASE_DOMAIN বসানো থাকলে https://<সাবডোমেইন>.<ডোমেইন>/, না থাকলে (ডোমেইন কেনার আগে) /shop/<সাবডোমেইন>/।
         """
-        from django.conf import settings
-        from django.urls import reverse
-        base = getattr(settings, 'STORE_BASE_DOMAIN', '')
-        if base:
-            return f'https://{self.slug}.{base}/'
-        return reverse('storefront_home', args=[self.slug])
+        from .links import storefront_link
+        return storefront_link(self)
 
     @property
     def storefront_host_preview(self):
+        """দেখানোর মতো ছোট ঠিকানা (https:// ছাড়া)। ডোমেইন বসানোর আগে আসল কাজ করা লিংকটাই দেখায়।"""
         from django.conf import settings
-        return f"{self.slug}.{getattr(settings, 'STORE_BASE_DOMAIN', '') or 'sohojsell.com'}"
+        base = getattr(settings, 'STORE_BASE_DOMAIN', '')
+        if base:
+            return f'{self.slug}.{base}'
+        host = getattr(settings, 'RENDER_EXTERNAL_HOSTNAME', None) or 'sohojsell.com'
+        return f'{host}{self.storefront_url}'
 
     def __str__(self):
         return self.name

@@ -28,7 +28,7 @@
         <tr>
           <td class="px-4">
             <div class="fw-bold text-dark" style="font-size:14px;">{{ shop.name }}</div>
-            <div style="font-size:11px;color:#94a3b8;">/shop/{{ shop.slug }}/</div>
+            <div style="font-size:11px;color:#94a3b8;"><a href="{{ shop.storefront_url }}" target="_blank" rel="noopener" style="color:inherit;">{{ shop.storefront_host_preview }}</a></div>
           </td>
           <td style="font-size:13px;">{{ shop.phone|default:"—" }}</td>
           <td><span class="badge rounded-pill bg-primary">{{ shop.subscription_plan }}</span></td>

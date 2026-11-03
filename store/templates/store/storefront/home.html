@@ -1,3 +1,4 @@
+{% load store_links %}
 <!DOCTYPE html>
 <html lang="bn">
 <head>
@@ -270,7 +271,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
   </div>
   <div class="flash-scroll">
     {% for product in products|slice:":6" %}
-    <a href="{% url 'storefront_product_detail' shop.slug product.id %}" class="flash-card">
+    <a href="{% shop_url 'storefront_product_detail' shop product.id %}" class="flash-card">
       <div class="flash-img-wrap">
         {% if product.image %}
         <img src="{{ product.image.url }}" alt="{{ product.name }}">
@@ -294,7 +295,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 
 <div class="product-grid" id="productGrid">
   {% for product in products %}
-  <div class="prod-card" onclick="goToProduct('{% url 'storefront_product_detail' shop.slug product.id %}')">
+  <div class="prod-card" onclick="goToProduct('{% shop_url 'storefront_product_detail' shop product.id %}')">
     <div class="prod-img-wrap">
       {% if product.image %}
       <img src="{{ product.image.url }}" alt="{{ product.name }}" loading="lazy">
@@ -370,7 +371,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
-  <a href="{% url 'storefront_home' shop.slug %}" class="nav-item-sf active">
+  <a href="{% shop_url 'storefront_home' shop %}" class="nav-item-sf active">
     <i class="bi bi-house-fill"></i><span>Home</span>
   </a>
   <button class="nav-item-sf" onclick="scrollToTop()">
@@ -463,6 +464,8 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 <script>
 const SHOP_ID = '{{ shop.id }}';
 const SHOP_SLUG = '{{ shop.slug }}';
+const PLACE_ORDER_URL = '{% shop_url "storefront_place_order" shop %}';
+const ORDER_SUCCESS_URL = '{% shop_url "storefront_order_success" shop 0 %}';
 const DELIVERY = 80;
 let cart = JSON.parse(localStorage.getItem('sohojsell_' + SHOP_ID) || '{}');
 
@@ -603,7 +606,7 @@ async function placeOrder() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
   try {
-    const res = await fetch(`/shop/${SHOP_SLUG}/place-order/`, {
+    const res = await fetch(PLACE_ORDER_URL, {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
       body: JSON.stringify({ cart: items, name, phone, address, note })
@@ -611,7 +614,7 @@ async function placeOrder() {
     const data = await res.json();
     if (data.success) {
       localStorage.removeItem('sohojsell_' + SHOP_ID);
-      window.location.href = `/shop/${SHOP_SLUG}/order/${data.order_id}/success/`;
+      window.location.href = ORDER_SUCCESS_URL.replace('/0/success/', '/' + data.order_id + '/success/');
     } else {
       showToast('❌ ' + (data.error || 'Failed!'));
       btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Confirm Order';

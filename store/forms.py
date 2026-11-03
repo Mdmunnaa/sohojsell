@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 from .models import Shop
 from .models import Shop, Product # Product মডেল ইমপোর্ট করা হলো
@@ -93,6 +95,20 @@ class ShopSettingsForm(forms.ModelForm):
         if self.instance and value == self.instance.slug:
             return value
         return validate_subdomain(value, exclude_shop_id=self.instance.pk if self.instance else None)
+
+    def clean_custom_domain(self):
+        # https://, শেষের / বা পথ লিখে ফেললেও শুধু ডোমেইনটা রাখা হয়
+        value = (self.cleaned_data.get('custom_domain') or '').strip().lower()
+        if not value:
+            return None
+        value = re.sub(r'^https?://', '', value).split('/')[0].split(':')[0].strip('.')
+        if not re.fullmatch(r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}', value):
+            raise forms.ValidationError('ডোমেইন ঠিকমতো লিখুন, যেমন www.yourshop.com')
+        from django.conf import settings
+        base = getattr(settings, 'STORE_BASE_DOMAIN', '') or 'sohojsell.com'
+        if value == base or value.endswith('.' + base):
+            raise forms.ValidationError('এটা নিজের ডোমেইন না; আপনার সাবডোমেইন উপরে আলাদা করে দেওয়া আছে।')
+        return value
 
     def save(self, commit=True):
         self.instance.slug = self.cleaned_data['subdomain']

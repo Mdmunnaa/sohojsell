@@ -399,3 +399,92 @@ class PlanLimitsTests(ShopTestMixin, TestCase):
         self.client.post(reverse('settings'), base)
         shop.refresh_from_db()
         self.assertEqual(shop.custom_domain, 'www.example.com')
+
+
+@override_settings(STORE_BASE_DOMAIN='sohojsell.com')
+class StorefrontDomainTests(ShopTestMixin, TestCase):
+    HOST = 'munna.sohojsell.com'
+
+    def setUp(self):
+        from .models import Product
+        self.user, self.shop = self.make_shop(slug='munna')
+        self.product = Product.objects.create(shop=self.shop, name='T-Shirt', price=500, cost_price=300,
+                                              stock_quantity=5)
+
+    def test_subdomain_shows_store_with_short_links(self):
+        response = self.client.get('/', HTTP_HOST=self.HOST)
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn(self.shop.name, html)
+        self.assertIn(f'/product/{self.product.id}/', html)
+        self.assertNotIn('/shop/munna/', html)
+        detail = self.client.get(f'/product/{self.product.id}/', HTTP_HOST=self.HOST)
+        self.assertEqual(detail.status_code, 200)
+        self.assertIn('T-Shirt', detail.content.decode())
+
+    def test_old_links_redirect_to_subdomain(self):
+        response = self.client.get(f'/shop/munna/product/{self.product.id}/?ref=fb', HTTP_HOST='sohojsell.com')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response['Location'], f'https://munna.sohojsell.com/product/{self.product.id}/?ref=fb')
+        on_sub = self.client.get('/shop/munna/', HTTP_HOST=self.HOST)
+        self.assertEqual(on_sub.status_code, 301)
+        self.assertEqual(on_sub['Location'], '/')
+
+    def test_unknown_subdomain_shows_not_found(self):
+        response = self.client.get('/', HTTP_HOST='nobody.sohojsell.com')
+        self.assertEqual(response.status_code, 404)
+        self.assertIn('এই ঠিকানায় কোনো দোকান নেই', response.content.decode())
+
+    def test_main_site_and_dashboard_unchanged(self):
+        dashboard = self.client.get(reverse('dashboard'), HTTP_HOST='sohojsell.com')
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertIn('https://munna.sohojsell.com/', dashboard.content.decode())
+        self.assertIn('munna.sohojsell.com', dashboard.content.decode())
+        self.assertEqual(self.shop.storefront_url, 'https://munna.sohojsell.com/')
+        self.client.logout()
+        self.assertEqual(self.client.get('/', HTTP_HOST='sohojsell.com').status_code, 200)
+        self.assertEqual(self.client.get('/', HTTP_HOST='www.sohojsell.com').status_code, 200)
+
+    def test_order_on_subdomain_and_success_page_is_private(self):
+        import json
+        response = self.client.post('/place-order/', data=json.dumps({
+            'cart': [{'id': self.product.id, 'qty': 2}], 'name': 'Rahim', 'phone': '01812345678',
+            'address': 'Savar'}), content_type='application/json', HTTP_HOST=self.HOST)
+        data = response.json()
+        self.assertTrue(data['success'], data)
+        success = self.client.get(f"/order/{data['order_id']}/success/", HTTP_HOST=self.HOST)
+        self.assertEqual(success.status_code, 200)
+        self.assertIn('Rahim', success.content.decode())
+        # অন্য ব্রাউজার নম্বর বসিয়ে দেখতে পারবে না
+        from django.test import Client
+        other = Client().get(f"/order/{data['order_id']}/success/", HTTP_HOST=self.HOST)
+        self.assertEqual(other.status_code, 302)
+
+    def test_negative_quantity_rejected(self):
+        import json
+        response = self.client.post('/place-order/', data=json.dumps({
+            'cart': [{'id': self.product.id, 'qty': -3}], 'name': 'X', 'phone': '01812345678',
+            'address': 'Savar'}), content_type='application/json', HTTP_HOST=self.HOST)
+        self.assertFalse(response.json()['success'])
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_quantity, 5)
+
+    @override_settings(ALLOWED_HOSTS=['.sohojsell.com', 'www.munnashop.com', 'munnashop.com'])
+    def test_custom_domain_only_for_premium(self):
+        self.shop.custom_domain = 'www.munnashop.com'
+        self.shop.save()
+        response = self.client.get('/', HTTP_HOST='munnashop.com')
+        self.assertEqual(response.status_code, 302)          # Standard না → সাবডোমেইনে
+        self.assertEqual(response['Location'], 'https://munna.sohojsell.com/')
+        self.shop.subscription_plan = 'Premium'
+        self.shop.valid_until = timezone.localdate() + timedelta(days=10)
+        self.shop.save()
+        self.assertEqual(self.client.get('/', HTTP_HOST='www.munnashop.com').status_code, 200)
+
+
+class StorefrontWithoutDomainTests(ShopTestMixin, TestCase):
+    def test_old_path_still_works_before_domain_is_set(self):
+        _user, shop = self.make_shop(slug='munna')
+        response = self.client.get('/shop/munna/', HTTP_HOST='localhost')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(shop.storefront_url, '/shop/munna/')

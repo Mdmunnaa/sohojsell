@@ -32,6 +32,9 @@ class SubscriptionMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        # দোকানের সাবডোমেইনে কাস্টমারের ওয়েবসাইট; সেখানে সেলারের মেয়াদ দেখার কিছু নেই
+        if getattr(request, 'storefront_shop_id', None):
+            return self.get_response(request)
         if request.user.is_authenticated and not request.user.is_superuser:
             if hasattr(request.user, 'shop') and request.user.shop:
                 shop = request.user.shop

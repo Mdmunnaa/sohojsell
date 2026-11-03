@@ -259,56 +259,29 @@
 
 <div class="db">
 
-{% if shop.subscription_plan in "Standard,Premium" %}
 <div class="db-banner green">
   <div class="db-banner-left">
     <div class="db-banner-icon"><i class="bi bi-globe2"></i></div>
     <div>
-      <div class="db-banner-title">Your Online Store is Live! 🎉</div>
-      <div class="db-banner-sub">Share your link and start receiving orders.</div>
+      <div class="db-banner-title">আপনার ওয়েবসাইট চালু আছে 🎉</div>
+      <div class="db-banner-sub">
+        {% if plan.is_trial and shop.trial_ends_at %}ফ্রি ট্রায়াল: {{ shop.trial_ends_at|date:"j M Y" }} পর্যন্ত সব ফিচার ফ্রি। লিংকটা Facebook-এ শেয়ার করুন।
+        {% else %}লিংকটা Facebook পেইজ আর কাস্টমারদের সাথে শেয়ার করে অর্ডার নিন।{% endif %}
+      </div>
     </div>
   </div>
   <div class="db-banner-right">
-    <span class="db-banner-code">/shop/{{ shop.slug }}/</span>
-    <a href="/shop/{{ shop.slug }}/" target="_blank" class="db-banner-btn green">
-      <i class="bi bi-box-arrow-up-right"></i> Open Store
+    <span class="db-banner-code">{{ shop.storefront_host_preview }}</span>
+    <a href="{{ shop.storefront_url }}" target="_blank" rel="noopener" class="db-banner-btn green">
+      <i class="bi bi-box-arrow-up-right"></i> ওয়েবসাইট দেখুন
     </a>
   </div>
 </div>
 
-{% elif shop.subscription_plan == 'Basic' %}
-<div class="db-banner blue">
-  <div class="db-banner-left">
-    <div class="db-banner-icon"><i class="bi bi-rocket-takeoff"></i></div>
-    <div>
-      <div class="db-banner-title">Activate Your Online Store</div>
-      <div class="db-banner-sub">Upgrade to Standard to go live instantly.</div>
-    </div>
-  </div>
-  <div class="db-banner-right">
-    <a href="{% url 'billing' %}" class="db-banner-btn blue"><i class="bi bi-arrow-up-circle-fill"></i> Upgrade Now</a>
-  </div>
-</div>
-
-{% else %}
-<div class="db-banner amber">
-  <div class="db-banner-left">
-    <div class="db-banner-icon"><i class="bi bi-star-fill"></i></div>
-    <div>
-      <div class="db-banner-title">You're on Free Trial</div>
-      <div class="db-banner-sub">Unlock POS, Online Store & more.</div>
-    </div>
-  </div>
-  <div class="db-banner-right">
-    <a href="{% url 'billing' %}" class="db-banner-btn amber"><i class="bi bi-lightning-charge-fill"></i> Upgrade Plan</a>
-  </div>
-</div>
-{% endif %}
-
 <div class="db-header">
   <div>
     <div class="db-welcome">Welcome back,<br>{{ shop.name }}! 👋</div>
-    <div class="db-plan"><i class="bi bi-star-fill"></i> {{ shop.subscription_plan }} Plan</div>
+    <div class="db-plan"><i class="bi bi-star-fill"></i> {{ plan.label|default:shop.subscription_plan }}{% if not plan.is_trial %} প্যাকেজ{% endif %}</div>
   </div>
   <div class="db-header-right">
     <div class="db-sms"><i class="bi bi-chat-left-dots-fill"></i> {{ shop.sms_balance }} SMS</div>
