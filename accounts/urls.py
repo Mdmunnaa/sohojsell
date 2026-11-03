@@ -2,9 +2,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('signup/', views.signup, name='signup'),  # এটা আপনার আগে থেকেই ছিল
-
-    # এই নতুন দুইটা লাইন অ্যাড করুন
+    path('signup/', views.signup, name='signup'),
+    path('check-subdomain/', views.check_subdomain, name='check_subdomain'),
     path('login/', views.user_login, name='login'),
     path('logout/', views.user_logout, name='logout'),
 ]

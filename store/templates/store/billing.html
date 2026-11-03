@@ -29,18 +29,25 @@
         {% else %}🆓{% endif %}
       </div>
       <div class="badge rounded-pill mt-2 px-3 py-2" style="background:rgba(255,255,255,.15);color:#fff;font-size:14px;font-weight:800;">
-        {{ shop.subscription_plan }} Plan
+        {% if shop.subscription_plan == 'Free' %}ফ্রি ট্রায়াল{% else %}{{ shop.subscription_plan }} Plan{% endif %}
       </div>
     </div>
     <div class="col-md-5">
       {% if shop.is_locked %}
       <div style="color:#f87171;font-weight:800;font-size:15px;"><i class="bi bi-lock-fill me-2"></i>Account Locked</div>
       <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:4px;">Payment করুন এবং নিচে request submit করুন</div>
+      {% if storefront_closes_on %}
+      <div style="color:#fbbf24;font-size:13px;margin-top:6px;">
+        {% if storefront_open %}আপনার ওয়েবসাইট কাস্টমারদের জন্য <b>{{ storefront_closes_on|date:"d M Y" }}</b> পর্যন্ত চালু থাকবে, এর মধ্যে বিল দিলে বন্ধ হবে না।
+        {% else %}আপনার ওয়েবসাইট এখন কাস্টমারদের জন্য বন্ধ। বিল দিলেই আবার চালু হবে।{% endif %}
+      </div>
+      {% endif %}
       {% else %}
       <div style="color:#4ade80;font-weight:800;font-size:15px;"><i class="bi bi-check-circle-fill me-2"></i>Account Active</div>
 
       {% if shop.subscription_plan == 'Free' %}
-      <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:4px;">Free Trial Active (৩০ দিন)</div>
+      <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:4px;">ফ্রি ট্রায়াল চলছে, সব ফিচার খোলা।
+        {% if shop.trial_ends_at %}<b style="color:#fbbf24;">{{ shop.trial_ends_at|date:"d M Y" }}</b> পর্যন্ত।{% endif %}</div>
       {% else %}
       <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:4px;">
         {% if shop.valid_until %} <b style="color:#fbbf24;">{{ shop.valid_until|date:"d M Y" }}</b> পর্যন্ত মেয়াদ আছে{% endif %}

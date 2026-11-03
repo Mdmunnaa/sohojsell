@@ -39,23 +39,43 @@
                 {% endfor %}
             {% endif %}
 
-            <form method="POST" action="{% url 'setup_shop' %}">
+            <form method="POST" action="{% url 'setup_shop' %}" novalidate>
                 {% csrf_token %}
                 <div class="mb-3">
-                    <label class="form-label fw-bold text-secondary small" for="shop-name">Shop Name (দোকানের নাম)</label>
-                    <input type="text" id="shop-name" name="shop_name" class="form-control" placeholder="e.g. FashionBD" required>
+                    <label class="form-label fw-bold text-secondary small" for="shop-name">দোকানের নাম</label>
+                    <input type="text" id="shop-name" name="shop_name" value="{{ form.shop_name.value|default:'' }}"
+                           class="form-control{% if form.shop_name.errors %} is-invalid{% endif %}" placeholder="যেমন: Munna Fashion" required>
+                    {% for e in form.shop_name.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold text-secondary small" for="shop-address">Full Address (ঠিকানা)</label>
-                    <input type="text" id="shop-address" name="address" class="form-control" placeholder="Shop #12, Block C, Dhaka" required>
+                    <label class="form-label fw-bold text-secondary small" for="shop-subdomain">আপনার ওয়েবসাইটের ঠিকানা</label>
+                    <div class="input-group">
+                        <input type="text" id="shop-subdomain" name="subdomain" value="{{ form.subdomain.value|default:'' }}"
+                               class="form-control text-end fw-semibold{% if form.subdomain.errors %} is-invalid{% endif %}"
+                               placeholder="munnafashion" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+                        <span class="input-group-text fw-semibold">.{{ site.store_domain }}</span>
+                    </div>
+                    <div id="shop-subdomain-result" class="small mt-1 text-muted"></div>
+                    {% for e in form.subdomain.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary small" for="shop-address">দোকানের ঠিকানা (ঐচ্ছিক)</label>
+                    <input type="text" id="shop-address" name="address" value="{{ form.address.value|default:'' }}" class="form-control" placeholder="Shop #12, Block C, Dhaka">
                 </div>
                 <div class="mb-4">
-                    <label class="form-label fw-bold text-secondary small" for="shop-fb">Facebook Page Link (Optional)</label>
-                    <input type="url" id="shop-fb" name="fb_link" class="form-control" placeholder="https://facebook.com/yourpage">
+                    <label class="form-label fw-bold text-secondary small" for="shop-fb">Facebook Page Link (ঐচ্ছিক)</label>
+                    <input type="url" id="shop-fb" name="fb_link" value="{{ form.fb_link.value|default:'' }}"
+                           class="form-control{% if form.fb_link.errors %} is-invalid{% endif %}" placeholder="https://facebook.com/yourpage">
+                    {% for e in form.fb_link.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
                 </div>
-                <button type="submit" class="btn btn-signup w-100 shadow-sm"><i class="bi bi-check-circle-fill me-2"></i> Finish & Go to Dashboard</button>
+                <button type="submit" class="btn btn-signup w-100 shadow-sm"><i class="bi bi-check-circle-fill me-2"></i> দোকান তৈরি করুন</button>
             </form>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% include 'store/partials/subdomain_check_js.html' %}
+<script>ssSubdomainCheck('shop-subdomain', 'shop-subdomain-result', 'shop-name');</script>
 {% endblock %}

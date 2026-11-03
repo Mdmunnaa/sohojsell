@@ -3,17 +3,24 @@
 
 {% block extra_css %}
 <style>
-    .auth-wrap { padding: 48px 16px 8px; }
-    .login-card { border: none; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.08); overflow: hidden; background: #fff; max-width: 900px; width: 100%; margin: 0 auto; }
-    .login-left { background: linear-gradient(135deg, #fd7e14 0%, #d9534f 100%); color: white; padding: 50px; display: flex; flex-direction: column; justify-content: center; }
-    .login-right { padding: 50px; }
-    .form-control { border-radius: 10px; padding: 12px 15px; border: 1px solid #dee2e6; background-color: #f8f9fa; }
+    .auth-wrap { padding: 40px 16px 8px; }
+    .login-card { border: none; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.08); overflow: hidden; background: #fff; max-width: 960px; width: 100%; margin: 0 auto; }
+    .login-left { background: linear-gradient(135deg, #fd7e14 0%, #d9534f 100%); color: white; padding: 50px 44px; display: flex; flex-direction: column; justify-content: center; }
+    .login-right { padding: 40px 44px; }
+    .form-control { border-radius: 10px; padding: 11px 14px; border: 1px solid #dee2e6; background-color: #f8f9fa; }
     .form-control:focus { border-color: #fd7e14; box-shadow: 0 0 0 0.25rem rgba(253, 126, 20, 0.2); background-color: #fff; }
+    .form-control.is-invalid { border-color: #dc3545; }
     .btn-signup { border-radius: 10px; padding: 12px; font-weight: bold; background-color: #fd7e14; color: white; border: none; }
     .btn-signup:hover { background-color: #e86b0c; color: white; }
+    .sub-group { display: flex; align-items: stretch; border: 1px solid #dee2e6; border-radius: 10px; background: #f8f9fa; overflow: hidden; }
+    .sub-group:focus-within { border-color: #fd7e14; box-shadow: 0 0 0 0.25rem rgba(253, 126, 20, 0.2); background: #fff; }
+    .sub-group input { border: none; background: transparent; padding: 11px 6px 11px 14px; flex: 1; min-width: 0; outline: none; text-align: right; font-weight: 600; }
+    .sub-group span { padding: 11px 14px 11px 0; color: #6c757d; white-space: nowrap; font-weight: 600; }
+    .field-error { color: #dc3545; font-size: 13px; margin-top: 4px; }
     .consent-note { font-size: 12.5px; color: #6c757d; }
     .consent-note a { color: #d9534f; }
-    @media (max-width: 576px) { .login-right { padding: 32px 22px; } }
+    .hp-field { position: absolute; left: -5000px; }
+    @media (max-width: 576px) { .login-right { padding: 30px 20px; } }
 </style>
 {% endblock %}
 
@@ -22,53 +29,80 @@
 {% block content %}
 <div class="auth-wrap">
     <div class="login-card row g-0">
-        <div class="col-md-6 login-left d-none d-md-flex">
+        <div class="col-md-5 login-left d-none d-md-flex">
             <h2 class="fw-bolder mb-3"><i class="bi bi-rocket-takeoff-fill text-light me-2"></i>{{ site.name }}</h2>
-            <h4 class="fw-bold opacity-75 mb-4">Step 1: Create Account</h4>
-            <ul class="list-unstyled opacity-75 mt-4">
-                <li class="mb-3"><i class="bi bi-check-circle-fill text-light me-2"></i> ৩০ দিনের ফ্রি ট্রায়াল</li>
-                <li class="mb-3"><i class="bi bi-check-circle-fill text-light me-2"></i> শুধু মোবাইল নম্বর দিয়ে রেজিস্ট্রেশন</li>
+            <h4 class="fw-bold opacity-75 mb-4">এক মিনিটে নিজের অনলাইন দোকান</h4>
+            <ul class="list-unstyled opacity-75 mt-2">
+                <li class="mb-3"><i class="bi bi-check-circle-fill text-light me-2"></i> ৩০ দিন সব ফিচার ফ্রি</li>
+                <li class="mb-3"><i class="bi bi-check-circle-fill text-light me-2"></i> নিজের নামে ওয়েবসাইটের ঠিকানা</li>
+                <li class="mb-3"><i class="bi bi-check-circle-fill text-light me-2"></i> অর্ডার, ইনভয়েস আর কুরিয়ার এক জায়গায়</li>
             </ul>
         </div>
-        <div class="col-md-6 login-right">
+        <div class="col-md-7 login-right">
             <div class="text-center mb-4">
-                <h3 class="fw-bolder text-dark">Register 🚀</h3>
-                <p class="text-muted small">ফোন নম্বর দিয়ে একাউন্ট তৈরি করুন</p>
+                <h3 class="fw-bolder text-dark">ফ্রি দোকান খুলুন 🚀</h3>
+                <p class="text-muted small mb-0">কোনো কার্ড লাগবে না</p>
             </div>
             {% if messages %}
                 {% for message in messages %}
                     <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show rounded-3 small">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
                 {% endfor %}
             {% endif %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger rounded-3 small">{{ form.non_field_errors|join:" " }}</div>
+            {% endif %}
 
-            <form method="POST" action="{% url 'signup' %}">
+            <form method="POST" action="{% url 'signup' %}" novalidate>
                 {% csrf_token %}
+                <div class="hp-field" aria-hidden="true"><input type="text" name="website" tabindex="-1" autocomplete="off"></div>
+
                 <div class="mb-3">
-                    <label class="form-label fw-bold text-secondary small" for="signup-phone">Mobile Number</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-telephone-fill"></i></span>
-                        <input type="tel" id="signup-phone" name="phone" class="form-control border-start-0" placeholder="e.g. 01712345678" autocomplete="tel" required>
+                    <label class="form-label fw-bold text-secondary small" for="id_shop_name">দোকানের নাম</label>
+                    <input type="text" id="id_shop_name" name="shop_name" value="{{ form.shop_name.value|default:'' }}"
+                           class="form-control{% if form.shop_name.errors %} is-invalid{% endif %}" placeholder="যেমন: Munna Fashion" required>
+                    {% for e in form.shop_name.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary small" for="id_subdomain">আপনার ওয়েবসাইটের ঠিকানা</label>
+                    <div class="sub-group">
+                        <input type="text" id="id_subdomain" name="subdomain" value="{{ form.subdomain.value|default:'' }}"
+                               placeholder="munnafashion" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+                        <span>.{{ site.store_domain }}</span>
+                    </div>
+                    <div id="subdomain-result" class="small mt-1 text-muted"></div>
+                    {% for e in form.subdomain.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+                    <div class="form-text">ছোট হাতের ইংরেজি অক্ষর, সংখ্যা আর হাইফেন (-)। পরে settings থেকে বদলানো যাবে।</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary small" for="id_phone">মোবাইল নম্বর</label>
+                    <input type="tel" id="id_phone" name="phone" value="{{ form.phone.value|default:'' }}"
+                           class="form-control{% if form.phone.errors %} is-invalid{% endif %}" placeholder="01712345678" autocomplete="tel" required>
+                    {% for e in form.phone.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+                    <div class="form-text">এই নম্বর দিয়েই লগইন করবেন।</div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-6">
+                        <label class="form-label fw-bold text-secondary small" for="id_password">পাসওয়ার্ড</label>
+                        <input type="password" id="id_password" name="password"
+                               class="form-control{% if form.password.errors %} is-invalid{% endif %}" placeholder="কমপক্ষে ৬ অক্ষর" autocomplete="new-password" required>
+                        {% for e in form.password.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label fw-bold text-secondary small" for="id_password2">আবার পাসওয়ার্ড</label>
+                        <input type="password" id="id_password2" name="password2"
+                               class="form-control{% if form.password2.errors %} is-invalid{% endif %}" placeholder="আবার লিখুন" autocomplete="new-password" required>
+                        {% for e in form.password2.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
                     </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold text-secondary small" for="signup-password">Password</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock-fill"></i></span>
-                        <input type="password" id="signup-password" name="password" class="form-control border-start-0" placeholder="Create a password" autocomplete="new-password" required>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold text-secondary small" for="signup-password2">Retype Password</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock-fill"></i></span>
-                        <input type="password" id="signup-password2" name="confirm_password" class="form-control border-start-0" placeholder="Retype password" autocomplete="new-password" required>
-                    </div>
-                </div>
+
                 <p class="consent-note mb-3">
                     অ্যাকাউন্ট খুলে আপনি আমাদের <a href="{% url 'terms' %}" target="_blank">শর্তাবলি</a> আর
                     <a href="{% url 'privacy_policy' %}" target="_blank">প্রাইভেসি পলিসি</a> মেনে নিচ্ছেন।
                 </p>
-                <button type="submit" class="btn btn-signup w-100 shadow-sm"><i class="bi bi-arrow-right-circle-fill me-2"></i> Next: Setup Shop</button>
+                <button type="submit" class="btn btn-signup w-100 shadow-sm"><i class="bi bi-shop me-2"></i> ফ্রি দোকান খুলুন</button>
             </form>
 
             <!-- Facebook Signup Option (Admin-এ Facebook Social App যোগ করলে তবেই দেখাবে) -->
@@ -85,14 +119,19 @@
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                     </svg>
-                    Facebook দিয়ে শুরু করুন (সবচেয়ে সহজ)
+                    Facebook দিয়ে শুরু করুন
                 </a>
             </div>
             {% endif %}
             <div class="text-center mt-4 pt-3 border-top">
-                <p class="text-muted small mb-0">আগে থেকেই একাউন্ট আছে? <a href="{% url 'login' %}" class="fw-bold text-decoration-none" style="color: #fd7e14;">Login Here</a></p>
+                <p class="text-muted small mb-0">আগে থেকেই একাউন্ট আছে? <a href="{% url 'login' %}" class="fw-bold text-decoration-none" style="color: #fd7e14;">লগইন করুন</a></p>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% include 'store/partials/subdomain_check_js.html' %}
+<script>ssSubdomainCheck('id_subdomain', 'subdomain-result', 'id_shop_name');</script>
 {% endblock %}

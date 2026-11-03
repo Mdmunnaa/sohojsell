@@ -32,11 +32,18 @@ if not SECRET_KEY:
         raise ImproperlyConfigured('SECRET_KEY environment variable সেট করা নেই।')
     SECRET_KEY = 'django-insecure-local-dev-only'
 
+# দোকানের সাবডোমেইন যে ডোমেইনের নিচে বসবে (যেমন sohojsell.com → munnafashion.sohojsell.com)।
+# ডোমেইন কিনে Render-এ *.ডোমেইন যোগ করার পর Environment-এ বসাবেন। খালি থাকলে দোকানের লিংক হয় /shop/<নাম>/
+STORE_BASE_DOMAIN = os.environ.get('STORE_BASE_DOMAIN', '').strip().lower().strip('.')
+
 ALLOWED_HOSTS = [
     'localhost', '127.0.0.1', '.sohojsell.com',
     '.pythonanywhere.com',  # পুরনো সার্ভার, পুরোপুরি Render-এ গেলে সরিয়ে দিন
 ] + env_list('ALLOWED_HOSTS')
 CSRF_TRUSTED_ORIGINS = ['https://sohojsell.com', 'https://*.sohojsell.com'] + env_list('CSRF_TRUSTED_ORIGINS')
+if STORE_BASE_DOMAIN:
+    ALLOWED_HOSTS.append(f'.{STORE_BASE_DOMAIN}')
+    CSRF_TRUSTED_ORIGINS += [f'https://{STORE_BASE_DOMAIN}', f'https://*.{STORE_BASE_DOMAIN}']
 
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:

@@ -75,7 +75,7 @@ class PublicPagesTests(TestCase):
             self.assertIn('ss-nav', html, name)
             self.assertIn(reverse('refund_policy'), html, name)
         signup = self.client.get(reverse('signup')).content.decode()
-        self.assertIn('৩০ দিনের ফ্রি ট্রায়াল', signup)
+        self.assertIn('৩০ দিন সব ফিচার ফ্রি', signup)
         self.assertIn(reverse('terms'), signup)
 
     @override_settings(SUPPORT_PHONE='01811111111', SUPPORT_EMAIL='help@example.com')
@@ -271,3 +271,61 @@ class FacebookDisconnectTests(ShopTestMixin, TestCase):
         self.assertFalse(FacebookPageConnection.objects.filter(shop=shop).exists())
         self.assertFalse(SocialToken.objects.filter(account=account).exists())
         self.assertTrue(SocialAccount.objects.filter(pk=account.pk).exists())   # লগইন সংযোগ থাকে
+
+
+class SubdomainAndStorefrontTests(ShopTestMixin, TestCase):
+    def test_shop_without_slug_gets_valid_subdomain_even_with_bengali_name(self):
+        user = User.objects.create_user(phone_number='01600000000', password='x123456')
+        shop = Shop.objects.create(user=user, name='রহিম ফ্যাশন')
+        self.assertRegex(shop.slug, r'^shop\d{6}$')
+        other = Shop.objects.create(user=User.objects.create_user(phone_number='01600000001', password='x'),
+                                    name='Rahim Fashion')
+        self.assertEqual(other.slug, 'rahimfashion')
+
+    def test_setup_shop_for_user_without_shop(self):
+        user = User.objects.create_user(phone_number='01600000002', password='x123456')
+        self.client.force_login(user)
+        response = self.client.post(reverse('setup_shop'), {'shop_name': 'FB Shop', 'subdomain': 'fbshop'})
+        self.assertRedirects(response, reverse('dashboard'), fetch_redirect_response=False)
+        self.assertEqual(Shop.objects.get(user=user).slug, 'fbshop')
+
+    def test_settings_can_change_subdomain_with_validation(self):
+        _user, shop = self.make_shop()
+        Shop.objects.create(user=User.objects.create_user(phone_number='01600000003', password='x'),
+                            name='Other', slug='takenname')
+        base = {'name': shop.name, 'phone': shop.phone, 'address': 'Dhaka', 'is_sms_active': 'on'}
+        response = self.client.post(reverse('settings'), {**base, 'subdomain': 'takenname'})
+        self.assertEqual(response.status_code, 200)
+        shop.refresh_from_db()
+        self.assertNotEqual(shop.slug, 'takenname')
+        self.client.post(reverse('settings'), {**base, 'subdomain': 'New-Name'})
+        shop.refresh_from_db()
+        self.assertEqual(shop.slug, 'new-name')
+
+    def test_storefront_open_in_trial_and_basic(self):
+        for plan in ['Free', 'Basic', 'Standard', 'Premium']:
+            _user, shop = self.make_shop(phone=f'0171{len(plan):07d}', subscription_plan=plan,
+                                         valid_until=timezone.localdate() + timedelta(days=5))
+            response = self.client.get(reverse('storefront_home', args=[shop.slug]))
+            self.assertTemplateUsed(response, 'store/storefront/home.html', plan)
+
+    def test_storefront_stays_open_7_days_after_expiry_then_closes(self):
+        _user, shop = self.make_shop(subscription_plan='Basic',
+                                     valid_until=timezone.localdate() - timedelta(days=7))
+        self.assertTemplateUsed(self.client.get(reverse('storefront_home', args=[shop.slug])),
+                                'store/storefront/home.html')
+        shop.valid_until = timezone.localdate() - timedelta(days=8)
+        shop.save()
+        self.assertTemplateUsed(self.client.get(reverse('storefront_home', args=[shop.slug])),
+                                'store/storefront/offline.html')
+
+    def test_trial_expiry_closes_after_grace(self):
+        _user, shop = self.make_shop()
+        shop.trial_ends_at = timezone.now() - timedelta(days=10)
+        shop.save()
+        self.assertTemplateUsed(self.client.get(reverse('storefront_home', args=[shop.slug])),
+                                'store/storefront/offline.html')
+
+    def test_trial_can_use_pos(self):
+        _user, shop = self.make_shop()
+        self.assertEqual(self.client.get(reverse('pos')).status_code, 200)

@@ -17,6 +17,7 @@ from datetime import timedelta
 import random
 
 from .models import Shop, Product, Category, Order, OrderItem, Customer, MasterSetting, Banner
+from .plans import storefront_closes_on, storefront_is_open
 from .forms import ShopSetupForm, ProductForm, OrderCreateForm, ShopSettingsForm
 
 
@@ -96,21 +97,35 @@ def seller_dashboard(request):
 # ============================================================
 @login_required(login_url='/accounts/login/')
 def setup_shop(request):
+    """
+    দোকান ছাড়া লগইন করা ইউজার (যেমন Facebook দিয়ে প্রথমবার আসা) এখানে দোকানের নাম আর
+    নিজের সাবডোমেইন দেয়। সাধারণ সাইনআপে এই ধাপ লাগে না, সেখানে এক পেইজেই সব হয়।
+    """
+    from django.db import IntegrityError
+    from accounts.forms import ShopDetailsForm, normalize_bd_mobile
+
     if hasattr(request.user, 'shop'):
         return redirect('dashboard')
 
-    if request.method == 'POST':
-        Shop.objects.create(
-            user=request.user,
-            name=request.POST.get('shop_name'),
-            phone=request.user.phone_number,
-            address=request.POST.get('address'),
-            facebook_page_url=request.POST.get('fb_link')
-        )
-        messages.success(request, "Shop setup complete! Welcome to your dashboard.")
-        return redirect('dashboard')
+    form = ShopDetailsForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        data = form.cleaned_data
+        try:
+            Shop.objects.create(
+                user=request.user,
+                name=data['shop_name'],
+                slug=data['subdomain'],
+                phone=normalize_bd_mobile(request.user.phone_number) or None,
+                address=data.get('address') or None,
+                facebook_page_url=data.get('fb_link') or None,
+            )
+        except IntegrityError:
+            form.add_error('subdomain', 'এই ঠিকানা এইমাত্র অন্য কেউ নিয়েছে, অন্যটা বেছে নিন।')
+        else:
+            messages.success(request, "🎉 দোকান তৈরি হয়েছে! ৩০ দিন সব ফিচার ফ্রি।")
+            return redirect('dashboard')
 
-    return render(request, 'store/setup_shop.html')
+    return render(request, 'store/setup_shop.html', {'form': form})
 
 
 # ============================================================
@@ -203,13 +218,6 @@ def order_create(request):
     shop = request.user.shop
 
     if request.method == 'POST':
-        # Free plan invoice limit
-        if shop.subscription_plan == 'Free':
-            order_count = Order.objects.filter(shop=shop).count()
-            if order_count >= 30:
-                messages.error(request, "Free plan limit (30 invoices) reached! Please upgrade.")
-                return redirect('order_list')
-
         c_name = request.POST.get('customer_name')
         c_phone = request.POST.get('customer_phone')
         c_address = request.POST.get('customer_address')
@@ -732,18 +740,10 @@ def steadfast_webhook(request):
 def public_shop(request, shop_slug):
     shop = get_object_or_404(Shop, slug=shop_slug)
 
-    if shop.subscription_plan in ['Free', 'Basic']:
-        return HttpResponse(
-            f"<div style='text-align:center;margin-top:100px;font-family:sans-serif;'>"
-            f"<h2>{shop.name} is currently offline.</h2>"
-            f"<p>This shop needs to upgrade to Standard or Premium plan.</p>"
-            f"</div>"
-        )
+    if not storefront_is_open(shop):
+        return render(request, 'store/storefront/offline.html', {'shop': shop})
 
     products = Product.objects.filter(shop=shop, is_active=True, stock_quantity__gt=0)
-    if shop.subscription_plan == 'Standard':
-        products = products[:20]
-
     return render(request, 'store/public_shop.html', {'shop': shop, 'products': products})
 
 
@@ -950,11 +950,6 @@ def pos_dashboard(request):
     """Superfast POS interface for offline sales"""
     shop = request.user.shop
 
-    # Plan check - POS is available for Basic and above
-    if shop.subscription_plan == 'Free':
-        messages.warning(request, "POS System is available on Basic Plan and above. Please upgrade!")
-        return redirect('billing')
-
     categories = Category.objects.filter(shop=shop)
     products = Product.objects.filter(shop=shop, is_active=True, stock_quantity__gt=0).select_related('category')
 
@@ -1085,7 +1080,8 @@ def storefront_home(request, shop_slug):
     """Public e-commerce store for customers"""
     shop = get_object_or_404(Shop, slug=shop_slug)
 
-    if shop.subscription_plan in ['Free', 'Basic']:
+    # ট্রায়ালে আর সব প্ল্যানে চালু; মেয়াদ শেষের পর ৭ দিন পর্যন্ত চালু, তারপর বন্ধ
+    if not storefront_is_open(shop):
         return render(request, 'store/storefront/offline.html', {'shop': shop})
 
     # ==========================================================
@@ -1126,10 +1122,6 @@ def storefront_home(request, shop_slug):
     if search:
         products = products.filter(name__icontains=search)
 
-    # ৩. একদম শেষে Standard plan এর জন্য max 20 products লিমিট (Slice) করুন
-    if shop.subscription_plan == 'Standard':
-        products = products[:20]
-
     # QuerySet কে List এ কনভার্ট করে নিচ্ছি যেন রেন্ডম ভ্যালুগুলো টেমপ্লেটে ঠিকমতো যায়
     products = list(products)
 
@@ -1156,7 +1148,7 @@ def storefront_product_detail(request, shop_slug, product_id):
     """Customer-facing single product details page with related products"""
     shop = get_object_or_404(Shop, slug=shop_slug)
 
-    if shop.subscription_plan in ['Free', 'Basic']:
+    if not storefront_is_open(shop):
         return redirect('storefront_home', shop_slug=shop_slug)
 
     product = get_object_or_404(Product, id=product_id, shop=shop, is_active=True)
@@ -1215,7 +1207,7 @@ def storefront_checkout(request, shop_slug):
     shop = get_object_or_404(Shop, slug=shop_slug)
 
     # Plan check — Free/Basic shops don't have storefront checkout
-    if shop.subscription_plan in ['Free', 'Basic']:
+    if not storefront_is_open(shop):
         return redirect('storefront_home', shop_slug=shop_slug)
 
     # ── BUG FIX: cart validation — cart data comes from JS/localStorage
@@ -1236,8 +1228,8 @@ def storefront_place_order(request, shop_slug):
         return JsonResponse({'success': False, 'error': 'Invalid request'})
 
     shop = get_object_or_404(Shop, slug=shop_slug)
-    if shop.subscription_plan in ['Free', 'Basic']:
-        return JsonResponse({'success': False, 'error': 'Shop not active'})
+    if not storefront_is_open(shop):
+        return JsonResponse({'success': False, 'error': 'এই দোকান এখন অর্ডার নিচ্ছে না।'})
 
     try:
         data = json.loads(request.body)
@@ -1638,6 +1630,8 @@ def billing_page(request):
         'pending_request': pending_request,
         'payment_history': payment_history,
         'online_payment_available': online_payment_available(shop),
+        'storefront_open': storefront_is_open(shop),
+        'storefront_closes_on': storefront_closes_on(shop),
         'paystation_sandbox': paystation.current_environment() == 'sandbox',
         'online_payments': shop.online_payments.all()[:10],
     })

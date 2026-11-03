@@ -70,6 +70,30 @@ class OrderCreateForm(forms.Form):
 # Settings Page এর ফর্ম
 # Settings Page এর ফর্ম
 class ShopSettingsForm(forms.ModelForm):
+    # দোকানের সাবডোমেইন (ডেটাবেসে slug) — বদলালে আগে শেয়ার করা লিংক আর কাজ করবে না
+    subdomain = forms.CharField(
+        max_length=40,
+        widget=forms.TextInput(attrs={'class': 'form-control text-end fw-semibold', 'autocomplete': 'off',
+                                      'autocapitalize': 'off', 'spellcheck': 'false', 'id': 'id_subdomain'}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['subdomain'].initial = self.instance.slug
+        self.fields['subdomain'].error_messages['required'] = 'ওয়েবসাইটের ঠিকানা দিন।'
+
+    def clean_subdomain(self):
+        from .subdomains import normalize, validate_subdomain
+        value = normalize(self.cleaned_data['subdomain'])
+        if self.instance and value == self.instance.slug:
+            return value
+        return validate_subdomain(value, exclude_shop_id=self.instance.pk if self.instance else None)
+
+    def save(self, commit=True):
+        self.instance.slug = self.cleaned_data['subdomain']
+        return super().save(commit=commit)
+
     class Meta:
         model = Shop
         # fields লিস্টে নতুন ফিল্ডগুলো যুক্ত করা হয়েছে

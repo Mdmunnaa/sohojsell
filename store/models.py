@@ -38,7 +38,7 @@ class Shop(models.Model):
     is_sms_active = models.BooleanField(default=True, help_text="Turn on/off SMS sending")
     # SaaS Plan
     PLAN_CHOICES = (
-        ('Free', 'Free (Trial)'),
+        ('Free', 'Free Trial (30 days)'),
         ('Basic', 'Basic'),
         ('Standard', 'Standard'),
         ('Premium', 'Premium'),
@@ -73,14 +73,36 @@ class Shop(models.Model):
         return max(0, diff)
 
     def save(self, *args, **kwargs):
+        # সাবডোমেইন সাধারণত সাইনআপে সেলার নিজে বাছে। অ্যাডমিন বা পুরনো কোড থেকে খালি এলে
+        # নাম থেকে (বাংলা নাম হলে এলোমেলো) একটা বৈধ সাবডোমেইন বসে — আগে বাংলা নামে slug খালি হয়ে যেত।
+        from .subdomains import generate_unique, normalize
+        if self.slug:
+            self.slug = normalize(self.slug)
         if not self.slug:
-            self.slug = slugify(self.name)
-            original_slug = self.slug
-            count = 1
-            while Shop.objects.filter(slug=self.slug).exists():
-                self.slug = f'{original_slug}-{count}'
-                count += 1
+            self.slug = generate_unique(self.name, exclude_shop_id=self.pk)
         super().save(*args, **kwargs)
+
+    @property
+    def subdomain(self):
+        return self.slug
+
+    @property
+    def storefront_url(self):
+        """
+        কাস্টমারকে দেওয়ার মতো দোকানের লিংক।
+        STORE_BASE_DOMAIN বসানো থাকলে https://<সাবডোমেইন>.<ডোমেইন>/, না থাকলে (ডোমেইন কেনার আগে) /shop/<সাবডোমেইন>/।
+        """
+        from django.conf import settings
+        from django.urls import reverse
+        base = getattr(settings, 'STORE_BASE_DOMAIN', '')
+        if base:
+            return f'https://{self.slug}.{base}/'
+        return reverse('storefront_home', args=[self.slug])
+
+    @property
+    def storefront_host_preview(self):
+        from django.conf import settings
+        return f"{self.slug}.{getattr(settings, 'STORE_BASE_DOMAIN', '') or 'sohojsell.com'}"
 
     def __str__(self):
         return self.name

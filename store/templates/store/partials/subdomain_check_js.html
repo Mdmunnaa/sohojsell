@@ -1,0 +1,47 @@
+<script>
+/* সাবডোমেইন লেখার সাথে সাথে খালি কিনা দেখানো। ব্যবহার: ssSubdomainCheck('ইনপুটের id', 'ফলাফলের id', 'নামের ইনপুটের id বা null') */
+function ssSubdomainCheck(inputId, resultId, nameId) {
+  var input = document.getElementById(inputId);
+  var result = document.getElementById(resultId);
+  var nameInput = nameId ? document.getElementById(nameId) : null;
+  if (!input || !result) return;
+  var timer = null, touched = input.value.length > 0, lastAsked = '';
+
+  function clean(v) {
+    return (v || '').toLowerCase().replace(/[০-৯]/g, function (d) { return '০১২৩৪৫৬৭৮৯'.indexOf(d); })
+      .replace(/\s+/g, '').replace(/[^a-z0-9-]/g, '');
+  }
+  function show(ok, text, suggestion) {
+    result.className = 'small mt-1 fw-semibold ' + (ok === null ? 'text-muted' : ok ? 'text-success' : 'text-danger');
+    result.textContent = text || '';
+    if (suggestion) {
+      var a = document.createElement('a');
+      a.href = '#'; a.textContent = ' ' + suggestion + ' নিন';
+      a.addEventListener('click', function (e) { e.preventDefault(); input.value = suggestion; ask(); });
+      result.appendChild(a);
+    }
+  }
+  function ask() {
+    var v = clean(input.value);
+    if (v !== input.value) input.value = v;
+    if (v.length < 3) { show(null, v ? 'কমপক্ষে ৩ অক্ষর' : ''); return; }
+    if (v === lastAsked) return;
+    lastAsked = v;
+    show(null, 'দেখছি...');
+    fetch('{% url "check_subdomain" %}?s=' + encodeURIComponent(v), {headers: {'Accept': 'application/json'}})
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (clean(input.value) === v) show(d.ok, d.message, d.ok ? '' : d.suggestion); })
+      .catch(function () { show(null, ''); });
+  }
+  input.addEventListener('input', function () { touched = true; lastAsked = ''; clearTimeout(timer); timer = setTimeout(ask, 400); });
+  if (nameInput) {
+    nameInput.addEventListener('input', function () {
+      if (touched) return;
+      // ইংরেজি নাম হলে সেখান থেকে প্রস্তাব (বাংলা নামে সেলার নিজে লিখবে)
+      var v = clean(nameInput.value).replace(/-/g, '').slice(0, 30);
+      input.value = v; lastAsked = ''; clearTimeout(timer); timer = setTimeout(ask, 400);
+    });
+  }
+  if (input.value) ask();
+}
+</script>
