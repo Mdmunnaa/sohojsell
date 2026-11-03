@@ -695,3 +695,33 @@ class SoldCountTests(ShopTestMixin, TestCase):
         html = self.client.get('/shop/soldshop/', HTTP_HOST='localhost').content.decode()
         self.assertNotIn('বিক্রি হয়েছে', html)
         self.assertNotIn('বেশি বিক্রি', html)
+
+
+class ComparePriceTests(ShopTestMixin, TestCase):
+    def test_discount_shows_only_from_seller_old_price(self):
+        from .models import Product
+        _user, shop = self.make_shop(slug='saleshop')
+        base = {'name': 'Kurti', 'price': 800, 'cost_price': 500, 'stock_quantity': 3, 'is_active': 'on'}
+        bad = self.client.post(reverse('add_product'), {**base, 'compare_price': 700})
+        self.assertEqual(bad.status_code, 200)                       # আগের দাম কম হলে নেয় না
+        self.assertFalse(Product.objects.filter(shop=shop).exists())
+        self.client.post(reverse('add_product'), {**base, 'compare_price': 1000})
+        product = Product.objects.get(shop=shop)
+        self.assertEqual(product.discount_percent, 20)
+        Product.objects.create(shop=shop, name='Plain', price=500, cost_price=300, stock_quantity=2)
+        html = self.client.get('/shop/saleshop/', HTTP_HOST='localhost').content.decode()
+        self.assertIn('ছাড় চলছে', html)
+        self.assertIn('-20%', html)
+        self.assertIn('৳1000', html)
+        self.assertEqual(html.count('-20%'), 2)                        # ছাড়ের সারি + প্রোডাক্ট কার্ড
+        detail = self.client.get(f'/shop/saleshop/product/{product.id}/', HTTP_HOST='localhost').content.decode()
+        self.assertIn('-20%', detail)
+
+    def test_no_sale_row_without_real_discount(self):
+        from .models import Product
+        _user, shop = self.make_shop(slug='plainshop')
+        Product.objects.create(shop=shop, name='Plain', price=500, cost_price=300, stock_quantity=2)
+        html = self.client.get('/shop/plainshop/', HTTP_HOST='localhost').content.decode()
+        self.assertIn('নতুন এসেছে', html)
+        self.assertNotIn('ছাড় চলছে', html)
+        self.assertNotIn('%</', html)

@@ -15,7 +15,8 @@ class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
         # এখানে 'description' অ্যাড করা হয়েছে
-        fields = ['name', 'category', 'description', 'cost_price', 'price', 'stock_quantity', 'is_active', 'image']
+        fields = ['name', 'category', 'description', 'cost_price', 'price', 'compare_price', 'stock_quantity',
+                  'is_active', 'image']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Product name'}),
             'category': forms.Select(attrs={'class': 'form-select'}),
@@ -23,9 +24,18 @@ class ProductForm(forms.ModelForm):
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Write product details here...'}),
             'cost_price': forms.NumberInput(attrs={'class': 'form-control'}),
             'price': forms.NumberInput(attrs={'class': 'form-control'}),
+            'compare_price': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'যেমন 1200'}),
             'stock_quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             'image': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
         }
+
+    def clean(self):
+        data = super().clean()
+        compare, price = data.get('compare_price'), data.get('price')
+        if compare is not None and price is not None and compare <= price:
+            self.add_error('compare_price', 'আগের দাম বিক্রির দামের চেয়ে বেশি হতে হবে, নইলে ফাঁকা রাখুন।')
+        return data
+
 
 class OrderCreateForm(forms.Form):
     customer_name = forms.CharField(

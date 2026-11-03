@@ -285,7 +285,9 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 
     <!-- INFO CARD -->
     <div class="info-card">
-      <div class="price-main">৳{{ product.price|floatformat:0 }}</div>
+      <div class="price-main">৳{{ product.price|floatformat:0 }}{% if product.discount_percent %}
+        <span style="font-size:16px;font-weight:600;color:var(--muted);text-decoration:line-through;letter-spacing:0;">৳{{ product.compare_price|floatformat:0 }}</span>
+        <span style="font-size:13px;font-weight:800;background:#FF3333;color:#fff;padding:3px 8px;border-radius:6px;letter-spacing:0;vertical-align:middle;">-{{ product.discount_percent }}%</span>{% endif %}</div>
       <div class="prod-title-text">{{ product.name }}</div>
 
       <div class="meta-row">
@@ -340,7 +342,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
           </div>
           <div class="rel-body">
             <div class="rel-name">{{ rp.name }}</div>
-            <div class="rel-price">৳{{ rp.price|floatformat:0 }}</div>
+            <div class="rel-price">৳{{ rp.price|floatformat:0 }}{% if rp.discount_percent %} <span style="font-size:11px;font-weight:600;color:var(--muted);text-decoration:line-through;">৳{{ rp.compare_price|floatformat:0 }}</span>{% endif %}</div>
           </div>
         </a>
         {% endfor %}

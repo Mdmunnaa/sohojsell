@@ -92,6 +92,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 .prod-body { padding: 12px; flex: 1; display: flex; flex-direction: column; }
 .prod-title { font-size: 13px; font-weight: 700; color: var(--dark); line-height: 1.4; height: 36px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 6px; }
 .prod-price { font-size: 18px; font-weight: 900; color: var(--orange); letter-spacing: -0.5px; }
+.prod-old { font-size: 12px; font-weight: 600; color: var(--muted); text-decoration: line-through; letter-spacing: 0; }
 .prod-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
 
 /* ===== TRUST BADGES ===== */
@@ -259,13 +260,13 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 </div>
 
 {# নতুন প্রোডাক্ট (আগে এখানে বানানো ছাড় আর শেষ না হওয়া টাইমার ছিল) #}
-{% if new_arrivals %}
+{% if highlight_products %}
 <div class="flash-sale-wrap">
   <div class="flash-header">
-    <div class="flash-title"><i class="bi bi-stars"></i> নতুন এসেছে</div>
+    <div class="flash-title">{% if highlight_is_sale %}<i class="bi bi-lightning-charge-fill"></i> ছাড় চলছে{% else %}<i class="bi bi-stars"></i> নতুন এসেছে{% endif %}</div>
   </div>
   <div class="flash-scroll">
-    {% for product in new_arrivals %}
+    {% for product in highlight_products %}
     <a href="{% shop_url 'storefront_product_detail' shop product.id %}" class="flash-card">
       <div class="flash-img-wrap">
         {% if product.image %}
@@ -273,8 +274,10 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
         {% else %}
         <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:30px;color:#ccc;"><i class="bi bi-image"></i></div>
         {% endif %}
+        {% if product.discount_percent %}<div class="flash-discount">-{{ product.discount_percent }}%</div>{% endif %}
       </div>
       <div class="flash-price">৳{{ product.price|floatformat:0 }}</div>
+      {% if product.discount_percent %}<div class="flash-old">৳{{ product.compare_price|floatformat:0 }}</div>{% endif %}
     </a>
     {% endfor %}
   </div>
@@ -296,7 +299,8 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
       <div class="prod-no-img"><i class="bi bi-box"></i></div>
       {% endif %}
       <div class="prod-badge-wrap">
-        {% if product.id in top_seller_ids %}<span class="badge-hot">বেশি বিক্রি</span>{% endif %}
+        {% if product.discount_percent %}<span class="badge-hot">-{{ product.discount_percent }}%</span>{% endif %}
+        {% if product.id in top_seller_ids %}<span class="badge-hot" style="background:#10B981;box-shadow:none;">বেশি বিক্রি</span>{% endif %}
       </div>
       <button class="quick-add" id="btn-{{ product.id }}"
         onclick="event.stopPropagation(); addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{% if product.image %}{{ product.image.url }}{% else %}{% endif %}')">
@@ -305,7 +309,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     </div>
     <div class="prod-body">
       <div class="prod-title">{{ product.name }}</div>
-      <div class="prod-price">৳{{ product.price|floatformat:0 }}</div>
+      <div class="prod-price">৳{{ product.price|floatformat:0 }}{% if product.discount_percent %} <span class="prod-old">৳{{ product.compare_price|floatformat:0 }}</span>{% endif %}</div>
       {% if product.sold_count %}<div class="prod-sub"><i class="bi bi-bag-check-fill text-success"></i> {{ product.sold_count }}টা বিক্রি হয়েছে</div>{% endif %}
     </div>
   </div>

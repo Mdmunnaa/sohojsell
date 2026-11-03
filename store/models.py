@@ -143,6 +143,9 @@ class Product(models.Model):
     image = models.ImageField(upload_to='products/', blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    # সেলারের দেওয়া আগের দাম; বিক্রির দামের চেয়ে বেশি হলে ওয়েবসাইটে কেটে দেওয়া দাম আর % ছাড় দেখায়
+    compare_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True,
+                                        help_text='আগের দাম (ছাড় দেখাতে)')
     stock_quantity = models.PositiveIntegerField(default=0)
     barcode = models.CharField(max_length=50, blank=True, null=True, unique=True, help_text='Leave blank to auto-generate')
     is_active = models.BooleanField(default=True)
@@ -154,6 +157,13 @@ class Product(models.Model):
             import random, string
             self.barcode = ''.join(random.choices(string.digits, k=12))
         super().save(*args, **kwargs)
+
+    @property
+    def discount_percent(self):
+        """আগের দাম থেকে কত % কম (পূর্ণ সংখ্যা)। ছাড় না থাকলে 0।"""
+        if self.compare_price and self.price and self.compare_price > self.price:
+            return int((self.compare_price - self.price) * 100 / self.compare_price)
+        return 0
 
     def __str__(self):
         return self.name

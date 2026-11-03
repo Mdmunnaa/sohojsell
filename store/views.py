@@ -1129,7 +1129,10 @@ def storefront_home(request, shop_slug):
         'shop': shop,
         'products': products,
         'top_seller_ids': top_seller_ids,
-        'new_arrivals': sorted(products, key=lambda p: p.created_at, reverse=True)[:6],
+        # ছাড় থাকলে "ছাড় চলছে", না থাকলে নতুন প্রোডাক্ট
+        'highlight_products': ([p for p in products if p.discount_percent][:8]
+                               or sorted(products, key=lambda p: p.created_at, reverse=True)[:6]),
+        'highlight_is_sale': any(p.discount_percent for p in products),
         'categories': categories,
         'banners': banners,
         'product_data_json': json.dumps(product_data),

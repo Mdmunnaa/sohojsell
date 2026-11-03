@@ -138,6 +138,14 @@
                 </div>
             </div>
 
+            <!-- আগের দাম (ছাড়) -->
+            <div class="mb-4">
+                <label class="form-label">আগের দাম <span class="text-muted fw-normal">(ঐচ্ছিক, ছাড় দেখাতে)</span></label>
+                {{ form.compare_price }}
+                {% if form.compare_price.errors %}<div class="text-danger small mt-1">{{ form.compare_price.errors.0 }}</div>{% endif %}
+                <div class="form-text">আগে যে দামে বিক্রি করতেন সেটা দিন। ওয়েবসাইটে কেটে দেওয়া দাম আর % ছাড় দেখাবে। ছাড় না থাকলে ফাঁকা রাখুন।</div>
+            </div>
+
             <!-- Barcode Field with Camera Scan Button -->
             <div class="mb-4">
                 <label class="form-label w-100 d-flex justify-content-between align-items-center">
