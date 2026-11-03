@@ -4,6 +4,9 @@
 # ============================================================
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth.account.adapter import DefaultAccountAdapter
+from allauth.core.exceptions import ImmediateHttpResponse
+from django.contrib import messages
+from django.shortcuts import redirect
 from django.urls import reverse
 
 
@@ -12,6 +15,20 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
     - Connect (phone দিয়ে লগইন করা সেলার) সফল হলে → fb_page_select
     - Login-এর পরের redirect ঠিক করে AccountAdapter.get_login_redirect_url
     """
+    def get_app(self, request, provider, client_id=None):
+        """
+        Django Admin-এ Facebook Social App যোগ না করা পর্যন্ত কেউ Facebook লগইনে গেলে
+        500 error না দেখিয়ে লগইন পেইজে ফেরত পাঠাবে।
+        """
+        from allauth.socialaccount.models import SocialApp
+        try:
+            return super().get_app(request, provider, client_id=client_id)
+        except SocialApp.DoesNotExist:
+            if request is None:
+                raise
+            messages.warning(request, "Facebook লগইন এখনো চালু হয়নি। আপাতত মোবাইল নম্বর দিয়ে লগইন করুন।")
+            raise ImmediateHttpResponse(redirect('login'))
+
     def get_connect_redirect_url(self, request, socialaccount):
         return reverse('fb_page_select')
 

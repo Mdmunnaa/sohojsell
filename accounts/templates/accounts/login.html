@@ -111,7 +111,8 @@
                             </button>
                         </form>
 
-                        <!-- Facebook Login Button -->
+                        <!-- Facebook Login Button (Admin-এ Facebook Social App যোগ করলে তবেই দেখাবে) -->
+                        {% if facebook_login_enabled %}
                         <div class="text-center my-3">
                             <div class="d-flex align-items-center gap-2 mb-3">
                                 <hr class="flex-grow-1">
@@ -129,6 +130,7 @@
                                 Facebook দিয়ে লগইন করুন
                             </a>
                         </div>
+                        {% endif %}
 
                         <div class="text-center mt-3 pt-3 border-top">
                             <p class="text-muted small mb-0">একাউন্ট নেই? <a href="/accounts/signup/" class="fw-bold text-decoration-none text-primary">Create Free Shop</a></p>
