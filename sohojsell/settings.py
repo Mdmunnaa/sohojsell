@@ -1,13 +1,53 @@
 from pathlib import Path
 import os
 
+import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-q11n*d#z()f8tg3*3@9%0m)5o&e#6*bp)*wpbb6!7=1qitsio^'
 
-DEBUG = True
+def env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ('1', 'true', 'yes', 'on')
 
-ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', '.sohojsell.com', '.pythonanywhere.com']
+
+def env_list(name):
+    return [item.strip() for item in os.environ.get(name, '').split(',') if item.strip()]
+
+
+# Render নিজে থেকে RENDER নামে একটা environment variable দেয়
+IS_RENDER = 'RENDER' in os.environ
+
+# ============================================================
+# নিরাপত্তা — সব গোপন জিনিস environment variable থেকে
+# ============================================================
+DEBUG = env_bool('DEBUG', default=not IS_RENDER)
+
+SECRET_KEY = os.environ.get('SECRET_KEY', '')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured('SECRET_KEY environment variable সেট করা নেই।')
+    SECRET_KEY = 'django-insecure-local-dev-only'
+
+ALLOWED_HOSTS = [
+    'localhost', '127.0.0.1', '.sohojsell.com',
+    '.pythonanywhere.com',  # পুরনো সার্ভার, পুরোপুরি Render-এ গেলে সরিয়ে দিন
+] + env_list('ALLOWED_HOSTS')
+CSRF_TRUSTED_ORIGINS = ['https://sohojsell.com', 'https://*.sohojsell.com'] + env_list('CSRF_TRUSTED_ORIGINS')
+
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_EXTERNAL_HOSTNAME}')
+
+# Render HTTPS শেষ করে request পাঠায়, তাই এই header দেখে বুঝতে হবে request https কিনা
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -17,21 +57,23 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',          # allauth-এর জন্য দরকার
-    'allauth',                        # নতুন
-    'allauth.account',                # নতুন
-    'allauth.socialaccount',          # নতুন
-    'allauth.socialaccount.providers.facebook',  # নতুন - Facebook provider
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.facebook',
+    'storages',                      # Cloudflare R2-তে ছবি রাখার জন্য
     'accounts',
     'store',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',     # static ফাইল (admin-এর CSS ইত্যাদি)
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'allauth.account.middleware.AccountMiddleware',   # নতুন — allauth-এর middleware
+    'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'store.subscription_middleware.SubscriptionMiddleware',
@@ -58,12 +100,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'sohojsell.wsgi.application'
 
+# ============================================================
+# ডেটাবেস — DATABASE_URL থাকলে Neon (PostgreSQL), না থাকলে লোকাল SQLite
+# ============================================================
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
+# Neon-এর pooled connection (host-এ "-pooler") হলে server-side cursor বন্ধ রাখতে হয়
+if '-pooler.' in os.environ.get('DATABASE_URL', ''):
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -77,12 +126,55 @@ TIME_ZONE = 'Asia/Dhaka'
 USE_I18N = True
 USE_TZ = True
 
+# ============================================================
+# Static ও Media ফাইল
+# ============================================================
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static'] if (BASE_DIR / 'static').exists() else []
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# R2-এর ৪টা তথ্য দেওয়া থাকলে প্রোডাক্টের ছবি, লোগো, ব্যানার Cloudflare R2-তে যাবে।
+# না থাকলে (লোকালে) আগের মতো media/ ফোল্ডারে।
+R2_ACCOUNT_ID = os.environ.get('R2_ACCOUNT_ID', '')
+R2_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID', '')
+R2_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY', '')
+R2_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME', '')
+# ছবির পাবলিক ঠিকানা, যেমন media.sohojsell.com বা pub-xxxx.r2.dev (https:// ছাড়া)
+R2_PUBLIC_DOMAIN = os.environ.get('R2_PUBLIC_DOMAIN', '').replace('https://', '').strip('/')
+USE_R2 = all([R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME])
+
+if USE_R2:
+    DEFAULT_STORAGE = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {
+            'bucket_name': R2_BUCKET_NAME,
+            'access_key': R2_ACCESS_KEY_ID,
+            'secret_key': R2_SECRET_ACCESS_KEY,
+            'endpoint_url': f'https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com',
+            'region_name': 'auto',
+            'signature_version': 's3v4',
+            'default_acl': None,
+            'file_overwrite': False,
+            'custom_domain': R2_PUBLIC_DOMAIN or None,
+            # পাবলিক ডোমেইন থাকলে সাধারণ লিংক; না থাকলে সাময়িক (signed) লিংক
+            'querystring_auth': not R2_PUBLIC_DOMAIN,
+        },
+    }
+else:
+    DEFAULT_STORAGE = {'BACKEND': 'django.core.files.storage.FileSystemStorage'}
+
+STORAGES = {
+    'default': DEFAULT_STORAGE,
+    'staticfiles': {
+        'BACKEND': (
+            'django.contrib.staticfiles.storage.StaticFilesStorage' if DEBUG
+            else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+        ),
+    },
+}
 
 AUTH_USER_MODEL = 'accounts.User'
 
@@ -93,6 +185,17 @@ SESSION_SAVE_EVERY_REQUEST = True
 
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
+
+# Render-এর Logs-এ error দেখার জন্য
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'root': {'handlers': ['console'], 'level': 'INFO'},
+    'loggers': {
+        'django': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+    },
+}
 
 # ============================================================
 # django-allauth কনফিগ
@@ -111,8 +214,22 @@ ACCOUNT_AUTHENTICATION_METHOD = 'username'
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_REQUIRED = False
 
+# আমাদের User model-এ username/email ফিল্ড নেই — allauth-কে জানাতে হবে,
+# নইলে `migrate` (account.0006) FieldError দিয়ে ক্র্যাশ করে
+ACCOUNT_USER_MODEL_USERNAME_FIELD = 'phone_number'
+ACCOUNT_USER_MODEL_EMAIL_FIELD = None
+
+# Facebook token DB-তে রাখো — নইলে fb_page_select-এ SocialToken কখনো পাওয়া যাবে না
+SOCIALACCOUNT_STORE_TOKENS = True
+
+# Facebook শুধু https redirect URI মানে
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
+
 # Facebook login সফল হলে কোথায় যাবে
 SOCIALACCOUNT_LOGIN_ON_GET = True
+
+# Graph API ভার্সন এক জায়গায় — v21.0-এর মেয়াদ শেষ ২১ জানুয়ারি ২০২৭
+FACEBOOK_GRAPH_VERSION = 'v25.0'
 
 # Facebook App — Meta Developer Console থেকে নেবে
 SOCIALACCOUNT_PROVIDERS = {
@@ -126,6 +243,7 @@ SOCIALACCOUNT_PROVIDERS = {
             'pages_read_engagement',    # পোস্টে কমেন্ট পড়ার জন্য
             'pages_manage_posts',       # পোস্ট করার জন্য
             'pages_messaging',          # ইনবক্সে মেসেজ পাঠানোর জন্য
+            'pages_manage_metadata',    # Phase 2: পেইজে webhook subscribe করার জন্য
         ],
         'AUTH_PARAMS': {
             'auth_type': 'reauthenticate',
@@ -140,8 +258,8 @@ SOCIALACCOUNT_PROVIDERS = {
         'EXCHANGE_TOKEN': True,
         'LOCALE_FUNC': 'store.facebook_helpers.get_fb_locale',
         'VERIFIED_EMAIL': False,
-        'VERSION': 'v21.0',
-        'GRAPH_API_URL': 'https://graph.facebook.com/v21.0',
+        'VERSION': FACEBOOK_GRAPH_VERSION,
+        'GRAPH_API_URL': f'https://graph.facebook.com/{FACEBOOK_GRAPH_VERSION}',
     }
 }
 

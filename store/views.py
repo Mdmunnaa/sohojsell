@@ -14,7 +14,6 @@ from django.db.models import Count, Sum, Q
 from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from datetime import timedelta
-from xhtml2pdf import pisa
 import random
 
 from .models import Shop, Product, Category, Order, OrderItem, Customer, MasterSetting, Banner
@@ -664,9 +663,6 @@ def _send_sms(phone, text_message):
         client_id = setting.sms_client_id
         api_key = setting.sms_api_key
         sender_id = setting.sms_sender_id
-
-        print(f"🔑 Fetched Client ID: '{client_id}'")
-        print(f"🔑 Fetched API Key: '{api_key}'")
     except Exception as e:
         print(f"❌ DB Error: {e}")
         return False
@@ -2110,6 +2106,11 @@ def fb_disconnect(request):
 @login_required(login_url='/accounts/login/')
 def fb_connect(request):
     """Facebook এর সাথে connect করার redirect page"""
+    from allauth.socialaccount.models import SocialApp
+    # Django Admin-এ Facebook Social App যোগ না করা পর্যন্ত পেইজটা ক্র্যাশ না করে ড্যাশবোর্ডে ফেরত পাঠাবে
+    if not SocialApp.objects.filter(provider='facebook').exists():
+        messages.warning(request, "Facebook কানেক্ট এখনো চালু হয়নি, শিগগিরই আসছে।")
+        return redirect('dashboard')
     return render(request, 'store/fb_connect.html', {
         'shop': getattr(request.user, 'shop', None)
     })

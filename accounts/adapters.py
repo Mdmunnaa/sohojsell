@@ -9,34 +9,23 @@ from django.urls import reverse
 
 class SocialAccountAdapter(DefaultSocialAccountAdapter):
     """
-    Facebook login সফল হলে:
-    - নতুন user হলে → setup_shop পেইজে যাবে
-    - পুরনো user হলে → fb_page_select পেইজে যাবে (পেইজ select করতে)
+    - Connect (phone দিয়ে লগইন করা সেলার) সফল হলে → fb_page_select
+    - Login-এর পরের redirect ঠিক করে AccountAdapter.get_login_redirect_url
     """
     def get_connect_redirect_url(self, request, socialaccount):
         return reverse('fb_page_select')
 
-    def get_login_redirect_url(self, request):
-        # Shop আছে? তাহলে page select করতে যাও
-        if hasattr(request.user, 'shop'):
-            return reverse('fb_page_select')
-        # Shop নেই? তাহলে setup করতে যাও
-        return reverse('setup_shop')
-
-    def pre_social_login(self, request, sociallogin):
+    def save_user(self, request, sociallogin, form=None):
         """
-        Facebook থেকে আসা user-এর phone_number সেট করা
-        (আমাদের custom user model phone দিয়ে চলে)
+        নতুন Facebook user সেভ হওয়ার ঠিক আগে phone_number placeholder বসানো।
+        (pre_social_login-এ বসালে auto-signup ফ্লোতে সেটা হারিয়ে যায়)
         """
-        if sociallogin.is_existing:
-            return
-        # নতুন user — phone নম্বর না থাকলে FB ID দিয়ে placeholder দাও
         user = sociallogin.user
         if not user.phone_number:
-            fb_uid = sociallogin.account.uid
-            user.phone_number = f"fb_{fb_uid}"
-        if not user.name and sociallogin.account.extra_data:
-            user.name = sociallogin.account.extra_data.get('name', '')
+            user.phone_number = f"fb_{sociallogin.account.uid}"
+        if not user.name:
+            user.name = (sociallogin.account.extra_data or {}).get('name', '')
+        return super().save_user(request, sociallogin, form)
 
 
 class AccountAdapter(DefaultAccountAdapter):

@@ -1,0 +1,33 @@
+# Render Blueprint — Render ড্যাশবোর্ডে New > Blueprint দিয়ে এই রিপো বেছে নিলে
+# নিচের সেটিংস নিজে থেকে বসে যাবে। গোপন মানগুলো (sync: false) Render তখন চাইবে।
+services:
+  - type: web
+    name: sohojsell
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: ./build.sh
+    startCommand: gunicorn sohojsell.wsgi:application
+    autoDeploy: true
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: 2
+      - key: DATABASE_URL          # Neon-এর connection string
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_PUBLIC_DOMAIN      # যেমন pub-xxxx.r2.dev বা media.sohojsell.com
+        sync: false
+      - key: DJANGO_SUPERUSER_PHONE_NUMBER
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false

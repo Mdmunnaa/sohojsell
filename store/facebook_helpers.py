@@ -3,8 +3,9 @@
 # Facebook API helper functions
 # ============================================================
 import requests
+from django.conf import settings
 
-GRAPH_API = "https://graph.facebook.com/v21.0"
+GRAPH_API = f"https://graph.facebook.com/{settings.FACEBOOK_GRAPH_VERSION}"
 
 
 def get_fb_locale(request):

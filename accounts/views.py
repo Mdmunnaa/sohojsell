@@ -30,7 +30,8 @@ def signup(request):
             return redirect('signup')
 
         user = User.objects.create_user(phone_number=phone, password=p_word)
-        login(request, user)
+        # allauth যোগ হওয়ার পর দুটো auth backend আছে, তাই কোনটা দিয়ে লগইন সেটা বলে দিতে হয়
+        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
         messages.success(request, "🎉 Account created! Now set up your shop.")
         return redirect('setup_shop')
 

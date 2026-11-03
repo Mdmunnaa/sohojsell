@@ -20,7 +20,7 @@ class UserManager(BaseUserManager):
 
 # আমাদের কাস্টম ইউজার মডেল
 class User(AbstractBaseUser, PermissionsMixin):
-    phone_number = models.CharField(max_length=15, unique=True, verbose_name='Phone Number')
+    phone_number = models.CharField(max_length=32, unique=True, verbose_name='Phone Number')
     name = models.CharField(max_length=100, blank=True, null=True, verbose_name='Full Name')
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
