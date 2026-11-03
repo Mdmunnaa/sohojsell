@@ -748,3 +748,112 @@ class StorefrontThemeTests(ShopTestMixin, TestCase):
                                                'subdomain': 'themeshop2', 'storefront_theme': 'neon'})
         shop.refresh_from_db()
         self.assertEqual(shop.storefront_theme, 'orange')
+
+
+@override_settings(FACEBOOK_WEBHOOK_VERIFY_TOKEN='verify-me', FACEBOOK_APP_SECRET='app-secret',
+                   SITE_URL='https://sohojsell.onrender.com')
+class FacebookCommentBotTests(ShopTestMixin, TestCase):
+    PAGE = '111222333'
+
+    def setUp(self):
+        from django.core.cache import cache
+        from .models import Product
+        cache.clear()
+        self.user, self.shop = self.make_shop(slug='fbshop')     # ট্রায়াল: Facebook চালু
+        self.product = Product.objects.create(shop=self.shop, name='Three Piece', price=1450, compare_price=1800,
+                                              cost_price=900, stock_quantity=4)
+        self.conn = FacebookPageConnection.objects.create(shop=self.shop, page_id=self.PAGE, page_name='Munna Page',
+                                                          page_access_token='PAGE-TOKEN')
+
+    def _event(self, message='price?', comment='C1', sender='999', parent=None):
+        post = f'{self.PAGE}_55'
+        return {'object': 'page', 'entry': [{'id': self.PAGE, 'changes': [{'field': 'feed', 'value': {
+            'item': 'comment', 'verb': 'add', 'comment_id': f'55_{comment}', 'post_id': post,
+            'parent_id': parent or post, 'from': {'id': sender, 'name': 'Rahim Uddin'}, 'message': message}}]}]}
+
+    def _post(self, payload, secret='app-secret'):
+        import hashlib, hmac, json
+        body = json.dumps(payload).encode()
+        sig = 'sha256=' + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+        return self.client.post(reverse('facebook_webhook'), body, content_type='application/json',
+                                HTTP_X_HUB_SIGNATURE_256=sig)
+
+    def _fake_graph(self, post_text=''):
+        calls = []
+
+        def fake_post(url, params=None, timeout=None, **kwargs):
+            calls.append((url, kwargs))
+            return FakeResponse({'recipient_id': '1', 'message_id': 'm1'} if url.endswith('/messages') else {'id': 'r1'})
+
+        def fake_get(url, params=None, timeout=None):
+            return FakeResponse({'message': post_text})
+        return calls, fake_post, fake_get
+
+    def test_webhook_verification(self):
+        ok = self.client.get(reverse('facebook_webhook'), {'hub.mode': 'subscribe', 'hub.verify_token': 'verify-me',
+                                                           'hub.challenge': '12345'})
+        self.assertEqual((ok.status_code, ok.content), (200, b'12345'))
+        bad = self.client.get(reverse('facebook_webhook'), {'hub.mode': 'subscribe', 'hub.verify_token': 'nope',
+                                                            'hub.challenge': '12345'})
+        self.assertEqual(bad.status_code, 403)
+
+    def test_bad_signature_rejected(self):
+        self.assertEqual(self._post(self._event(), secret='wrong').status_code, 403)
+
+    def test_comment_gets_private_reply_with_product_from_post_code(self):
+        from .models import FacebookCommentReply
+        calls, fake_post, fake_get = self._fake_graph(post_text=f'নতুন থ্রি পিস 🔥 কোড #P{self.product.id}')
+        with mock.patch('store.facebook_bot.requests.post', fake_post), \
+                mock.patch('store.facebook_bot.requests.get', fake_get):
+            self.assertEqual(self._post(self._event()).status_code, 200)
+            self._post(self._event())                                   # Meta আবার পাঠালেও একবারই
+            self._post(self._event(comment='C2'))                       # একই মানুষ, একই পোস্ট, আরেক কমেন্ট
+        private = [c for c in calls if c[0].endswith(f'{self.PAGE}/messages')]
+        self.assertEqual(len(private), 1)
+        payload = private[0][1]['json']
+        self.assertEqual(payload['recipient'], {'comment_id': '55_C1'})
+        text = payload['message']['text']
+        self.assertIn('Three Piece', text)
+        self.assertIn('৳1,450', text)
+        self.assertIn(f'https://sohojsell.onrender.com/shop/fbshop/product/{self.product.id}/', text)
+        self.assertIn('Rahim', text)
+        self.assertEqual(len([c for c in calls if c[0].endswith('55_C1/comments')]), 1)    # "ইনবক্স চেক করুন"
+        record = FacebookCommentReply.objects.get(comment_id='55_C1')
+        self.assertEqual((record.status, record.product), ('sent', self.product))
+
+    def test_without_code_sends_shop_link_and_respects_toggles(self):
+        calls, fake_post, fake_get = self._fake_graph(post_text='অফার চলছে!')
+        self.conn.public_reply_enabled = False
+        self.conn.save()
+        with mock.patch('store.facebook_bot.requests.post', fake_post), \
+                mock.patch('store.facebook_bot.requests.get', fake_get):
+            self._post(self._event(message='dam koto'))
+        self.assertIn('https://sohojsell.onrender.com/shop/fbshop/', calls[0][1]['json']['message']['text'])
+        self.assertFalse([c for c in calls if c[0].endswith('/comments')])
+
+        self.conn.comment_bot_enabled = False
+        self.conn.save()
+        calls.clear()
+        with mock.patch('store.facebook_bot.requests.post', fake_post), \
+                mock.patch('store.facebook_bot.requests.get', fake_get):
+            self._post(self._event(comment='C9', sender='777'))
+        self.assertEqual(calls, [])
+
+    def test_ignores_page_own_comments_replies_and_basic_plan(self):
+        calls, fake_post, fake_get = self._fake_graph()
+        with mock.patch('store.facebook_bot.requests.post', fake_post), \
+                mock.patch('store.facebook_bot.requests.get', fake_get):
+            self._post(self._event(sender=self.PAGE))                          # পেইজের নিজের
+            self._post(self._event(comment='C3', parent='55_C1'))              # কারো কমেন্টের রিপ্লাই
+            self.shop.subscription_plan = 'Basic'
+            self.shop.valid_until = timezone.localdate() + timedelta(days=10)
+            self.shop.save()
+            self._post(self._event(comment='C4', sender='888'))                # Basic-এ Facebook নেই
+        self.assertEqual(calls, [])
+
+    def test_product_code_matching(self):
+        from .facebook_bot import find_product
+        pid = self.product.id
+        self.assertEqual(find_product(self.shop, f'P{pid} er dam?'), self.product)
+        self.assertEqual(find_product(self.shop, f'code: #p-{pid}'), self.product)
+        self.assertIsNone(find_product(self.shop, 'pp', 'app 12', f'SP{pid}'))

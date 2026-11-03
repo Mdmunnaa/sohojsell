@@ -268,6 +268,12 @@ SOCIALACCOUNT_LOGIN_ON_GET = True
 
 # Graph API ভার্সন এক জায়গায় — v21.0-এর মেয়াদ শেষ ২১ জানুয়ারি ২০২৭
 FACEBOOK_GRAPH_VERSION = 'v25.0'
+# Facebook webhook: Meta App → Webhooks-এ Callback URL https://<ডোমেইন>/facebook/webhook/ আর এই Verify Token বসাবেন।
+# App Secret না দিলে Django Admin-এর Facebook Social App থেকে নেওয়া হয়।
+FACEBOOK_WEBHOOK_VERIFY_TOKEN = os.environ.get('FACEBOOK_WEBHOOK_VERIFY_TOKEN', '')
+FACEBOOK_APP_SECRET = os.environ.get('FACEBOOK_APP_SECRET', '')
+# বাইরে পাঠানো লিংকের জন্য সাইটের ঠিকানা (খালি থাকলে Render-এর ঠিকানা)
+SITE_URL = os.environ.get('SITE_URL', '').rstrip('/')
 
 # কুরিয়ারের API ঠিকানা। টেস্টের সময় sandbox বসানো যায়:
 # PATHAO_BASE_URL=https://courier-api-sandbox.pathao.com, REDX_BASE_URL=https://sandbox.redx.com.bd/v1.0.0-beta
@@ -287,7 +293,9 @@ SOCIALACCOUNT_PROVIDERS = {
             'pages_read_engagement',    # পোস্টে কমেন্ট পড়ার জন্য
             'pages_manage_posts',       # পোস্ট করার জন্য
             'pages_messaging',          # ইনবক্সে মেসেজ পাঠানোর জন্য
-            'pages_manage_metadata',    # Phase 2: পেইজে webhook subscribe করার জন্য
+            'pages_manage_metadata',    # পেইজে webhook subscribe করার জন্য
+            'pages_manage_engagement',  # কমেন্টের নিচে "ইনবক্স চেক করুন" লেখার জন্য
+            'pages_read_user_engagement',  # কে কমেন্ট করেছে পড়ার জন্য
         ],
         'AUTH_PARAMS': {
             'auth_type': 'reauthenticate',

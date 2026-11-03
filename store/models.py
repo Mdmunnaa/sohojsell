@@ -387,6 +387,9 @@ class FacebookPageConnection(models.Model):
     user_access_token = models.TextField(blank=True, null=True)
 
     is_active = models.BooleanField(default=True)
+    # কমেন্ট করলে ইনবক্সে প্রোডাক্টের লিংক যাবে কিনা, আর কমেন্টের নিচে "ইনবক্স চেক করুন" লিখবে কিনা
+    comment_bot_enabled = models.BooleanField(default=True)
+    public_reply_enabled = models.BooleanField(default=True)
     connected_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -396,6 +399,28 @@ class FacebookPageConnection(models.Model):
     class Meta:
         verbose_name = 'Facebook Page Connection'
         verbose_name_plural = 'Facebook Page Connections'
+
+
+class FacebookCommentReply(models.Model):
+    """কোন কমেন্টে উত্তর গেছে (একই কমেন্টে দুবার না, আর সেলার দেখতে পারে কী হচ্ছে)।"""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='fb_comment_replies')
+    page_id = models.CharField(max_length=50)
+    post_id = models.CharField(max_length=100)
+    comment_id = models.CharField(max_length=100, unique=True)
+    commenter_id = models.CharField(max_length=50, blank=True, default='')
+    commenter_name = models.CharField(max_length=150, blank=True, default='')
+    message = models.TextField(blank=True, default='')
+    product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(max_length=10, default='pending')   # pending / sent / failed
+    error = models.CharField(max_length=300, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['page_id', 'post_id', 'commenter_id'])]
+
+    def __str__(self):
+        return f'{self.commenter_name or self.commenter_id} → {self.status}'
 
 
 # ============================================================

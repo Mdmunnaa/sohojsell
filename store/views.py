@@ -504,6 +504,7 @@ def shop_settings(request):
         'facebook_allowed': has_facebook(shop),
         'courier_connected': couriers.connected(shop),
         'theme_options': list(THEMES.items()),
+        'fb_recent_replies': shop.fb_comment_replies.select_related('product')[:5],
         'steadfast_webhook_url': request.build_absolute_uri(reverse('steadfast_webhook')),
     })
 
@@ -1954,10 +1955,13 @@ def fb_page_select(request):
             }
         )
 
-        messages.success(
-            request,
-            f"✅ '{selected_page.get('name')}' পেইজ সফলভাবে কানেক্ট হয়েছে!"
-        )
+        from .facebook_bot import subscribe_page
+        if subscribe_page(selected_page_id, page_token):
+            messages.success(request, f"✅ '{selected_page.get('name')}' পেইজ কানেক্ট হয়েছে। "
+                                      "এখন পোস্টে কেউ কমেন্ট করলে তার ইনবক্সে অর্ডারের লিংক চলে যাবে।")
+        else:
+            messages.warning(request, f"'{selected_page.get('name')}' পেইজ কানেক্ট হয়েছে, কিন্তু কমেন্টের খবর পাওয়া "
+                                      "চালু করা যায়নি। একটু পরে আবার কানেক্ট করে দেখুন।")
         return redirect('dashboard')
 
     context = {
@@ -1979,10 +1983,57 @@ def fb_disconnect(request):
         return redirect('settings')
     shop = getattr(request.user, 'shop', None)
     if shop:
+        from .facebook_bot import unsubscribe_page
+        for connection in FacebookPageConnection.objects.filter(shop=shop):
+            unsubscribe_page(connection.page_id, connection.page_access_token)
         FacebookPageConnection.objects.filter(shop=shop).delete()
         SocialToken.objects.filter(account__user=request.user, account__provider='facebook').delete()
         messages.success(request, "Facebook Page disconnect করা হয়েছে, আর সেভ করা Facebook টোকেন মুছে ফেলা হয়েছে।")
     return redirect('settings')
+
+
+@csrf_exempt
+def facebook_webhook(request):
+    """
+    Meta App → Webhooks → Page → "feed"-এর Callback URL।
+    GET: Meta যাচাই করে (hub.verify_token মিললে hub.challenge ফেরত)।
+    POST: কমেন্টের খবর; X-Hub-Signature-256 App Secret দিয়ে মিলিয়ে তবেই কাজ।
+    """
+    from django.conf import settings as dj_settings
+    from . import facebook_bot
+    if request.method == 'GET':
+        expected = getattr(dj_settings, 'FACEBOOK_WEBHOOK_VERIFY_TOKEN', '')
+        if (request.GET.get('hub.mode') == 'subscribe' and expected
+                and request.GET.get('hub.verify_token') == expected):
+            return HttpResponse(request.GET.get('hub.challenge', ''), content_type='text/plain')
+        return HttpResponse('Forbidden', status=403)
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+    if not facebook_bot.signature_ok(request.body, request.headers.get('X-Hub-Signature-256', '')):
+        return HttpResponse('Bad signature', status=403)
+    try:
+        payload = json.loads(request.body or b'{}')
+    except ValueError:
+        return HttpResponse('Bad JSON', status=400)
+    try:
+        facebook_bot.handle_payload(payload)
+    except Exception:   # Meta বারবার পাঠাতে না থাকে, তাই সবসময় 200
+        import logging
+        logging.getLogger(__name__).exception('Facebook webhook handling failed')
+    return HttpResponse('EVENT_RECEIVED')
+
+
+@login_required(login_url='/accounts/login/')
+def fb_bot_settings(request):
+    """Settings থেকে কমেন্ট বট চালু/বন্ধ।"""
+    if request.method == 'POST':
+        connection = FacebookPageConnection.objects.filter(shop=request.user.shop).first()
+        if connection:
+            connection.comment_bot_enabled = request.POST.get('comment_bot_enabled') == 'on'
+            connection.public_reply_enabled = request.POST.get('public_reply_enabled') == 'on'
+            connection.save(update_fields=['comment_bot_enabled', 'public_reply_enabled', 'updated_at'])
+            messages.success(request, 'কমেন্ট বটের সেটিং সেভ হয়েছে।')
+    return redirect(reverse('settings') + '#facebook')
 
 
 @login_required(login_url='/accounts/login/')

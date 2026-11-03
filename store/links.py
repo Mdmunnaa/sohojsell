@@ -45,3 +45,15 @@ def storefront_link(shop, name='storefront_home', *args, request=None):
     if origin:
         return origin + storefront_path(shop, name, *args)
     return reverse(name, args=[shop.slug, *args])
+
+
+def absolute_storefront_link(shop, name='storefront_home', *args):
+    """Facebook মেসেজের মতো বাইরে পাঠানোর জন্য পুরো লিংক (https://...)।"""
+    link = storefront_link(shop, name, *args)
+    if link.startswith('http'):
+        return link
+    site = getattr(settings, 'SITE_URL', '') or ''
+    if not site:
+        host = getattr(settings, 'RENDER_EXTERNAL_HOSTNAME', None) or 'sohojsell.com'
+        site = f'https://{host}'
+    return site.rstrip('/') + link

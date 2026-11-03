@@ -113,6 +113,9 @@ urlpatterns = [
 
     # Facebook Integration (নতুন)
     path('facebook/connect/', views.fb_connect, name='fb_connect'),
+    # Meta App-এর Webhooks-এ এই ঠিকানা: https://<ডোমেইন>/facebook/webhook/
+    path('facebook/webhook/', views.facebook_webhook, name='facebook_webhook'),
+    path('facebook/bot-settings/', views.fb_bot_settings, name='fb_bot_settings'),
     path('facebook/pages/', views.fb_page_select, name='fb_page_select'),
     path('facebook/disconnect/', views.fb_disconnect, name='fb_disconnect'),
 ]

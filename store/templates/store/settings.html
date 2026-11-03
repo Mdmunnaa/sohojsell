@@ -369,12 +369,34 @@
                 </div>
 
                 <!-- Facebook Page সংযোগ -->
+                <div id="facebook"></div>
                 <div class="settings-card">
                     <div class="sc-body p-4">
                         <h6 class="fw-bold mb-3"><i class="bi bi-facebook me-2" style="color:#1877F2;"></i>Facebook Page</h6>
                         {% if request.user.shop.fb_page %}
                             <p class="small mb-1 fw-semibold">{{ request.user.shop.fb_page.page_name }}</p>
                             <p class="small text-muted mb-3">কানেক্টেড। ডিসকানেক্ট করলে পেইজের তথ্য আর Facebook টোকেন আমাদের সার্ভার থেকে মুছে যাবে।</p>
+                            {% with conn=request.user.shop.fb_page %}
+                            <div class="p-3 rounded-3 mb-3" style="background:#F8FAFC;border:1px dashed #CBD5E1;">
+                                <div class="fw-bold small mb-2"><i class="bi bi-chat-dots-fill me-1" style="color:#1877F2;"></i>কমেন্ট থেকে অর্ডার</div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="cb-bot" name="comment_bot_enabled" form="fb-bot-form" {% if conn.comment_bot_enabled %}checked{% endif %}>
+                                    <label class="form-check-label small" for="cb-bot">কেউ কমেন্ট করলে তার ইনবক্সে প্রোডাক্টের দাম আর অর্ডারের লিংক পাঠান</label>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="cb-public" name="public_reply_enabled" form="fb-bot-form" {% if conn.public_reply_enabled %}checked{% endif %}>
+                                    <label class="form-check-label small" for="cb-public">কমেন্টের নিচে লিখুন "ইনবক্স চেক করুন ✅"</label>
+                                </div>
+                                <div class="small text-muted mb-2">পোস্টে প্রোডাক্টের কোড লিখুন (যেমন <code>#P12</code>, প্রোডাক্ট লিস্টে পাবেন)। কোড না থাকলে দোকানের লিংক যাবে।</div>
+                                <button type="submit" form="fb-bot-form" class="btn btn-sm btn-primary rounded-pill px-3">সেভ</button>
+                                {% if fb_recent_replies %}
+                                <div class="small fw-semibold mt-3 mb-1">সাম্প্রতিক উত্তর</div>
+                                {% for r in fb_recent_replies %}
+                                <div class="small text-muted">{% if r.status == 'sent' %}✅{% else %}⚠️{% endif %} {{ r.commenter_name|default:"কেউ" }}{% if r.product %} · {{ r.product.name }}{% endif %} · {{ r.created_at|timesince }} আগে</div>
+                                {% endfor %}
+                                {% endif %}
+                            </div>
+                            {% endwith %}
                             <button type="submit" form="fb-disconnect-form" class="btn btn-sm btn-outline-danger rounded-pill px-3"
                                     onclick="return confirm('Facebook পেইজ ডিসকানেক্ট করবেন?');">
                                 <i class="bi bi-x-circle me-1"></i> Facebook Page Disconnect
@@ -420,6 +442,7 @@
     </form>
     <!-- মূল ফর্মের বাইরে আলাদা ফর্ম (ফর্মের ভেতরে ফর্ম রাখা যায় না) -->
     <form id="fb-disconnect-form" method="POST" action="{% url 'fb_disconnect' %}">{% csrf_token %}</form>
+    <form id="fb-bot-form" method="POST" action="{% url 'fb_bot_settings' %}">{% csrf_token %}</form>
 </div>
 
 {% include 'store/partials/subdomain_check_js.html' %}
