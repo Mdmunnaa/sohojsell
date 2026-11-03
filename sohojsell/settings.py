@@ -269,6 +269,12 @@ SOCIALACCOUNT_LOGIN_ON_GET = True
 # Graph API ভার্সন এক জায়গায় — v21.0-এর মেয়াদ শেষ ২১ জানুয়ারি ২০২৭
 FACEBOOK_GRAPH_VERSION = 'v25.0'
 
+# কুরিয়ারের API ঠিকানা। টেস্টের সময় sandbox বসানো যায়:
+# PATHAO_BASE_URL=https://courier-api-sandbox.pathao.com, REDX_BASE_URL=https://sandbox.redx.com.bd/v1.0.0-beta
+STEADFAST_BASE_URL = os.environ.get('STEADFAST_BASE_URL', 'https://portal.packzy.com/api/v1').rstrip('/')
+PATHAO_BASE_URL = os.environ.get('PATHAO_BASE_URL', 'https://api-hermes.pathao.com').rstrip('/')
+REDX_BASE_URL = os.environ.get('REDX_BASE_URL', 'https://openapi.redx.com.bd/v1.0.0-beta').rstrip('/')
+
 # Facebook App — Meta Developer Console থেকে নেবে
 SOCIALACCOUNT_PROVIDERS = {
     'facebook': {
