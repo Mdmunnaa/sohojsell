@@ -392,7 +392,7 @@
                                 {% if fb_recent_replies %}
                                 <div class="small fw-semibold mt-3 mb-1">সাম্প্রতিক উত্তর</div>
                                 {% for r in fb_recent_replies %}
-                                <div class="small text-muted">{% if r.status == 'sent' %}✅{% else %}⚠️{% endif %} {{ r.commenter_name|default:"কেউ" }}{% if r.product %} · {{ r.product.name }}{% endif %} · {{ r.created_at|timesince }} আগে</div>
+                                <div class="small text-muted">{% if r.status == 'sent' %}✅{% else %}⚠️{% endif %} {{ r.commenter_name|default:"কেউ" }}{% if r.product %} · {{ r.product.name }}{% endif %} · {{ r.created_at|date:"j M, g:i A" }}</div>
                                 {% endfor %}
                                 {% endif %}
                             </div>
