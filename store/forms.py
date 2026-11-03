@@ -79,8 +79,25 @@ class ShopSettingsForm(forms.ModelForm):
                                       'autocapitalize': 'off', 'spellcheck': 'false', 'id': 'id_subdomain'}),
     )
 
+    # Pathao কানেক্ট করার সময় একবারই লাগে; সেভ হয় না
+    pathao_email = forms.CharField(required=False, max_length=150, widget=forms.EmailInput(
+        attrs={'class': 'form-control', 'placeholder': 'Pathao মার্চেন্ট অ্যাকাউন্টের ইমেইল', 'autocomplete': 'off'}))
+    pathao_password = forms.CharField(required=False, max_length=150, strip=False, widget=forms.PasswordInput(
+        attrs={'class': 'form-control', 'placeholder': 'Pathao পাসওয়ার্ড (সেভ হয় না)', 'autocomplete': 'new-password'}))
+
+    # এগুলো পেইজে দেখানো হয় না; ফাঁকা রেখে সেভ করলে আগেরটাই থাকে
+    SECRET_FIELDS = ('steadfast_secret_key', 'pathao_client_secret', 'redx_access_token')
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        for name in self.SECRET_FIELDS:
+            if self.instance and getattr(self.instance, name, None):
+                self.fields[name].widget.attrs['placeholder'] = '•••••••• সেভ করা আছে (বদলাতে নতুনটা দিন)'
+        stores = (self.instance.pathao_stores or []) if self.instance and self.instance.pk else []
+        if stores:
+            self.fields['pathao_store_id'].widget = forms.Select(
+                attrs={'class': 'form-select'},
+                choices=[(str(st['id']), f"{st['name']} (#{st['id']})") for st in stores])
         if self.instance and self.instance.pk:
             self.fields['subdomain'].initial = self.instance.slug
         self.fields['subdomain'].error_messages['required'] = 'ওয়েবসাইটের ঠিকানা দিন।'
@@ -110,6 +127,25 @@ class ShopSettingsForm(forms.ModelForm):
             raise forms.ValidationError('এটা নিজের ডোমেইন না; আপনার সাবডোমেইন উপরে আলাদা করে দেওয়া আছে।')
         return value
 
+    def _keep_secret(self, name):
+        value = (self.cleaned_data.get(name) or '').strip()
+        return value or getattr(self.instance, name, None) or ('' if name == 'pathao_client_secret' else None)
+
+    def clean_steadfast_secret_key(self):
+        return self._keep_secret('steadfast_secret_key')
+
+    def clean_pathao_client_secret(self):
+        return self._keep_secret('pathao_client_secret')
+
+    def clean_redx_access_token(self):
+        return self._keep_secret('redx_access_token')
+
+    def clean(self):
+        data = super().clean()
+        if data.get('pathao_password') and not data.get('pathao_email'):
+            self.add_error('pathao_email', 'Pathao কানেক্ট করতে ইমেইলও দিন।')
+        return data
+
     def save(self, commit=True):
         self.instance.slug = self.cleaned_data['subdomain']
         return super().save(commit=commit)
@@ -120,7 +156,7 @@ class ShopSettingsForm(forms.ModelForm):
         fields = ['name', 'phone', 'address', 'facebook_page_url', 'instagram_link', 'youtube_link',
                   'privacy_policy', 'return_policy', 'logo', 'custom_domain',
                   'steadfast_api_key', 'steadfast_secret_key',
-                  'pathao_store_id', 'pathao_access_token', 'redx_access_token',
+                  'pathao_client_id', 'pathao_client_secret', 'pathao_store_id', 'redx_access_token',
                   'is_sms_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -142,12 +178,13 @@ class ShopSettingsForm(forms.ModelForm):
             'custom_domain': forms.TextInput(attrs={'class': 'form-control'}),
             'steadfast_api_key': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Steadfast API Key'}),
             'steadfast_secret_key': forms.PasswordInput(
-                attrs={'class': 'form-control', 'placeholder': 'Steadfast Secret Key', 'render_value': True}),
-            'pathao_store_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Pathao Store ID'}),
-            'pathao_access_token': forms.PasswordInput(
-                attrs={'class': 'form-control', 'placeholder': 'Pathao Access Token', 'render_value': True}),
+                attrs={'class': 'form-control', 'placeholder': 'Steadfast Secret Key', 'autocomplete': 'new-password'}),
+            'pathao_client_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Client ID', 'autocomplete': 'off'}),
+            'pathao_client_secret': forms.PasswordInput(
+                attrs={'class': 'form-control', 'placeholder': 'Client Secret', 'autocomplete': 'new-password'}),
+            'pathao_store_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'কানেক্ট করলে নিজে থেকে আসবে'}),
             'redx_access_token': forms.PasswordInput(
-                attrs={'class': 'form-control', 'placeholder': 'RedX Access Token', 'render_value': True}),
+                attrs={'class': 'form-control', 'placeholder': 'RedX API Access Token', 'autocomplete': 'new-password'}),
             'is_sms_active': forms.CheckboxInput(attrs={'class': 'form-check-input'})
         }
 

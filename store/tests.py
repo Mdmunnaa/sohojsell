@@ -13,7 +13,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import FacebookPageConnection, OnlinePayment, Shop
+from .models import FacebookPageConnection, OnlinePayment, Order, OrderItem, Shop
 from .payments import recheck_pending
 
 User = get_user_model()
@@ -488,3 +488,181 @@ class StorefrontWithoutDomainTests(ShopTestMixin, TestCase):
         response = self.client.get('/shop/munna/', HTTP_HOST='localhost')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(shop.storefront_url, '/shop/munna/')
+
+
+class FakeCourierAPI:
+    """couriers.requests.request-এর বদলে বসে; URL দেখে আগে থেকে ঠিক করা উত্তর দেয়।"""
+
+    def __init__(self, routes):
+        self.routes = routes      # {(method, url-শেষাংশ): (status, json)}
+        self.calls = []
+
+    def __call__(self, method, url, timeout=None, **kwargs):
+        self.calls.append({'method': method, 'url': url, **kwargs})
+        for (m, suffix), (status, payload) in self.routes.items():
+            if m == method and url.split('?')[0].endswith(suffix):
+                return FakeResponse(payload, status)
+        raise AssertionError(f'unexpected {method} {url}')
+
+
+class CourierTests(ShopTestMixin, TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        from .models import Customer, Product
+        cache.clear()
+        self.user, self.shop = self.make_shop()
+        customer = Customer.objects.create(shop=self.shop, name='Rahim', phone='+8801712-345678',
+                                           address='House 5, Road 2, Mirpur 10, Dhaka')
+        product = Product.objects.create(shop=self.shop, name='Panjabi', price=1200, cost_price=800, stock_quantity=5)
+        self.order = Order.objects.create(shop=self.shop, customer=customer, total_amount=Decimal('1300.50'),
+                                          delivery_charge=100, payment_method='COD', status='Confirmed')
+        OrderItem.objects.create(order=self.order, product=product, quantity=2, price=600)
+
+    def _send(self, courier, fake, **extra):
+        with mock.patch('store.couriers.requests.request', fake):
+            return self.client.post(reverse('send_to_courier'),
+                                    {'order_id': self.order.id, 'courier_partner': courier, **extra})
+
+    def test_cod_is_zero_for_prepaid_orders(self):
+        from .couriers import cod_amount
+        self.assertEqual(cod_amount(self.order), 1301)
+        for method in ['Paid', 'bKash', 'Card']:
+            self.order.payment_method = method
+            self.assertEqual(cod_amount(self.order), 0)
+        page = self.client.get(reverse('order_list'))
+        self.assertEqual(page.status_code, 200)
+        html = page.content.decode()
+        self.assertIn('redxAreaBox', html)
+        self.assertIn("'1301'", html)                     # COD দেখানো
+        self.assertIn('সেটআপ করা নেই', html)
+
+    def test_steadfast_uses_packzy_and_no_cod_on_paid_order(self):
+        self.shop.steadfast_api_key, self.shop.steadfast_secret_key = 'KEY', 'SECRET'
+        self.shop.save()
+        self.order.payment_method = 'bKash'
+        self.order.save()
+        fake = FakeCourierAPI({('POST', '/create_order'): (200, {
+            'status': 200, 'consignment': {'consignment_id': 77, 'tracking_code': 'SF77TRACK'}})})
+        self._send('Steadfast', fake)
+        call = fake.calls[0]
+        self.assertTrue(call['url'].startswith('https://portal.packzy.com/api/v1/'))
+        self.assertEqual(call['headers']['Api-Key'], 'KEY')
+        self.assertEqual(call['json']['cod_amount'], 0)
+        self.assertEqual(call['json']['recipient_phone'], '01712345678')
+        self.assertEqual(call['json']['invoice'], f'ORD-{self.order.id}')
+        self.order.refresh_from_db()
+        self.assertEqual((self.order.status, self.order.steadfast_tracking_code, self.order.courier_partner),
+                         ('Shipped', 'SF77TRACK', 'Steadfast'))
+
+    def test_steadfast_wrong_key_leaves_order_unchanged(self):
+        self.shop.steadfast_api_key, self.shop.steadfast_secret_key = 'KEY', 'BAD'
+        self.shop.save()
+        fake = FakeCourierAPI({('POST', '/create_order'): (401, {'message': 'Unauthorized'})})
+        response = self._send('Steadfast', fake)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, 'Confirmed')
+        self.assertFalse(self.order.steadfast_tracking_code)
+        msgs = [str(m) for m in response.wsgi_request._messages]
+        self.assertTrue(any('ভুল' in m for m in msgs), msgs)
+
+    def test_pathao_connect_does_not_store_password_and_sends_without_city(self):
+        fake = FakeCourierAPI({
+            ('POST', '/aladdin/api/v1/issue-token'): (200, {'access_token': 'ACC', 'refresh_token': 'REF',
+                                                           'expires_in': 432000}),
+            ('GET', '/aladdin/api/v1/stores'): (200, {'data': {'data': [
+                {'store_id': 11, 'store_name': 'Savar', 'is_active': 1, 'is_default_store': 0},
+                {'store_id': 12, 'store_name': 'Dhaka', 'is_active': 1, 'is_default_store': 1}]}}),
+            ('POST', '/aladdin/api/v1/orders'): (200, {'data': {'consignment_id': 'PT123'}}),
+        })
+        with mock.patch('store.couriers.requests.request', fake):
+            self.client.post(reverse('settings'), {
+                'name': self.shop.name, 'phone': self.shop.phone, 'address': 'Dhaka', 'subdomain': self.shop.slug,
+                'pathao_client_id': 'CID', 'pathao_client_secret': 'CSECRET', 'pathao_email': 'me@example.com',
+                'pathao_password': 'MyPathaoPass', 'courier_action': 'pathao_connect'})
+        self.shop.refresh_from_db()
+        self.assertEqual((self.shop.pathao_access_token, self.shop.pathao_refresh_token), ('ACC', 'REF'))
+        self.assertEqual(self.shop.pathao_store_id, '12')            # default store
+        token_call = fake.calls[0]['json']
+        self.assertEqual(token_call['grant_type'], 'password')
+        from django.forms.models import model_to_dict
+        self.assertNotIn('MyPathaoPass', str(model_to_dict(self.shop)))
+
+        self._send('Pathao', fake)
+        order_call = fake.calls[-1]['json']
+        self.assertEqual(order_call['store_id'], 12)
+        self.assertEqual(order_call['amount_to_collect'], 1301)
+        self.assertEqual(order_call['item_quantity'], 2)
+        self.assertNotIn('recipient_city', order_call)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.steadfast_tracking_code, 'PT123')
+
+    def test_pathao_refreshes_expired_token(self):
+        self.shop.pathao_access_token, self.shop.pathao_refresh_token = 'OLD', 'REF'
+        self.shop.pathao_client_id, self.shop.pathao_client_secret = 'CID', 'CS'
+        self.shop.pathao_store_id = '12'
+        self.shop.pathao_token_expires_at = timezone.now() - timedelta(hours=1)
+        self.shop.save()
+        fake = FakeCourierAPI({
+            ('POST', '/aladdin/api/v1/issue-token'): (200, {'access_token': 'NEW', 'refresh_token': 'REF2',
+                                                           'expires_in': 432000}),
+            ('POST', '/aladdin/api/v1/orders'): (200, {'data': {'consignment_id': 'PT9'}}),
+        })
+        self._send('Pathao', fake)
+        self.assertEqual(fake.calls[0]['json']['grant_type'], 'refresh_token')
+        self.assertEqual(fake.calls[1]['headers']['Authorization'], 'Bearer NEW')
+
+    def test_redx_needs_area_and_uses_its_header(self):
+        self.shop.redx_access_token = 'RXTOKEN'
+        self.shop.save()
+        fake = FakeCourierAPI({
+            ('GET', '/areas'): (200, {'areas': [{'id': 5, 'name': 'Mirpur 10', 'post_code': 1216}]}),
+            ('POST', '/parcel'): (200, {'tracking_id': 'RX55'}),
+        })
+        self._send('RedX', fake)                       # এলাকা ছাড়া
+        self.order.refresh_from_db()
+        self.assertFalse(self.order.steadfast_tracking_code)
+
+        with mock.patch('store.couriers.requests.request', fake):
+            areas = self.client.get(reverse('redx_areas')).json()
+        self.assertEqual(areas['areas'][0]['id'], 5)
+        self._send('RedX', fake, redx_area_id='5')
+        parcel = [c for c in fake.calls if c['url'].endswith('/parcel')][0]
+        self.assertEqual(parcel['headers']['API-ACCESS-TOKEN'], 'Bearer RXTOKEN')
+        self.assertEqual((parcel['json']['delivery_area'], parcel['json']['delivery_area_id']), ('Mirpur 10', 5))
+        self.assertEqual(parcel['json']['parcel_weight'], 500)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.steadfast_tracking_code, 'RX55')
+
+    def test_steadfast_webhook_needs_shop_token(self):
+        import json
+        token = self.shop.ensure_webhook_token()
+        body = json.dumps({'notification_type': 'delivery_status', 'invoice': f'ORD-{self.order.id}',
+                           'status': 'delivered'})
+        url = reverse('steadfast_webhook')
+        self.assertEqual(self.client.post(url, body, content_type='application/json').status_code, 401)
+        self.assertEqual(self.client.post(url, body, content_type='application/json',
+                                          HTTP_AUTHORIZATION='Bearer wrong').status_code, 401)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, 'Confirmed')
+        ok = self.client.post(url, body, content_type='application/json', HTTP_AUTHORIZATION=f'Bearer {token}')
+        self.assertEqual(ok.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, 'Delivered')
+        unknown = self.client.post(url, json.dumps({'invoice': 'ORD-999999', 'status': 'delivered'}),
+                                   content_type='application/json')
+        self.assertEqual(unknown.status_code, 200)
+
+    def test_settings_save_keeps_secret_and_tests_connection(self):
+        self.shop.steadfast_api_key, self.shop.steadfast_secret_key = 'KEY', 'SECRET'
+        self.shop.save()
+        page = self.client.get(reverse('settings')).content.decode()
+        self.assertNotIn('SECRET', page)
+        fake = FakeCourierAPI({('GET', '/get_balance'): (200, {'status': 200, 'current_balance': 500})})
+        with mock.patch('store.couriers.requests.request', fake):
+            response = self.client.post(reverse('settings'), {
+                'name': self.shop.name, 'phone': self.shop.phone, 'address': 'Dhaka', 'subdomain': self.shop.slug,
+                'steadfast_api_key': 'KEY', 'steadfast_secret_key': '', 'courier_action': 'test_Steadfast'})
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.steadfast_secret_key, 'SECRET')
+        msgs = [str(m) for m in response.wsgi_request._messages]
+        self.assertTrue(any('Steadfast কানেক্ট আছে' in m for m in msgs), msgs)

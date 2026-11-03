@@ -37,6 +37,7 @@ urlpatterns = [
     # Courier
     # আগেরটা মুছে এটা দিন
     path('orders/send-courier/', views.send_to_courier, name='send_to_courier'),
+    path('courier/redx/areas/', views.redx_areas, name='redx_areas'),
     path('courier/', views.courier_dashboard, name='courier'),
 
     # POS System

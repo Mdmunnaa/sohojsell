@@ -31,7 +31,15 @@ class Shop(models.Model):
     steadfast_secret_key = models.CharField(max_length=255, blank=True, null=True)
     pathao_store_id = models.CharField(max_length=255, blank=True, null=True)
     pathao_access_token = models.TextField(blank=True, null=True)
+    # Pathao: ইমেইল-পাসওয়ার্ড দিয়ে একবার টোকেন নেওয়া হয়, পাসওয়ার্ড সেভ হয় না; refresh_token দিয়ে নবায়ন
+    pathao_client_id = models.CharField(max_length=255, blank=True, default='')
+    pathao_client_secret = models.CharField(max_length=255, blank=True, default='')
+    pathao_refresh_token = models.TextField(blank=True, default='')
+    pathao_token_expires_at = models.DateTimeField(blank=True, null=True)
+    pathao_stores = models.JSONField(blank=True, default=list)
     redx_access_token = models.TextField(blank=True, null=True)
+    # কুরিয়ারের webhook (যেমন Steadfast-এর Auth Token) যাচাইয়ের জন্য দোকানের গোপন টোকেন
+    courier_webhook_token = models.CharField(max_length=64, blank=True, default='')
     # SMS
     sms_api_key = models.CharField(max_length=255, blank=True, null=True)
     sms_balance = models.IntegerField(default=0)
@@ -85,6 +93,14 @@ class Shop(models.Model):
     @property
     def subdomain(self):
         return self.slug
+
+    def ensure_webhook_token(self):
+        """কুরিয়ারের webhook-এর গোপন টোকেন (না থাকলে বানিয়ে সেভ)।"""
+        if not self.courier_webhook_token and self.pk:
+            import secrets
+            self.courier_webhook_token = secrets.token_urlsafe(32)
+            Shop.objects.filter(pk=self.pk).update(courier_webhook_token=self.courier_webhook_token)
+        return self.courier_webhook_token
 
     @property
     def storefront_url(self):

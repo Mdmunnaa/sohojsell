@@ -23,6 +23,8 @@ from .plans import (
 )
 from .forms import ShopSetupForm, ProductForm, OrderCreateForm, ShopSettingsForm
 from .links import storefront_link
+from . import couriers
+from django.urls import reverse
 
 
 # ============================================================
@@ -294,6 +296,8 @@ def order_list(request):
     except (EmptyPage, PageNotAnInteger):
         page_obj = paginator.page(1)
     return render(request, 'store/orders.html', {
+        'courier_connected': couriers.connected(request.user.shop),
+        'prepaid_methods': sorted(couriers.PREPAID_METHODS),
         'orders': page_obj,        # FIX: page_obj passed as 'orders' so template loop works
         'page_obj': page_obj,      # kept for pagination controls in template
         'search_query': search_query,
@@ -486,16 +490,62 @@ def shop_settings(request):
     if request.method == 'POST':
         form = ShopSettingsForm(request.POST, request.FILES, instance=shop)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Settings updated successfully!')
-            return redirect('settings')
+            shop = form.save()
+            messages.success(request, 'সেটিংস সেভ হয়েছে।')
+            _courier_actions_after_save(request, shop, form)
+            return redirect(reverse('settings') + ('#couriers' if request.POST.get('courier_action') else ''))
     else:
         form = ShopSettingsForm(instance=shop)
+    shop.ensure_webhook_token()
     return render(request, 'store/settings.html', {
         'form': form,
         'custom_domain_allowed': has_custom_domain(shop),
         'facebook_allowed': has_facebook(shop),
+        'courier_connected': couriers.connected(shop),
+        'steadfast_webhook_url': request.build_absolute_uri(reverse('steadfast_webhook')),
     })
+
+
+def _courier_actions_after_save(request, shop, form):
+    """সেভের পর: Pathao-র পাসওয়ার্ড দিলে কানেক্ট, আর "কানেকশন টেস্ট" বাটন চাপলে টেস্ট।"""
+    password = form.cleaned_data.get('pathao_password')
+    if password:
+        try:
+            stores = couriers.pathao_connect(shop, form.cleaned_data.get('pathao_client_id'),
+                                             form.cleaned_data.get('pathao_client_secret'),
+                                             form.cleaned_data.get('pathao_email'), password)
+            messages.success(request, f'Pathao কানেক্ট হয়েছে ✓ ({len(stores)}টা স্টোর পাওয়া গেছে)। '
+                                      'আপনার Pathao পাসওয়ার্ড আমরা সেভ করি না।')
+        except couriers.CourierError as exc:
+            messages.error(request, str(exc))
+
+    action = request.POST.get('courier_action', '')
+    if action.startswith('test_'):
+        courier = action[5:]
+        if courier in couriers.COURIERS:
+            try:
+                messages.success(request, couriers.test_connection(shop, courier))
+            except couriers.CourierError as exc:
+                messages.error(request, str(exc))
+    elif action == 'steadfast_disconnect':
+        shop.steadfast_api_key = None
+        shop.steadfast_secret_key = None
+        shop.save(update_fields=['steadfast_api_key', 'steadfast_secret_key'])
+        messages.info(request, 'Steadfast-এর চাবি সরানো হয়েছে।')
+    elif action == 'redx_disconnect':
+        shop.redx_access_token = None
+        shop.save(update_fields=['redx_access_token'])
+        messages.info(request, 'RedX টোকেন সরানো হয়েছে।')
+    elif action == 'pathao_disconnect':
+        shop.pathao_access_token = None
+        shop.pathao_refresh_token = ''
+        shop.pathao_token_expires_at = None
+        shop.pathao_client_secret = ''
+        shop.pathao_stores = []
+        shop.pathao_store_id = None
+        shop.save(update_fields=['pathao_access_token', 'pathao_refresh_token', 'pathao_token_expires_at',
+                                 'pathao_client_secret', 'pathao_stores', 'pathao_store_id'])
+        messages.info(request, 'Pathao-র সংযোগ সরানো হয়েছে।')
 
 
 # ============================================================
@@ -503,138 +553,46 @@ def shop_settings(request):
 # ============================================================
 @login_required(login_url='/accounts/login/')
 def send_to_courier(request):
-    if request.method == 'POST':
-        shop = request.user.shop
-        order_id = request.POST.get('order_id')
-        courier = request.POST.get('courier_partner')
+    if request.method != 'POST':
+        return redirect('order_list')
+    shop = request.user.shop
+    order = get_object_or_404(Order.objects.select_related('customer'), id=request.POST.get('order_id'), shop=shop)
+    courier = request.POST.get('courier_partner')
 
-        order = get_object_or_404(Order, id=order_id, shop=shop)
+    if order.steadfast_tracking_code:
+        messages.warning(request, f'এই অর্ডার আগেই {order.courier_partner or "কুরিয়ারে"} পাঠানো হয়েছে।')
+        return redirect('order_list')
+    if order.status in ('Cancelled', 'Returned', 'Delivered'):
+        messages.error(request, f'{order.status} অর্ডার কুরিয়ারে পাঠানো যায় না।')
+        return redirect('order_list')
 
-        if order.steadfast_tracking_code:
-            messages.warning(request, 'This order is already sent to a courier!')
-            return redirect('order_list')
+    try:
+        result = couriers.send(shop, order, courier, area_id=request.POST.get('redx_area_id'),
+                               note=request.POST.get('note', '').strip())
+    except couriers.CourierError as exc:
+        messages.error(request, str(exc))
+        return redirect('order_list')
 
-        # ==========================================
-        # 1. STEADFAST COURIER LOGIC
-        # ==========================================
-        if courier == 'Steadfast':
-            if not shop.steadfast_api_key or not shop.steadfast_secret_key:
-                messages.error(request, 'Steadfast API keys are missing in Settings!')
-                return redirect('order_list')
-
-            url = "https://portal.steadfast.com.bd/api/v1/create_order"
-            headers = {
-                'Api-Key': shop.steadfast_api_key,
-                'Secret-Key': shop.steadfast_secret_key,
-                'Content-Type': 'application/json'
-            }
-            data = {
-                'invoice': f'ORD-{order.id}',
-                'recipient_name': order.customer.name,
-                'recipient_phone': order.customer.phone,
-                'recipient_address': order.customer.address,
-                'cod_amount': float(order.total_amount),
-                'note': 'Sent via SohojSell'
-            }
-
-            try:
-                response = requests.post(url, headers=headers, json=data)
-                result = response.json()
-                if response.status_code == 200 and result.get('status') == 200:
-                    tracking_code = result.get('consignment', {}).get('tracking_code')
-                    order.steadfast_tracking_code = tracking_code
-                    order.courier_partner = 'Steadfast'
-                    order.status = 'Shipped'
-                    order.save()
-                    messages.success(request, f'Sent to Steadfast! Tracking: {tracking_code}')
-                else:
-                    messages.error(request, f"Steadfast Error: {result.get('message')}")
-            except Exception as e:
-                messages.error(request, f"Failed: {str(e)}")
-
-        # ==========================================
-        # 2. PATHAO COURIER LOGIC
-        # ==========================================
-        elif courier == 'Pathao':
-            if not shop.pathao_store_id or not shop.pathao_access_token:
-                messages.error(request, 'Pathao API keys are missing in Settings!')
-                return redirect('order_list')
-
-            url = "https://api-hermes.pathao.com/aladdin/api/v1/orders"
-            headers = {
-                'Authorization': f'Bearer {shop.pathao_access_token}',
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-            data = {
-                "store_id": shop.pathao_store_id,
-                "merchant_order_id": f'ORD-{order.id}',
-                "recipient_name": order.customer.name,
-                "recipient_phone": order.customer.phone,
-                "recipient_address": order.customer.address,
-                "recipient_city": "1",  # (Dhaka) For production, you'll need City ID mapping
-                "recipient_zone": "1",
-                "delivery_type": 48,
-                "item_type": 2,
-                "item_quantity": 1,
-                "item_weight": 0.5,
-                "amount_to_collect": float(order.total_amount)
-            }
-
-            try:
-                response = requests.post(url, headers=headers, json=data)
-                result = response.json()
-                if response.status_code in [200, 201]:
-                    tracking_code = result.get('data', {}).get('consignment_id')
-                    order.steadfast_tracking_code = tracking_code  # ট্র্যাকিং কোড সেভ
-                    order.courier_partner = 'Pathao'
-                    order.status = 'Shipped'
-                    order.save()
-                    messages.success(request, f'Sent to Pathao! Tracking: {tracking_code}')
-                else:
-                    messages.error(request, "Pathao Error: Check API Token and IDs.")
-            except Exception as e:
-                messages.error(request, f"Failed: {str(e)}")
-
-        # ==========================================
-        # 3. REDX COURIER LOGIC
-        # ==========================================
-        elif courier == 'RedX':
-            if not shop.redx_access_token:
-                messages.error(request, 'RedX Access Token is missing!')
-                return redirect('order_list')
-
-            url = "https://openapi.redx.com.bd/v1.0.0-beta/parcel"
-            headers = {
-                'Authorization': f'Bearer {shop.redx_access_token}',
-                'Content-Type': 'application/json'
-            }
-            data = {
-                "customer_name": order.customer.name,
-                "customer_phone": order.customer.phone,
-                "delivery_area": "Dhaka",  # For production, you'll need RedX Area ID mapping
-                "customer_address": order.customer.address,
-                "merchant_invoice_id": f'ORD-{order.id}',
-                "cash_collection_amount": float(order.total_amount),
-                "parcel_weight": 500
-            }
-
-            try:
-                response = requests.post(url, headers=headers, json=data)
-                result = response.json()
-                if 'tracking_id' in result:
-                    tracking_code = result.get('tracking_id')
-                    order.steadfast_tracking_code = tracking_code
-                    order.courier_partner = 'RedX'
-                    order.status = 'Shipped'
-                    order.save()
-                    messages.success(request, f'Sent to RedX! Tracking: {tracking_code}')
-                else:
-                    messages.error(request, "RedX Error: Invalid token or area.")
-            except Exception as e:
-                messages.error(request, f"Failed: {str(e)}")
-
+    # ট্র্যাকিং কোড সব কুরিয়ারের জন্য এই ফিল্ডেই থাকে (নামটা পুরনো)
+    order.steadfast_tracking_code = str(result['tracking_code'])[:100]
+    order.courier_partner = courier
+    order.status = 'Shipped'
+    order.save(update_fields=['steadfast_tracking_code', 'courier_partner', 'status'])
+    cod = couriers.cod_amount(order)
+    messages.success(request, f'{courier}-এ পাঠানো হয়েছে ✓ ট্র্যাকিং: {result["tracking_code"]} · '
+                              + (f'কাস্টমারের কাছ থেকে তুলবে ৳{cod}' if cod else 'আগে পরিশোধ, কিছু তুলবে না'))
     return redirect('order_list')
+
+
+@login_required(login_url='/accounts/login/')
+def redx_areas(request):
+    """অর্ডার পেইজে RedX-এর এলাকা বাছাইয়ের লিস্ট।"""
+    try:
+        areas = couriers.redx_areas(request.user.shop)
+    except couriers.CourierError as exc:
+        return JsonResponse({'ok': False, 'message': str(exc)}, status=400)
+    return JsonResponse({'ok': True, 'areas': areas})
+
 
 @login_required(login_url='/accounts/login/')
 def courier_dashboard(request):
@@ -721,23 +679,39 @@ def _send_sms(phone, text_message):
 # ============================================================
 @csrf_exempt
 def steadfast_webhook(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            invoice = data.get('invoice')
-            new_status = data.get('status')
-            if invoice and new_status:
-                order_id = invoice.replace('ORD-', '')
-                order = Order.objects.get(id=order_id)
-                if new_status.lower() == 'delivered':
-                    order.status = 'Delivered'
-                elif new_status.lower() in ['cancelled', 'returned']:
-                    order.status = 'Cancelled'
-                order.save()
-                return JsonResponse({'message': 'Status updated!'}, status=200)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
-    return JsonResponse({'message': 'Webhook active!'}, status=200)
+    """
+    Steadfast প্যানেলের Webhook পেইজে Callback URL আর Auth Token (Settings-এ দেখানো) বসাতে হয়।
+    Steadfast প্রতিটা request-এ "Authorization: Bearer <token>" পাঠায়; মিললে তবেই অর্ডার বদলায়।
+    """
+    if request.method != 'POST':
+        return JsonResponse({'message': 'Webhook active'}, status=200)
+    try:
+        data = json.loads(request.body or b'{}')
+    except ValueError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    invoice = str(data.get('invoice') or '')
+    order_id = invoice[4:] if invoice.startswith('ORD-') else ''
+    order = Order.objects.select_related('shop').filter(id=order_id).first() if order_id.isdigit() else None
+    if order is None:
+        # অন্য সিস্টেমের পার্সেল হতে পারে; Steadfast 4xx পেলে আর পাঠায় না, তাই 200
+        return JsonResponse({'message': 'Unknown invoice, ignored'}, status=200)
+
+    import hmac
+    auth = request.headers.get('Authorization', '')
+    token = auth[7:].strip() if auth.lower().startswith('bearer ') else ''
+    expected = order.shop.courier_webhook_token
+    if not expected or not token or not hmac.compare_digest(token, expected):
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    notification = data.get('notification_type') or 'delivery_status'
+    status = str(data.get('status') or '').lower()
+    if notification == 'delivery_status' and status:
+        new_status = {'delivered': 'Delivered', 'partial_delivered': 'Delivered', 'cancelled': 'Returned'}.get(status)
+        if new_status and order.status != new_status:
+            order.status = new_status
+            order.save(update_fields=['status'])
+    return JsonResponse({'message': 'OK'}, status=200)
 
 
 # ============================================================

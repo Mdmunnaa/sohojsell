@@ -102,7 +102,7 @@
                                         </span>
                                     {% else %}
                                         <!-- নতুন Courier Modal Trigger Button -->
-                                        <button type="button" class="btn btn-sm btn-light text-success rounded-circle shadow-sm" data-bs-toggle="modal" data-bs-target="#courierModal" onclick="setCourierData('{{ order.id }}', '{{ order.customer.name|escapejs }}')" data-bs-toggle="tooltip" title="Send to Courier" style="width: 35px; height: 35px; line-height: 22px;">
+                                        <button type="button" class="btn btn-sm btn-light text-success rounded-circle shadow-sm" data-bs-toggle="modal" data-bs-target="#courierModal" onclick="setCourierData('{{ order.id }}', '{{ order.customer.name|escapejs }}', '{% if order.payment_method in prepaid_methods %}0{% else %}{{ order.total_amount|floatformat:0 }}{% endif %}', '{{ order.customer.address|default:''|escapejs }}')" data-bs-toggle="tooltip" title="Send to Courier" style="width: 35px; height: 35px; line-height: 22px;">
                                             <i class="bi bi-truck"></i>
                                         </button>
                                     {% endif %}
@@ -155,21 +155,37 @@
 
           <div class="d-flex flex-column gap-2">
             <!-- Steadfast -->
-            <input type="radio" class="btn-check" name="courier_partner" id="Steadfast" value="Steadfast" checked>
+            <input type="radio" class="btn-check courier-radio" name="courier_partner" id="Steadfast" value="Steadfast" {% if not courier_connected.Steadfast %}disabled{% endif %}>
             <label class="btn btn-outline-success text-start fw-bold p-3 rounded-3 border-2" for="Steadfast">
-              <i class="bi bi-truck me-2"></i> Steadfast
+              <i class="bi bi-truck me-2"></i> Steadfast {% if not courier_connected.Steadfast %}<span class="small fw-normal">(সেটআপ করা নেই)</span>{% endif %}
             </label>
             <!-- Pathao -->
-            <input type="radio" class="btn-check" name="courier_partner" id="Pathao" value="Pathao">
+            <input type="radio" class="btn-check courier-radio" name="courier_partner" id="Pathao" value="Pathao" {% if not courier_connected.Pathao %}disabled{% endif %}>
             <label class="btn btn-outline-danger text-start fw-bold p-3 rounded-3 border-2" for="Pathao">
-               <i class="bi bi-bicycle me-2"></i> Pathao
+               <i class="bi bi-bicycle me-2"></i> Pathao {% if not courier_connected.Pathao %}<span class="small fw-normal">(সেটআপ করা নেই)</span>{% endif %}
             </label>
             <!-- RedX -->
-            <input type="radio" class="btn-check" name="courier_partner" id="RedX" value="RedX">
+            <input type="radio" class="btn-check courier-radio" name="courier_partner" id="RedX" value="RedX" {% if not courier_connected.RedX %}disabled{% endif %}>
             <label class="btn btn-outline-danger text-start fw-bold p-3 rounded-3 border-2" style="color:#d92128; border-color:#d92128;" for="RedX">
-               <i class="bi bi-box-seam me-2"></i> RedX
+               <i class="bi bi-box-seam me-2"></i> RedX {% if not courier_connected.RedX %}<span class="small fw-normal">(সেটআপ করা নেই)</span>{% endif %}
             </label>
           </div>
+
+          <div id="redxAreaBox" class="mt-3" style="display:none;">
+            <label class="form-label small fw-bold mb-1">কাস্টমারের এলাকা (RedX)</label>
+            <input type="text" id="redxAreaSearch" class="form-control form-control-sm mb-1" placeholder="এলাকার নাম লিখে খুঁজুন, যেমন Mirpur">
+            <select name="redx_area_id" id="redxAreaSelect" class="form-select form-select-sm" size="5"></select>
+            <div id="redxAreaMsg" class="small text-muted mt-1"></div>
+          </div>
+
+          <div class="mt-3 p-2 rounded-3 small" style="background:#F8FAFC;border:1px dashed #CBD5E1;">
+            কুরিয়ার কাস্টমারের কাছ থেকে তুলবে: <b id="courierCod">৳0</b>
+            <div class="text-muted" style="font-size:11px;">আগে পরিশোধ (Paid/bKash/Card) হলে ৳০</div>
+          </div>
+
+          {% if not courier_connected.Steadfast and not courier_connected.Pathao and not courier_connected.RedX %}
+          <div class="alert alert-warning small mt-3 mb-0">কোনো কুরিয়ার সেটআপ করা নেই। <a href="{% url 'settings' %}#couriers">Settings থেকে যোগ করুন</a>।</div>
+          {% endif %}
         </div>
         <div class="modal-footer border-top-0 px-4 pb-4">
           <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold w-100"><i class="bi bi-send-fill me-2"></i> Confirm & Send</button>
@@ -181,10 +197,56 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    function setCourierData(id, name) {
+    let courierAddress = '';
+    let redxAreas = null;
+
+    function setCourierData(id, name, cod, address) {
         document.getElementById('courierOrderId').value = id;
         document.getElementById('courierCustomerName').innerText = name;
+        document.getElementById('courierCod').innerText = '৳' + (cod || '0');
+        courierAddress = (address || '').toLowerCase();
+        // প্রথম চালু কুরিয়ারটা বেছে রাখা
+        const first = document.querySelector('.courier-radio:not([disabled])');
+        if (first) { first.checked = true; }
+        toggleRedx();
     }
+
+    function renderRedxAreas(filter) {
+        const select = document.getElementById('redxAreaSelect');
+        const q = (filter || '').trim().toLowerCase();
+        select.innerHTML = '';
+        let shown = 0, best = null;
+        for (const area of (redxAreas || [])) {
+            const label = area.name + (area.post_code ? ' (' + area.post_code + ')' : '');
+            if (q && !label.toLowerCase().includes(q)) continue;
+            const opt = document.createElement('option');
+            opt.value = area.id; opt.textContent = label;
+            select.appendChild(opt);
+            // ঠিকানায় এলাকার নাম থাকলে সেটাই আগে বাছাই
+            if (!best && courierAddress && area.name && courierAddress.includes(area.name.toLowerCase().split('(')[0].trim())) best = opt;
+            if (++shown >= 300) break;
+        }
+        if (best) best.selected = true;
+    }
+
+    function toggleRedx() {
+        const isRedx = document.getElementById('RedX').checked;
+        const box = document.getElementById('redxAreaBox');
+        const select = document.getElementById('redxAreaSelect');
+        box.style.display = isRedx ? 'block' : 'none';
+        select.required = isRedx;
+        if (!isRedx || redxAreas) { if (isRedx) renderRedxAreas(document.getElementById('redxAreaSearch').value); return; }
+        const msg = document.getElementById('redxAreaMsg');
+        msg.textContent = 'এলাকার লিস্ট আনা হচ্ছে...';
+        fetch("{% url 'redx_areas' %}").then(r => r.json()).then(data => {
+            if (!data.ok) { msg.textContent = data.message; return; }
+            redxAreas = data.areas; msg.textContent = '';
+            renderRedxAreas('');
+        }).catch(() => { msg.textContent = 'এলাকার লিস্ট আনা যায়নি, আবার চেষ্টা করুন।'; });
+    }
+
+    document.querySelectorAll('.courier-radio').forEach(r => r.addEventListener('change', toggleRedx));
+    document.getElementById('redxAreaSearch').addEventListener('input', e => renderRedxAreas(e.target.value));
 
     document.addEventListener("DOMContentLoaded", function() {
         // Initialize Tooltips
