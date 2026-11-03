@@ -725,3 +725,26 @@ class ComparePriceTests(ShopTestMixin, TestCase):
         self.assertIn('নতুন এসেছে', html)
         self.assertNotIn('ছাড় চলছে', html)
         self.assertNotIn('%</', html)
+
+
+class StorefrontThemeTests(ShopTestMixin, TestCase):
+    def test_seller_picks_theme_and_storefront_uses_it(self):
+        _user, shop = self.make_shop(slug='themeshop')
+        html = self.client.get('/shop/themeshop/', HTTP_HOST='localhost').content.decode()
+        self.assertIn('--orange: #F57224', html)                     # ডিফল্ট কমলা
+        settings_page = self.client.get(reverse('settings')).content.decode()
+        self.assertIn('value="pink"', settings_page)
+        self.client.post(reverse('settings'), {'name': shop.name, 'phone': shop.phone, 'address': 'Dhaka',
+                                               'subdomain': 'themeshop', 'storefront_theme': 'pink'})
+        shop.refresh_from_db()
+        self.assertEqual(shop.storefront_theme, 'pink')
+        html = self.client.get('/shop/themeshop/', HTTP_HOST='localhost').content.decode()
+        self.assertIn('--orange: #DB2777', html)
+        self.assertNotIn('#FF8C42', html)
+
+    def test_unknown_theme_rejected(self):
+        _user, shop = self.make_shop(slug='themeshop2')
+        self.client.post(reverse('settings'), {'name': shop.name, 'phone': shop.phone, 'address': 'Dhaka',
+                                               'subdomain': 'themeshop2', 'storefront_theme': 'neon'})
+        shop.refresh_from_db()
+        self.assertEqual(shop.storefront_theme, 'orange')

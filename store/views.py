@@ -24,6 +24,7 @@ from .plans import (
 from .forms import ShopSetupForm, ProductForm, OrderCreateForm, ShopSettingsForm
 from .links import storefront_link
 from . import couriers
+from .themes import THEMES
 from django.urls import reverse
 
 
@@ -502,6 +503,7 @@ def shop_settings(request):
         'custom_domain_allowed': has_custom_domain(shop),
         'facebook_allowed': has_facebook(shop),
         'courier_connected': couriers.connected(shop),
+        'theme_options': list(THEMES.items()),
         'steadfast_webhook_url': request.build_absolute_uri(reverse('steadfast_webhook')),
     })
 

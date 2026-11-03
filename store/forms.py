@@ -103,6 +103,8 @@ class ShopSettingsForm(forms.ModelForm):
         for name in self.SECRET_FIELDS:
             if self.instance and getattr(self.instance, name, None):
                 self.fields[name].widget.attrs['placeholder'] = '•••••••• সেভ করা আছে (বদলাতে নতুনটা দিন)'
+        # রঙ না পাঠালে আগেরটাই থাকে
+        self.fields['storefront_theme'].required = False
         stores = (self.instance.pathao_stores or []) if self.instance and self.instance.pk else []
         if stores:
             self.fields['pathao_store_id'].widget = forms.Select(
@@ -141,6 +143,10 @@ class ShopSettingsForm(forms.ModelForm):
         value = (self.cleaned_data.get(name) or '').strip()
         return value or getattr(self.instance, name, None) or ('' if name == 'pathao_client_secret' else None)
 
+    def clean_storefront_theme(self):
+        from .themes import DEFAULT_THEME
+        return self.cleaned_data.get('storefront_theme') or getattr(self.instance, 'storefront_theme', None) or DEFAULT_THEME
+
     def clean_steadfast_secret_key(self):
         return self._keep_secret('steadfast_secret_key')
 
@@ -167,7 +173,7 @@ class ShopSettingsForm(forms.ModelForm):
                   'privacy_policy', 'return_policy', 'logo', 'custom_domain',
                   'steadfast_api_key', 'steadfast_secret_key',
                   'pathao_client_id', 'pathao_client_secret', 'pathao_store_id', 'redx_access_token',
-                  'is_sms_active', 'show_sold_count']
+                  'is_sms_active', 'show_sold_count', 'storefront_theme']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 017XXXXXXXX'}),
@@ -196,7 +202,8 @@ class ShopSettingsForm(forms.ModelForm):
             'redx_access_token': forms.PasswordInput(
                 attrs={'class': 'form-control', 'placeholder': 'RedX API Access Token', 'autocomplete': 'new-password'}),
             'is_sms_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'show_sold_count': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+            'show_sold_count': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'storefront_theme': forms.RadioSelect
         }
 
 from .models import Banner

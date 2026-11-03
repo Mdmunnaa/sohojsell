@@ -31,6 +31,17 @@
     input:focus, textarea:focus { border-color: #3B82F6; background: #fff; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); }
     textarea { resize: vertical; min-height: 80px; }
 
+    /* রঙের থিম */
+    .theme-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    @media (max-width: 576px) { .theme-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .theme-opt { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 12px; border: 1.5px solid #E2E8F0; border-radius: 12px; cursor: pointer; background: #fff; transition: .15s; }
+    .theme-opt input { position: absolute; opacity: 0; pointer-events: none; }
+    .theme-opt:has(input:checked) { border-color: #0F172A; box-shadow: 0 0 0 3px rgba(15,23,42,.08); }
+    .theme-opt:has(input:focus-visible) { outline: 2px solid #3B82F6; outline-offset: 2px; }
+    .theme-swatch { height: 28px; border-radius: 8px; }
+    .theme-name { font-weight: 800; font-size: 13px; color: #0F172A; }
+    .theme-hint { font-size: 11px; color: #64748B; line-height: 1.3; }
+
     /* Input Group */
     .input-group-premium { display: flex; overflow: hidden; border-radius: 12px; border: 1.5px solid #E2E8F0; transition: 0.2s; }
     .input-group-premium:focus-within { border-color: #10B981; box-shadow: 0 0 0 4px rgba(16,185,129,0.1); }
@@ -288,6 +299,20 @@
 
                 <div class="settings-card">
                     <div class="sc-body">
+                        <!-- ওয়েবসাইটের রঙ -->
+                        <h6 class="fw-bold text-success mb-3" id="theme"><i class="bi bi-palette-fill me-2"></i>ওয়েবসাইটের রঙ</h6>
+                        <div class="theme-grid mb-2">
+                            {% for value, t in theme_options %}
+                            <label class="theme-opt">
+                                <input type="radio" name="{{ form.storefront_theme.html_name }}" value="{{ value }}" {% if form.storefront_theme.value == value %}checked{% endif %}>
+                                <span class="theme-swatch" style="background:linear-gradient(135deg,{{ t.primary }},{{ t.second }});"></span>
+                                <span class="theme-name">{{ t.label }}</span>
+                                <span class="theme-hint">{{ t.hint }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <div class="form-text small mb-4">সেভ করার পর <a href="{{ request.user.shop.storefront_url }}" target="_blank" rel="noopener">ওয়েবসাইট খুলে</a> দেখুন। বাটন, দাম আর হাইলাইটের রঙ বদলাবে।</div>
+
                         <!-- ওয়েবসাইটে বিক্রির সংখ্যা -->
                         <h6 class="fw-bold text-success mb-3"><i class="bi bi-bag-check-fill me-2"></i>ওয়েবসাইটে দেখানো</h6>
                         <div class="form-check form-switch bg-white p-3 rounded-3 border d-flex align-items-center mb-4" style="padding-left: 1rem !important;">

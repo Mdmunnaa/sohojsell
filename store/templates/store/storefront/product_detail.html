@@ -33,9 +33,9 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 /* DESKTOP HEADER */
 .desk-header { display: none; position: fixed; top: 0; left: 0; right: 0; background: var(--glass); backdrop-filter: blur(12px); padding: 0 24px; box-shadow: var(--shadow-sm); z-index: 100; height: 70px; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.3); }
 .desk-store-link { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--dark); font-weight: 900; font-size: 18px; letter-spacing: -0.5px; }
-.desk-store-logo { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--orange), #FF8C42); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; overflow: hidden; }
+.desk-store-logo { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; overflow: hidden; }
 .desk-store-logo img { width: 100%; height: 100%; object-fit: cover; }
-.desk-cart-btn { display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, var(--orange), #FF5C00); color: #fff; border: none; padding: 10px 24px; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: 0.2s; position: relative; box-shadow: 0 4px 12px rgba(245,114,36,0.25); }
+.desk-cart-btn { display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; padding: 10px 24px; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: 0.2s; position: relative; box-shadow: 0 4px 12px rgba(var(--orange-rgb),0.25); }
 .desk-cart-btn:hover { transform: translateY(-2px); }
 
 /* PRODUCT IMAGE */
@@ -95,13 +95,13 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: flex; align-items: center; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); gap: 12px; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); z-index: 1000; border-top: 1px solid rgba(255,255,255,0.4); }
 .bar-icon-btn { width: 48px; height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--dark); text-decoration: none; background: #fff; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
 .bar-icon-btn i { font-size: 20px; }
-.btn-buy { flex: 1; height: 48px; background: linear-gradient(135deg, var(--orange), #FF5C00); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: 0 4px 12px rgba(245,114,36,0.3); }
+.btn-buy { flex: 1; height: 48px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: 0 4px 12px rgba(var(--orange-rgb),0.3); }
 
 /* DESKTOP ACTIONS */
 .desk-btn-row { display: none; gap: 12px; margin-top: 20px; }
 .desk-btn-add, .desk-btn-buy { flex: 1; padding: 16px; border: none; border-radius: 14px; font-size: 16px; font-weight: 900; font-family: 'Plus Jakarta Sans', sans-serif; cursor: pointer; transition: 0.2s; }
 .desk-btn-add { background: #F8FAFC; color: var(--dark); border: 2px solid var(--border); }
-.desk-btn-buy { background: linear-gradient(135deg, var(--orange), #FF5C00); color: #fff; box-shadow: 0 8px 20px rgba(245,114,36,0.25); }
+.desk-btn-buy { background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; box-shadow: 0 8px 20px rgba(var(--orange-rgb),0.25); }
 .desk-btn-add:hover { background: #E2E8F0; }
 .desk-btn-buy:hover { transform: translateY(-2px); }
 
@@ -126,7 +126,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 .drawer-footer { padding: 20px; border-top: 1px solid var(--border); background: #fff; }
 .df-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; color: var(--muted); font-weight: 600; }
 .df-total { display: flex; justify-content: space-between; font-size: 20px; font-weight: 900; color: var(--orange); padding-top: 12px; border-top: 1px dashed var(--border); margin-top: 8px; }
-.checkout-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--orange), #FF5C00); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 900; cursor: pointer; margin-top: 16px; box-shadow: 0 8px 20px rgba(245,114,36,0.3); transition: 0.2s; font-family: 'Plus Jakarta Sans', sans-serif;}
+.checkout-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 900; cursor: pointer; margin-top: 16px; box-shadow: 0 8px 20px rgba(var(--orange-rgb),0.3); transition: 0.2s; font-family: 'Plus Jakarta Sans', sans-serif;}
 .checkout-btn:hover { transform: translateY(-2px); }
 
 /* CHECKOUT MODAL */
@@ -135,7 +135,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 @media(min-width:768px){#checkout-modal{display:none; align-items:center; justify-content:center;} #checkout-modal.show{display:flex;} #checkout-box{border-radius:24px; position:relative; bottom:auto; left:auto; transform:none; animation:popIn 0.3s ease;} @keyframes popIn{from{transform:scale(0.9);opacity:0}to{transform:scale(1);opacity:1}}}
 #checkout-box h4 { font-size: 20px; font-weight: 900; margin-bottom: 20px; color: var(--dark); }
 .co-input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 600; margin-bottom: 12px; outline: none; font-family: 'Plus Jakarta Sans', sans-serif; background: #F8FAFC; transition: 0.2s; }
-.co-input:focus { border-color: var(--orange); background: #fff; box-shadow: 0 0 0 4px rgba(245,114,36,0.1); }
+.co-input:focus { border-color: var(--orange); background: #fff; box-shadow: 0 0 0 4px rgba(var(--orange-rgb),0.1); }
 .co-total-row { background: var(--orange-light); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; margin: 16px 0; border: 1px dashed var(--orange); }
 .cancel-btn { width: 100%; padding: 14px; background: none; border: none; color: var(--muted); font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 8px; font-family: 'Plus Jakarta Sans', sans-serif;}
 
@@ -200,15 +200,15 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     /* ── CHECKOUT BUTTON FIX ── */
     .place-order-btn {
       width: 100%; padding: 15px; margin-top: 4px;
-      background: linear-gradient(135deg, var(--orange), #FF8C42);
+      background: linear-gradient(135deg, var(--orange), var(--orange-2));
       color: #fff; border: none; border-radius: 12px;
       font-size: 15px; font-weight: 800; cursor: pointer;
       font-family: 'Plus Jakarta Sans', sans-serif;
-      box-shadow: 0 4px 14px rgba(245,114,36,.35);
+      box-shadow: 0 4px 14px rgba(var(--orange-rgb),.35);
       display: flex; align-items: center; justify-content: center; gap: 8px;
       transition: transform .15s, box-shadow .15s;
     }
-    .place-order-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(245,114,36,.42); }
+    .place-order-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(var(--orange-rgb),.42); }
     .place-order-btn:active { transform: scale(.98); }
     .place-order-btn:disabled { opacity: .65; cursor: not-allowed; transform: none; }
     .cancel-btn {
@@ -233,6 +233,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     }
 
   </style>
+{% include 'store/storefront/_theme.html' %}
 </head>
 <body>
 

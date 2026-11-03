@@ -1,4 +1,5 @@
 from django.db import models
+from .themes import DEFAULT_THEME, THEME_CHOICES
 from django.conf import settings
 from datetime import timedelta
 from django.utils import timezone
@@ -46,6 +47,8 @@ class Shop(models.Model):
     is_sms_active = models.BooleanField(default=True, help_text="Turn on/off SMS sending")
     # ওয়েবসাইটে প্রোডাক্টের নিচে আসল বিক্রির সংখ্যা (Shipped/Delivered অর্ডার থেকে) দেখানো হবে কিনা
     show_sold_count = models.BooleanField(default=True, help_text="ওয়েবসাইটে কয়টা বিক্রি হয়েছে দেখান")
+    storefront_theme = models.CharField(max_length=20, default=DEFAULT_THEME, choices=THEME_CHOICES,
+                                        help_text='ওয়েবসাইটের রঙ')
     # SaaS Plan
     PLAN_CHOICES = (
         ('Free', 'Free Trial (30 days)'),
@@ -95,6 +98,11 @@ class Shop(models.Model):
     @property
     def subdomain(self):
         return self.slug
+
+    @property
+    def theme(self):
+        from .themes import theme_for
+        return theme_for(self.storefront_theme)
 
     def ensure_webhook_token(self):
         """কুরিয়ারের webhook-এর গোপন টোকেন (না থাকলে বানিয়ে সেভ)।"""

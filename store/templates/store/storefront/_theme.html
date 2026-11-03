@@ -1,0 +1,9 @@
+{# দোকানের বেছে নেওয়া রঙ; মূল <style>-এর পরে বসে তাই এটাই কাজ করে #}
+{% with t=shop.theme %}<style>
+:root {
+  --orange: {{ t.primary }}; --orange-dark: {{ t.dark }}; --orange-light: {{ t.light }};
+  --orange-2: {{ t.second }}; --orange-rgb: {{ t.rgb }};
+  --brand: {{ t.primary }}; --brand-dark: {{ t.dark }}; --brand-light: {{ t.light }};
+}
+</style>
+<meta name="theme-color" content="{{ t.primary }}">{% endwith %}

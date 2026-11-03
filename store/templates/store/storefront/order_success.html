@@ -29,7 +29,7 @@ body { background: var(--bg); font-family: 'Poppins', sans-serif; min-height: 10
 /* CARD */
 .card { background: var(--white); border-radius: 22px; max-width: 490px; width: 100%; box-shadow: 0 24px 64px rgba(0,0,0,.1); border: 1px solid var(--border); position: relative; z-index: 1; overflow: hidden; animation: cardIn .6s cubic-bezier(.16,1,.3,1) both; }
 @keyframes cardIn { from { transform: translateY(28px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-.card-stripe { height: 5px; background: linear-gradient(90deg, var(--brand), #FF8C42, #FFD60A); }
+.card-stripe { height: 5px; background: linear-gradient(90deg, var(--brand), var(--orange-2), #FFD60A); }
 
 /* TICK */
 .tick-zone { padding: 30px 26px 0; text-align: center; }
@@ -78,7 +78,7 @@ body { background: var(--bg); font-family: 'Poppins', sans-serif; min-height: 10
 
 /* ACTIONS */
 .actions { padding: 16px 22px 22px; display: flex; flex-direction: column; gap: 9px; }
-.btn-main { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 14px; background: linear-gradient(135deg, var(--brand), #FF8C42); color: #fff; border: none; border-radius: var(--rsm); font-size: 15px; font-weight: 800; font-family: 'Poppins', sans-serif; cursor: pointer; text-decoration: none; box-shadow: 0 4px 14px rgba(245,114,36,.3); transition: transform 0.2s; }
+.btn-main { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 14px; background: linear-gradient(135deg, var(--brand), var(--orange-2)); color: #fff; border: none; border-radius: var(--rsm); font-size: 15px; font-weight: 800; font-family: 'Poppins', sans-serif; cursor: pointer; text-decoration: none; box-shadow: 0 4px 14px rgba(var(--orange-rgb),.3); transition: transform 0.2s; }
 .btn-main:hover { color: #fff; transform: translateY(-2px); }
 .btn-out { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: var(--rsm); background: none; font-size: 13.5px; font-weight: 700; font-family: 'Poppins', sans-serif; cursor: pointer; color: var(--muted); transition: .2s; }
 .btn-out:hover { border-color: var(--brand); color: var(--brand); }
@@ -101,7 +101,7 @@ body { background: var(--bg); font-family: 'Poppins', sans-serif; min-height: 10
 }
 .pdf-watermark {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-35deg);
-  font-size: 140px; font-weight: 900; color: rgba(245, 114, 36, 0.04);
+  font-size: 140px; font-weight: 900; color: rgba(var(--orange-rgb), 0.04);
   z-index: 0; pointer-events: none; white-space: nowrap; font-family: 'Poppins', sans-serif;
 }
 .pdf-content { position: relative; z-index: 1; }
@@ -147,6 +147,7 @@ body { background: var(--bg); font-family: 'Poppins', sans-serif; min-height: 10
 .pdf-footer p { margin: 0; font-size: 12px; color: #64748B; font-weight: 500; }
 .pdf-footer .disclaimer { margin-top: 15px; font-size: 10px; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px; }
 </style>
+{% include 'store/storefront/_theme.html' %}
 </head>
 <body>
 
