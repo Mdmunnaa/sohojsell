@@ -315,6 +315,13 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
+# Business ধরনের Meta App-এ "Facebook Login for Business" থাকে: সেখানে permission-গুলো একটা Configuration-এ
+# বাছাই করা হয় আর লগইনে scope-এর বদলে config_id পাঠাতে হয়। Configuration ID Environment-এ বসালে সেটাই ব্যবহার হবে।
+FACEBOOK_LOGIN_CONFIG_ID = os.environ.get('FACEBOOK_LOGIN_CONFIG_ID', '').strip()
+if FACEBOOK_LOGIN_CONFIG_ID:
+    SOCIALACCOUNT_PROVIDERS['facebook']['AUTH_PARAMS']['config_id'] = FACEBOOK_LOGIN_CONFIG_ID
+    SOCIALACCOUNT_PROVIDERS['facebook']['SCOPE'] = []
+
 # Custom Adapters
 ACCOUNT_ADAPTER = 'accounts.adapters.AccountAdapter'
 SOCIALACCOUNT_ADAPTER = 'accounts.adapters.SocialAccountAdapter'
