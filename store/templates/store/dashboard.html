@@ -43,12 +43,18 @@
             </div>
             <div>
                 <div class="fw-bold text-dark small">Facebook পেইজ কানেক্ট করুন</div>
-                <div class="text-muted" style="font-size:0.78rem;">কমেন্ট বট ও অটো পোস্ট ফিচার পেতে পেইজ কানেক্ট করুন</div>
+                <div class="text-muted" style="font-size:0.78rem;">{% if plan.facebook %}কমেন্ট থেকে অর্ডার নেওয়ার ফিচার পেতে পেইজ কানেক্ট করুন{% else %}Facebook কানেক্ট আর অটোমেশন Standard ও Premium প্যাকেজে আছে{% endif %}</div>
             </div>
         </div>
+        {% if plan.facebook %}
         <a href="{% url 'fb_connect' %}" class="btn btn-sm btn-warning text-dark fw-bold" style="border-radius:8px;font-size:0.8rem;">
             <i class="bi bi-plug-fill me-1"></i> এখনই কানেক্ট করুন
         </a>
+        {% else %}
+        <a href="{% url 'billing' %}" class="btn btn-sm btn-outline-warning text-dark fw-bold" style="border-radius:8px;font-size:0.8rem;">
+            <i class="bi bi-arrow-up-circle me-1"></i> আপগ্রেড করুন
+        </a>
+        {% endif %}
     </div>
     {% endif %}
 

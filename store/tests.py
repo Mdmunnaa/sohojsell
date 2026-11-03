@@ -329,3 +329,73 @@ class SubdomainAndStorefrontTests(ShopTestMixin, TestCase):
     def test_trial_can_use_pos(self):
         _user, shop = self.make_shop()
         self.assertEqual(self.client.get(reverse('pos')).status_code, 200)
+
+
+class PlanLimitsTests(ShopTestMixin, TestCase):
+    def _paid(self, plan):
+        return {'subscription_plan': plan, 'valid_until': timezone.localdate() + timedelta(days=20)}
+
+    def test_basic_plan_product_limit(self):
+        from .models import Product
+        _user, shop = self.make_shop(**self._paid('Basic'))
+        Product.objects.bulk_create([Product(shop=shop, name=f'P{i}', price=10, cost_price=5, stock_quantity=1)
+                                     for i in range(200)])
+        response = self.client.post(reverse('add_product'), {'name': 'One more', 'price': 10, 'cost_price': 5,
+                                                             'stock_quantity': 1, 'is_active': 'on'})
+        self.assertRedirects(response, reverse('product_list'), fetch_redirect_response=False)
+        self.assertEqual(Product.objects.filter(shop=shop).count(), 200)
+        html = self.client.get(reverse('product_list')).content.decode()
+        self.assertIn('প্যাকেজে সর্বোচ্চ 200টা', html)
+
+    def test_premium_has_no_product_limit(self):
+        from .plans import products_remaining
+        _user, shop = self.make_shop(**self._paid('Premium'))
+        self.assertIsNone(products_remaining(shop))
+
+    def test_basic_plan_allows_only_one_staff(self):
+        from .models import StaffProfile
+        _user, shop = self.make_shop(**self._paid('Basic'))
+        data = {'name': 'Karim', 'phone': '01922222222', 'password': 'Staff-pass-1', 'can_use_pos': 'on'}
+        self.client.post(reverse('add_staff'), data)
+        self.assertEqual(StaffProfile.objects.filter(shop=shop).count(), 1)
+        response = self.client.post(reverse('add_staff'), {**data, 'phone': '01933333333'})
+        self.assertRedirects(response, reverse('staff_list'), fetch_redirect_response=False)
+        self.assertEqual(StaffProfile.objects.filter(shop=shop).count(), 1)
+        # এডিট করা যাবে
+        staff = StaffProfile.objects.get(shop=shop)
+        self.assertEqual(self.client.get(reverse('edit_staff', args=[staff.id])).status_code, 200)
+        self.assertIn('আরও স্টাফের জন্য আপগ্রেড', self.client.get(reverse('staff_list')).content.decode())
+
+    def test_basic_plan_cannot_connect_facebook(self):
+        _user, shop = self.make_shop(**self._paid('Basic'))
+        for name in ['fb_connect', 'fb_page_select']:
+            response = self.client.get(reverse(name))
+            self.assertRedirects(response, reverse('billing'), fetch_redirect_response=False)
+        html = self.client.get(reverse('settings')).content.decode()
+        self.assertNotIn(reverse('fb_connect'), html)
+        dashboard = self.client.get(reverse('dashboard'))
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertNotIn(reverse('fb_connect'), dashboard.content.decode())
+        self.assertEqual(self.client.get(reverse('billing')).status_code, 200)
+
+    def test_trial_and_standard_can_open_facebook_connect(self):
+        for phone, fields in [('01744444444', {}), ('01755555555', self._paid('Standard'))]:
+            self.make_shop(phone=phone, **fields)
+            response = self.client.get(reverse('fb_connect'))
+            # Facebook App বসানো না থাকায় ড্যাশবোর্ডে ফেরত যায়, কিন্তু billing-এ না
+            self.assertNotEqual(response.get('Location'), reverse('billing'))
+
+    def test_custom_domain_only_on_premium(self):
+        base = {'name': 'Shop', 'phone': '01711111111', 'address': 'Dhaka', 'subdomain': 'myshop',
+                'custom_domain': 'www.example.com'}
+        _user, shop = self.make_shop(**self._paid('Standard'))
+        self.client.post(reverse('settings'), base)
+        shop.refresh_from_db()
+        self.assertEqual(shop.slug, 'myshop')
+        self.assertFalse(shop.custom_domain)
+
+        shop.subscription_plan = 'Premium'
+        shop.save()
+        self.client.post(reverse('settings'), base)
+        shop.refresh_from_db()
+        self.assertEqual(shop.custom_domain, 'www.example.com')

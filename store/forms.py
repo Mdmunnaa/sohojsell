@@ -82,6 +82,10 @@ class ShopSettingsForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             self.fields['subdomain'].initial = self.instance.slug
         self.fields['subdomain'].error_messages['required'] = 'ওয়েবসাইটের ঠিকানা দিন।'
+        # নিজের ডোমেইন শুধু Premium-এ — অন্য প্যাকেজে ফিল্ডটাই থাকে না, তাই কেউ ফর্ম বানিয়েও বসাতে পারবে না
+        from .plans import has_custom_domain
+        if self.instance and self.instance.pk and not has_custom_domain(self.instance):
+            self.fields.pop('custom_domain', None)
 
     def clean_subdomain(self):
         from .subdomains import normalize, validate_subdomain

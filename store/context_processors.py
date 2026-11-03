@@ -35,3 +35,21 @@ def facebook_login(request):
     except Exception:
         enabled = False
     return {'facebook_login_enabled': enabled}
+
+
+def plan_info(request):
+    """ড্যাশবোর্ডের পেইজগুলোতে প্যাকেজের লিমিট দেখানোর জন্য: plan.facebook, plan.products, plan.staff ইত্যাদি।"""
+    user = getattr(request, 'user', None)
+    shop = getattr(user, 'shop', None) if user is not None and user.is_authenticated else None
+    if shop is None:
+        return {}
+    from .plans import limits_for, plan_label
+    limits = limits_for(shop)
+    return {'plan': {
+        'label': plan_label(shop),
+        'is_trial': shop.subscription_plan == 'Free',
+        'products': limits['products'],
+        'staff': limits['staff'],
+        'facebook': limits['facebook'],
+        'custom_domain': limits['custom_domain'],
+    }}

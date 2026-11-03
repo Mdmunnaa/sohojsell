@@ -6,11 +6,18 @@
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <div>
     <h4 class="fw-bold mb-1 text-dark">Staff Management</h4>
-    <p class="text-muted mb-0" style="font-size:13px;">Manage your shop employees and their access permissions.</p>
+    <p class="text-muted mb-0" style="font-size:13px;">Manage your shop employees and their access permissions.
+      {% if plan.staff %}· স্টাফ {{ staff_members|length }}/{{ plan.staff }} জন{% endif %}</p>
   </div>
+  {% if not plan.staff or staff_members|length < plan.staff %}
   <a href="{% url 'add_staff' %}" class="btn btn-primary fw-bold px-4 py-2 rounded-pill shadow-sm">
     <i class="bi bi-plus-lg me-1"></i> Add New Staff
   </a>
+  {% else %}
+  <a href="{% url 'billing' %}" class="btn btn-outline-primary fw-bold px-4 py-2 rounded-pill">
+    <i class="bi bi-arrow-up-circle me-1"></i> আরও স্টাফের জন্য আপগ্রেড
+  </a>
+  {% endif %}
 </div>
 
 {% if messages %}

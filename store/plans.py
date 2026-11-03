@@ -56,3 +56,41 @@ def storefront_is_open(shop, today=None):
 def storefront_closes_on(shop):
     end = subscription_end(shop)
     return end + timedelta(days=STOREFRONT_GRACE_DAYS) if end else None
+
+
+# ---------------------------------------------------------------- লিমিট যাচাই
+def product_limit(shop):
+    return limits_for(shop)['products']
+
+
+def products_remaining(shop):
+    """আর কয়টা প্রোডাক্ট যোগ করা যাবে (সীমাহীন হলে None)।"""
+    limit = product_limit(shop)
+    if limit is None:
+        return None
+    from .models import Product
+    return max(0, limit - Product.objects.filter(shop=shop).count())
+
+
+def staff_limit(shop):
+    return limits_for(shop)['staff']
+
+
+def can_add_staff(shop):
+    return shop.staff_members.count() < staff_limit(shop)
+
+
+def has_facebook(shop):
+    return bool(limits_for(shop)['facebook'])
+
+
+def has_custom_domain(shop):
+    return bool(limits_for(shop)['custom_domain'])
+
+
+def plan_label(shop):
+    return PLAN_LABELS.get(shop.subscription_plan, shop.subscription_plan)
+
+
+def upgrade_message(feature):
+    return f'{feature} আপনার এখনকার প্যাকেজে নেই। Billing থেকে প্যাকেজ আপগ্রেড করুন।'

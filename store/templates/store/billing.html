@@ -79,21 +79,20 @@
         <div class="text-center mb-4">
           <div style="font-size:36px;">📱</div>
           <h5 class="fw-900 mt-2 mb-1">Basic</h5>
-          <div style="font-size:13px;color:#64748b;font-weight:600;">Facebook Sellers</div>
+          <div style="font-size:13px;color:#64748b;font-weight:600;">শুধু ওয়েবসাইট</div>
           <div style="font-size:28px;font-weight:900;color:#3b82f6;margin-top:10px;">৳499<small style="font-size:14px;color:#94a3b8;">/মাস</small></div>
           <div style="font-size:12px;color:#94a3b8;">বা ৳5,000/বছর</div>
         </div>
         <ul class="list-unstyled" style="font-size:13px;">
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>SohojSell Subdomain</li>
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>POS System</li>
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>100 Products</li>
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Courier Integration</li>
-          <li class="mb-2" style="color:#94a3b8;"><i class="bi bi-x-circle me-2"></i>Custom Domain নেই</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>ওয়েবসাইট + নিজের সাবডোমেইন</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>অর্ডার, ইনভয়েস, কুরিয়ার, POS</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>২০০টা প্রোডাক্ট</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>১ জন স্টাফ</li>
+          <li class="mb-2" style="color:#94a3b8;"><i class="bi bi-x-circle me-2"></i>Facebook কানেক্ট ও অটোমেশন নেই</li>
         </ul>
         <button class="btn btn-outline-primary w-100 rounded-pill fw-bold mt-2"
-          onclick="showPaymentForm('Basic', 499)"
-          {% if shop.subscription_plan == 'Basic' and not shop.is_locked %}disabled{% endif %}>
-          {% if shop.subscription_plan == 'Basic' and not shop.is_locked %}Active{% else %}Get Basic{% endif %}
+          onclick="showPaymentForm('Basic', 499)">
+          {% if shop.subscription_plan == 'Basic' and not shop.is_locked %}মেয়াদ বাড়ান{% else %}Get Basic{% endif %}
         </button>
       </div>
     </div>
@@ -109,21 +108,20 @@
         <div class="text-center mb-4">
           <div style="font-size:36px;">🚀</div>
           <h5 class="fw-900 mt-2 mb-1">Standard</h5>
-          <div style="font-size:13px;color:#64748b;font-weight:600;">Online + Offline</div>
+          <div style="font-size:13px;color:#64748b;font-weight:600;">ওয়েবসাইট + Facebook</div>
           <div style="font-size:28px;font-weight:900;color:#3b82f6;margin-top:10px;">৳999<small style="font-size:14px;color:#94a3b8;">/মাস</small></div>
           <div style="font-size:12px;color:#94a3b8;">বা ৳10,000/বছর</div>
         </div>
         <ul class="list-unstyled" style="font-size:13px;">
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Custom Domain</li>
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Live E-commerce Store</li>
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Full POS System</li>
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>200 Products</li>
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Inventory Sync</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Basic-এর সব</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>১,০০০টা প্রোডাক্ট</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>৩ জন স্টাফ</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Facebook পেইজ কানেক্ট</li>
+          <li class="mb-2"><i class="bi bi-hourglass-split text-warning me-2"></i>কমেন্ট বট ও লাইভ মোড (শিগগিরই)</li>
         </ul>
         <button class="btn btn-primary w-100 rounded-pill fw-bold mt-2"
-          onclick="showPaymentForm('Standard', 999)"
-          {% if shop.subscription_plan == 'Standard' and not shop.is_locked %}disabled{% endif %}>
-          {% if shop.subscription_plan == 'Standard' and not shop.is_locked %}Active{% else %}Get Standard{% endif %}
+          onclick="showPaymentForm('Standard', 999)">
+          {% if shop.subscription_plan == 'Standard' and not shop.is_locked %}মেয়াদ বাড়ান{% else %}Get Standard{% endif %}
         </button>
       </div>
     </div>
@@ -139,21 +137,20 @@
         <div class="text-center mb-4">
           <div style="font-size:36px;">👑</div>
           <h5 class="fw-900 mt-2 mb-1">Premium</h5>
-          <div style="font-size:13px;color:#64748b;font-weight:600;">Enterprise</div>
+          <div style="font-size:13px;color:#64748b;font-weight:600;">বড় ব্যবসার জন্য</div>
           <div style="font-size:28px;font-weight:900;color:#f59e0b;margin-top:10px;">৳1,999<small style="font-size:14px;color:#94a3b8;">/মাস</small></div>
           <div style="font-size:12px;color:#94a3b8;">বা ৳20,000/বছর</div>
         </div>
         <ul class="list-unstyled" style="font-size:13px;">
           <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Standard-এর সব</li>
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Unlimited Products</li>
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Multi-Branch POS</li>
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Advanced Reports</li>
-          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Priority Support</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>সীমাহীন প্রোডাক্ট</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>১০ জন স্টাফ</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>নিজের ডোমেইন (যেমন yourshop.com)</li>
+          <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>প্রায়োরিটি সাপোর্ট</li>
         </ul>
         <button class="btn w-100 rounded-pill fw-bold mt-2" style="background:#f59e0b;color:#fff;"
-          onclick="showPaymentForm('Premium', 1999)"
-          {% if shop.subscription_plan == 'Premium' and not shop.is_locked %}disabled{% endif %}>
-          {% if shop.subscription_plan == 'Premium' and not shop.is_locked %}Active{% else %}Get Premium{% endif %}
+          onclick="showPaymentForm('Premium', 1999)">
+          {% if shop.subscription_plan == 'Premium' and not shop.is_locked %}মেয়াদ বাড়ান{% else %}Get Premium{% endif %}
         </button>
       </div>
     </div>

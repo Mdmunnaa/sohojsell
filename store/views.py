@@ -17,7 +17,10 @@ from datetime import timedelta
 import random
 
 from .models import Shop, Product, Category, Order, OrderItem, Customer, MasterSetting, Banner
-from .plans import storefront_closes_on, storefront_is_open
+from .plans import (
+    can_add_staff, has_custom_domain, has_facebook, plan_label, product_limit, products_remaining,
+    staff_limit, storefront_closes_on, storefront_is_open, upgrade_message,
+)
 from .forms import ShopSetupForm, ProductForm, OrderCreateForm, ShopSettingsForm
 
 
@@ -166,12 +169,10 @@ def product_list(request):
 def add_product(request):
     shop = request.user.shop
     if request.method == 'POST':
-        product_count = Product.objects.filter(shop=shop).count()
-        plan = shop.subscription_plan
-        LIMITS = {'Free': 20, 'Basic': 100, 'Standard': 200}
-        limit = LIMITS.get(plan)
-        if limit and product_count >= limit:
-            messages.error(request, f"{plan} Plan limit ({limit} products) reached! Please upgrade.")
+        remaining = products_remaining(shop)
+        if remaining == 0:
+            messages.error(request, f"আপনার প্যাকেজে সর্বোচ্চ {product_limit(shop)}টা প্রোডাক্ট রাখা যায়। "
+                                    "আরও যোগ করতে Billing থেকে প্যাকেজ আপগ্রেড করুন।")
             return redirect('product_list')
 
         form = ProductForm(request.POST, request.FILES)
@@ -489,7 +490,11 @@ def shop_settings(request):
             return redirect('settings')
     else:
         form = ShopSettingsForm(instance=shop)
-    return render(request, 'store/settings.html', {'form': form})
+    return render(request, 'store/settings.html', {
+        'form': form,
+        'custom_domain_allowed': has_custom_domain(shop),
+        'facebook_allowed': has_facebook(shop),
+    })
 
 
 # ============================================================
@@ -1529,6 +1534,11 @@ def add_edit_staff(request, staff_id=None):
     # যদি এডিট মোড হয়
     if staff_id:
         staff_profile = get_object_or_404(StaffProfile, id=staff_id, shop=shop)
+    elif not can_add_staff(shop):
+        # নতুন স্টাফ যোগের সময় প্যাকেজের সীমা দেখা হয় (এডিট সবসময় চলবে)
+        messages.error(request, f"আপনার প্যাকেজে সর্বোচ্চ {staff_limit(shop)} জন স্টাফ রাখা যায়। "
+                                "আরও স্টাফ যোগ করতে Billing থেকে প্যাকেজ আপগ্রেড করুন।")
+        return redirect('staff_list')
 
     if request.method == 'POST':
         name = request.POST.get('name')
@@ -1796,11 +1806,9 @@ def import_bulk_products(request):
         decoded_file = csv_file.read().decode('utf-8').splitlines()
         reader = csv.DictReader(decoded_file)
 
-        # Plan Limits Check
+        # প্যাকেজের লিমিট
         product_count = Product.objects.filter(shop=shop).count()
-        plan = shop.subscription_plan
-        LIMITS = {'Free': 20, 'Basic': 100, 'Standard': 200}
-        limit = LIMITS.get(plan)
+        limit = product_limit(shop)
 
         created_count = 0
         skipped_count = 0
@@ -1808,7 +1816,8 @@ def import_bulk_products(request):
         for row in reader:
             if limit and (product_count + created_count) >= limit:
                 messages.warning(request,
-                                 f'Plan limit reached! Only {created_count} products imported. Please upgrade your plan.')
+                                 f'প্যাকেজের লিমিট ({limit}টা প্রোডাক্ট) পূর্ণ, তাই {created_count}টা যোগ হয়েছে। '
+                                 'বাকিগুলো যোগ করতে প্যাকেজ আপগ্রেড করুন।')
                 break
 
             name = row.get('Name', '').strip()
@@ -1874,6 +1883,9 @@ def fb_page_select(request):
     if not shop:
         messages.error(request, "আগে আপনার শপ সেটআপ করুন!")
         return redirect('setup_shop')
+    if not has_facebook(shop):
+        messages.warning(request, upgrade_message("Facebook কানেক্ট আর অটোমেশন (Standard ও Premium প্যাকেজে আছে)"))
+        return redirect('billing')
 
     # ইতিমধ্যে কোনো পেইজ connect আছে কিনা
     existing_connection = FacebookPageConnection.objects.filter(shop=shop).first()
@@ -1981,6 +1993,10 @@ def fb_disconnect(request):
 def fb_connect(request):
     """Facebook এর সাথে connect করার redirect page"""
     from allauth.socialaccount.models import SocialApp
+    shop = getattr(request.user, 'shop', None)
+    if shop and not has_facebook(shop):
+        messages.warning(request, upgrade_message("Facebook কানেক্ট আর অটোমেশন (Standard ও Premium প্যাকেজে আছে)"))
+        return redirect('billing')
     # Django Admin-এ Facebook Social App যোগ না করা পর্যন্ত পেইজটা ক্র্যাশ না করে ড্যাশবোর্ডে ফেরত পাঠাবে
     if not SocialApp.objects.filter(provider='facebook').exists():
         messages.warning(request, "Facebook কানেক্ট এখনো চালু হয়নি, শিগগিরই আসছে।")
