@@ -294,7 +294,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
         {% else %}
           <span class="meta-chip oos"><i class="bi bi-x-circle-fill"></i> Out of Stock</span>
         {% endif %}
-        <span class="meta-chip rating"><i class="bi bi-star-fill text-warning"></i> 4.9/5</span>
+        {% if product.sold_count %}<span class="meta-chip rating"><i class="bi bi-bag-check-fill"></i> {{ product.sold_count }}টা বিক্রি হয়েছে</span>{% endif %}
       </div>
 
       <div class="desk-btn-row">

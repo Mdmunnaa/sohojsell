@@ -157,7 +157,7 @@ class ShopSettingsForm(forms.ModelForm):
                   'privacy_policy', 'return_policy', 'logo', 'custom_domain',
                   'steadfast_api_key', 'steadfast_secret_key',
                   'pathao_client_id', 'pathao_client_secret', 'pathao_store_id', 'redx_access_token',
-                  'is_sms_active']
+                  'is_sms_active', 'show_sold_count']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 017XXXXXXXX'}),
@@ -185,7 +185,8 @@ class ShopSettingsForm(forms.ModelForm):
             'pathao_store_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'কানেক্ট করলে নিজে থেকে আসবে'}),
             'redx_access_token': forms.PasswordInput(
                 attrs={'class': 'form-control', 'placeholder': 'RedX API Access Token', 'autocomplete': 'new-password'}),
-            'is_sms_active': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+            'is_sms_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_sold_count': forms.CheckboxInput(attrs={'class': 'form-check-input'})
         }
 
 from .models import Banner

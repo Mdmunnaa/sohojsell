@@ -1056,6 +1056,20 @@ def get_client_ip(request):
 
 import random
 
+SOLD_STATUSES = ('Shipped', 'Delivered')
+
+
+def _attach_sold_counts(shop, products):
+    """প্রতিটা প্রোডাক্টে product.sold_count: পাঠানো বা ডেলিভারি হওয়া অর্ডারে মোট কয়টা গেছে।"""
+    ids = [p.id for p in products]
+    counts = {}
+    if ids and shop.show_sold_count:
+        counts = dict(OrderItem.objects.filter(order__shop=shop, order__status__in=SOLD_STATUSES, product_id__in=ids)
+                      .values('product_id').annotate(total=Sum('quantity')).values_list('product_id', 'total'))
+    for p in products:
+        p.sold_count = counts.get(p.id, 0)
+
+
 def storefront_home(request, shop_slug):
     """Public e-commerce store for customers"""
     shop = get_object_or_404(Shop, slug=shop_slug)
@@ -1105,17 +1119,17 @@ def storefront_home(request, shop_slug):
     # QuerySet কে List এ কনভার্ট করে নিচ্ছি যেন রেন্ডম ভ্যালুগুলো টেমপ্লেটে ঠিকমতো যায়
     products = list(products)
 
-    # ---- NEW LOGIC: Fake Realistic Ratings & Sold Count ----
-    for p in products:
-        random.seed(p.id)  # Magic: Product ID-কে সিড হিসেবে দিলে প্রতিবার একই রেন্ডম নাম্বার আসবে!
-        p.fake_rating = round(random.uniform(4.1, 5.0), 1)  # ৪.১ থেকে ৫.০ এর মধ্যে রেটিং
-        p.fake_sold = random.randint(15, 450)  # ১৫ থেকে ৪৫০ এর মধ্যে সোল্ড আইটেম
+    # আসল বিক্রির সংখ্যা (বানানো রেটিং/বিক্রি আর দেখানো হয় না)
+    _attach_sold_counts(shop, products)
+    top_seller_ids = {p.id for p in sorted((p for p in products if p.sold_count), key=lambda p: -p.sold_count)[:4]}
 
     product_data = [{'id': p.id, 'name': p.name, 'price': float(p.price), 'stock': p.stock_quantity} for p in products]
 
     return render(request, 'store/storefront/home.html', {
         'shop': shop,
         'products': products,
+        'top_seller_ids': top_seller_ids,
+        'new_arrivals': sorted(products, key=lambda p: p.created_at, reverse=True)[:6],
         'categories': categories,
         'banners': banners,
         'product_data_json': json.dumps(product_data),
@@ -1155,10 +1169,6 @@ def storefront_product_detail(request, shop_slug, product_id):
         PageView.objects.create(shop=shop, product=product, ip_address=ip, session_key=session_key)
     # ==========================================================
 
-    # ---- Fake Rating for Main Product ----
-    random.seed(product.id)
-    product.fake_rating = round(random.uniform(4.1, 5.0), 1)
-    product.fake_sold = random.randint(15, 450)
 
     # ম্যাজিক লজিক: একই ক্যাটাগরির অন্য প্রোডাক্টগুলো খুঁজে বের করা (বর্তমান প্রোডাক্ট বাদে)
     related_products = Product.objects.filter(
@@ -1170,11 +1180,7 @@ def storefront_product_detail(request, shop_slug, product_id):
     # QuerySet কে List এ কনভার্ট করে নিচ্ছি
     related_products = list(related_products)
 
-    # ---- Fake Rating for Related Products ----
-    for rp in related_products:
-        random.seed(rp.id)
-        rp.fake_rating = round(random.uniform(4.1, 5.0), 1)
-        rp.fake_sold = random.randint(15, 450)
+    _attach_sold_counts(shop, [product] + related_products)
 
     return render(request, 'store/storefront/product_detail.html', {
         'shop': shop,

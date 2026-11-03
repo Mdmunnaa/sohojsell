@@ -288,6 +288,16 @@
 
                 <div class="settings-card">
                     <div class="sc-body">
+                        <!-- ওয়েবসাইটে বিক্রির সংখ্যা -->
+                        <h6 class="fw-bold text-success mb-3"><i class="bi bi-bag-check-fill me-2"></i>ওয়েবসাইটে দেখানো</h6>
+                        <div class="form-check form-switch bg-white p-3 rounded-3 border d-flex align-items-center mb-4" style="padding-left: 1rem !important;">
+                            {{ form.show_sold_count }}
+                            <label class="form-check-label fw-bold ms-3" for="{{ form.show_sold_count.id_for_label }}" style="margin-top: 1px;">
+                                প্রোডাক্টের নিচে "কয়টা বিক্রি হয়েছে" দেখান
+                                <span class="text-muted fw-normal d-block" style="font-size: 12px; margin-top: 2px;">পাঠানো আর ডেলিভারি হওয়া অর্ডার থেকে আসল সংখ্যা। কোনো প্রোডাক্ট বিক্রি না হলে কিছু দেখায় না।</span>
+                            </label>
+                        </div>
+
                         <!-- SMS Integration & Toggle -->
                         <h6 class="fw-bold text-primary mb-3"><i class="bi bi-chat-dots-fill me-2"></i>SMS Settings</h6>
                         <div class="p-3 rounded-4" style="background:#F8FAFC; border:1px dashed #CBD5E1;">

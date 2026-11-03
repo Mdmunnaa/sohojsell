@@ -44,6 +44,8 @@ class Shop(models.Model):
     sms_api_key = models.CharField(max_length=255, blank=True, null=True)
     sms_balance = models.IntegerField(default=0)
     is_sms_active = models.BooleanField(default=True, help_text="Turn on/off SMS sending")
+    # ওয়েবসাইটে প্রোডাক্টের নিচে আসল বিক্রির সংখ্যা (Shipped/Delivered অর্ডার থেকে) দেখানো হবে কিনা
+    show_sold_count = models.BooleanField(default=True, help_text="ওয়েবসাইটে কয়টা বিক্রি হয়েছে দেখান")
     # SaaS Plan
     PLAN_CHOICES = (
         ('Free', 'Free Trial (30 days)'),

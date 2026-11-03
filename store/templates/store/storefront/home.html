@@ -258,19 +258,14 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
   <div class="banner-dots" id="bannerDots"></div>
 </div>
 
-<!-- FLASH SALE SECTION -->
-{% if products %}
+{# নতুন প্রোডাক্ট (আগে এখানে বানানো ছাড় আর শেষ না হওয়া টাইমার ছিল) #}
+{% if new_arrivals %}
 <div class="flash-sale-wrap">
   <div class="flash-header">
-    <div class="flash-title"><i class="bi bi-lightning-charge-fill"></i> Flash Sale</div>
-    <div class="countdown">
-      <div class="cd-box">12</div><div class="cd-sep">:</div>
-      <div class="cd-box">34</div><div class="cd-sep">:</div>
-      <div class="cd-box">56</div>
-    </div>
+    <div class="flash-title"><i class="bi bi-stars"></i> নতুন এসেছে</div>
   </div>
   <div class="flash-scroll">
-    {% for product in products|slice:":6" %}
+    {% for product in new_arrivals %}
     <a href="{% shop_url 'storefront_product_detail' shop product.id %}" class="flash-card">
       <div class="flash-img-wrap">
         {% if product.image %}
@@ -278,10 +273,8 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
         {% else %}
         <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:30px;color:#ccc;"><i class="bi bi-image"></i></div>
         {% endif %}
-        <div class="flash-discount">-15%</div>
       </div>
       <div class="flash-price">৳{{ product.price|floatformat:0 }}</div>
-      <div class="flash-old">৳{{ product.price|add:150|floatformat:0 }}</div>
     </a>
     {% endfor %}
   </div>
@@ -303,7 +296,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
       <div class="prod-no-img"><i class="bi bi-box"></i></div>
       {% endif %}
       <div class="prod-badge-wrap">
-        {% if forloop.counter <= 4 %}<span class="badge-hot">Top Selling</span>{% endif %}
+        {% if product.id in top_seller_ids %}<span class="badge-hot">বেশি বিক্রি</span>{% endif %}
       </div>
       <button class="quick-add" id="btn-{{ product.id }}"
         onclick="event.stopPropagation(); addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{% if product.image %}{{ product.image.url }}{% else %}{% endif %}')">
@@ -313,7 +306,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     <div class="prod-body">
       <div class="prod-title">{{ product.name }}</div>
       <div class="prod-price">৳{{ product.price|floatformat:0 }}</div>
-      <div class="prod-sub"><i class="bi bi-star-fill text-warning"></i>{{ product.fake_rating }}/5 ({{ product.fake_sold }}+ sold) </div>
+      {% if product.sold_count %}<div class="prod-sub"><i class="bi bi-bag-check-fill text-success"></i> {{ product.sold_count }}টা বিক্রি হয়েছে</div>{% endif %}
     </div>
   </div>
   {% empty %}
@@ -490,16 +483,6 @@ let cart = JSON.parse(localStorage.getItem('sohojsell_' + SHOP_ID) || '{}');
   }
   setInterval(() => goTo((current + 1) % slides), 4000);
 })();
-
-// ===== FLASH TIMER =====
-setInterval(() => {
-  const h=document.querySelectorAll('.cd-box')[0], m=document.querySelectorAll('.cd-box')[1], s=document.querySelectorAll('.cd-box')[2];
-  if(h&&m&&s){
-    let sec = parseInt(s.innerText)-1;
-    if(sec < 0) { sec=59; m.innerText = parseInt(m.innerText)-1; }
-    s.innerText = sec < 10 ? '0'+sec : sec;
-  }
-}, 1000);
 
 // ===== PRODUCT CLICK =====
 function goToProduct(url) { window.location.href = url; }

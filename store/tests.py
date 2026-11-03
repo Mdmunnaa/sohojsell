@@ -666,3 +666,32 @@ class CourierTests(ShopTestMixin, TestCase):
         self.assertEqual(self.shop.steadfast_secret_key, 'SECRET')
         msgs = [str(m) for m in response.wsgi_request._messages]
         self.assertTrue(any('Steadfast কানেক্ট আছে' in m for m in msgs), msgs)
+
+
+class SoldCountTests(ShopTestMixin, TestCase):
+    def setUp(self):
+        from .models import Customer, Product
+        self.user, self.shop = self.make_shop(slug='soldshop')
+        self.product = Product.objects.create(shop=self.shop, name='Saree', price=900, cost_price=600, stock_quantity=9)
+        self.other = Product.objects.create(shop=self.shop, name='Lungi', price=300, cost_price=200, stock_quantity=9)
+        customer = Customer.objects.create(shop=self.shop, name='Karim', phone='01811111111', address='Savar')
+        for status, qty in [('Delivered', 2), ('Shipped', 1), ('Cancelled', 5), ('Pending', 4)]:
+            order = Order.objects.create(shop=self.shop, customer=customer, status=status, total_amount=900)
+            OrderItem.objects.create(order=order, product=self.product, quantity=qty, price=900)
+
+    def test_shows_only_real_sold_count(self):
+        html = self.client.get('/shop/soldshop/', HTTP_HOST='localhost').content.decode()
+        self.assertIn('3টা বিক্রি হয়েছে', html)          # শুধু Delivered + Shipped
+        self.assertNotIn('/5', html)                        # বানানো রেটিং নেই
+        self.assertNotIn('-15%', html)
+        self.assertEqual(html.count('বিক্রি হয়েছে'), 1)    # Lungi বিক্রি হয়নি, তাই কিছু দেখায় না
+        detail = self.client.get(f'/shop/soldshop/product/{self.product.id}/', HTTP_HOST='localhost').content.decode()
+        self.assertIn('3টা বিক্রি হয়েছে', detail)
+        self.assertNotIn('4.9/5', detail)
+
+    def test_seller_can_turn_it_off(self):
+        self.shop.show_sold_count = False
+        self.shop.save()
+        html = self.client.get('/shop/soldshop/', HTTP_HOST='localhost').content.decode()
+        self.assertNotIn('বিক্রি হয়েছে', html)
+        self.assertNotIn('বেশি বিক্রি', html)
