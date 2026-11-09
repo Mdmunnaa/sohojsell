@@ -1,0 +1,46 @@
+// ============================================================
+// SellPunch — Cloudflare-এ চালানোর কনফিগ
+// Worker (src/index.ts) সব রিকোয়েস্ট নিয়ে Django কন্টেইনারে পাঠায়।
+// কন্টেইনারের ইমেজ বানায় রিপোর ../Dockerfile থেকে।
+// সেটআপের ধাপ: README.md
+// ============================================================
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "sellpunch",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-11-01",
+	"observability": { "enabled": true },
+
+	// আপাতত টেস্টের ঠিকানা। সব ঠিক থাকলে এখানে sellpunch.com, www.sellpunch.com বসবে
+	// (README-র "আসল ডোমেইনে নেওয়া" অংশ দেখুন)
+	"workers_dev": false,
+	"routes": [{ "pattern": "cf.sellpunch.com", "custom_domain": true }],
+
+	"containers": [
+		{
+			"class_name": "SellPunchApp",
+			"image": "../Dockerfile",
+			"image_build_context": "..",
+			// ১/২ vCPU, 4 GiB RAM, 8 GB ডিস্ক
+			"instance_type": "standard-1",
+			"max_instances": 2,
+			// বাংলাদেশের কাছে (এশিয়া-প্যাসিফিক)। Neon ডাটাবেসও একই অঞ্চলে থাকা দরকার।
+			"constraints": { "regions": ["APAC"] }
+		}
+	],
+	"durable_objects": {
+		"bindings": [{ "name": "APP", "class_name": "SellPunchApp" }]
+	},
+	"exports": {
+		"SellPunchApp": { "type": "durable-object", "storage": "sqlite" }
+	},
+
+	// ড্যাশবোর্ডে দেওয়া Variables মুছবে না (গোপন জিনিস Secret হিসেবে দিন)
+	"keep_vars": true,
+	"vars": {
+		"PRIMARY_HOST": "cf.sellpunch.com",
+		// "true" থাকলে প্রতি ৫ মিনিটে সার্ভারকে জাগিয়ে রাখে, কাস্টমারকে অপেক্ষা করতে হয় না
+		"KEEP_WARM": "true"
+	},
+	"triggers": { "crons": ["*/5 * * * *"] }
+}

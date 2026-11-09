@@ -20,6 +20,7 @@ RESERVED_SUBDOMAINS = frozenset({
     'master', 'hq', 'dashboard', 'login', 'signup', 'register', 'account', 'accounts', 'info', 'hello', 'refund',
     'partner', 'partners', 'affiliate', 'affiliates', 'news', 'shop', 'store', 'ns1', 'ns2', 'mx',
     'domains', 'domain', 'localhost', 'saas-master', 'webhook', 'webhooks', 'privacy', 'terms', 'contact',
+    'cf', 'cloudflare', 'origin', 'server', 'healthz',
 })
 
 BENGALI_DIGITS = str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789')

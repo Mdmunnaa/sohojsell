@@ -39,7 +39,8 @@ class ShopSubdomainMiddleware:
         host = request.get_host().split(':')[0].lower()
         base = getattr(settings, 'STORE_BASE_DOMAIN', '')
 
-        if base and host.endswith('.' + base):
+        # মূল সাইট (PRIMARY_HOST, যেমন cf.sellpunch.com) কখনো দোকান না
+        if base and host.endswith('.' + base) and host != getattr(settings, 'PRIMARY_HOST', None):
             sub = host[:-(len(base) + 1)]
             if sub not in MAIN_SUBDOMAINS and '.' not in sub:
                 shop = Shop.objects.filter(slug=sub).only('id', 'slug').first()
@@ -69,7 +70,9 @@ class ShopSubdomainMiddleware:
             return False
         if base and host in (base, f'www.{base}'):
             return False
-        if host == getattr(settings, 'RENDER_EXTERNAL_HOSTNAME', None) or host.endswith('.onrender.com'):
+        if host in (getattr(settings, 'RENDER_EXTERNAL_HOSTNAME', None), getattr(settings, 'PRIMARY_HOST', None)):
+            return False
+        if host.endswith(('.onrender.com', '.workers.dev')):
             return False
         return not any(host == d or host.endswith('.' + d) for d in ('sellpunch.com', 'sohojsell.com'))
 

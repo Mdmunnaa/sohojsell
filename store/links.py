@@ -54,6 +54,6 @@ def absolute_storefront_link(shop, name='storefront_home', *args):
         return link
     site = getattr(settings, 'SITE_URL', '') or ''
     if not site:
-        host = getattr(settings, 'RENDER_EXTERNAL_HOSTNAME', None) or 'sellpunch.com'
+        host = getattr(settings, 'PRIMARY_HOST', None) or 'sellpunch.com'
         site = f'https://{host}'
     return site.rstrip('/') + link

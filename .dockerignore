@@ -1,0 +1,16 @@
+# ইমেজে যা যাবে না
+.git
+.github
+**/__pycache__
+**/*.py[cod]
+db.sqlite3
+media/
+staticfiles/
+.env
+.venv/
+venv/
+.idea/
+.vscode/
+*.log
+cloudflare/node_modules
+cloudflare/.wrangler

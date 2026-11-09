@@ -1,0 +1,17 @@
+{
+  "name": "sellpunch-cloudflare",
+  "private": true,
+  "description": "SellPunch-এর Django অ্যাপ Cloudflare Containers-এ চালানোর Worker",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "check": "tsc --noEmit && wrangler deploy --dry-run --containers-rollout=none",
+    "types": "wrangler types"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "0.3.7"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "wrangler": "4.159.0"
+  }
+}

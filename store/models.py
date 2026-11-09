@@ -157,7 +157,7 @@ class Shop(models.Model):
         base = getattr(settings, 'STORE_BASE_DOMAIN', '')
         if base:
             return f'{self.slug}.{base}'
-        host = getattr(settings, 'RENDER_EXTERNAL_HOSTNAME', None) or 'sellpunch.com'
+        host = getattr(settings, 'PRIMARY_HOST', None) or 'sellpunch.com'
         return f'{host}{self.storefront_url}'
 
     def __str__(self):

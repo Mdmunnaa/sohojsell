@@ -891,6 +891,22 @@ class StorefrontPolishTests(ShopTestMixin, TestCase):
         self.assertEqual(self.client.get(f'/shop/polish/category/{other.id}/', HTTP_HOST='localhost').status_code, 404)
 
 
+class CloudflareHostingTests(TestCase):
+    """Cloudflare Containers-এ চালানো: health check আর মূল ঠিকানা (PRIMARY_HOST) যেন দোকান না ভাবে।"""
+
+    def test_health_check(self):
+        response = self.client.get('/healthz/', HTTP_HOST='localhost')
+        self.assertEqual((response.status_code, response.content), (200, b'ok'))
+
+    @override_settings(STORE_BASE_DOMAIN='sellpunch.com', PRIMARY_HOST='cf.sellpunch.com')
+    def test_primary_host_is_the_main_site_not_a_shop(self):
+        response = self.client.get('/accounts/login/', HTTP_HOST='cf.sellpunch.com')
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateNotUsed(response, 'store/storefront/not_found.html')
+        from .subdomains import is_valid_format
+        self.assertFalse(is_valid_format('cf'))     # কোনো দোকান 'cf' নাম নিতে পারবে না
+
+
 class StorefrontThemeTests(ShopTestMixin, TestCase):
     def test_seller_picks_theme_and_storefront_uses_it(self):
         _user, shop = self.make_shop(slug='themeshop')

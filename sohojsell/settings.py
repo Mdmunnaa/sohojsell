@@ -20,11 +20,14 @@ def env_list(name):
 
 # Render নিজে থেকে RENDER নামে একটা environment variable দেয়
 IS_RENDER = 'RENDER' in os.environ
+# Cloudflare Containers নিজে থেকে CLOUDFLARE_APPLICATION_ID দেয় (cloudflare/ ফোল্ডার দেখুন)
+IS_CLOUDFLARE = 'CLOUDFLARE_APPLICATION_ID' in os.environ
+IS_PRODUCTION = IS_RENDER or IS_CLOUDFLARE
 
 # ============================================================
 # নিরাপত্তা — সব গোপন জিনিস environment variable থেকে
 # ============================================================
-DEBUG = env_bool('DEBUG', default=not IS_RENDER)
+DEBUG = env_bool('DEBUG', default=not IS_PRODUCTION)
 
 SECRET_KEY = os.environ.get('SECRET_KEY', '')
 if not SECRET_KEY:
@@ -46,11 +49,13 @@ if STORE_BASE_DOMAIN:
     CSRF_TRUSTED_ORIGINS += [f'https://{STORE_BASE_DOMAIN}', f'https://*.{STORE_BASE_DOMAIN}']
 
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-if RENDER_EXTERNAL_HOSTNAME:
-    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
-    CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_EXTERNAL_HOSTNAME}')
+# মূল সাইটের ঠিকানা (ড্যাশবোর্ড যেখানে খোলে), যেমন cf.sellpunch.com। না দিলে Render-এর ঠিকানা।
+PRIMARY_HOST = os.environ.get('PRIMARY_HOST', '').strip().lower() or RENDER_EXTERNAL_HOSTNAME
+for _host in {RENDER_EXTERNAL_HOSTNAME, PRIMARY_HOST} - {None, ''}:
+    ALLOWED_HOSTS.append(_host)
+    CSRF_TRUSTED_ORIGINS.append(f'https://{_host}')
 
-# Render HTTPS শেষ করে request পাঠায়, তাই এই header দেখে বুঝতে হবে request https কিনা
+# Render বা Cloudflare HTTPS শেষ করে request পাঠায়, তাই এই header দেখে বুঝতে হবে request https কিনা
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
