@@ -1,5 +1,8 @@
 from django.urls import path
 from django.views.generic import TemplateView
+from django.views.generic import RedirectView
+
+from . import website_views
 from . import views
 from . import payment_views
 
@@ -63,6 +66,7 @@ urlpatterns = [
     path('saas-master/shops/', views.manage_shops, name='manage_shops'),  # NEW
     path('saas-master/users/', views.all_users, name='all_users'),  # NEW
     path('saas-master/billing/', views.master_billing, name='master_billing'),  # NEW
+    path('saas-master/settlements/', website_views.master_settlements, name='master_settlements'),
     path('saas-master/settings/', views.master_settings, name='master_settings'),
     path('saas-master/recharge-sms/', views.recharge_sms, name='recharge_sms'),
 
@@ -71,9 +75,17 @@ urlpatterns = [
     path('barcodes/', views.barcode_print, name='barcode_print'),
 
     # Banner Management
-    path('banners/', views.banner_list, name='banner_list'),
-    path('banners/add/', views.add_banner, name='add_banner'),
-    path('banners/delete/<int:pk>/', views.delete_banner, name='delete_banner'),
+    # ওয়েবসাইট সেটিংস (Edumi-র মতো এক পেইজে ট্যাব)
+    path('website/', website_views.website_settings, name='website_settings'),
+    path('website/banner/<int:pk>/delete/', website_views.banner_delete, name='website_banner_delete'),
+    path('website/banner/<int:pk>/toggle/', website_views.banner_toggle, name='website_banner_toggle'),
+    path('website/category/<int:pk>/rename/', website_views.category_rename, name='website_category_rename'),
+    path('website/category/<int:pk>/delete/', website_views.category_remove, name='website_category_delete'),
+    path('website/zone/<int:pk>/save/', website_views.zone_update, name='website_zone_update'),
+    path('website/zone/<int:pk>/delete/', website_views.zone_delete, name='website_zone_delete'),
+    # পুরনো ঠিকানাগুলো নতুন ট্যাবে পাঠায়
+    path('banners/', RedirectView.as_view(url='/website/?tab=banners'), name='banner_list'),
+    path('banners/add/', RedirectView.as_view(url='/website/?tab=banners'), name='add_banner'),
 
     # PayStation অনলাইন পেমেন্ট (আগের SSLCommerz পথ সরানো হয়েছে — সেখানে যাচাইয়ের ফাঁক ছিল)
     path('payment/paystation/start/', payment_views.paystation_start, name='paystation_start'),
@@ -91,12 +103,13 @@ urlpatterns = [
     path('shop/<slug:shop_slug>/checkout/', views.storefront_checkout, name='storefront_checkout'),
     path('shop/<slug:shop_slug>/place-order/', views.storefront_place_order, name='storefront_place_order'),
     path('shop/<slug:shop_slug>/order/<int:order_id>/success/', views.storefront_order_success, name='storefront_order_success'),
+    path('shop/<slug:shop_slug>/order/<int:order_id>/pay/', views.storefront_payment_retry, name='storefront_payment_retry'),
+    path('shop/<slug:shop_slug>/payment/return/', views.storefront_payment_return, name='storefront_payment_return'),
 
 # Categories
     path('categories/', views.category_list, name='category_list'),
-    path('categories/delete/<int:pk>/', views.delete_category, name='delete_category'),
     path('shop/<slug:shop_slug>/product/<int:product_id>/', views.storefront_product_detail, name='storefront_product_detail'),
-    path('category/edit/<int:pk>/', views.edit_category, name='edit_category'),
+    path('category/edit/<int:pk>/', RedirectView.as_view(url='/website/?tab=categories'), name='edit_category'),
 
     # Staff Management
     path('staff/', views.staff_list, name='staff_list'),

@@ -102,3 +102,34 @@ class OnlinePaymentAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+from .models import DeliveryZone, ShopPayout, StorefrontPayment
+
+
+@admin.register(StorefrontPayment)
+class StorefrontPaymentAdmin(admin.ModelAdmin):
+    """কাস্টমারের অনলাইন পেমেন্ট — PayStation যাচাই করেই সম্পন্ন হয়, হাতে বদলানো যায় না।"""
+    list_display = ['invoice_number', 'shop', 'order', 'kind', 'amount', 'fee_amount', 'net_amount', 'status',
+                    'environment', 'trx_id', 'created_at']
+    list_filter = ['status', 'kind', 'environment']
+    search_fields = ['invoice_number', 'trx_id', 'shop__name']
+    readonly_fields = [f.name for f in StorefrontPayment._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ShopPayout)
+class ShopPayoutAdmin(admin.ModelAdmin):
+    list_display = ['shop', 'amount', 'method', 'account', 'reference', 'paid_at', 'created_by']
+    search_fields = ['shop__name', 'reference']
+
+
+@admin.register(DeliveryZone)
+class DeliveryZoneAdmin(admin.ModelAdmin):
+    list_display = ['shop', 'name', 'charge', 'is_active', 'sort_order']
+    search_fields = ['shop__name', 'name']

@@ -78,7 +78,19 @@
                                     {% endfor %}
                                 </div>
                             </td>
-                            <td class="py-3 fw-bolder text-dark">৳ {{ order.total_amount }}</td>
+                            <td class="py-3">
+                                <span class="fw-bolder text-dark">৳ {{ order.total_amount|floatformat:0 }}</span>
+                                {% if order.online_payment_status == 'paid' %}
+                                    {% if order.due_amount %}
+                                    <small class="d-block text-success fw-semibold" style="font-size:11px;">অনলাইনে ৳{{ order.advance_paid|floatformat:0 }} · বাকি ৳{{ order.due_amount|floatformat:0 }}</small>
+                                    {% else %}
+                                    <small class="d-block text-success fw-semibold" style="font-size:11px;"><i class="bi bi-patch-check-fill"></i> অনলাইনে পরিশোধিত</small>
+                                    {% endif %}
+                                {% elif order.online_payment_status == 'pending' %}
+                                    <small class="d-block text-warning fw-semibold" style="font-size:11px;"><i class="bi bi-hourglass-split"></i> অনলাইন পেমেন্ট বাকি</small>
+                                {% endif %}
+                                {% if order.source == 'storefront' %}<small class="d-block text-muted" style="font-size:10px;"><i class="bi bi-globe2"></i> ওয়েবসাইট</small>{% endif %}
+                            </td>
                             <td class="py-3" style="width: 150px;">
                                 <select class="form-select form-select-sm status-dropdown rounded-pill border-0 bg-light fw-bold text-center text-secondary shadow-sm" data-order-id="{{ order.id }}" style="cursor: pointer;">
                                     <option value="Pending" {% if order.status == 'Pending' %}selected{% endif %}>Pending</option>
@@ -102,7 +114,7 @@
                                         </span>
                                     {% else %}
                                         <!-- নতুন Courier Modal Trigger Button -->
-                                        <button type="button" class="btn btn-sm btn-light text-success rounded-circle shadow-sm" data-bs-toggle="modal" data-bs-target="#courierModal" onclick="setCourierData('{{ order.id }}', '{{ order.customer.name|escapejs }}', '{% if order.payment_method in prepaid_methods %}0{% else %}{{ order.total_amount|floatformat:0 }}{% endif %}', '{{ order.customer.address|default:''|escapejs }}')" data-bs-toggle="tooltip" title="Send to Courier" style="width: 35px; height: 35px; line-height: 22px;">
+                                        <button type="button" class="btn btn-sm btn-light text-success rounded-circle shadow-sm" data-bs-toggle="modal" data-bs-target="#courierModal" onclick="setCourierData('{{ order.id }}', '{{ order.customer.name|escapejs }}', '{% if order.payment_method in prepaid_methods %}0{% else %}{{ order.due_amount|floatformat:0 }}{% endif %}', '{{ order.customer.address|default:''|escapejs }}')" data-bs-toggle="tooltip" title="Send to Courier" style="width: 35px; height: 35px; line-height: 22px;">
                                             <i class="bi bi-truck"></i>
                                         </button>
                                     {% endif %}

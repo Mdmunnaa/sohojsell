@@ -1,0 +1,222 @@
+{% load store_links %}
+{# কার্ট আর চেকআউট: হোম আর প্রোডাক্ট পেইজ দুই জায়গাতেই এটা। দাম-চার্জ এখানে শুধু দেখানোর জন্য; আসল হিসাব সার্ভারে। #}
+<style>
+  .co-label { font-size: 12px; font-weight: 800; color: var(--muted); margin: 14px 0 8px; text-transform: none; }
+  .co-options { display: flex; flex-direction: column; gap: 8px; }
+  .co-opt { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 1.5px solid #E2E8F0; border-radius: 12px; cursor: pointer; background: #fff; transition: .15s; }
+  .co-opt input { accent-color: var(--orange); width: 18px; height: 18px; flex-shrink: 0; margin: 0; }
+  .co-opt:has(input:checked) { border-color: var(--orange); background: var(--orange-light); }
+  .co-opt .co-opt-main { flex: 1; min-width: 0; }
+  .co-opt .co-opt-title { font-size: 14px; font-weight: 800; color: var(--dark, #0F172A); display: block; }
+  .co-opt .co-opt-sub { font-size: 11.5px; color: var(--muted); display: block; line-height: 1.35; }
+  .co-opt b { font-size: 14px; color: var(--dark, #0F172A); white-space: nowrap; }
+  .co-summary { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: #F8FAFC; font-size: 13px; }
+  .co-summary .row-line { display: flex; justify-content: space-between; padding: 3px 0; color: #475569; }
+  .co-summary .row-line.total { border-top: 1px dashed #CBD5E1; margin-top: 6px; padding-top: 8px; font-weight: 900; font-size: 15px; color: var(--dark, #0F172A); }
+  .co-summary .row-line.now { color: var(--orange); font-weight: 900; }
+  .co-free-note { font-size: 11.5px; color: #059669; font-weight: 700; margin-top: 6px; }
+  #checkout-box { max-height: 92vh; overflow-y: auto; }
+</style>
+
+<!-- কার্ট -->
+<div id="cart-overlay" onclick="closeCart()"></div>
+<div id="cart-drawer">
+  <div class="drawer-header">
+    <h5><i class="bi bi-bag-check-fill me-2 text-orange"></i>আমার কার্ট</h5>
+    <button class="close-btn" onclick="closeCart()" aria-label="বন্ধ করুন"><i class="bi bi-x-lg"></i></button>
+  </div>
+  <div class="drawer-items" id="drawer-items"></div>
+  <div class="drawer-footer">
+    <div class="df-row"><span>প্রোডাক্টের দাম</span><span id="sf-subtotal">৳0</span></div>
+    <div class="df-row"><span>ডেলিভারি চার্জ</span><span id="sf-delivery">—</span></div>
+    <div class="df-total"><span>মোট</span><span id="sf-total">৳0</span></div>
+    <button class="checkout-btn" onclick="openCheckout()">অর্ডার করতে এগিয়ে যান →</button>
+  </div>
+</div>
+
+<!-- চেকআউট -->
+<div id="checkout-modal">
+  <div id="checkout-box">
+    <h4><i class="bi bi-truck me-2 text-orange"></i>অর্ডারের তথ্য</h4>
+    <input type="text" id="co-name" class="co-input" placeholder="আপনার নাম *" autocomplete="name" maxlength="150">
+    <input type="tel" id="co-phone" class="co-input" placeholder="মোবাইল নম্বর * (01XXXXXXXXX)" autocomplete="tel" inputmode="tel" maxlength="20">
+    <textarea id="co-address" class="co-input" rows="2" placeholder="পুরো ঠিকানা * (বাসা, রোড, এলাকা, থানা, জেলা)" autocomplete="street-address" maxlength="500"></textarea>
+    <textarea id="co-note" class="co-input" rows="1" placeholder="কিছু বলার থাকলে (ঐচ্ছিক)" maxlength="500"></textarea>
+
+    {% if delivery_zones %}
+    <div class="co-label">ডেলিভারি এলাকা</div>
+    <div class="co-options">
+      {% for z in delivery_zones %}
+      <label class="co-opt">
+        <input type="radio" name="co-zone" value="{{ z.id }}" data-charge="{{ z.charge|floatformat:0 }}" {% if forloop.first %}checked{% endif %} onchange="renderCart()">
+        <span class="co-opt-main"><span class="co-opt-title">{{ z.name }}</span></span>
+        <b>৳{{ z.charge|floatformat:0 }}</b>
+      </label>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if shop.free_delivery_min %}
+    <div class="co-free-note"><i class="bi bi-gift-fill"></i> ৳{{ shop.free_delivery_min|floatformat:0 }} বা তার বেশি অর্ডারে ডেলিভারি ফ্রি</div>
+    {% endif %}
+
+    {% if payment_choices|length > 1 or online_allowed %}
+    <div class="co-label">পেমেন্ট</div>
+    <div class="co-options">
+      {% for choice in payment_choices %}
+      <label class="co-opt">
+        <input type="radio" name="co-pay" value="{{ choice }}" {% if forloop.first %}checked{% endif %} onchange="renderCart()">
+        <span class="co-opt-main">
+          {% if choice == 'cod' %}
+          <span class="co-opt-title">ক্যাশ অন ডেলিভারি</span><span class="co-opt-sub">পণ্য হাতে পেয়ে টাকা দিন</span>
+          {% elif choice == 'advance' %}
+          <span class="co-opt-title">ডেলিভারি চার্জ এখন, বাকিটা পণ্য হাতে পেয়ে</span><span class="co-opt-sub">bKash, Nagad, Rocket বা কার্ডে</span>
+          {% else %}
+          <span class="co-opt-title">পুরো টাকা এখন অনলাইনে</span><span class="co-opt-sub">bKash, Nagad, Rocket বা কার্ডে</span>
+          {% endif %}
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="co-summary">
+      <div class="row-line"><span>প্রোডাক্টের দাম</span><span id="co-subtotal">৳0</span></div>
+      <div class="row-line"><span>ডেলিভারি চার্জ</span><span id="co-delivery">৳0</span></div>
+      <div class="row-line total"><span>মোট</span><span id="co-total-display">৳0</span></div>
+      <div class="row-line now" id="co-now-row" style="display:none;"><span>এখন অনলাইনে দেবেন</span><span id="co-now">৳0</span></div>
+      <div class="row-line" id="co-later-row" style="display:none;"><span>পণ্য হাতে পেয়ে দেবেন</span><span id="co-later">৳0</span></div>
+      <div class="co-free-note" id="co-free-advance" style="display:none;">ডেলিভারি ফ্রি, তাই এখন কিছু দিতে হবে না। পুরো টাকা পণ্য হাতে পেয়ে দেবেন।</div>
+    </div>
+
+    <button class="place-order-btn" id="place-order-btn" onclick="placeOrder()">
+      <i class="bi bi-check-circle-fill me-2"></i><span id="place-order-label">অর্ডার কনফার্ম করুন</span>
+    </button>
+    <button class="cancel-btn" onclick="document.getElementById('checkout-modal').classList.remove('show')">← কার্টে ফিরে যান</button>
+  </div>
+</div>
+
+<script>
+const SHOP_ID = '{{ shop.id }}';
+const PLACE_ORDER_URL = '{% shop_url "storefront_place_order" shop %}';
+const FREE_DELIVERY_MIN = {% if shop.free_delivery_min %}{{ shop.free_delivery_min|floatformat:0 }}{% else %}null{% endif %};
+const FALLBACK_DELIVERY = {{ fallback_delivery|default:0|floatformat:0 }};
+let cart = {};
+try { cart = JSON.parse(localStorage.getItem('sohojsell_' + SHOP_ID) || '{}') || {}; } catch (e) { cart = {}; }
+
+function saveCart() { try { localStorage.setItem('sohojsell_' + SHOP_ID, JSON.stringify(cart)); } catch (e) {} }
+function money(n) { return '৳' + Math.round(n).toLocaleString('en-IN'); }
+function escapeHtml(text) {
+  return String(text == null ? '' : text).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function changeQty(id, delta) {
+  id = String(id); if (!cart[id]) return;
+  if (delta > 0 && cart[id].qty >= cart[id].stock) { showToast('⚠️ স্টকে আর নেই'); return; }
+  cart[id].qty += delta;
+  if (cart[id].qty <= 0) delete cart[id];
+  saveCart(); if (typeof updateBtn === 'function') updateBtn(id); renderCart();
+}
+function removeItem(id) { id = String(id); delete cart[id]; saveCart(); if (typeof updateBtn === 'function') updateBtn(id); renderCart(); }
+
+function checkoutNumbers() {
+  const keys = Object.keys(cart);
+  const subtotal = keys.reduce((s, k) => s + cart[k].price * cart[k].qty, 0);
+  const zone = document.querySelector('input[name="co-zone"]:checked');
+  let delivery = keys.length ? (zone ? Number(zone.dataset.charge) : FALLBACK_DELIVERY) : 0;
+  if (FREE_DELIVERY_MIN !== null && subtotal >= FREE_DELIVERY_MIN) delivery = 0;
+  const total = subtotal + delivery;
+  const payEl = document.querySelector('input[name="co-pay"]:checked');
+  const pay = payEl ? payEl.value : 'cod';
+  const now = pay === 'full' ? total : (pay === 'advance' ? delivery : 0);
+  return { keys, subtotal, delivery, total, pay, now };
+}
+
+function renderCart() {
+  const n = checkoutNumbers();
+  const count = n.keys.reduce((s, k) => s + cart[k].qty, 0);
+  ['nav-cart-badge', 'mob-cart-badge'].forEach(id => { const b = document.getElementById(id); if (b) { b.style.display = count > 0 ? 'flex' : 'none'; b.textContent = count; } });
+  const db = document.getElementById('desktop-cart-badge');
+  if (db) { db.style.display = count > 0 ? 'inline' : 'none'; db.textContent = count; }
+
+  const deliveryText = n.keys.length ? (n.delivery === 0 ? 'ফ্রি' : money(n.delivery)) : '—';
+  document.getElementById('sf-subtotal').textContent = money(n.subtotal);
+  document.getElementById('sf-delivery').textContent = deliveryText;
+  document.getElementById('sf-total').textContent = money(n.total);
+  document.getElementById('co-subtotal').textContent = money(n.subtotal);
+  document.getElementById('co-delivery').textContent = deliveryText;
+  document.getElementById('co-total-display').textContent = money(n.total);
+  document.getElementById('co-now-row').style.display = n.now > 0 ? 'flex' : 'none';
+  document.getElementById('co-later-row').style.display = (n.now > 0 && n.now < n.total) ? 'flex' : 'none';
+  document.getElementById('co-now').textContent = money(n.now);
+  document.getElementById('co-free-advance').style.display = (n.pay === 'advance' && n.keys.length && n.delivery === 0) ? 'block' : 'none';
+  document.getElementById('co-later').textContent = money(n.total - n.now);
+  document.getElementById('place-order-label').textContent = n.now > 0 ? (money(n.now) + ' পেমেন্ট করে অর্ডার করুন') : 'অর্ডার কনফার্ম করুন';
+
+  const container = document.getElementById('drawer-items');
+  if (!n.keys.length) {
+    container.innerHTML = '<div class="text-center text-muted py-5"><i class="bi bi-bag-x" style="font-size:56px;display:block;margin-bottom:12px;color:#E2E8F0;"></i><h6 class="fw-bold">কার্ট খালি</h6></div>';
+    return;
+  }
+  container.innerHTML = n.keys.map(id => {
+    const item = cart[id];
+    const safeId = Number(id);
+    const img = item.image ? `<img src="${escapeHtml(item.image)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">` : '<i class="bi bi-bag text-muted"></i>';
+    return `<div class="cart-item-row">
+      <div class="ci-img">${img}</div>
+      <div class="ci-info"><div class="ci-name">${escapeHtml(item.name)}</div><div class="ci-price">${money(item.price * item.qty)}</div></div>
+      <div class="ci-qty-ctrl"><button onclick="changeQty(${safeId},-1)" aria-label="কমান">−</button><span>${Number(item.qty)}</span><button onclick="changeQty(${safeId},1)" aria-label="বাড়ান">+</button></div>
+      <button onclick="removeItem(${safeId})" aria-label="সরান" style="background:none;border:none;color:#FF3333;cursor:pointer;font-size:18px;padding:0 0 0 8px;"><i class="bi bi-trash3-fill"></i></button>
+    </div>`;
+  }).join('');
+}
+
+function openCart() { document.getElementById('cart-overlay').classList.add('show'); document.getElementById('cart-drawer').classList.add('open'); }
+function closeCart() { document.getElementById('cart-overlay').classList.remove('show'); document.getElementById('cart-drawer').classList.remove('open'); }
+function openCheckout() {
+  if (!Object.keys(cart).length) { showToast('কার্ট খালি'); return; }
+  closeCart(); renderCart();
+  document.getElementById('checkout-modal').classList.add('show');
+}
+
+function getCookie(name) {
+  let v = null;
+  document.cookie.split(';').forEach(c => { c = c.trim(); if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1)); });
+  return v;
+}
+
+async function placeOrder() {
+  const name = document.getElementById('co-name').value.trim();
+  const phone = document.getElementById('co-phone').value.trim();
+  const address = document.getElementById('co-address').value.trim();
+  const note = document.getElementById('co-note').value.trim();
+  if (!name || !phone || !address) { showToast('⚠️ নাম, মোবাইল নম্বর আর ঠিকানা দিন'); return; }
+  const n = checkoutNumbers();
+  const zone = document.querySelector('input[name="co-zone"]:checked');
+  const btn = document.getElementById('place-order-btn');
+  const label = document.getElementById('place-order-label').textContent;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>অপেক্ষা করুন...';
+  const restore = () => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i><span id="place-order-label">' + escapeHtml(label) + '</span>'; };
+  try {
+    const res = await fetch(PLACE_ORDER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') || '' },
+      body: JSON.stringify({ cart: Object.values(cart).map(i => ({ id: i.id, qty: i.qty })), name, phone, address, note,
+                             zone: zone ? zone.value : null, payment: n.pay })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (data.success && data.redirect) {
+      try { localStorage.removeItem('sohojsell_' + SHOP_ID); } catch (e) {}
+      window.location.href = data.redirect;
+    } else {
+      showToast('❌ ' + (data.error || 'অর্ডার নেওয়া যায়নি, আবার চেষ্টা করুন'));
+      restore();
+    }
+  } catch (e) {
+    showToast('❌ ইন্টারনেট সংযোগ দেখুন, তারপর আবার চেষ্টা করুন');
+    restore();
+  }
+}
+
+if (window.location.hash === '#checkout') { window.addEventListener('load', () => { if (Object.keys(cart).length) openCheckout(); }); }
+</script>

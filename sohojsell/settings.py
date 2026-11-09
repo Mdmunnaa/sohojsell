@@ -223,6 +223,9 @@ PAYSTATION_PAY_WITH_CHARGE = os.environ.get('PAYSTATION_PAY_WITH_CHARGE', '0')
 # sandbox চলার সময় শুধু এই শপগুলো (slug, কমা দিয়ে) অনলাইন পেমেন্ট বাটন দেখবে —
 # যাতে টেস্ট মোডে কোনো আসল সেলার বিনা টাকায় প্ল্যান চালু করতে না পারে।
 PAYSTATION_TEST_SHOPS = env_list('PAYSTATION_TEST_SHOPS')
+# কাস্টমার দোকানের ওয়েবসাইটে অনলাইনে টাকা দিলে প্ল্যাটফর্ম কত % রাখবে (বাকিটা সেলারের পাওনা)।
+# PayStation-এর নিজের চার্জ এর মধ্যেই ধরা।
+STOREFRONT_PAYMENT_FEE_PERCENT = os.environ.get('STOREFRONT_PAYMENT_FEE_PERCENT', '2')
 
 # Render-এর Logs-এ error দেখার জন্য
 LOGGING = {

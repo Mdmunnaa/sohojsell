@@ -113,100 +113,15 @@
             <!-- LEFT COLUMN -->
             <div class="col-lg-8">
 
-                <!-- Business Info -->
-                <div class="settings-card">
-                    <div class="sc-header">
-                        <div class="sc-icon" style="background:#eff6ff; color:#3B82F6;"><i class="bi bi-shop"></i></div>
-                        <h4 class="sc-title">Business Information</h4>
+                <!-- দোকানের তথ্য এখন ওয়েবসাইট পেইজে -->
+                <a href="{% url 'website_settings' %}" class="settings-card d-flex align-items-center gap-3 p-4 text-decoration-none" style="border:1.5px solid #C7D2FE;background:#EEF2FF;">
+                    <div class="sc-icon" style="background:#4F46E5;color:#fff;flex-shrink:0;"><i class="bi bi-globe2"></i></div>
+                    <div class="flex-grow-1">
+                        <div class="fw-bold" style="color:#1E1B4B;">দোকানের তথ্য, লোগো আর ওয়েবসাইট</div>
+                        <div class="small" style="color:#4338CA;">নাম, ঠিকানা, ওয়েবসাইটের ঠিকানা, ডিজাইন, ব্যানার, ক্যাটাগরি, ডেলিভারি চার্জ আর পেমেন্ট — সব "ওয়েবসাইট" পেইজে</div>
                     </div>
-                    <div class="sc-body">
-                        <div class="row g-4 mb-4">
-                            <div class="col-md-6">
-                                <label class="form-label">Shop Name <span class="text-danger">*</span></label>
-                                {{ form.name }}
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Contact Phone</label>
-                                {{ form.phone }}
-                            </div>
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label">Shop Address <span class="text-muted text-capitalize fw-semibold" style="font-size:10px;">(Appears on Invoice)</span></label>
-                            {{ form.address }}
-                        </div>
-
-                        <!-- Social Links (New Addition) -->
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-4">
-                                <label class="form-label text-primary"><i class="bi bi-facebook me-1"></i> Facebook</label>
-                                {{ form.facebook_page_url }}
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label" style="color: #E4405F;"><i class="bi bi-instagram me-1"></i> Instagram</label>
-                                {{ form.instagram_link }}
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label text-danger"><i class="bi bi-youtube me-1"></i> YouTube</label>
-                                {{ form.youtube_link }}
-                            </div>
-                        </div>
-
-                        <!-- Policies (New Addition) -->
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <label class="form-label text-success"><i class="bi bi-shield-check me-1"></i> Privacy Policy</label>
-                                {{ form.privacy_policy }}
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label text-warning"><i class="bi bi-arrow-return-left me-1"></i> Return Policy</label>
-                                {{ form.return_policy }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Domain Settings -->
-                <div class="settings-card">
-                    <div class="sc-header">
-                        <div class="sc-icon" style="background:#ecfdf5; color:#10B981;"><i class="bi bi-globe2"></i></div>
-                        <h4 class="sc-title">Online Store & Domain</h4>
-                    </div>
-                    <div class="sc-body">
-                        <div class="mb-4">
-                            <label class="form-label" for="id_subdomain">আপনার ওয়েবসাইটের ঠিকানা</label>
-                            <div class="input-group">
-                                {{ form.subdomain }}
-                                <span class="input-group-text fw-semibold">.{{ site.store_domain }}</span>
-                            </div>
-                            <div id="subdomain-result" class="small mt-1 text-muted"></div>
-                            {% for e in form.subdomain.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
-                            <div class="form-text mt-2 small fw-semibold text-warning">
-                                <i class="bi bi-exclamation-triangle-fill me-1"></i>ঠিকানা বদলালে আগে Facebook-এ বা কাস্টমারকে দেওয়া পুরনো লিংক আর কাজ করবে না।
-                            </div>
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label">দোকানের লিংক (কাস্টমারকে এটা দিন)</label>
-                            <div class="input-group-premium">
-                                <span class="ig-text"><i class="bi bi-link-45deg fs-5"></i></span>
-                                <input type="text" id="store-link" value="{% if request.user.shop.storefront_url|slice:':4' == 'http' %}{{ request.user.shop.storefront_url }}{% else %}{{ request.scheme }}://{{ request.get_host }}{{ request.user.shop.storefront_url }}{% endif %}" readonly>
-                                <a href="{{ request.user.shop.storefront_url }}" target="_blank" class="ig-btn">Open</a>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="form-label">নিজের ডোমেইন <span class="text-muted text-capitalize fw-semibold" style="font-size:10px;">(Premium)</span></label>
-                            {% if custom_domain_allowed %}
-                            {{ form.custom_domain }}
-                            <div class="form-text mt-2 small fw-semibold text-muted">
-                                যেমন <code>www.yourshop.com</code>। ডোমেইন বসাতে আমাদের সাপোর্টে যোগাযোগ করুন, আমরা সেটআপ করে দেব।
-                            </div>
-                            {% else %}
-                            <div class="form-text small fw-semibold text-muted">
-                                <code>www.yourshop.com</code>-এর মতো নিজের ডোমেইন Premium প্যাকেজে পাবেন। <a href="{% url 'billing' %}">আপগ্রেড করুন</a>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
+                    <i class="bi bi-chevron-right" style="color:#4338CA;"></i>
+                </a>
 
                 <!-- API Integrations -->
                 <div class="settings-card" id="couriers">
@@ -299,30 +214,6 @@
 
                 <div class="settings-card">
                     <div class="sc-body">
-                        <!-- ওয়েবসাইটের রঙ -->
-                        <h6 class="fw-bold text-success mb-3" id="theme"><i class="bi bi-palette-fill me-2"></i>ওয়েবসাইটের রঙ</h6>
-                        <div class="theme-grid mb-2">
-                            {% for value, t in theme_options %}
-                            <label class="theme-opt">
-                                <input type="radio" name="{{ form.storefront_theme.html_name }}" value="{{ value }}" {% if form.storefront_theme.value == value %}checked{% endif %}>
-                                <span class="theme-swatch" style="background:linear-gradient(135deg,{{ t.primary }},{{ t.second }});"></span>
-                                <span class="theme-name">{{ t.label }}</span>
-                                <span class="theme-hint">{{ t.hint }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        <div class="form-text small mb-4">সেভ করার পর <a href="{{ request.user.shop.storefront_url }}" target="_blank" rel="noopener">ওয়েবসাইট খুলে</a> দেখুন। বাটন, দাম আর হাইলাইটের রঙ বদলাবে।</div>
-
-                        <!-- ওয়েবসাইটে বিক্রির সংখ্যা -->
-                        <h6 class="fw-bold text-success mb-3"><i class="bi bi-bag-check-fill me-2"></i>ওয়েবসাইটে দেখানো</h6>
-                        <div class="form-check form-switch bg-white p-3 rounded-3 border d-flex align-items-center mb-4" style="padding-left: 1rem !important;">
-                            {{ form.show_sold_count }}
-                            <label class="form-check-label fw-bold ms-3" for="{{ form.show_sold_count.id_for_label }}" style="margin-top: 1px;">
-                                প্রোডাক্টের নিচে "কয়টা বিক্রি হয়েছে" দেখান
-                                <span class="text-muted fw-normal d-block" style="font-size: 12px; margin-top: 2px;">পাঠানো আর ডেলিভারি হওয়া অর্ডার থেকে আসল সংখ্যা। কোনো প্রোডাক্ট বিক্রি না হলে কিছু দেখায় না।</span>
-                            </label>
-                        </div>
-
                         <!-- SMS Integration & Toggle -->
                         <h6 class="fw-bold text-primary mb-3"><i class="bi bi-chat-dots-fill me-2"></i>SMS Settings</h6>
                         <div class="p-3 rounded-4" style="background:#F8FAFC; border:1px dashed #CBD5E1;">
@@ -347,26 +238,6 @@
 
             <!-- RIGHT COLUMN -->
             <div class="col-lg-4">
-
-                <!-- Logo Upload -->
-                <div class="settings-card">
-                    <div class="sc-header justify-content-center border-0 pb-0 bg-transparent">
-                        <h4 class="sc-title">Store Logo</h4>
-                    </div>
-                    <div class="sc-body logo-upload-box pt-2">
-                        <div class="logo-preview-wrap">
-                            {% if request.user.shop.logo %}
-                            <img src="{{ request.user.shop.logo.url }}" alt="Logo">
-                            {% else %}
-                            <div class="logo-placeholder"><i class="bi bi-shop"></i></div>
-                            {% endif %}
-                        </div>
-                        <div class="text-start">
-                            {{ form.logo }}
-                            <div class="form-text mt-2 small fw-semibold text-muted text-center">JPG/PNG (Max 1MB)</div>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Facebook Page সংযোগ -->
                 <div id="facebook"></div>
@@ -445,8 +316,6 @@
     <form id="fb-bot-form" method="POST" action="{% url 'fb_bot_settings' %}">{% csrf_token %}</form>
 </div>
 
-{% include 'store/partials/subdomain_check_js.html' %}
-<script>ssSubdomainCheck('id_subdomain', 'subdomain-result', null);</script>
 <script>
     // Optional: Only show save bar if inputs change
     document.addEventListener("DOMContentLoaded", function() {

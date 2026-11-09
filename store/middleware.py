@@ -128,7 +128,7 @@ class StaffAccessMiddleware:
                     (('/orders/', '/storefront-orders/', '/courier/'), staff.can_manage_orders, "Order Management"),
                     (('/customers/',), staff.can_manage_customers, "Customer Database"),
                     (('/reports/',), staff.can_view_reports, "Business Reports"),
-                    (('/settings/', '/staff/', '/banners/', '/billing/'), staff.can_manage_settings, "Shop Settings"),
+                    (('/settings/', '/staff/', '/banners/', '/billing/', '/website/'), staff.can_manage_settings, "Shop Settings"),
                 ]
 
                 # যদি লিংকে ঢোকার পারমিশন না থাকে, তবে ড্যাশবোর্ডে পাঠিয়ে দাও

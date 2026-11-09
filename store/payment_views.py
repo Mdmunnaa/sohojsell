@@ -35,20 +35,24 @@ def _customer_phone(shop, user):
     return '01700000000'
 
 
-def _invoice_from_request(request):
-    """invoice নম্বর কোথায় আসতে পারে: আমাদের বসানো ?inv=, PayStation-এর invoice_number, বা IPN-এর JSON body।"""
+def _raw_invoice(request):
     for key in ('inv', 'invoice_number'):
         value = request.POST.get(key) or request.GET.get(key)
         if value:
-            return valid_invoice(value)
+            return str(value).strip()
     if request.content_type and 'application/json' in request.content_type:
         try:
             payload = json.loads(request.body.decode('utf-8') or '{}')
         except (ValueError, UnicodeDecodeError):
-            return None
+            return ''
         if isinstance(payload, dict):
-            return valid_invoice(str(payload.get('invoice_number') or ''))
-    return None
+            return str(payload.get('invoice_number') or '').strip()
+    return ''
+
+
+def _invoice_from_request(request):
+    """invoice নম্বর কোথায় আসতে পারে: আমাদের বসানো ?inv=, PayStation-এর invoice_number, বা IPN-এর JSON body।"""
+    return valid_invoice(_raw_invoice(request))
 
 
 @login_required(login_url='/accounts/login/')
@@ -149,12 +153,17 @@ def paystation_ipn(request):
     PayStation-কে এই URL দিতে হবে: https://<domain>/payment/ipn/
     এখানে কোনো authentication নেই, তাই body-র কিছু বিশ্বাস না করে শুধু invoice নিয়ে PayStation-এ যাচাই।
     """
-    invoice = _invoice_from_request(request)
-    logger.info('PayStation IPN: invoice=%s', invoice)
-    if not invoice:
-        return JsonResponse({'status': 'error', 'message': 'invoice_number missing'}, status=400)
-
-    status, _payment, msg = apply_successful_payment(invoice)
+    raw = _raw_invoice(request)
+    logger.info('PayStation IPN: invoice=%s', raw[:40])
+    from . import shop_payments
+    if shop_payments.valid_invoice(raw):
+        # কাস্টমার দোকানের ওয়েবসাইটে টাকা দিয়েছে
+        status, _payment, msg = shop_payments.apply_successful(raw)
+    else:
+        invoice = valid_invoice(raw)
+        if not invoice:
+            return JsonResponse({'status': 'error', 'message': 'invoice_number missing'}, status=400)
+        status, _payment, msg = apply_successful_payment(invoice)
     if status in ('ok', 'already', 'failed'):
         return JsonResponse({'status': 'success' if status != 'failed' else 'failed'})
     if status == 'not_found':

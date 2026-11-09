@@ -9,8 +9,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import get_template
-from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Count, Sum, Q
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.db.models import Count, F, Sum, Q
 from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from datetime import timedelta
@@ -500,10 +500,8 @@ def shop_settings(request):
     shop.ensure_webhook_token()
     return render(request, 'store/settings.html', {
         'form': form,
-        'custom_domain_allowed': has_custom_domain(shop),
         'facebook_allowed': has_facebook(shop),
         'courier_connected': couriers.connected(shop),
-        'theme_options': list(THEMES.items()),
         'fb_recent_replies': shop.fb_comment_replies.select_related('product')[:5],
         'steadfast_webhook_url': request.build_absolute_uri(reverse('steadfast_webhook')),
     })
@@ -1044,7 +1042,7 @@ def pos_receipt(request, order_id):
 # ============================================================
 # E-COMMERCE STOREFRONT (Customer-facing)
 # ============================================================
-from .models import StorefrontOrder, StorefrontOrderItem
+from .models import StorefrontOrder, StorefrontOrderItem, StorefrontPayment
 from django.utils import timezone
 from .models import PageView  # PageView মডেলটা ইম্পোর্ট করবেন
 
@@ -1073,6 +1071,7 @@ def _attach_sold_counts(shop, products):
         p.sold_count = counts.get(p.id, 0)
 
 
+@ensure_csrf_cookie
 def storefront_home(request, shop_slug):
     """Public e-commerce store for customers"""
     shop = get_object_or_404(Shop, slug=shop_slug)
@@ -1141,9 +1140,11 @@ def storefront_home(request, shop_slug):
         'product_data_json': json.dumps(product_data),
         'cat_filter': cat_filter,
         'search': search,
+        **_checkout_context(shop),
     })
 
 
+@ensure_csrf_cookie
 def storefront_product_detail(request, shop_slug, product_id):
     """Customer-facing single product details page with related products"""
     shop = get_object_or_404(Shop, slug=shop_slug)
@@ -1191,143 +1192,232 @@ def storefront_product_detail(request, shop_slug, product_id):
     return render(request, 'store/storefront/product_detail.html', {
         'shop': shop,
         'product': product,
-        'related_products': related_products
+        'related_products': related_products,
+        **_checkout_context(shop),
     })
 
 def storefront_checkout(request, shop_slug):
-    """Customer checkout page"""
+    """চেকআউট এখন হোম পেইজের ভেতরেই (পপআপ); পুরনো লিংকে এলে হোম পেইজে পাঠানো হয়।"""
     shop = get_object_or_404(Shop, slug=shop_slug)
+    return redirect(storefront_link(shop, request=request) + '#checkout')
 
-    # Plan check — Free/Basic shops don't have storefront checkout
-    if not storefront_is_open(shop):
-        return redirect(storefront_link(shop, request=request))
 
-    # ── BUG FIX: cart validation — cart data comes from JS/localStorage
-    # The actual cart is sent via POST in storefront_place_order.
-    # Here we just check if the request has any cart data (for direct URL access).
-    # If someone hits /checkout/ directly with no POST data, redirect home.
-    if request.method == 'GET':
-        # Allow GET — cart is handled client-side (localStorage)
-        # The place_order view will validate cart items server-side
-        pass
+def _checkout_context(shop):
+    """চেকআউটের পপআপে লাগে: ডেলিভারি এলাকা আর পেমেন্টের অপশন।"""
+    from . import delivery, shop_payments
+    zones = delivery.zones_for(shop)
+    choices = shop_payments.checkout_choices(shop)
+    return {
+        'delivery_zones': zones,
+        'fallback_delivery': shop.delivery_charge if not zones else 0,
+        'payment_choices': choices,
+        'cod_allowed': shop_payments.CHOICE_COD in choices,
+        'online_allowed': any(c != shop_payments.CHOICE_COD for c in choices),
+    }
 
-    return render(request, 'store/storefront/checkout.html', {'shop': shop})
+
+def _storefront_customer_phone(raw):
+    from accounts.forms import normalize_bd_mobile
+    return normalize_bd_mobile(raw)
 
 
 def storefront_place_order(request, shop_slug):
-    """Place order from storefront (AJAX POST)"""
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'error': 'Invalid request'})
+    """
+    দোকানের ওয়েবসাইট থেকে অর্ডার (AJAX POST, JSON)।
+    দাম, ডেলিভারি চার্জ আর অনলাইনে কত দিতে হবে, সব সার্ভারে হিসাব হয়; ব্রাউজার থেকে শুধু
+    প্রোডাক্ট-পরিমাণ, এলাকার id আর পেমেন্টের ধরন আসে।
+    """
+    from decimal import Decimal
+    from django.db import transaction
+    from . import delivery, shop_payments
 
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request'}, status=405)
     shop = get_object_or_404(Shop, slug=shop_slug)
     if not storefront_is_open(shop):
         return JsonResponse({'success': False, 'error': 'এই দোকান এখন অর্ডার নিচ্ছে না।'})
 
     try:
-        data = json.loads(request.body)
-        cart_items = data.get('cart', [])
-        if not cart_items:
-            return JsonResponse({'success': False, 'error': 'Cart is empty!'})
-
-        name = data.get('name', '').strip()
-        phone = data.get('phone', '').strip()
-        address = data.get('address', '').strip()
-        note = data.get('note', '')
-
-        if not name or not phone or not address:
-            return JsonResponse({'success': False, 'error': 'Name, phone and address are required!'})
-
-        delivery_charge = float(shop.delivery_charge) if hasattr(shop, 'delivery_charge') else 80.0
-        subtotal = 0
-
-        # Validate stock first
+        data = json.loads(request.body or b'{}')
+        cart_items = data.get('cart') or []
+        quantities = {}
         for item in cart_items:
-            product = get_object_or_404(Product, id=item['id'], shop=shop, is_active=True)
-            # শূন্য বা মাইনাস পরিমাণ দিয়ে স্টক বাড়ানো বা দাম কমানো যাবে না
-            if int(item['qty']) < 1:
+            product_id, qty = int(item['id']), int(item['qty'])
+            if qty < 1 or qty > 999:
                 return JsonResponse({'success': False, 'error': 'পরিমাণ ঠিক নেই।'})
-            if product.stock_quantity < int(item['qty']):
-                return JsonResponse({'success': False, 'error': f"'{product.name}' has only {product.stock_quantity} items left!"})
-            subtotal += float(product.price) * int(item['qty'])
+            quantities[product_id] = quantities.get(product_id, 0) + qty
+    except (ValueError, TypeError, KeyError):
+        return JsonResponse({'success': False, 'error': 'অর্ডারের তথ্য ঠিক নেই, পেইজটা আবার খুলুন।'})
+    if not quantities:
+        return JsonResponse({'success': False, 'error': 'কার্ট খালি!'})
 
+    name = (data.get('name') or '').strip()[:150]
+    address = (data.get('address') or '').strip()[:500]
+    note = (data.get('note') or '').strip()[:500]
+    phone = _storefront_customer_phone(data.get('phone') or '')
+    if not name or not address:
+        return JsonResponse({'success': False, 'error': 'নাম, মোবাইল নম্বর আর ঠিকানা দিন।'})
+    if not phone:
+        return JsonResponse({'success': False, 'error': 'সঠিক মোবাইল নম্বর দিন (০১ দিয়ে শুরু, ১১ সংখ্যা)।'})
+
+    choices = shop_payments.checkout_choices(shop)
+    choice = data.get('payment') or choices[0]
+    if choice not in choices:
+        return JsonResponse({'success': False, 'error': 'পেমেন্টের ধরন বেছে নিন।'})
+
+    with transaction.atomic():
+        # একসাথে অনেকে অর্ডার দিলেও স্টকের চেয়ে বেশি বিক্রি না হয়
+        products = {p.id: p for p in Product.objects.select_for_update()
+                    .filter(shop=shop, id__in=quantities.keys(), is_active=True)}
+        if len(products) != len(quantities):
+            return JsonResponse({'success': False, 'error': 'কার্টের একটা প্রোডাক্ট আর পাওয়া যাচ্ছে না। কার্ট দেখে আবার চেষ্টা করুন।'})
+        subtotal = Decimal('0')
+        for product_id, qty in quantities.items():
+            product = products[product_id]
+            if product.stock_quantity < qty:
+                return JsonResponse({'success': False,
+                                     'error': f"'{product.name}' স্টকে আছে মাত্র {product.stock_quantity}টা।"})
+            subtotal += product.price * qty
+
+        zone, delivery_charge = delivery.charge_for(shop, data.get('zone'), subtotal)
+        if delivery_charge is None:
+            return JsonResponse({'success': False, 'error': 'ডেলিভারির এলাকা বেছে নিন।'})
         total = subtotal + delivery_charge
+        pay_now = shop_payments.amount_now(choice, total, delivery_charge)
 
-        # Create storefront order
         sf_order = StorefrontOrder.objects.create(
-            shop=shop,
-            customer_name=name,
-            customer_phone=phone,
-            customer_address=address,
-            customer_note=note,
-            total_amount=total,
-            delivery_charge=delivery_charge,
-            status='Pending'
-        )
-
-        # Create items and deduct stock
-        for item in cart_items:
-            product = Product.objects.get(id=item['id'], shop=shop)
-            qty = int(item['qty'])
-            StorefrontOrderItem.objects.create(
-                order=sf_order, product=product,
-                quantity=qty, price=product.price
-            )
-            product.stock_quantity -= qty
-            product.save()
-
-        # Also create in main Order system (so seller sees it in dashboard)
-        customer, _ = Customer.objects.get_or_create(
-            shop=shop, phone=phone,
-            defaults={'name': name, 'address': address}
-        )
-        customer.name = name
-        customer.address = address
-        customer.save()
-
+            shop=shop, customer_name=name, customer_phone=phone, customer_address=address,
+            customer_note=note, total_amount=total, delivery_charge=delivery_charge,
+            delivery_zone=zone.name if zone else '', status='Pending')
+        customer, _ = Customer.objects.get_or_create(shop=shop, phone=phone,
+                                                     defaults={'name': name, 'address': address})
+        customer.name, customer.address = name, address
+        customer.save(update_fields=['name', 'address'])
+        order_note = ' · '.join(x for x in [f'এলাকা: {zone.name}' if zone else '', note] if x) or None
         main_order = Order.objects.create(
-            shop=shop, customer=customer,
-            delivery_charge=delivery_charge, discount=0,
-            payment_method='COD', status='Pending',
-            total_amount=total
-        )
+            shop=shop, customer=customer, source='storefront', delivery_charge=delivery_charge, discount=0,
+            payment_method='COD', status='Pending', total_amount=total, note=order_note,
+            online_payment_status=Order.ONLINE_PENDING if pay_now > 0 else Order.ONLINE_NONE)
+        sf_order.order = main_order
+        sf_order.save(update_fields=['order'])
+        for product_id, qty in quantities.items():
+            product = products[product_id]
+            StorefrontOrderItem.objects.create(order=sf_order, product=product, quantity=qty, price=product.price)
+            OrderItem.objects.create(order=main_order, product=product, price=product.price, quantity=qty,
+                                     cost_price=product.cost_price)
+            product.stock_quantity -= qty
+            product.save(update_fields=['stock_quantity'])
 
-        for item in sf_order.items.all():
-            OrderItem.objects.create(
-                order=main_order, product=item.product,
-                price=item.price, quantity=item.quantity,
-                cost_price=item.product.cost_price
-            )
+    # অর্ডার-সফল পেইজে কাস্টমারের নাম-ঠিকানা থাকে; শুধু যে ব্রাউজার থেকে অর্ডার হয়েছে সে-ই দেখতে পাবে
+    placed = request.session.get('sf_orders', [])
+    request.session['sf_orders'] = (placed + [sf_order.id])[-20:]
+    success_url = storefront_link(shop, 'storefront_order_success', sf_order.id, request=request)
 
-        # SMS to customer
-        if shop.is_sms_active and shop.sms_balance > 0:
-            sms_text = f"প্রিয় {name}, {shop.name} থেকে আপনার অর্ডার (#ORD-{main_order.id}) পাওয়া গেছে। আমরা শীঘ্রই যোগাযোগ করব।"
-            _send_sms(phone, sms_text)
-            shop.sms_balance -= 1
-            shop.save()
+    if pay_now > 0:
+        result = _start_customer_payment(request, shop, main_order, sf_order, choice, pay_now)
+        if not result.get('ok'):
+            # গেটওয়ে কাজ না করলে অর্ডারটা বাতিল না করে রেখে দেওয়া হয়; কাস্টমার অর্ডার পেইজ থেকে আবার চেষ্টা করতে পারবে
+            return JsonResponse({'success': True, 'order_id': sf_order.id, 'redirect': success_url,
+                                 'message': result.get('error')})
+        return JsonResponse({'success': True, 'order_id': sf_order.id, 'redirect': result['payment_url']})
 
-        # অর্ডার-সফল পেইজে কাস্টমারের নাম-ঠিকানা থাকে; শুধু যে ব্রাউজার থেকে অর্ডার হয়েছে সে-ই দেখতে পাবে
-        placed = request.session.get('sf_orders', [])
-        request.session['sf_orders'] = (placed + [sf_order.id])[-20:]
-
-        return JsonResponse({
-            'success': True,
-            'order_id': sf_order.id,
-            'main_order_id': main_order.id,
-            'message': f'Order placed successfully!'
-        })
-
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+    if shop.is_sms_active and (shop.sms_balance or 0) > 0:
+        _send_sms(phone, f"প্রিয় {name}, {shop.name} থেকে আপনার অর্ডার (#ORD-{main_order.id}) পাওয়া গেছে। "
+                         "আমরা শীঘ্রই যোগাযোগ করব।")
+        Shop.objects.filter(pk=shop.pk, sms_balance__gt=0).update(sms_balance=F('sms_balance') - 1)
+    return JsonResponse({'success': True, 'order_id': sf_order.id, 'redirect': success_url})
 
 
+def _start_customer_payment(request, shop, order, sf_order, choice, amount):
+    from . import shop_payments
+    payment = shop_payments.create_payment(shop, order, sf_order, choice, amount)
+    callback = request.build_absolute_uri(storefront_link(shop, 'storefront_payment_return', request=request))
+    return shop_payments.start_gateway(payment, f'{callback}?inv={payment.invoice_number}',
+                                       sf_order.customer_name, sf_order.customer_phone, sf_order.customer_address)
+
+
+@csrf_exempt   # PayStation কখনো POST করে ফেরত পাঠায়; সিদ্ধান্ত হয় PayStation-এ যাচাই করে
+def storefront_payment_return(request, shop_slug):
+    """PayStation থেকে ফেরার পর (দোকানের নিজের ঠিকানায়)। আসল সিদ্ধান্ত PayStation-এ যাচাই করে।"""
+    from . import shop_payments
+    from .payments import valid_trx_id
+    shop = get_object_or_404(Shop, slug=shop_slug)
+    invoice = shop_payments.valid_invoice(request.GET.get('inv') or request.POST.get('invoice_number'))
+    payment = StorefrontPayment.objects.filter(invoice_number=invoice, shop=shop).first() if invoice else None
+    if payment is None or payment.sf_order_id is None:
+        return redirect(storefront_link(shop, request=request))
+
+    gateway_status = (request.GET.get('status') or request.POST.get('status') or '').strip().lower()
+    if gateway_status in ('failed', 'canceled', 'cancelled', 'cancel'):
+        StorefrontPayment.objects.filter(pk=payment.pk, status=StorefrontPayment.STATUS_PENDING).update(
+            status=StorefrontPayment.STATUS_FAILED)
+        status, msg = 'failed', 'পেমেন্ট সম্পন্ন হয়নি। চাইলে আবার চেষ্টা করুন।'
+    else:
+        trx_id = valid_trx_id(request.GET.get('trx_id') or request.POST.get('trx_id'))
+        status, _payment, msg = shop_payments.apply_successful(
+            invoice, trx_id=trx_id, attempts=2, timeout=shop_payments.CALLBACK_VERIFY_TIMEOUT)
+    request.session['sf_payment_msg'] = {'order': payment.sf_order_id, 'status': status, 'message': msg}
+    return redirect(storefront_link(shop, 'storefront_order_success', payment.sf_order_id, request=request))
+
+
+def storefront_payment_retry(request, shop_slug, order_id):
+    """অর্ডার পেইজ থেকে "আবার পেমেন্ট করুন"।"""
+    from . import shop_payments
+    shop = get_object_or_404(Shop, slug=shop_slug)
+    if request.method != 'POST' or order_id not in request.session.get('sf_orders', []):
+        return redirect(storefront_link(shop, request=request))
+    sf_order = get_object_or_404(StorefrontOrder.objects.select_related('order'), id=order_id, shop=shop)
+    order = sf_order.order
+    last = sf_order.payments.order_by('-created_at').first()
+    if order is None or last is None or order.online_payment_status == Order.ONLINE_PAID \
+            or order.status in ('Cancelled', 'Returned'):
+        return redirect(storefront_link(shop, 'storefront_order_success', order_id, request=request))
+    if last.status == StorefrontPayment.STATUS_PENDING:
+        # আগের চেষ্টায় টাকা কেটে থাকলে আবার কাটার আগে সেটা ধরা পড়ুক
+        status, _p, _m = shop_payments.apply_successful(last.invoice_number, timeout=6)
+        if status in ('ok', 'already'):
+            return redirect(storefront_link(shop, 'storefront_order_success', order_id, request=request))
+    choice = shop_payments.CHOICE_FULL if last.kind == StorefrontPayment.KIND_FULL else shop_payments.CHOICE_ADVANCE
+    result = _start_customer_payment(request, shop, order, sf_order, choice, last.amount)
+    if result.get('ok'):
+        return redirect(result['payment_url'])
+    request.session['sf_payment_msg'] = {'order': order_id, 'status': 'failed', 'message': result.get('error')}
+    return redirect(storefront_link(shop, 'storefront_order_success', order_id, request=request))
+
+
+@ensure_csrf_cookie
 def storefront_order_success(request, shop_slug, order_id):
     """Order success page"""
     shop = get_object_or_404(Shop, slug=shop_slug)
     # অন্য কেউ নম্বর বদলে অন্যের অর্ডারের তথ্য দেখতে না পারে
     if order_id not in request.session.get('sf_orders', []):
         return redirect(storefront_link(shop, request=request))
-    order = get_object_or_404(StorefrontOrder, id=order_id, shop=shop)
-    return render(request, 'store/storefront/order_success.html', {'shop': shop, 'order': order})
+    order = get_object_or_404(StorefrontOrder.objects.select_related('order'), id=order_id, shop=shop)
+    payment_msg = request.session.pop('sf_payment_msg', None)
+    if payment_msg and payment_msg.get('order') != order_id:
+        payment_msg = None
+    last_payment = order.payments.order_by('-created_at').first()
+    if last_payment and last_payment.status == StorefrontPayment.STATUS_PENDING and not payment_msg:
+        # IPN আগে এসে গেলে বা কাস্টমার পরে পেইজ খুললে আবার যাচাই
+        from . import shop_payments
+        shop_payments.apply_successful(last_payment.invoice_number, timeout=5)
+        last_payment.refresh_from_db()
+        order.order.refresh_from_db() if order.order_id else None
+    main = order.order
+    payment_pending = bool(main and main.online_payment_status == Order.ONLINE_PENDING
+                           and main.status not in ('Cancelled', 'Returned'))
+    if main and main.online_payment_status == Order.ONLINE_PAID:
+        payment_label = ('অনলাইনে পুরো টাকা পরিশোধিত' if not main.due_amount else
+                         f'অনলাইনে ৳{main.advance_paid:.0f} দেওয়া হয়েছে, বাকি ৳{main.due_amount:.0f} পণ্য হাতে পেয়ে')
+    elif payment_pending:
+        payment_label = 'অনলাইন পেমেন্ট এখনো হয়নি'
+    else:
+        payment_label = 'ক্যাশ অন ডেলিভারি'
+    return render(request, 'store/storefront/order_success.html', {
+        'shop': shop, 'order': order, 'main_order': main, 'last_payment': last_payment,
+        'payment_msg': payment_msg, 'payment_pending': payment_pending, 'payment_label': payment_label,
+        'order_no': f'ORD-{main.id}' if main else f'SF-{order.id}',
+    })
 
 
 # ============================================================
@@ -1380,40 +1470,14 @@ def storefront_order_update_status(request, order_id):
 # ============================================================
 @login_required(login_url='/accounts/login/')
 def category_list(request):
+    """ক্যাটাগরি এখন "ওয়েবসাইট" পেইজের ট্যাবে। পুরনো ফর্ম থেকে POST এলে যোগ করে সেখানে পাঠায়।"""
     shop = request.user.shop
     if request.method == 'POST':
-        cat_name = request.POST.get('name')
-        if cat_name:
-            Category.objects.create(shop=shop, name=cat_name)
-            messages.success(request, f"Category '{cat_name}' added successfully!")
-        return redirect('category_list')
-
-    categories = Category.objects.filter(shop=shop).order_by('-id')
-    return render(request, 'store/categories.html', {'categories': categories})
-
-
-@login_required(login_url='/accounts/login/')
-def delete_category(request, pk):
-    shop = request.user.shop
-    category = get_object_or_404(Category, pk=pk, shop=shop)
-    category.delete()
-    messages.success(request, "Category deleted successfully!")
-    return redirect('category_list')
-
-@login_required(login_url='/accounts/login/')
-def edit_category(request, pk):
-    shop = request.user.shop
-    category = get_object_or_404(Category, pk=pk, shop=shop)
-
-    if request.method == 'POST':
-        new_name = request.POST.get('name')
-        if new_name:
-            category.name = new_name
-            category.save()
-            messages.success(request, f"Category updated to '{new_name}'!")
-            return redirect('category_list')
-
-    return render(request, 'store/edit_category.html', {'category': category})
+        name = ' '.join((request.POST.get('name') or '').split())[:100]
+        if name and not Category.objects.filter(shop=shop, name__iexact=name).exists():
+            Category.objects.create(shop=shop, name=name)
+            messages.success(request, f'"{name}" ক্যাটাগরি যোগ হয়েছে।')
+    return redirect(reverse('website_settings') + '?tab=categories')
 
 
 
@@ -1476,40 +1540,6 @@ def barcode_print(request):
         'selected_products': selected_products,
         'selected_ids': selected_ids,
     })
-from .forms import BannerForm
-
-# ============================================================
-# BANNER MANAGEMENT
-# ============================================================
-@login_required(login_url='/accounts/login/')
-def banner_list(request):
-    shop = request.user.shop
-    banners = Banner.objects.filter(shop=shop).order_by('-id')
-    return render(request, 'store/banners.html', {'banners': banners})
-
-@login_required(login_url='/accounts/login/')
-def add_banner(request):
-    shop = request.user.shop
-    if request.method == 'POST':
-        form = BannerForm(request.POST, request.FILES)
-        if form.is_valid():
-            banner = form.save(commit=False)
-            banner.shop = shop
-            banner.save()
-            messages.success(request, "Banner uploaded successfully!")
-            return redirect('banner_list')
-    else:
-        form = BannerForm()
-    return render(request, 'store/add_banner.html', {'form': form})
-
-@login_required(login_url='/accounts/login/')
-def delete_banner(request, pk):
-    shop = request.user.shop
-    banner = get_object_or_404(Banner, pk=pk, shop=shop)
-    banner.delete()
-    messages.success(request, "Banner deleted successfully!")
-    return redirect('banner_list')
-
 # ============================================================
 # অনলাইন পেমেন্ট এখন PayStation দিয়ে: store/payment_views.py আর store/payments.py
 # (আগের SSLCommerz কোড সরানো হয়েছে — success URL-এর প্ল্যান/শপ যাচাই না করেই আপগ্রেড করত)

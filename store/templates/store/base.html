@@ -344,6 +344,7 @@
         <a href="{% url 'manage_shops' %}" class="sb-link"><i class="bi bi-shop-window"></i> <span class="sb-text-hide">Manage Shops</span></a>
         <a href="{% url 'all_users' %}" class="sb-link"><i class="bi bi-people-fill"></i> <span class="sb-text-hide">All Users</span></a>
         <a href="{% url 'master_billing' %}" class="sb-link"><i class="bi bi-wallet2"></i> <span class="sb-text-hide">Packages & Billing</span></a>
+        <a href="{% url 'master_settlements' %}" class="sb-link"><i class="bi bi-cash-stack"></i> <span class="sb-text-hide">সেলারদের টাকা</span></a>
         <a href="{% url 'master_settings' %}" class="sb-link"><i class="bi bi-chat-dots-fill"></i> <span class="sb-text-hide">Master Setting</span></a>
 
       {% else %}
@@ -365,7 +366,7 @@
         <a href="{% url 'product_list' %}" class="sb-link {% if request.resolver_match.url_name == 'product_list' %}active{% endif %}">
           <i class="bi bi-box-seam"></i> <span class="sb-text-hide">Products</span>
         </a>
-        <a href="{% url 'category_list' %}" class="sb-link {% if request.resolver_match.url_name == 'category_list' %}active{% endif %}">
+        <a href="{% url 'website_settings' %}?tab=categories" class="sb-link">
           <i class="bi bi-tags"></i> <span class="sb-text-hide">Categories</span>
         </a>
         <a href="{% url 'barcode_print' %}" class="sb-link {% if request.resolver_match.url_name == 'barcode_print' %}active{% endif %}">
@@ -413,8 +414,8 @@
         {% endif %}
 
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_settings %}
-        <a href="{% url 'banner_list' %}" class="sb-link {% if request.resolver_match.url_name == 'banner_list' %}active{% endif %}">
-          <i class="bi bi-image"></i> <span class="sb-text-hide">Store Banners</span>
+        <a href="{% url 'website_settings' %}" class="sb-link {% if request.resolver_match.url_name == 'website_settings' %}active{% endif %}">
+          <i class="bi bi-globe2"></i> <span class="sb-text-hide">ওয়েবসাইট</span>
         </a>
         <a href="{% url 'billing' %}" class="sb-link {% if request.resolver_match.url_name == 'billing' %}active{% endif %}" style="{% if shop.is_locked %}background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);{% endif %}">
           <i class="bi bi-{% if shop.is_locked %}lock-fill text-danger{% else %}wallet2{% endif %}"></i>

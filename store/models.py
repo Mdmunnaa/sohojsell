@@ -49,6 +49,32 @@ class Shop(models.Model):
     show_sold_count = models.BooleanField(default=True, help_text="ওয়েবসাইটে কয়টা বিক্রি হয়েছে দেখান")
     storefront_theme = models.CharField(max_length=20, default=DEFAULT_THEME, choices=THEME_CHOICES,
                                         help_text='ওয়েবসাইটের রঙ')
+    storefront_tagline = models.CharField(max_length=150, blank=True, default='',
+                                          help_text='ব্যানার না থাকলে দোকানের নামের নিচে ছোট লাইন')
+    announcement_text = models.CharField(max_length=160, blank=True, default='',
+                                         help_text='ওয়েবসাইটের একদম উপরে ঘোষণা, যেমন অফার')
+    whatsapp_number = models.CharField(max_length=20, blank=True, default='',
+                                       help_text='ওয়েবসাইটে WhatsApp বাটন')
+    # এর বেশি দামের অর্ডারে ডেলিভারি ফ্রি (খালি = কখনো ফ্রি না)
+    free_delivery_min = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+
+    PAYMENT_COD = 'cod'
+    PAYMENT_COD_OR_ONLINE = 'cod_or_online'
+    PAYMENT_ADVANCE_DELIVERY = 'advance_delivery'
+    PAYMENT_ONLINE_ONLY = 'online_only'
+    PAYMENT_RULE_CHOICES = [
+        (PAYMENT_COD, 'শুধু ক্যাশ অন ডেলিভারি'),
+        (PAYMENT_COD_OR_ONLINE, 'কাস্টমার বেছে নেবে: ক্যাশ অন ডেলিভারি বা অনলাইনে'),
+        (PAYMENT_ADVANCE_DELIVERY, 'ডেলিভারি চার্জ আগে অনলাইনে, বাকি টাকা ডেলিভারির সময়'),
+        (PAYMENT_ONLINE_ONLY, 'পুরো টাকা আগে অনলাইনে'),
+    ]
+    payment_rule = models.CharField(max_length=20, choices=PAYMENT_RULE_CHOICES, default=PAYMENT_COD)
+    # অনলাইনে নেওয়া টাকা কোথায় পাঠানো হবে
+    PAYOUT_METHOD_CHOICES = [('bKash', 'bKash'), ('Nagad', 'Nagad'), ('Rocket', 'Rocket'), ('Bank', 'ব্যাংক')]
+    payout_method = models.CharField(max_length=10, choices=PAYOUT_METHOD_CHOICES, blank=True, default='')
+    payout_account = models.CharField(max_length=150, blank=True, default='',
+                                      help_text='মোবাইল নম্বর, বা ব্যাংকের নাম-শাখা-অ্যাকাউন্ট নম্বর')
+    payout_account_name = models.CharField(max_length=120, blank=True, default='')
     # SaaS Plan
     PLAN_CHOICES = (
         ('Free', 'Free Trial (30 days)'),
@@ -217,7 +243,17 @@ class Order(models.Model):
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     note = models.TextField(blank=True, null=True)
+    # কাস্টমার ওয়েবসাইট থেকে অনলাইনে যা দিয়েছে (ডেলিভারি চার্জ আগে বা পুরো টাকা); কুরিয়ার বাকিটা তুলবে
+    advance_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    ONLINE_NONE, ONLINE_PENDING, ONLINE_PAID = '', 'pending', 'paid'
+    online_payment_status = models.CharField(max_length=10, blank=True, default='',
+                                             choices=[('', '—'), ('pending', 'পেমেন্ট বাকি'), ('paid', 'পরিশোধিত')])
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def due_amount(self):
+        """ডেলিভারির সময় কাস্টমারের কাছ থেকে আর কত নিতে হবে।"""
+        return max(self.total_amount - self.advance_paid, 0)
 
     def __str__(self):
         return f"Order #{self.id} - {self.customer.name}"
@@ -255,6 +291,23 @@ class MasterSetting(models.Model):
 
 
 # ============================================================
+# ডেলিভারি এলাকা ও চার্জ (কাস্টমার চেকআউটে বেছে নেয়)
+# ============================================================
+class DeliveryZone(models.Model):
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='delivery_zones')
+    name = models.CharField(max_length=60)
+    charge = models.DecimalField(max_digits=8, decimal_places=2)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+
+    def __str__(self):
+        return f'{self.name} (৳{self.charge:.0f})'
+
+
+# ============================================================
 # STOREFRONT ORDER (Customer-facing orders from public shop)
 # ============================================================
 class StorefrontOrder(models.Model):
@@ -265,6 +318,9 @@ class StorefrontOrder(models.Model):
     customer_note = models.TextField(blank=True, null=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     delivery_charge = models.DecimalField(max_digits=10, decimal_places=2, default=80)
+    delivery_zone = models.CharField(max_length=60, blank=True, default='')
+    order = models.OneToOneField('Order', on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='storefront_order')
 
     STATUS_CHOICES = [
         ('Pending', 'Pending'),
@@ -421,6 +477,59 @@ class FacebookCommentReply(models.Model):
 
     def __str__(self):
         return f'{self.commenter_name or self.commenter_id} → {self.status}'
+
+
+# ============================================================
+# কাস্টমার দোকানের ওয়েবসাইটে অনলাইনে টাকা দিলে (টাকা আসে প্ল্যাটফর্মের PayStation-এ,
+# ফি কেটে বাকিটা সেলারের পাওনা; ShopPayout দিয়ে পাঠানো হিসাব রাখা হয়)
+# ============================================================
+class StorefrontPayment(models.Model):
+    KIND_FULL, KIND_ADVANCE = 'full', 'advance'
+    STATUS_PENDING, STATUS_COMPLETED, STATUS_FAILED = 'Pending', 'Completed', 'Failed'
+
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='customer_payments')
+    order = models.ForeignKey('Order', on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name='customer_payments')
+    sf_order = models.ForeignKey('StorefrontOrder', on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='payments')
+    kind = models.CharField(max_length=10, choices=[(KIND_FULL, 'পুরো টাকা'), (KIND_ADVANCE, 'ডেলিভারি চার্জ আগে')])
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    fee_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    fee_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    net_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    invoice_number = models.CharField(max_length=40, unique=True)
+    environment = models.CharField(max_length=10, default='sandbox')
+    trx_id = models.CharField(max_length=64, blank=True, default='')
+    payment_method = models.CharField(max_length=40, blank=True, default='')
+    status = models.CharField(max_length=10, default=STATUS_PENDING,
+                              choices=[(STATUS_PENDING, 'Pending'), (STATUS_COMPLETED, 'Completed'),
+                                       (STATUS_FAILED, 'Failed')])
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.invoice_number} ৳{self.amount} ({self.status})'
+
+
+class ShopPayout(models.Model):
+    """সেলারকে তার অনলাইন বিক্রির টাকা পাঠানোর রেকর্ড।"""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='payouts')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    method = models.CharField(max_length=20, blank=True, default='')
+    account = models.CharField(max_length=150, blank=True, default='')
+    reference = models.CharField(max_length=100, blank=True, default='', help_text='লেনদেন নম্বর')
+    note = models.CharField(max_length=200, blank=True, default='')
+    paid_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-paid_at']
+
+    def __str__(self):
+        return f'{self.shop.name} ← ৳{self.amount}'
 
 
 # ============================================================

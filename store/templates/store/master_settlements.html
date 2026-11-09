@@ -1,0 +1,51 @@
+{% extends 'store/base.html' %}
+{% block title %}সেলারদের টাকা{% endblock %}
+{% block page_title %}সেলারদের টাকা{% endblock %}
+{% block content %}
+<div style="max-width:1100px;margin:0 auto;">
+  {% if messages %}{% for m in messages %}<div class="alert {% if m.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} rounded-4 small fw-semibold">{{ m }}</div>{% endfor %}{% endif %}
+  <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h4 class="fw-bold mb-1">সেলারদের পাওনা</h4>
+      <div class="text-muted small">কাস্টমাররা দোকানের ওয়েবসাইটে অনলাইনে যা দিয়েছে, ফি কেটে সেলারের পাওনা। টাকা পাঠিয়ে এখানে লিখে রাখুন।</div>
+    </div>
+    <div class="fs-5 fw-bold">মোট পাওনা: ৳{{ total_due|floatformat:0 }}</div>
+  </div>
+  <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead class="small text-muted"><tr><th>দোকান</th><th>কোথায় পাঠাবেন</th><th class="text-end">মোট নেওয়া</th><th class="text-end">পাঠানো</th><th class="text-end">পাওনা</th><th style="min-width:300px;">টাকা পাঠানো লিখুন</th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+          <tr>
+            <td><div class="fw-bold">{{ r.shop.name }}</div><div class="small text-muted">{{ r.shop.phone }}</div></td>
+            <td class="small">{% if r.shop.payout_account %}<b>{{ r.shop.get_payout_method_display }}</b> {{ r.shop.payout_account }}<br><span class="text-muted">{{ r.shop.payout_account_name }}</span>{% else %}<span class="text-danger">দেওয়া নেই</span>{% endif %}</td>
+            <td class="text-end">৳{{ r.net|floatformat:0 }}</td>
+            <td class="text-end">৳{{ r.paid_out|floatformat:0 }}</td>
+            <td class="text-end fw-bold {% if r.due > 0 %}text-success{% endif %}">৳{{ r.due|floatformat:0 }}</td>
+            <td>
+              {% if r.due > 0 %}
+              <form method="post" class="d-flex gap-1 flex-wrap">{% csrf_token %}
+                <input type="hidden" name="shop_id" value="{{ r.shop.pk }}">
+                <input type="number" name="amount" value="{{ r.due|floatformat:2 }}" step="0.01" min="1" max="{{ r.due|floatformat:2 }}" class="form-control form-control-sm" style="width:110px;" required aria-label="টাকা">
+                <input type="text" name="reference" class="form-control form-control-sm" style="width:130px;" placeholder="TrxID" aria-label="লেনদেন নম্বর">
+                <button class="btn btn-sm btn-dark" onclick="return confirm('টাকা পাঠানো হয়েছে লিখে রাখবেন?')">লিখুন</button>
+              </form>
+              {% else %}<span class="text-muted small">সব পাঠানো হয়েছে</span>{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-4">এখনো কোনো অনলাইন পেমেন্ট আসেনি।</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% if recent_payouts %}
+  <h6 class="fw-bold">সাম্প্রতিক পাঠানো</h6>
+  <div class="card border-0 shadow-sm rounded-4"><div class="table-responsive"><table class="table table-sm mb-0 small">
+    {% for p in recent_payouts %}<tr><td>{{ p.paid_at|date:"j M Y, g:i A" }}</td><td>{{ p.shop.name }}</td><td>{{ p.method }} {{ p.account }}</td><td>{{ p.reference }}</td><td class="text-end fw-bold">৳{{ p.amount|floatformat:0 }}</td></tr>{% endfor %}
+  </table></div></div>
+  {% endif %}
+</div>
+{% endblock %}

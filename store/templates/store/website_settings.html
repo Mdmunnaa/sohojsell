@@ -1,0 +1,404 @@
+{% extends 'store/base.html' %}
+{% block title %}ওয়েবসাইট — {{ shop.name }}{% endblock %}
+{% block page_title %}ওয়েবসাইট{% endblock %}
+{% block content %}
+<style>
+  .ws-wrap { max-width: 1040px; margin: 0 auto; padding-bottom: 60px; }
+  .ws-head { background: linear-gradient(135deg, #0F172A, #1E293B); color: #F1F5F9; border-radius: 22px 22px 0 0; padding: 22px 24px; }
+  .ws-head h4 { font-weight: 900; margin: 0; font-size: 20px; }
+  .ws-head p { color: #94A3B8; font-size: 13.5px; margin: 4px 0 0; }
+  .ws-url { margin-top: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 12px; padding: 10px 14px; font-size: 13px; }
+  .ws-url a { color: #93C5FD; font-weight: 700; word-break: break-all; }
+  .ws-url .btn-copy { margin-left: auto; background: rgba(255,255,255,.1); color: #fff; border: 0; border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 700; }
+  .ws-open { background: #fff; color: #0F172A; border-radius: 999px; padding: 8px 16px; font-weight: 800; font-size: 13px; text-decoration: none; white-space: nowrap; }
+  .ws-tabs { display: flex; gap: 4px; overflow-x: auto; background: #fff; border: 1px solid #E2E8F0; border-top: 0; padding: 8px; scrollbar-width: none; }
+  .ws-tabs::-webkit-scrollbar { display: none; }
+  .ws-tab { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border-radius: 10px; font-size: 13.5px; font-weight: 700; color: #475569; text-decoration: none; white-space: nowrap; }
+  .ws-tab.active { background: #0F172A; color: #fff; }
+  .ws-body { background: #fff; border: 1px solid #E2E8F0; border-top: 0; border-radius: 0 0 22px 22px; padding: 24px; }
+  @media (max-width: 576px) { .ws-body { padding: 16px; } .ws-head { padding: 18px 16px; } }
+  .ws-section-title { font-weight: 900; font-size: 16px; color: #0F172A; margin: 0 0 4px; }
+  .ws-section-sub { color: #64748B; font-size: 13px; margin: 0 0 18px; }
+  .ws-body .form-label { font-weight: 800; color: #334155; font-size: 13px; margin-bottom: 6px; }
+  .ws-body .form-control, .ws-body .form-select { border-radius: 12px; border: 1.5px solid #E2E8F0; background: #F8FAFC; font-weight: 600; padding: 11px 14px; }
+  .ws-body .form-control:focus, .ws-body .form-select:focus { background: #fff; border-color: #3B82F6; box-shadow: 0 0 0 4px rgba(59,130,246,.1); }
+  .ws-err { color: #DC2626; font-size: 12.5px; font-weight: 700; margin-top: 4px; }
+  .ws-help { color: #64748B; font-size: 12px; margin-top: 4px; }
+  .ws-save { background: #0F172A; color: #fff; border: 0; border-radius: 12px; padding: 11px 22px; font-weight: 800; }
+  .ws-save:hover { background: #1E293B; color: #fff; }
+  .ws-card { border: 1px solid #E2E8F0; border-radius: 16px; padding: 16px; background: #fff; }
+  .ws-note { background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 14px; padding: 12px 14px; font-size: 13px; color: #334155; }
+  .ws-warn { background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 14px; padding: 12px 14px; font-size: 13px; color: #9A3412; }
+  .sub-input { display: flex; align-items: stretch; }
+  .sub-input input { border-radius: 12px 0 0 12px !important; }
+  .sub-input .sub-suffix { display: flex; align-items: center; padding: 0 12px; background: #EEF2FF; border: 1.5px solid #E2E8F0; border-left: 0; border-radius: 0 12px 12px 0; font-weight: 800; font-size: 13px; color: #4338CA; white-space: nowrap; }
+  .theme-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 576px) { .theme-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .theme-opt { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 12px; border: 1.5px solid #E2E8F0; border-radius: 12px; cursor: pointer; background: #fff; }
+  .theme-opt input { position: absolute; opacity: 0; pointer-events: none; }
+  .theme-opt:has(input:checked) { border-color: #0F172A; box-shadow: 0 0 0 3px rgba(15,23,42,.08); }
+  .theme-opt:has(input:focus-visible) { outline: 2px solid #3B82F6; outline-offset: 2px; }
+  .theme-swatch { height: 28px; border-radius: 8px; }
+  .theme-name { font-weight: 800; font-size: 13px; color: #0F172A; }
+  .theme-hint { font-size: 11px; color: #64748B; line-height: 1.3; }
+  .rule-opt { display: flex; gap: 12px; align-items: flex-start; padding: 13px 14px; border: 1.5px solid #E2E8F0; border-radius: 14px; cursor: pointer; margin-bottom: 8px; background: #fff; }
+  .rule-opt input { margin-top: 3px; width: 18px; height: 18px; accent-color: #0F172A; flex-shrink: 0; }
+  .rule-opt:has(input:checked) { border-color: #0F172A; background: #F8FAFC; }
+  .rule-opt b { display: block; font-size: 14px; color: #0F172A; }
+  .rule-opt span { font-size: 12.5px; color: #64748B; }
+  .banner-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .banner-item { border: 1px solid #E2E8F0; border-radius: 14px; overflow: hidden; background: #fff; }
+  .banner-item img { width: 100%; aspect-ratio: 16 / 7; object-fit: cover; display: block; background: #F1F5F9; }
+  .banner-item.off img { opacity: .4; }
+  .banner-item .bi-row { display: flex; align-items: center; gap: 6px; padding: 8px 10px; font-size: 12.5px; }
+  .ws-table { width: 100%; font-size: 13.5px; }
+  .ws-table td, .ws-table th { padding: 10px 8px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+  .ws-table th { font-size: 12px; color: #64748B; font-weight: 800; }
+  .stat-box { border-radius: 14px; padding: 14px; background: #F8FAFC; border: 1px solid #E2E8F0; }
+  .stat-box .v { font-size: 20px; font-weight: 900; color: #0F172A; }
+  .stat-box .l { font-size: 12px; color: #64748B; font-weight: 700; }
+  .zone-form { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 12px; }
+  .zone-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  @media (max-width: 640px) { .zone-form { grid-template-columns: 1fr; } }
+  .btn-icon { border: 1px solid #E2E8F0; background: #fff; border-radius: 10px; padding: 6px 10px; font-size: 13px; }
+</style>
+
+<div class="ws-wrap">
+  {% if messages %}{% for message in messages %}
+  <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'warning' %}alert-warning{% else %}alert-success{% endif %} rounded-4 fw-semibold small">{{ message }}</div>
+  {% endfor %}{% endif %}
+
+  <div class="ws-head">
+    <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+      <div>
+        <h4><i class="bi bi-globe2 me-2"></i>ওয়েবসাইট সেটিংস</h4>
+        <p>আপনার দোকানের ওয়েবসাইট এখান থেকে পুরোটা সাজান</p>
+      </div>
+      <a href="{{ shop.storefront_url }}" target="_blank" rel="noopener" class="ws-open"><i class="bi bi-box-arrow-up-right me-1"></i> ওয়েবসাইট দেখুন</a>
+    </div>
+    <div class="ws-url">
+      <i class="bi bi-link-45deg"></i>
+      <a href="{{ shop.storefront_url }}" target="_blank" rel="noopener" id="ws-link">{{ shop.storefront_host_preview }}</a>
+      <button type="button" class="btn-copy" onclick="navigator.clipboard.writeText(document.getElementById('ws-link').href).then(()=>{this.textContent='কপি হয়েছে ✓'})">লিংক কপি</button>
+    </div>
+  </div>
+
+  <nav class="ws-tabs" aria-label="ওয়েবসাইট সেটিংসের ভাগ">
+    {% for key, icon, label in tabs %}
+    <a href="?tab={{ key }}" class="ws-tab {% if active_tab == key %}active{% endif %}"><i class="bi {{ icon }}"></i> {{ label }}</a>
+    {% endfor %}
+  </nav>
+
+  <div class="ws-body">
+
+  {% if active_tab == 'store' %}
+    <h5 class="ws-section-title">দোকানের তথ্য</h5>
+    <p class="ws-section-sub">এগুলো ওয়েবসাইট, ইনভয়েস আর কাস্টমারের SMS-এ দেখায়।</p>
+    <form method="post" enctype="multipart/form-data">{% csrf_token %}
+      <input type="hidden" name="section" value="store">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="{{ profile_form.name.id_for_label }}">দোকানের নাম</label>
+          {{ profile_form.name }}{% for e in profile_form.name.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ profile_form.phone.id_for_label }}">মোবাইল নম্বর</label>
+          {{ profile_form.phone }}{% for e in profile_form.phone.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="{{ profile_form.address.id_for_label }}">ঠিকানা</label>
+          {{ profile_form.address }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ profile_form.logo.id_for_label }}">লোগো</label>
+          {% if shop.logo %}<div class="mb-2"><img src="{{ shop.logo.url }}" alt="লোগো" style="height:56px;width:56px;object-fit:cover;border-radius:12px;border:1px solid #E2E8F0;"></div>{% endif %}
+          {{ profile_form.logo }}
+          <div class="ws-help">বর্গাকার ছবি ভালো দেখায় (যেমন ৫০০×৫০০)।</div>
+          {% for e in profile_form.logo.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="id_subdomain">ওয়েবসাইটের ঠিকানা</label>
+          <div class="sub-input">{{ profile_form.subdomain }}<span class="sub-suffix">.{{ site.store_domain }}</span></div>
+          <div id="subdomain-result" class="ws-help"></div>
+          {% for e in profile_form.subdomain.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+          <div class="ws-help">বদলালে আগে শেয়ার করা লিংক আর কাজ করবে না, তাই ভেবে বদলান।</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label">নিজের ডোমেইন <span class="text-muted fw-normal">(Premium)</span></label>
+          {% if custom_domain_allowed %}
+            {{ profile_form.custom_domain }}
+            {% for e in profile_form.custom_domain.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+            <div class="ws-help">যেমন <code>www.yourshop.com</code>। ডোমেইন বসানো হলে আমাদের সাপোর্টে জানান, আমরা চালু করে দেব।</div>
+          {% else %}
+            <div class="ws-note">নিজের ডোমেইন (যেমন <code>www.yourshop.com</code>) Premium প্যাকেজে পাবেন। <a href="{% url 'billing' %}">আপগ্রেড করুন</a></div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="mt-4"><button type="submit" class="ws-save"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button></div>
+    </form>
+
+  {% elif active_tab == 'design' %}
+    <h5 class="ws-section-title">ডিজাইন</h5>
+    <p class="ws-section-sub">রঙ, উপরের ঘোষণা আর ছোট পরিচিতি লাইন।</p>
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="section" value="design">
+      <label class="form-label">ওয়েবসাইটের রঙ</label>
+      <div class="theme-grid mb-4">
+        {% for value, t in theme_options %}
+        <label class="theme-opt">
+          <input type="radio" name="{{ design_form.storefront_theme.html_name }}" value="{{ value }}" {% if design_form.storefront_theme.value == value %}checked{% endif %}>
+          <span class="theme-swatch" style="background:linear-gradient(135deg,{{ t.primary }},{{ t.second }});"></span>
+          <span class="theme-name">{{ t.label }}</span>
+          <span class="theme-hint">{{ t.hint }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label" for="{{ design_form.announcement_text.id_for_label }}">উপরের ঘোষণা <span class="text-muted fw-normal">(ঐচ্ছিক)</span></label>
+          {{ design_form.announcement_text }}
+          <div class="ws-help">ওয়েবসাইটের একদম উপরে রঙিন লাইনে দেখাবে। অফার না থাকলে খালি রাখুন।</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="{{ design_form.storefront_tagline.id_for_label }}">পরিচিতি লাইন <span class="text-muted fw-normal">(ঐচ্ছিক)</span></label>
+          {{ design_form.storefront_tagline }}
+          <div class="ws-help">কোনো ব্যানার না থাকলে দোকানের নামের নিচে দেখাবে।</div>
+        </div>
+        <div class="col-12">
+          <div class="form-check form-switch ws-card d-flex align-items-center gap-3 m-0" style="padding-left:16px;">
+            {{ design_form.show_sold_count }}
+            <label class="form-check-label" for="{{ design_form.show_sold_count.id_for_label }}">
+              <b style="font-size:14px;">প্রোডাক্টের নিচে "কয়টা বিক্রি হয়েছে" দেখান</b>
+              <span class="d-block ws-help">পাঠানো আর ডেলিভারি হওয়া অর্ডার থেকে আসল সংখ্যা। বিক্রি না হলে কিছু দেখায় না।</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="mt-4"><button type="submit" class="ws-save"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button></div>
+    </form>
+
+  {% elif active_tab == 'banners' %}
+    <h5 class="ws-section-title">ব্যানার</h5>
+    <p class="ws-section-sub">হোম পেইজের উপরে স্লাইড হয়ে দেখায়। সবচেয়ে ভালো মাপ ১২০০×৫২৫ পিক্সেল (প্রায় ১৬:৭)। সর্বোচ্চ {{ max_banners }}টা।</p>
+    {% if banners %}
+    <div class="banner-grid mb-4">
+      {% for b in banners %}
+      <div class="banner-item {% if not b.is_active %}off{% endif %}">
+        <img src="{{ b.image.url }}" alt="{{ b.title|default:'ব্যানার' }}" loading="lazy">
+        <div class="bi-row">
+          <span class="text-truncate flex-grow-1">{{ b.title|default:"ব্যানার" }}{% if not b.is_active %} · <span class="text-muted">লুকানো</span>{% endif %}</span>
+          <form method="post" action="{% url 'website_banner_toggle' b.pk %}">{% csrf_token %}<button class="btn-icon" title="{% if b.is_active %}লুকান{% else %}চালু করুন{% endif %}"><i class="bi bi-eye{% if b.is_active %}-slash{% endif %}"></i></button></form>
+          <form method="post" action="{% url 'website_banner_delete' b.pk %}" onsubmit="return confirm('ব্যানারটা মুছে ফেলবেন?')">{% csrf_token %}<button class="btn-icon text-danger" title="মুছুন"><i class="bi bi-trash3"></i></button></form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="ws-note mb-4">এখনো কোনো ব্যানার নেই। না থাকলে দোকানের নাম আর পরিচিতি লাইন দেখায়।</div>
+    {% endif %}
+    {% if banners|length < max_banners %}
+    <form method="post" enctype="multipart/form-data" class="ws-card">{% csrf_token %}
+      <input type="hidden" name="section" value="banner_add">
+      <div class="fw-bold mb-3">নতুন ব্যানার</div>
+      <div class="row g-3">
+        <div class="col-md-6">{{ banner_form.image }}{% for e in banner_form.image.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}<div class="ws-help">JPG/PNG, ৩ MB-এর ছোট</div></div>
+        <div class="col-md-6">{{ banner_form.title }}</div>
+      </div>
+      <div class="mt-3"><button type="submit" class="ws-save"><i class="bi bi-upload me-1"></i> আপলোড করুন</button></div>
+    </form>
+    {% endif %}
+
+  {% elif active_tab == 'categories' %}
+    <h5 class="ws-section-title">ক্যাটাগরি</h5>
+    <p class="ws-section-sub">ওয়েবসাইটের উপরে ক্যাটাগরির বাটন হয়ে দেখায়, কাস্টমার এক চাপে খুঁজে পায়।</p>
+    <form method="post" class="d-flex gap-2 mb-4 flex-wrap">{% csrf_token %}
+      <input type="hidden" name="section" value="category_add">
+      <div class="flex-grow-1" style="min-width:200px;">{{ category_form.name }}{% for e in category_form.name.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}</div>
+      <button type="submit" class="ws-save"><i class="bi bi-plus-lg me-1"></i> যোগ করুন</button>
+    </form>
+    {% if categories %}
+    <div class="table-responsive">
+      <table class="ws-table">
+        <thead><tr><th>নাম</th><th class="text-center">প্রোডাক্ট</th><th class="text-end"></th></tr></thead>
+        <tbody>
+        {% for c in categories %}
+          <tr>
+            <td>
+              <form method="post" action="{% url 'website_category_rename' c.pk %}" class="d-flex gap-2">{% csrf_token %}
+                <input type="text" name="name" value="{{ c.name }}" class="form-control form-control-sm" maxlength="100" required aria-label="ক্যাটাগরির নাম">
+                <button class="btn-icon" title="নাম সেভ করুন"><i class="bi bi-check2"></i></button>
+              </form>
+            </td>
+            <td class="text-center fw-bold">{{ c.product_count }}</td>
+            <td class="text-end">
+              <form method="post" action="{% url 'website_category_delete' c.pk %}" onsubmit="return confirm('“{{ c.name|escapejs }}” মুছবেন? প্রোডাক্টগুলো থাকবে, শুধু ক্যাটাগরি ছাড়া।')">{% csrf_token %}
+                <button class="btn-icon text-danger" title="মুছুন"><i class="bi bi-trash3"></i></button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="ws-note">এখনো কোনো ক্যাটাগরি নেই। যেমন: শাড়ি, থ্রি-পিস, কসমেটিকস।</div>
+    {% endif %}
+
+  {% elif active_tab == 'delivery' %}
+    <h5 class="ws-section-title">ডেলিভারি চার্জ</h5>
+    <p class="ws-section-sub">কাস্টমার অর্ডারের সময় নিজের এলাকা বেছে নেবে, সেই অনুযায়ী চার্জ যোগ হবে।</p>
+    <div class="d-flex flex-column gap-2 mb-3">
+      {% for z in zones %}
+      <form method="post" action="{% url 'website_zone_update' z.pk %}" class="zone-form ws-card {% if not z.is_active %}opacity-75{% endif %}">{% csrf_token %}
+        <input type="text" name="name" value="{{ z.name }}" class="form-control" maxlength="60" required aria-label="এলাকার নাম">
+        <div class="zone-controls">
+          <div class="input-group" style="width:130px;">
+            <span class="input-group-text fw-bold">৳</span>
+            <input type="number" name="charge" value="{{ z.charge|floatformat:0 }}" min="0" step="1" class="form-control" required aria-label="চার্জ">
+          </div>
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" name="is_active" id="zone-on-{{ z.pk }}" {% if z.is_active %}checked{% endif %}>
+            <label class="form-check-label small fw-semibold" for="zone-on-{{ z.pk }}">চালু</label>
+          </div>
+          <button class="btn btn-sm btn-dark rounded-3 px-3">সেভ</button>
+          <button class="btn btn-sm btn-outline-danger rounded-3" formaction="{% url 'website_zone_delete' z.pk %}" onclick="return confirm('এলাকাটা মুছবেন?')">মুছুন</button>
+        </div>
+      </form>
+      {% endfor %}
+    </div>
+    <form method="post" class="ws-card mb-4">{% csrf_token %}
+      <input type="hidden" name="section" value="zone_add">
+      <div class="fw-bold mb-2">নতুন এলাকা</div>
+      <div class="d-flex gap-2 flex-wrap">
+        <div class="flex-grow-1" style="min-width:160px;">{{ zone_form.name }}{% for e in zone_form.name.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}</div>
+        <div style="width:120px;">{{ zone_form.charge }}{% for e in zone_form.charge.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}</div>
+        <input type="hidden" name="is_active" value="on">
+        <button type="submit" class="ws-save"><i class="bi bi-plus-lg me-1"></i> যোগ করুন</button>
+      </div>
+    </form>
+    <form method="post" class="ws-card">{% csrf_token %}
+      <input type="hidden" name="section" value="delivery">
+      <label class="form-label" for="{{ delivery_form.free_delivery_min.id_for_label }}">ফ্রি ডেলিভারি</label>
+      <div class="d-flex gap-2 align-items-start flex-wrap">
+        <div style="max-width:260px;" class="flex-grow-1">{{ delivery_form.free_delivery_min }}</div>
+        <button type="submit" class="ws-save">সেভ করুন</button>
+      </div>
+      <div class="ws-help">এই টাকার বা তার বেশি অর্ডারে ডেলিভারি চার্জ লাগবে না। খালি রাখলে সবসময় চার্জ লাগবে।</div>
+    </form>
+
+  {% elif active_tab == 'payment' %}
+    <h5 class="ws-section-title">কাস্টমারের পেমেন্ট</h5>
+    <p class="ws-section-sub">কাস্টমার কীভাবে টাকা দেবে সেটা ঠিক করুন।</p>
+    {% if not online_gateway_ready %}
+    <div class="ws-warn mb-3"><i class="bi bi-info-circle me-1"></i> অনলাইন পেমেন্ট এখনো চালু হয়নি, তাই আপাতত কাস্টমার শুধু ক্যাশ অন ডেলিভারিতে অর্ডার দিতে পারবে। নিয়ম এখনই ঠিক করে রাখতে পারেন, চালু হলে নিজে থেকেই কাজ করবে।</div>
+    {% endif %}
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="section" value="payment">
+      {% for value, label in payment_form.fields.payment_rule.choices %}
+      <label class="rule-opt">
+        <input type="radio" name="payment_rule" value="{{ value }}" {% if payment_form.payment_rule.value == value %}checked{% endif %}>
+        <div>
+          <b>{{ label }}</b>
+          {% if value == 'cod' %}<span>কাস্টমার পণ্য হাতে পেয়ে কুরিয়ারকে টাকা দেবে।</span>
+          {% elif value == 'cod_or_online' %}<span>চেকআউটে কাস্টমার নিজে বেছে নেবে।</span>
+          {% elif value == 'advance_delivery' %}<span>ভুয়া অর্ডার কমে: কাস্টমার আগে শুধু ডেলিভারি চার্জ দেয় (চাইলে পুরোটাও দিতে পারে)।</span>
+          {% else %}<span>পুরো টাকা না দিলে অর্ডার কনফার্ম হবে না।</span>{% endif %}
+        </div>
+      </label>
+      {% endfor %}
+
+      <div class="ws-card mt-3">
+        <div class="fw-bold mb-1">অনলাইনে নেওয়া টাকা কোথায় পাঠাব</div>
+        <div class="ws-help mb-3">কাস্টমারের টাকা আগে {{ site.name }}-এর PayStation অ্যাকাউন্টে আসে। {{ fee_percent|floatformat:"-2" }}% ফি কেটে বাকিটা এখানে পাঠানো হয়।</div>
+        <div class="row g-3">
+          <div class="col-md-4"><label class="form-label" for="{{ payment_form.payout_method.id_for_label }}">মাধ্যম</label>{{ payment_form.payout_method }}</div>
+          <div class="col-md-8"><label class="form-label" for="{{ payment_form.payout_account.id_for_label }}">নম্বর / অ্যাকাউন্ট</label>{{ payment_form.payout_account }}{% for e in payment_form.payout_account.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}</div>
+          <div class="col-12"><label class="form-label" for="{{ payment_form.payout_account_name.id_for_label }}">অ্যাকাউন্টের নাম</label>{{ payment_form.payout_account_name }}</div>
+        </div>
+      </div>
+      <div class="mt-3"><button type="submit" class="ws-save"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button></div>
+    </form>
+
+    <h6 class="fw-bold mt-5 mb-3">অনলাইন বিক্রির হিসাব</h6>
+    <div class="row g-2 mb-3">
+      <div class="col-6 col-md-3"><div class="stat-box"><div class="v">৳{{ balance.gross|floatformat:0 }}</div><div class="l">কাস্টমার দিয়েছে</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-box"><div class="v">৳{{ balance.fee|floatformat:0 }}</div><div class="l">ফি</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-box"><div class="v">৳{{ balance.paid_out|floatformat:0 }}</div><div class="l">আপনাকে পাঠানো হয়েছে</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-box" style="background:#ECFDF5;border-color:#A7F3D0;"><div class="v" style="color:#047857;">৳{{ balance.due|floatformat:0 }}</div><div class="l">পাওনা আছে</div></div></div>
+    </div>
+    {% if recent_payments %}
+    <div class="table-responsive mb-3">
+      <table class="ws-table">
+        <thead><tr><th>তারিখ</th><th>অর্ডার</th><th class="text-end">টাকা</th><th class="text-end">আপনার</th><th>অবস্থা</th></tr></thead>
+        <tbody>
+        {% for p in recent_payments %}
+          <tr>
+            <td>{{ p.created_at|date:"j M, g:i A" }}</td>
+            <td>{% if p.order_id %}#ORD-{{ p.order_id }}{% endif %} <span class="text-muted small">{% if p.kind == 'advance' %}ডেলিভারি চার্জ{% else %}পুরো টাকা{% endif %}</span></td>
+            <td class="text-end">৳{{ p.amount|floatformat:0 }}</td>
+            <td class="text-end">{% if p.status == 'Completed' %}৳{{ p.net_amount|floatformat:0 }}{% else %}—{% endif %}</td>
+            <td>{% if p.status == 'Completed' %}<span class="text-success fw-bold">সফল</span>{% elif p.status == 'Failed' %}<span class="text-danger">ব্যর্থ</span>{% else %}<span class="text-warning">বাকি</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% if payouts %}
+    <div class="fw-bold small mb-2">আপনাকে পাঠানো টাকা</div>
+    <div class="table-responsive">
+      <table class="ws-table">
+        <tbody>
+        {% for p in payouts %}
+          <tr><td>{{ p.paid_at|date:"j M Y" }}</td><td>{{ p.method }} {{ p.account }}</td><td class="text-muted small">{{ p.reference }}</td><td class="text-end fw-bold">৳{{ p.amount|floatformat:0 }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+  {% elif active_tab == 'contact' %}
+    <h5 class="ws-section-title">যোগাযোগ ও পলিসি</h5>
+    <p class="ws-section-sub">ওয়েবসাইটের নিচে আর বাটনে দেখায়। কাস্টমারের ভরসা বাড়ে।</p>
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="section" value="contact">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="{{ contact_form.whatsapp_number.id_for_label }}">WhatsApp নম্বর</label>
+          {{ contact_form.whatsapp_number }}{% for e in contact_form.whatsapp_number.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+          <div class="ws-help">দিলে ওয়েবসাইটে সবুজ WhatsApp বাটন দেখাবে।</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ contact_form.facebook_page_url.id_for_label }}">Facebook পেইজ</label>
+          {{ contact_form.facebook_page_url }}{% for e in contact_form.facebook_page_url.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ contact_form.instagram_link.id_for_label }}">Instagram</label>
+          {{ contact_form.instagram_link }}{% for e in contact_form.instagram_link.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ contact_form.youtube_link.id_for_label }}">YouTube</label>
+          {{ contact_form.youtube_link }}{% for e in contact_form.youtube_link.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="{{ contact_form.return_policy.id_for_label }}">রিটার্ন ও রিফান্ড পলিসি</label>
+          {{ contact_form.return_policy }}
+          <div class="ws-help">লিখলে ওয়েবসাইটে "রিটার্ন পলিসি" দেখাবে। যা সত্যিই দেন শুধু সেটাই লিখুন।</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="{{ contact_form.privacy_policy.id_for_label }}">প্রাইভেসি পলিসি</label>
+          {{ contact_form.privacy_policy }}
+        </div>
+      </div>
+      <div class="mt-4"><button type="submit" class="ws-save"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button></div>
+    </form>
+  {% endif %}
+
+  </div>
+</div>
+
+{% if active_tab == 'store' %}
+{% include 'store/partials/subdomain_check_js.html' %}
+<script>ssSubdomainCheck('id_subdomain', 'subdomain-result', null);</script>
+{% endif %}
+{% endblock %}

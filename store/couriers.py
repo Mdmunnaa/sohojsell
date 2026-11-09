@@ -40,10 +40,12 @@ class CourierError(Exception):
 
 # ---------------------------------------------------------------- সাধারণ
 def cod_amount(order):
-    """কুরিয়ার কাস্টমারের কাছ থেকে কত টাকা তুলবে (পূর্ণ টাকা)। আগে পরিশোধ হলে ০।"""
+    """কুরিয়ার কাস্টমারের কাছ থেকে কত টাকা তুলবে (পূর্ণ টাকা)। পুরো আগে পরিশোধ হলে ০, আংশিক হলে বাকিটা।"""
     if order.payment_method in PREPAID_METHODS:
         return 0
-    return int(Decimal(order.total_amount or 0).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+    # ওয়েবসাইটে অনলাইনে আগে দেওয়া টাকা (যেমন ডেলিভারি চার্জ) বাদ
+    due = Decimal(order.total_amount or 0) - Decimal(getattr(order, 'advance_paid', 0) or 0)
+    return max(0, int(due.quantize(Decimal('1'), rounding=ROUND_HALF_UP)))
 
 
 def invoice_for(order):

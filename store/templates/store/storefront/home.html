@@ -96,6 +96,9 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 .prod-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
 
 /* ===== TRUST BADGES ===== */
+.announce-bar { background: var(--orange); color: #fff; text-align: center; font-size: 13px; font-weight: 700; padding: 8px 16px; line-height: 1.4; }
+.wa-float { position: fixed; right: 18px; bottom: 24px; width: 54px; height: 54px; border-radius: 50%; background: #25D366; color: #fff; display: none; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 8px 24px rgba(37,211,102,.4); z-index: 998; text-decoration: none; }
+@media (min-width: 768px) { .wa-float { display: flex; } }
 .trust-badges { display: flex; justify-content: space-around; background: #fff; padding: 20px 16px; margin-top: 10px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .trust-item { text-align: center; flex: 1; }
 .trust-icon { width: 40px; height: 40px; background: var(--orange-light); color: var(--orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; margin: 0 auto 8px; }
@@ -210,6 +213,8 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 </head>
 <body>
 
+{% if shop.announcement_text %}<div class="announce-bar">{{ shop.announcement_text }}</div>{% endif %}
+
 <!-- TOP BAR -->
 <div class="app-top-bar">
   <div class="top-bar-main">
@@ -220,19 +225,19 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     {% endif %}
     <div style="flex-shrink:0;">
       <div class="shop-name-sf">{{ shop.name }}</div>
-      <div class="shop-meta-sf"><i class="bi bi-geo-alt-fill text-orange"></i> {{ shop.address|default:"Online Store"|truncatechars:30 }}</div>
+      <div class="shop-meta-sf"><i class="bi bi-geo-alt-fill text-orange"></i> {{ shop.address|default:"অনলাইন শপ"|truncatechars:30 }}</div>
     </div>
     <form method="GET" class="search-form">
       <i class="bi bi-search"></i>
-      <input type="text" name="q" value="{{ search }}" placeholder="Search products in Daraz style..." class="search-input">
+      <input type="text" name="q" value="{{ search }}" placeholder="প্রোডাক্ট খুঁজুন..." class="search-input">
     </form>
     <button class="cart-top-btn" onclick="openCart()">
-      <i class="bi bi-cart3 fs-5"></i> Cart
+      <i class="bi bi-cart3 fs-5"></i> কার্ট
       <span class="nav-badge" id="desktop-cart-badge" style="display:none; position:relative; top:0; right:0; left:4px;">0</span>
     </button>
   </div>
   <div class="cat-bar">
-    <a href="?{% if search %}q={{ search }}{% endif %}" class="cat-chip {% if not cat_filter %}active{% endif %}">🏠 All Items</a>
+    <a href="?{% if search %}q={{ search }}{% endif %}" class="cat-chip {% if not cat_filter %}active{% endif %}">🏠 সব প্রোডাক্ট</a>
     {% for cat in categories %}
     <a href="?cat={{ cat.id }}{% if search %}&q={{ search }}{% endif %}" class="cat-chip {% if cat_filter == cat.id|stringformat:'s' %}active{% endif %}">{{ cat.name }}</a>
     {% endfor %}
@@ -250,8 +255,8 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     <div class="banner-slide">
       <div class="banner-slide-default">
         <div>
-          <h3>🛍️ Welcome to {{ shop.name }}</h3>
-          <p>Premium Quality | Best Deals | Fast Delivery</p>
+          <h3>🛍️ {{ shop.name }}</h3>
+          <p>{{ shop.storefront_tagline|default:"ঘরে বসে অর্ডার করুন, দরজায় পৌঁছে যাবে" }}</p>
         </div>
       </div>
     </div>
@@ -287,7 +292,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 
 <!-- PRODUCTS -->
 <div class="section-header">
-  <div class="section-title-sf">Just For You</div>
+  <div class="section-title-sf">{% if cat_filter or search %}প্রোডাক্ট{% else %}সব প্রোডাক্ট{% endif %}</div>
 </div>
 
 <div class="product-grid" id="productGrid">
@@ -317,26 +322,36 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
   {% empty %}
   <div style="grid-column:1/-1; text-align:center; padding:60px 20px; color:var(--muted);">
     <i class="bi bi-search" style="font-size:48px; display:block; margin-bottom:12px; opacity:.3;"></i>
-    <h5 class="fw-bold">No products found</h5>
-    <a href="?" style="color:var(--orange); font-weight:800; text-decoration:none;">Clear search</a>
+    <h5 class="fw-bold">কোনো প্রোডাক্ট পাওয়া যায়নি</h5>
+    <a href="?" style="color:var(--orange); font-weight:800; text-decoration:none;">সব প্রোডাক্ট দেখুন</a>
   </div>
   {% endfor %}
 </div>
 
-<!-- TRUST BADGES -->
+<!-- TRUST BADGES: দোকানের আসল সেটিং থেকে -->
 <div class="trust-badges">
   <div class="trust-item">
-    <div class="trust-icon"><i class="bi bi-shield-check"></i></div>
-    <div class="trust-title">100%<br>Authentic</div>
-  </div>
-  <div class="trust-item">
-    <div class="trust-icon"><i class="bi bi-arrow-counterclockwise"></i></div>
-    <div class="trust-title">14 Days<br>Return</div>
-  </div>
-  <div class="trust-item">
     <div class="trust-icon"><i class="bi bi-truck"></i></div>
-    <div class="trust-title">Fast<br>Delivery</div>
+    <div class="trust-title">হোম<br>ডেলিভারি</div>
   </div>
+  {% if cod_allowed %}
+  <div class="trust-item">
+    <div class="trust-icon"><i class="bi bi-cash-coin"></i></div>
+    <div class="trust-title">ক্যাশ অন<br>ডেলিভারি</div>
+  </div>
+  {% endif %}
+  {% if online_allowed %}
+  <div class="trust-item">
+    <div class="trust-icon"><i class="bi bi-shield-lock"></i></div>
+    <div class="trust-title">নিরাপদ অনলাইন<br>পেমেন্ট</div>
+  </div>
+  {% endif %}
+  {% if shop.return_policy %}
+  <div class="trust-item" role="button" data-bs-toggle="modal" data-bs-target="#returnModal" style="cursor:pointer;">
+    <div class="trust-icon"><i class="bi bi-arrow-counterclockwise"></i></div>
+    <div class="trust-title">রিটার্ন<br>পলিসি</div>
+  </div>
+  {% endif %}
 </div>
 
 <!-- FOOTER (UPDATED) -->
@@ -364,68 +379,36 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     <a href="#" data-bs-toggle="modal" data-bs-target="#returnModal" class="text-muted text-decoration-none fw-semibold">Return Policy</a>
   </div>
 
-  <div class="copyright">© 2026 {{ shop.name }}. Powered by SohojSell.</div>
+  <div class="copyright">© {% now "Y" %} {{ shop.name }} · Powered by {{ site.name|default:"SohojSell" }}</div>
 </footer>
 
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <a href="{% shop_url 'storefront_home' shop %}" class="nav-item-sf active">
-    <i class="bi bi-house-fill"></i><span>Home</span>
+    <i class="bi bi-house-fill"></i><span>হোম</span>
   </a>
   <button class="nav-item-sf" onclick="scrollToTop()">
-    <i class="bi bi-grid-fill"></i><span>Products</span>
+    <i class="bi bi-grid-fill"></i><span>প্রোডাক্ট</span>
   </button>
   <button class="nav-item-sf" onclick="openCart()">
-    <i class="bi bi-cart-fill"></i><span>Cart</span>
+    <i class="bi bi-cart-fill"></i><span>কার্ট</span>
     <div class="nav-badge" id="nav-cart-badge">0</div>
   </button>
-  <button class="nav-item-sf" onclick="showToast('Account system coming soon!')">
-    <i class="bi bi-person-fill"></i><span>Account</span>
-  </button>
+  {% if shop.whatsapp_number %}
+  <a class="nav-item-sf" href="https://wa.me/{{ shop.whatsapp_number }}" target="_blank" rel="noopener">
+    <i class="bi bi-whatsapp" style="color:#25D366;"></i><span>WhatsApp</span>
+  </a>
+  {% elif shop.phone %}
+  <a class="nav-item-sf" href="tel:{{ shop.phone }}">
+    <i class="bi bi-telephone-fill"></i><span>কল করুন</span>
+  </a>
+  {% endif %}
 </div>
+{% if shop.whatsapp_number %}
+<a class="wa-float" href="https://wa.me/{{ shop.whatsapp_number }}" target="_blank" rel="noopener" aria-label="WhatsApp-এ মেসেজ দিন"><i class="bi bi-whatsapp"></i></a>
+{% endif %}
 
-<!-- CART -->
-<div id="cart-overlay" onclick="closeCart()"></div>
-<div id="cart-drawer">
-  <div class="drawer-header">
-    <h5><i class="bi bi-bag-check-fill me-2 text-orange"></i>My Cart</h5>
-    <button class="close-btn" onclick="closeCart()"><i class="bi bi-x-lg"></i></button>
-  </div>
-  <div class="drawer-items" id="drawer-items">
-    <div class="text-center text-muted py-5">
-      <i class="bi bi-cart-x" style="font-size:48px;display:block;margin-bottom:12px;opacity:.3;"></i>
-      Cart is empty
-    </div>
-  </div>
-  <div class="drawer-footer">
-    <div class="df-row"><span>Subtotal</span><span id="sf-subtotal">৳0</span></div>
-    <div class="df-row"><span>Delivery Fee</span><span id="sf-delivery">৳80</span></div>
-    <div class="df-total"><span>Total</span><span id="sf-total">৳0</span></div>
-    <button class="checkout-btn" onclick="openCheckout()">Proceed to Checkout →</button>
-  </div>
-</div>
-
-<!-- CHECKOUT MODAL -->
-<div id="checkout-modal">
-  <div id="checkout-box">
-    <h4><i class="bi bi-truck me-2 text-orange"></i>Shipping Details</h4>
-    <input type="text" id="co-name" class="co-input" placeholder="📛 Your full name *">
-    <input type="tel" id="co-phone" class="co-input" placeholder="📱 Phone number * (e.g. 01XXXXXXXXX)">
-    <textarea id="co-address" class="co-input" rows="2" placeholder="📍 Full delivery address *"></textarea>
-    <textarea id="co-note" class="co-input" rows="1" placeholder="📝 Note (optional)"></textarea>
-    <div class="co-total-row">
-      <div>
-        <div style="font-size:12px;color:var(--muted);font-weight:700;">Total to Pay</div>
-        <div style="font-size:12px;color:#198754;font-weight:800;margin-top:2px;"><i class="bi bi-cash-coin me-1"></i>Cash on Delivery</div>
-      </div>
-      <div style="font-size:26px;font-weight:900;color:var(--orange);" id="co-total-display">৳0</div>
-    </div>
-    <button class="place-order-btn" id="place-order-btn" onclick="placeOrder()">
-      <i class="bi bi-check-circle-fill me-2"></i>Confirm Order
-    </button>
-    <button class="cancel-btn" onclick="document.getElementById('checkout-modal').classList.remove('show')">Cancel</button>
-  </div>
-</div>
+{% include 'store/storefront/_cart_checkout.html' %}
 
 <!-- ================= MODALS ================= -->
 <!-- Privacy Policy Modal -->
@@ -460,12 +443,6 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-const SHOP_ID = '{{ shop.id }}';
-const SHOP_SLUG = '{{ shop.slug }}';
-const PLACE_ORDER_URL = '{% shop_url "storefront_place_order" shop %}';
-const ORDER_SUCCESS_URL = '{% shop_url "storefront_order_success" shop 0 %}';
-const DELIVERY = 80;
-let cart = JSON.parse(localStorage.getItem('sohojsell_' + SHOP_ID) || '{}');
 
 // ===== BANNER SLIDER =====
 (function(){
@@ -493,18 +470,18 @@ let cart = JSON.parse(localStorage.getItem('sohojsell_' + SHOP_ID) || '{}');
 function goToProduct(url) { window.location.href = url; }
 
 // ===== CART =====
-function saveCart() { localStorage.setItem('sohojsell_' + SHOP_ID, JSON.stringify(cart)); }
 
 function addToCart(id, name, price, stock, image) {
   id = String(id);
+  if (stock <= 0) { showToast('এটা এখন স্টকে নেই'); return; }
   if (cart[id]) {
-    if (cart[id].qty >= stock) { showToast('⚠️ Max stock reached!'); return; }
+    if (cart[id].qty >= stock) { showToast('⚠️ স্টকে আর নেই'); return; }
     cart[id].qty++;
   } else {
     cart[id] = { id, name, price, qty: 1, stock, image };
   }
   saveCart(); updateBtn(id); renderCart();
-  showToast('🛒 Added to cart!');
+  showToast('🛒 কার্টে যোগ হয়েছে');
 }
 
 function updateBtn(id) {
@@ -512,111 +489,6 @@ function updateBtn(id) {
   if (!btn) return;
   if (cart[id]) { btn.classList.add('in-cart'); btn.innerHTML = '<i class="bi bi-check-lg"></i>'; }
   else { btn.classList.remove('in-cart'); btn.innerHTML = '<i class="bi bi-cart-plus-fill"></i>'; }
-}
-
-function changeQty(id, delta) {
-  id = String(id);
-  if (!cart[id]) return;
-  cart[id].qty += delta;
-  if (cart[id].qty <= 0) { delete cart[id]; updateBtn(id); }
-  saveCart(); renderCart();
-}
-
-function removeItem(id) {
-  id = String(id); delete cart[id]; updateBtn(id); saveCart(); renderCart();
-}
-
-function renderCart() {
-  const keys = Object.keys(cart);
-  const count = keys.reduce((s,k) => s + cart[k].qty, 0);
-  const subtotal = keys.reduce((s,k) => s + cart[k].price * cart[k].qty, 0);
-  const delivery = keys.length > 0 ? DELIVERY : 0;
-  const total = subtotal + delivery;
-
-  // Badges
-  const nb = document.getElementById('nav-cart-badge');
-  const db = document.getElementById('desktop-cart-badge');
-  if (nb) { nb.style.display = count>0?'flex':'none'; nb.textContent = count; }
-  if (db) { db.style.display = count>0?'inline':'none'; db.textContent = count; }
-
-  // Summary
-  document.getElementById('sf-subtotal').textContent = '৳' + subtotal.toLocaleString();
-  document.getElementById('sf-delivery').textContent = '৳' + delivery.toLocaleString();
-  document.getElementById('sf-total').textContent = '৳' + total.toLocaleString();
-  document.getElementById('co-total-display').textContent = '৳' + total.toLocaleString();
-
-  // Items
-  const container = document.getElementById('drawer-items');
-  if (keys.length === 0) {
-    container.innerHTML = '<div class="text-center text-muted py-5"><i class="bi bi-bag-x" style="font-size:56px;display:block;margin-bottom:12px;color:#E2E8F0;"></i><h6 class="fw-bold">Cart is empty</h6></div>';
-    return;
-  }
-  let html = '';
-  keys.forEach(id => {
-    const item = cart[id];
-    const imgHtml = item.image && item.image !== ''
-      ? `<img src="${item.image}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`
-      : `<i class="bi bi-bag text-muted"></i>`;
-
-    html += `<div class="cart-item-row">
-      <div class="ci-img">${imgHtml}</div>
-      <div class="ci-info">
-        <div class="ci-name">${item.name}</div>
-        <div class="ci-price">৳${(item.price * item.qty).toLocaleString()}</div>
-      </div>
-      <div class="ci-qty-ctrl">
-        <button onclick="changeQty(${id},-1)">−</button>
-        <span>${item.qty}</span>
-        <button onclick="changeQty(${id},1)">+</button>
-      </div>
-      <button onclick="removeItem(${id})" style="background:none;border:none;color:#FF3333;cursor:pointer;font-size:18px;padding:0 0 0 8px;"><i class="bi bi-trash3-fill"></i></button>
-    </div>`;
-  });
-  container.innerHTML = html;
-}
-
-function openCart() { document.getElementById('cart-overlay').classList.add('show'); document.getElementById('cart-drawer').classList.add('open'); }
-function closeCart() { document.getElementById('cart-overlay').classList.remove('show'); document.getElementById('cart-drawer').classList.remove('open'); }
-function openCheckout() {
-  if (Object.keys(cart).length === 0) return;
-  closeCart();
-  document.getElementById('checkout-modal').classList.add('show');
-}
-
-async function placeOrder() {
-  const name = document.getElementById('co-name').value.trim();
-  const phone = document.getElementById('co-phone').value.trim();
-  const address = document.getElementById('co-address').value.trim();
-  const note = document.getElementById('co-note').value.trim();
-  if (!name || !phone || !address) { showToast('⚠️ Please fill all required fields!'); return; }
-  const items = Object.values(cart).map(i => ({ id: i.id, qty: i.qty }));
-  const btn = document.getElementById('place-order-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
-  try {
-    const res = await fetch(PLACE_ORDER_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
-      body: JSON.stringify({ cart: items, name, phone, address, note })
-    });
-    const data = await res.json();
-    if (data.success) {
-      localStorage.removeItem('sohojsell_' + SHOP_ID);
-      window.location.href = ORDER_SUCCESS_URL.replace('/0/success/', '/' + data.order_id + '/success/');
-    } else {
-      showToast('❌ ' + (data.error || 'Failed!'));
-      btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Confirm Order';
-    }
-  } catch(e) {
-    showToast('❌ Network error!');
-    btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Confirm Order';
-  }
-}
-
-function getCookie(name) {
-  let v = null;
-  document.cookie.split(';').forEach(c => { c=c.trim(); if(c.startsWith(name+'=')) v=decodeURIComponent(c.slice(name.length+1)); });
-  return v;
 }
 
 let toastTimer;

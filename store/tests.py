@@ -293,12 +293,12 @@ class SubdomainAndStorefrontTests(ShopTestMixin, TestCase):
         _user, shop = self.make_shop()
         Shop.objects.create(user=User.objects.create_user(phone_number='01600000003', password='x'),
                             name='Other', slug='takenname')
-        base = {'name': shop.name, 'phone': shop.phone, 'address': 'Dhaka', 'is_sms_active': 'on'}
-        response = self.client.post(reverse('settings'), {**base, 'subdomain': 'takenname'})
+        base = {'section': 'store', 'name': shop.name, 'phone': shop.phone, 'address': 'Dhaka'}
+        response = self.client.post(reverse('website_settings'), {**base, 'subdomain': 'takenname'})
         self.assertEqual(response.status_code, 200)
         shop.refresh_from_db()
         self.assertNotEqual(shop.slug, 'takenname')
-        self.client.post(reverse('settings'), {**base, 'subdomain': 'New-Name'})
+        self.client.post(reverse('website_settings'), {**base, 'subdomain': 'New-Name'})
         shop.refresh_from_db()
         self.assertEqual(shop.slug, 'new-name')
 
@@ -386,17 +386,17 @@ class PlanLimitsTests(ShopTestMixin, TestCase):
             self.assertNotEqual(response.get('Location'), reverse('billing'))
 
     def test_custom_domain_only_on_premium(self):
-        base = {'name': 'Shop', 'phone': '01711111111', 'address': 'Dhaka', 'subdomain': 'myshop',
-                'custom_domain': 'www.example.com'}
+        base = {'section': 'store', 'name': 'Shop', 'phone': '01711111111', 'address': 'Dhaka',
+                'subdomain': 'myshop', 'custom_domain': 'www.example.com'}
         _user, shop = self.make_shop(**self._paid('Standard'))
-        self.client.post(reverse('settings'), base)
+        self.client.post(reverse('website_settings'), base)
         shop.refresh_from_db()
         self.assertEqual(shop.slug, 'myshop')
         self.assertFalse(shop.custom_domain)
 
         shop.subscription_plan = 'Premium'
         shop.save()
-        self.client.post(reverse('settings'), base)
+        self.client.post(reverse('website_settings'), base)
         shop.refresh_from_db()
         self.assertEqual(shop.custom_domain, 'www.example.com')
 
@@ -447,9 +447,11 @@ class StorefrontDomainTests(ShopTestMixin, TestCase):
 
     def test_order_on_subdomain_and_success_page_is_private(self):
         import json
+        from .delivery import zones_for
         response = self.client.post('/place-order/', data=json.dumps({
             'cart': [{'id': self.product.id, 'qty': 2}], 'name': 'Rahim', 'phone': '01812345678',
-            'address': 'Savar'}), content_type='application/json', HTTP_HOST=self.HOST)
+            'address': 'Savar', 'zone': zones_for(self.shop)[0].id}), content_type='application/json',
+            HTTP_HOST=self.HOST)
         data = response.json()
         self.assertTrue(data['success'], data)
         success = self.client.get(f"/order/{data['order_id']}/success/", HTTP_HOST=self.HOST)
@@ -732,10 +734,10 @@ class StorefrontThemeTests(ShopTestMixin, TestCase):
         _user, shop = self.make_shop(slug='themeshop')
         html = self.client.get('/shop/themeshop/', HTTP_HOST='localhost').content.decode()
         self.assertIn('--orange: #F57224', html)                     # ডিফল্ট কমলা
-        settings_page = self.client.get(reverse('settings')).content.decode()
-        self.assertIn('value="pink"', settings_page)
-        self.client.post(reverse('settings'), {'name': shop.name, 'phone': shop.phone, 'address': 'Dhaka',
-                                               'subdomain': 'themeshop', 'storefront_theme': 'pink'})
+        page = self.client.get(reverse('website_settings') + '?tab=design').content.decode()
+        self.assertIn('value="pink"', page)
+        self.client.post(reverse('website_settings'), {'section': 'design', 'storefront_theme': 'pink',
+                                                       'show_sold_count': 'on'})
         shop.refresh_from_db()
         self.assertEqual(shop.storefront_theme, 'pink')
         html = self.client.get('/shop/themeshop/', HTTP_HOST='localhost').content.decode()
@@ -744,8 +746,7 @@ class StorefrontThemeTests(ShopTestMixin, TestCase):
 
     def test_unknown_theme_rejected(self):
         _user, shop = self.make_shop(slug='themeshop2')
-        self.client.post(reverse('settings'), {'name': shop.name, 'phone': shop.phone, 'address': 'Dhaka',
-                                               'subdomain': 'themeshop2', 'storefront_theme': 'neon'})
+        self.client.post(reverse('website_settings'), {'section': 'design', 'storefront_theme': 'neon'})
         shop.refresh_from_db()
         self.assertEqual(shop.storefront_theme, 'orange')
 
@@ -857,3 +858,312 @@ class FacebookCommentBotTests(ShopTestMixin, TestCase):
         self.assertEqual(find_product(self.shop, f'P{pid} er dam?'), self.product)
         self.assertEqual(find_product(self.shop, f'code: #p-{pid}'), self.product)
         self.assertIsNone(find_product(self.shop, 'pp', 'app 12', f'SP{pid}'))
+
+
+def _png_bytes():
+    from io import BytesIO
+    from PIL import Image
+    buf = BytesIO()
+    Image.new('RGB', (40, 20), (200, 80, 40)).save(buf, format='PNG')
+    return buf.getvalue()
+
+
+class StorefrontCheckoutTests(ShopTestMixin, TestCase):
+    """আসল ব্রাউজারের মতো CSRF চালু রেখে অর্ডার, ডেলিভারি এলাকা আর চার্জ।"""
+
+    def setUp(self):
+        from .models import Product
+        self.user, self.shop = self.make_shop(slug='coshop')
+        self.product = Product.objects.create(shop=self.shop, name='Kurti', price=850, cost_price=500, stock_quantity=4)
+        self.client.logout()
+
+    def _order(self, client, **extra):
+        import json
+        body = {'cart': [{'id': self.product.id, 'qty': 2}], 'name': 'Rahim', 'phone': '০১৮১২-৩৪৫৬৭৮',
+                'address': 'Road 2, Savar', **extra}
+        token = client.cookies['csrftoken'].value if 'csrftoken' in client.cookies else ''
+        return client.post('/shop/coshop/place-order/', json.dumps(body), content_type='application/json',
+                           HTTP_HOST='localhost', HTTP_X_CSRFTOKEN=token)
+
+    def test_real_browser_order_passes_csrf(self):
+        from django.test import Client
+        from .delivery import zones_for
+        browser = Client(enforce_csrf_checks=True)
+        home = browser.get('/shop/coshop/', HTTP_HOST='localhost')
+        self.assertIn('csrftoken', browser.cookies)               # আগে এটাই ছিল না, তাই সব অর্ডার 403
+        html = home.content.decode()
+        self.assertIn('ঢাকার বাইরে', html)
+        self.assertNotIn('const DELIVERY = 80', html)
+        outside = zones_for(self.shop)[1]
+        data = self._order(browser, zone=outside.id).json()
+        self.assertTrue(data['success'], data)
+        from .models import StorefrontOrder
+        sf = StorefrontOrder.objects.get(pk=data['order_id'])
+        self.assertEqual((sf.delivery_charge, sf.delivery_zone, sf.total_amount), (Decimal('120'), 'ঢাকার বাইরে', Decimal('1820')))
+        self.assertEqual(sf.customer_phone, '01812345678')          # বাংলা সংখ্যাও ঠিক হয়ে যায়
+        self.assertEqual((sf.order.source, sf.order.total_amount, sf.order.delivery_charge), ('storefront', Decimal('1820'), Decimal('120')))
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_quantity, 2)
+        page = browser.get(data['redirect'], HTTP_HOST='localhost').content.decode()
+        self.assertIn(f'ORD-{sf.order.id}', page)
+        self.assertIn('ক্যাশ অন ডেলিভারি', page)
+
+    def test_zone_from_another_shop_or_missing_is_rejected(self):
+        from .delivery import zones_for
+        _u, other = self.make_shop(phone='01799990000', slug='othershop')
+        self.client.logout()
+        data = self._order(self.client, zone=zones_for(other)[0].id).json()
+        self.assertFalse(data['success'])
+        self.assertFalse(self._order(self.client).json()['success'])
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_quantity, 4)
+
+    def test_free_delivery_threshold_and_bad_phone(self):
+        from .delivery import zones_for
+        self.shop.free_delivery_min = Decimal('1500')
+        self.shop.save()
+        data = self._order(self.client, zone=zones_for(self.shop)[1].id).json()
+        from .models import StorefrontOrder
+        self.assertEqual(StorefrontOrder.objects.get(pk=data['order_id']).delivery_charge, Decimal('0'))
+        bad = self._order(self.client, zone=zones_for(self.shop)[0].id, phone='12345').json()
+        self.assertFalse(bad['success'])
+
+    def test_cannot_pick_online_when_shop_is_cod_only(self):
+        from .delivery import zones_for
+        data = self._order(self.client, zone=zones_for(self.shop)[0].id, payment='full').json()
+        self.assertFalse(data['success'])
+
+    def test_more_than_stock_is_rejected(self):
+        import json
+        from .delivery import zones_for
+        response = self.client.post('/shop/coshop/place-order/', json.dumps({
+            'cart': [{'id': self.product.id, 'qty': 9}], 'name': 'X', 'phone': '01812345678', 'address': 'Savar',
+            'zone': zones_for(self.shop)[0].id}), content_type='application/json', HTTP_HOST='localhost')
+        self.assertFalse(response.json()['success'])
+
+
+@override_settings(PAYSTATION_TEST_SHOPS=['payshop'], STOREFRONT_PAYMENT_FEE_PERCENT='2')
+class StorefrontOnlinePaymentTests(ShopTestMixin, TestCase):
+    def setUp(self):
+        from .models import Product
+        self.user, self.shop = self.make_shop(slug='payshop', payment_rule='advance_delivery',
+                                              payout_method='bKash', payout_account='01711111111')
+        self.product = Product.objects.create(shop=self.shop, name='Saree', price=1000, cost_price=700, stock_quantity=5)
+        self.client.logout()
+
+    def _place(self, payment):
+        import json
+        from .delivery import zones_for
+        with mock.patch('store.paystation.initiate_payment',
+                        return_value={'ok': True, 'payment_url': 'https://sandbox.paystation.com.bd/pay/abc'}) as init:
+            response = self.client.post('/shop/payshop/place-order/', json.dumps({
+                'cart': [{'id': self.product.id, 'qty': 1}], 'name': 'Karim', 'phone': '01811111111',
+                'address': 'Savar', 'zone': zones_for(self.shop)[0].id, 'payment': payment}),
+                content_type='application/json', HTTP_HOST='localhost')
+        return response.json(), init
+
+    def _verify(self, amount, status='success'):
+        return mock.patch('store.paystation.verify_transaction', return_value={
+            'status': status, 'amount': Decimal(amount), 'trx_id': 'TRX123', 'payment_method': 'bKash'})
+
+    def test_delivery_advance_then_courier_collects_rest(self):
+        from .couriers import cod_amount
+        from .models import StorefrontPayment
+        data, init = self._place('advance')
+        self.assertEqual(data['redirect'], 'https://sandbox.paystation.com.bd/pay/abc')
+        payment = StorefrontPayment.objects.get()
+        self.assertEqual((payment.amount, payment.kind, payment.fee_amount, payment.net_amount),
+                         (Decimal('60.00'), 'advance', Decimal('1.20'), Decimal('58.80')))
+        self.assertIn('/shop/payshop/payment/return/?inv=SF-', init.call_args.kwargs['callback_url'])
+        order = payment.order
+        self.assertEqual(order.online_payment_status, 'pending')
+
+        with self._verify('60'):
+            back = self.client.get(f'/shop/payshop/payment/return/?inv={payment.invoice_number}&status=Successful',
+                                   HTTP_HOST='localhost')
+        page = self.client.get(back['Location'], HTTP_HOST='localhost').content.decode()
+        self.assertIn('বাকি ৳1000 পণ্য হাতে পেয়ে', page)
+        order.refresh_from_db()
+        self.assertEqual((order.advance_paid, order.online_payment_status, order.status, order.payment_method),
+                         (Decimal('60.00'), 'paid', 'Confirmed', 'COD'))
+        self.assertEqual(cod_amount(order), 1000)
+
+    def test_full_payment_via_ipn_makes_order_prepaid(self):
+        from .couriers import cod_amount
+        from .models import StorefrontPayment
+        self._place('full')
+        payment = StorefrontPayment.objects.get()
+        self.assertEqual(payment.amount, Decimal('1060.00'))
+        with self._verify('1060'):
+            response = self.client.post(reverse('paystation_ipn'), {'invoice_number': payment.invoice_number})
+        self.assertEqual(response.status_code, 200)
+        payment.refresh_from_db()
+        order = payment.order
+        self.assertEqual((payment.status, order.payment_method, cod_amount(order)), ('Completed', 'Paid', 0))
+        from .shop_payments import balance_summary
+        self.assertEqual(balance_summary(self.shop)['due'], Decimal('1038.80'))
+
+    def test_amount_mismatch_and_failed_payment_can_retry(self):
+        from .models import StorefrontPayment
+        data, _ = self._place('advance')
+        payment = StorefrontPayment.objects.get()
+        with self._verify('10'):
+            self.client.get(f'/shop/payshop/payment/return/?inv={payment.invoice_number}', HTTP_HOST='localhost')
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, 'Pending')
+        self.client.get(f'/shop/payshop/payment/return/?inv={payment.invoice_number}&status=Cancelled',
+                        HTTP_HOST='localhost')
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, 'Failed')
+        with self._verify('0', status='failed'):
+            page = self.client.get(f'/shop/payshop/order/{payment.sf_order_id}/success/', HTTP_HOST='localhost')
+        self.assertIn('৳60 পেমেন্ট করুন', page.content.decode())
+        with mock.patch('store.paystation.initiate_payment',
+                        return_value={'ok': True, 'payment_url': 'https://sandbox.paystation.com.bd/pay/again'}):
+            retry = self.client.post(f'/shop/payshop/order/{payment.sf_order_id}/pay/', HTTP_HOST='localhost')
+        self.assertEqual(retry['Location'], 'https://sandbox.paystation.com.bd/pay/again')
+        self.assertEqual(StorefrontPayment.objects.count(), 2)
+
+    def test_gateway_off_means_cash_on_delivery_only(self):
+        with override_settings(PAYSTATION_TEST_SHOPS=[]):
+            html = self.client.get('/shop/payshop/', HTTP_HOST='localhost').content.decode()
+            self.assertNotIn('value="advance"', html)
+            data, init = self._place('cod')
+            self.assertTrue(data['success'])
+            init.assert_not_called()
+
+    def test_master_records_payout_and_seller_sees_balance(self):
+        from .models import ShopPayout, StorefrontPayment
+        self._place('full')
+        payment = StorefrontPayment.objects.get()
+        with self._verify('1060'):
+            self.client.post(reverse('paystation_ipn'), {'invoice_number': payment.invoice_number})
+        admin = User.objects.create_superuser(phone_number='01900000009', password='admin-pass-1')
+        self.client.force_login(admin)
+        page = self.client.get(reverse('master_settlements')).content.decode()
+        self.assertIn('1039', page)
+        self.client.post(reverse('master_settlements'), {'shop_id': self.shop.pk, 'amount': '5000'})
+        self.assertFalse(ShopPayout.objects.exists())                 # পাওনার বেশি না
+        self.client.post(reverse('master_settlements'), {'shop_id': self.shop.pk, 'amount': '1000', 'reference': 'BK1'})
+        self.assertEqual(ShopPayout.objects.get().amount, Decimal('1000'))
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(reverse('master_settlements')).status_code, 302)
+        seller_page = self.client.get(reverse('website_settings') + '?tab=payment').content.decode()
+        self.assertIn('৳39', seller_page)
+
+
+class WebsiteSettingsTests(ShopTestMixin, TestCase):
+    def setUp(self):
+        self.user, self.shop = self.make_shop(slug='webshop')
+
+    def _post(self, data, files=None):
+        return self.client.post(reverse('website_settings'), {**data, **(files or {})})
+
+    def test_every_tab_opens(self):
+        for tab in ['store', 'design', 'banners', 'categories', 'delivery', 'payment', 'contact']:
+            response = self.client.get(reverse('website_settings') + f'?tab={tab}')
+            self.assertEqual(response.status_code, 200, tab)
+        self.assertRedirects(self.client.get('/banners/'), '/website/?tab=banners', fetch_redirect_response=False)
+        self.assertRedirects(self.client.get('/categories/'), '/website/?tab=categories', fetch_redirect_response=False)
+
+    def test_store_design_and_contact_save_separately(self):
+        self._post({'section': 'store', 'name': 'Munna Fashion', 'phone': '01711111111', 'address': 'Savar',
+                    'subdomain': 'webshop'})
+        self._post({'section': 'design', 'storefront_theme': 'green', 'announcement_text': 'ঈদ অফার চলছে',
+                    'storefront_tagline': 'খাঁটি সুতি'})
+        self._post({'section': 'contact', 'whatsapp_number': '০১৭১২-৩৪৫৬৭৮', 'return_policy': '৩ দিনে বদল'})
+        self.shop.refresh_from_db()
+        self.assertEqual((self.shop.name, self.shop.storefront_theme, self.shop.whatsapp_number),
+                         ('Munna Fashion', 'green', '8801712345678'))
+        html = self.client.get('/shop/webshop/', HTTP_HOST='localhost').content.decode()
+        for text in ['ঈদ অফার চলছে', 'wa.me/8801712345678', 'রিটার্ন<br>পলিসি']:
+            self.assertIn(text, html)
+        self.assertNotIn('14 Days', html)
+        self.assertNotIn('coming soon', html)
+        bad = self._post({'section': 'contact', 'whatsapp_number': '12345'})
+        self.assertEqual(bad.status_code, 200)
+
+    def test_banners_upload_toggle_delete(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .models import Banner
+        self._post({'section': 'banner_add', 'title': 'Eid'},
+                   {'image': SimpleUploadedFile('b.png', _png_bytes(), content_type='image/png')})
+        banner = Banner.objects.get(shop=self.shop)
+        self.assertEqual(self.client.get(reverse('website_banner_delete', args=[banner.pk])).status_code, 405)
+        self.client.post(reverse('website_banner_toggle', args=[banner.pk]))
+        banner.refresh_from_db()
+        self.assertFalse(banner.is_active)
+        self.client.post(reverse('website_banner_delete', args=[banner.pk]))
+        self.assertFalse(Banner.objects.exists())
+
+    def test_categories_add_rename_delete_keeps_products(self):
+        from .models import Category, Product
+        self._post({'section': 'category_add', 'name': '  শাড়ি  '})
+        self._post({'section': 'category_add', 'name': 'শাড়ি'})          # একই নাম দুবার না
+        category = Category.objects.get(shop=self.shop)
+        product = Product.objects.create(shop=self.shop, category=category, name='P', price=10, cost_price=5)
+        self.client.post(reverse('website_category_rename', args=[category.pk]), {'name': 'জামদানি'})
+        category.refresh_from_db()
+        self.assertEqual(category.name, 'জামদানি')
+        self.client.post(reverse('website_category_delete', args=[category.pk]))
+        product.refresh_from_db()
+        self.assertIsNone(product.category)
+
+    def test_delivery_zones_and_last_zone_cannot_be_deleted(self):
+        from .delivery import zones_for
+        from .models import DeliveryZone
+        zones = zones_for(self.shop)
+        self._post({'section': 'zone_add', 'name': 'সাভার', 'charge': '80', 'is_active': 'on'})
+        self.client.post(reverse('website_zone_update', args=[zones[0].pk]), {'name': 'ঢাকা সিটি', 'charge': '70', 'is_active': 'on'})
+        zones[0].refresh_from_db()
+        self.assertEqual((zones[0].name, zones[0].charge), ('ঢাকা সিটি', Decimal('70')))
+        for zone in DeliveryZone.objects.filter(shop=self.shop):
+            self.client.post(reverse('website_zone_delete', args=[zone.pk]))
+        self.assertEqual(DeliveryZone.objects.filter(shop=self.shop).count(), 1)
+        self._post({'section': 'delivery', 'free_delivery_min': '2000'})
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.free_delivery_min, Decimal('2000'))
+
+    def test_online_payment_rule_needs_payout_account(self):
+        self._post({'section': 'payment', 'payment_rule': 'online_only'})
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.payment_rule, 'cod')
+        self._post({'section': 'payment', 'payment_rule': 'online_only', 'payout_method': 'bKash',
+                    'payout_account': '01712345678', 'payout_account_name': 'Munna'})
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.payment_rule, 'online_only')
+
+    def test_staff_without_settings_permission_blocked(self):
+        from .models import StaffProfile
+        staff_user = User.objects.create_user(phone_number='01811112222', password='staff-pass-1')
+        StaffProfile.objects.create(user=staff_user, shop=self.shop, can_manage_settings=False)
+        self.client.force_login(staff_user)
+        self.assertRedirects(self.client.get(reverse('website_settings')), reverse('dashboard'),
+                             fetch_redirect_response=False)
+
+
+@override_settings(PAYSTATION_TEST_SHOPS=['postshop'])
+class PaymentReturnByPostTests(ShopTestMixin, TestCase):
+    def test_gateway_post_back_is_not_blocked_by_csrf(self):
+        import json
+        from django.test import Client
+        from .delivery import zones_for
+        from .models import Product, StorefrontPayment
+        _u, shop = self.make_shop(slug='postshop', payment_rule='online_only', payout_method='bKash',
+                                  payout_account='01711111111')
+        product = Product.objects.create(shop=shop, name='Bag', price=500, cost_price=300, stock_quantity=3)
+        browser = Client(enforce_csrf_checks=True)
+        browser.get('/shop/postshop/', HTTP_HOST='localhost')
+        with mock.patch('store.paystation.initiate_payment', return_value={'ok': True, 'payment_url': 'https://x/pay'}):
+            browser.post('/shop/postshop/place-order/', json.dumps({
+                'cart': [{'id': product.id, 'qty': 1}], 'name': 'A', 'phone': '01811111111', 'address': 'Savar',
+                'zone': zones_for(shop)[0].id, 'payment': 'full'}), content_type='application/json',
+                HTTP_HOST='localhost', HTTP_X_CSRFTOKEN=browser.cookies['csrftoken'].value)
+        payment = StorefrontPayment.objects.get()
+        with mock.patch('store.paystation.verify_transaction', return_value={
+                'status': 'success', 'amount': payment.amount, 'trx_id': 'T1', 'payment_method': 'Nagad'}):
+            response = browser.post(f'/shop/postshop/payment/return/?inv={payment.invoice_number}',
+                                    {'status': 'Successful', 'trx_id': 'T1'}, HTTP_HOST='localhost')
+        self.assertEqual(response.status_code, 302)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, 'Completed')

@@ -237,6 +237,8 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 </head>
 <body>
 
+{% if shop.announcement_text %}<div style="background:var(--orange);color:#fff;text-align:center;font-size:13px;font-weight:700;padding:8px 16px;line-height:1.4;">{{ shop.announcement_text }}</div>{% endif %}
+
 <!-- MOBILE HEADER -->
 <div class="mob-header">
   <a href="{% shop_url 'storefront_home' shop %}" class="mob-btn"><i class="bi bi-chevron-left"></i></a>
@@ -275,7 +277,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     {% endif %}
 
     {% if product.stock_quantity == 0 %}
-      <div class="img-badge">Out of Stock</div>
+      <div class="img-badge">স্টক শেষ</div>
     {% elif product.stock_quantity <= 5 %}
       <div class="img-badge low">Only {{ product.stock_quantity }} left!</div>
     {% endif %}
@@ -301,40 +303,56 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
       </div>
 
       <div class="desk-btn-row">
-        <button class="desk-btn-add" onclick="addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{% if product.image %}{{ product.image.url }}{% else %}{% endif %}')">Add to Cart</button>
-        <button class="desk-btn-buy" onclick="addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{% if product.image %}{{ product.image.url }}{% else %}{% endif %}'); openCheckout();">Buy Now</button>
+        <button class="desk-btn-add" onclick="addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{% if product.image %}{{ product.image.url }}{% else %}{% endif %}')">কার্টে যোগ করুন</button>
+        <button class="desk-btn-buy" onclick="buyNow({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{% if product.image %}{{ product.image.url }}{% else %}{% endif %}')">এখনই কিনুন</button>
       </div>
     </div>
 
-    <!-- DELIVERY CARD -->
+    <!-- ডেলিভারি আর পেমেন্ট: দোকানের আসল সেটিং থেকে -->
     <div class="delivery-card">
-      <div class="card-title">Delivery Info</div>
+      <div class="card-title">ডেলিভারি ও পেমেন্ট</div>
+      {% for z in delivery_zones %}
       <div class="delivery-row">
         <div class="delivery-icon"><i class="bi bi-truck"></i></div>
-        <div class="delivery-info-text"><strong>Standard Delivery</strong><span>Usually 2-4 working days</span></div>
+        <div class="delivery-info-text"><strong>{{ z.name }}</strong><span>ডেলিভারি চার্জ ৳{{ z.charge|floatformat:0 }}</span></div>
       </div>
+      {% endfor %}
+      {% if shop.free_delivery_min %}
+      <div class="delivery-row">
+        <div class="delivery-icon"><i class="bi bi-gift text-success"></i></div>
+        <div class="delivery-info-text"><strong>ফ্রি ডেলিভারি</strong><span>৳{{ shop.free_delivery_min|floatformat:0 }} বা তার বেশি অর্ডারে</span></div>
+      </div>
+      {% endif %}
+      {% if cod_allowed %}
       <div class="delivery-row">
         <div class="delivery-icon"><i class="bi bi-cash-coin text-success"></i></div>
-        <div class="delivery-info-text"><strong>Cash on Delivery</strong><span>Available everywhere</span></div>
+        <div class="delivery-info-text"><strong>ক্যাশ অন ডেলিভারি</strong><span>পণ্য হাতে পেয়ে টাকা দিন</span></div>
       </div>
-    </div>
-
-    <!-- TRUST BADGES -->
-    <div class="trust-badges">
-      <div class="trust-item"><div class="trust-icon"><i class="bi bi-shield-check"></i></div><div class="trust-title">100%<br>Authentic</div></div>
-      <div class="trust-item"><div class="trust-icon"><i class="bi bi-arrow-counterclockwise"></i></div><div class="trust-title">14 Days<br>Return</div></div>
+      {% endif %}
+      {% if online_allowed %}
+      <div class="delivery-row">
+        <div class="delivery-icon"><i class="bi bi-shield-lock text-primary"></i></div>
+        <div class="delivery-info-text"><strong>অনলাইন পেমেন্ট</strong><span>bKash, Nagad, Rocket বা কার্ড</span></div>
+      </div>
+      {% endif %}
+      {% if shop.return_policy %}
+      <div class="delivery-row" role="button" data-bs-toggle="modal" data-bs-target="#returnModal" style="cursor:pointer;">
+        <div class="delivery-icon"><i class="bi bi-arrow-counterclockwise"></i></div>
+        <div class="delivery-info-text"><strong>রিটার্ন পলিসি</strong><span>বিস্তারিত দেখতে চাপুন</span></div>
+      </div>
+      {% endif %}
     </div>
 
     <!-- DESCRIPTION -->
     <div class="desc-card">
-      <div class="card-title">Description</div>
-      <div class="desc-text">{{ product.description|default:"No description available." }}</div>
+      <div class="card-title">বিস্তারিত</div>
+      <div class="desc-text">{{ product.description|default:"এই প্রোডাক্টের বিস্তারিত এখনো দেওয়া হয়নি।" }}</div>
     </div>
 
     <!-- RELATED PRODUCTS -->
     {% if related_products %}
     <div class="related-section">
-      <div class="card-title" style="padding:0 20px;">Similar Products</div>
+      <div class="card-title" style="padding:0 20px;">একই রকম আরও প্রোডাক্ট</div>
       <div class="related-grid">
         {% for rp in related_products %}
         <a href="{% shop_url 'storefront_product_detail' shop rp.id %}" class="rel-card">
@@ -376,7 +394,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
         <a href="#" data-bs-toggle="modal" data-bs-target="#returnModal" class="text-muted text-decoration-none fw-semibold">Return Policy</a>
       </div>
 
-      <div class="copyright">© 2026 {{ shop.name }}. Powered by SohojSell.</div>
+      <div class="copyright">© {% now "Y" %} {{ shop.name }} · Powered by {{ site.name|default:"SohojSell" }}</div>
     </footer>
 
   </div>
@@ -386,46 +404,10 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 <div class="bottom-bar">
   <a href="{% shop_url 'storefront_home' shop %}" class="bar-icon-btn"><i class="bi bi-shop"></i></a>
   <button class="bar-icon-btn" onclick="openCart()"><i class="bi bi-cart3"></i></button>
-  <button class="btn-buy" onclick="addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{% if product.image %}{{ product.image.url }}{% else %}{% endif %}'); openCheckout();">Buy Now</button>
+  <button class="btn-buy" onclick="buyNow({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{% if product.image %}{{ product.image.url }}{% else %}{% endif %}')">এখনই কিনুন</button>
 </div>
 
-<!-- CART DRAWER -->
-<div id="cart-overlay" onclick="closeCart()"></div>
-<div id="cart-drawer">
-  <div class="drawer-header">
-    <h5><i class="bi bi-cart3 me-2 text-orange"></i>My Cart</h5>
-    <button class="close-btn" onclick="closeCart()"><i class="bi bi-x-lg"></i></button>
-  </div>
-  <div class="drawer-items" id="drawer-items"></div>
-  <div class="drawer-footer">
-    <div class="df-row"><span>Subtotal</span><span id="sf-subtotal">৳0</span></div>
-    <div class="df-row"><span>Delivery Fee</span><span id="sf-delivery">৳80</span></div>
-    <div class="df-total"><span>Total</span><span id="sf-total">৳0</span></div>
-    <button class="checkout-btn" onclick="openCheckout()">Proceed to Checkout →</button>
-  </div>
-</div>
-
-<!-- CHECKOUT MODAL -->
-<div id="checkout-modal">
-  <div id="checkout-box">
-    <h4><i class="bi bi-truck me-2 text-orange"></i>Shipping Details</h4>
-    <input type="text" id="co-name" class="co-input" placeholder="📛 Your full name *">
-    <input type="tel" id="co-phone" class="co-input" placeholder="📱 Phone number * (e.g. 01XXXXXXXXX)">
-    <textarea id="co-address" class="co-input" rows="2" placeholder="📍 Full delivery address *"></textarea>
-    <textarea id="co-note" class="co-input" rows="1" placeholder="📝 Note (optional)"></textarea>
-    <div class="co-total-row">
-      <div>
-        <div style="font-size:12px;color:var(--muted);font-weight:700;">Total to Pay</div>
-        <div style="font-size:12px;color:#198754;font-weight:800;margin-top:2px;"><i class="bi bi-cash-coin me-1"></i>Cash on Delivery</div>
-      </div>
-      <div style="font-size:26px;font-weight:900;color:var(--orange);" id="co-total-display">৳0</div>
-    </div>
-    <button class="place-order-btn" id="place-order-btn" onclick="placeOrder()">
-      <i class="bi bi-check-circle-fill me-2"></i>Confirm Order
-    </button>
-    <button class="cancel-btn" onclick="document.getElementById('checkout-modal').classList.remove('show')">← Back to Cart</button>
-  </div>
-</div>
+{% include 'store/storefront/_cart_checkout.html' %}
 
 <!-- ================= MODALS ================= -->
 <!-- Privacy Policy Modal -->
@@ -460,120 +442,28 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-const SHOP_ID = '{{ shop.id }}';
-const SHOP_SLUG = '{{ shop.slug }}';
-const PLACE_ORDER_URL = '{% shop_url "storefront_place_order" shop %}';
-const ORDER_SUCCESS_URL = '{% shop_url "storefront_order_success" shop 0 %}';
-const DELIVERY = 80;
-let cart = JSON.parse(localStorage.getItem('sohojsell_' + SHOP_ID) || '{}');
 
-function saveCart() { localStorage.setItem('sohojsell_' + SHOP_ID, JSON.stringify(cart)); }
+
+function buyNow(id, name, price, stock, image) {
+  if (!cart[String(id)]) addToCart(id, name, price, stock, image);
+  if (cart[String(id)]) openCheckout();
+}
 
 function addToCart(id, name, price, stock, image) {
   id = String(id);
+  if (stock <= 0) { showToast('এটা এখন স্টকে নেই'); return; }
   if (cart[id]) {
-    if (cart[id].qty >= stock) { showToast('⚠️ Max stock reached!'); return; }
+    if (cart[id].qty >= stock) { showToast('⚠️ স্টকে আর নেই'); return; }
     cart[id].qty++;
   } else {
     cart[id] = { id, name, price, qty: 1, stock, image };
   }
   saveCart(); renderCart();
-  showToast('🛒 Added to cart!');
+  showToast('🛒 কার্টে যোগ হয়েছে');
 }
 
-function changeQty(id, delta) {
-  id = String(id); if (!cart[id]) return;
-  cart[id].qty += delta;
-  if (cart[id].qty <= 0) delete cart[id];
-  saveCart(); renderCart();
-}
-
-function removeItem(id) { id = String(id); delete cart[id]; saveCart(); renderCart(); }
-
-function renderCart() {
-  const keys = Object.keys(cart);
-  const count = keys.reduce((s,k) => s + cart[k].qty, 0);
-  const subtotal = keys.reduce((s,k) => s + cart[k].price * cart[k].qty, 0);
-  const delivery = keys.length > 0 ? DELIVERY : 0;
-  const total = subtotal + delivery;
-
-  const nb = document.getElementById('mob-cart-badge');
-  const db = document.getElementById('desktop-cart-badge');
-  if (nb) { nb.style.display = count>0?'flex':'none'; nb.textContent = count; }
-  if (db) { db.style.display = count>0?'inline':'none'; db.textContent = count; }
-
-  document.getElementById('sf-subtotal').textContent = '৳' + subtotal.toLocaleString();
-  document.getElementById('sf-delivery').textContent = '৳' + delivery.toLocaleString();
-  document.getElementById('sf-total').textContent = '৳' + total.toLocaleString();
-  document.getElementById('co-total-display').textContent = '৳' + total.toLocaleString();
-
-  const container = document.getElementById('drawer-items');
-  if (keys.length === 0) {
-    container.innerHTML = '<div class="text-center text-muted py-5"><i class="bi bi-cart-x" style="font-size:56px;display:block;margin-bottom:12px;color:#E2E8F0;"></i><h6 class="fw-bold">Cart is empty</h6></div>';
-    return;
-  }
-  let html = '';
-  keys.forEach(id => {
-    const item = cart[id];
-    const imgHtml = item.image && item.image !== ''
-      ? `<img src="${item.image}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`
-      : `<i class="bi bi-bag text-muted"></i>`;
-
-    html += `<div class="cart-item-row">
-      <div class="ci-img" style="padding:0; border:none;">${imgHtml}</div>
-      <div class="ci-info">
-        <div class="ci-name">${item.name}</div>
-        <div class="ci-price">৳${(item.price * item.qty).toLocaleString()}</div>
-      </div>
-      <div class="ci-qty-ctrl">
-        <button onclick="changeQty(${id},-1)">−</button>
-        <span>${item.qty}</span>
-        <button onclick="changeQty(${id},1)">+</button>
-      </div>
-      <button onclick="removeItem(${id})" style="background:none;border:none;color:#FF3333;cursor:pointer;font-size:18px;padding:0 0 0 8px;"><i class="bi bi-trash3-fill"></i></button>
-    </div>`;
-  });
-  container.innerHTML = html;
-}
-
-function openCart() { document.getElementById('cart-overlay').classList.add('show'); document.getElementById('cart-drawer').classList.add('open'); }
-function closeCart() { document.getElementById('cart-overlay').classList.remove('show'); document.getElementById('cart-drawer').classList.remove('open'); }
-function openCheckout() {
-  if (Object.keys(cart).length === 0) return;
-  closeCart(); document.getElementById('checkout-modal').classList.add('show');
-}
-
-async function placeOrder() {
-  const name = document.getElementById('co-name').value.trim();
-  const phone = document.getElementById('co-phone').value.trim();
-  const address = document.getElementById('co-address').value.trim();
-  const note = document.getElementById('co-note').value.trim();
-  if (!name || !phone || !address) { showToast('⚠️ Please fill all required fields!'); return; }
-  const items = Object.values(cart).map(i => ({ id: i.id, qty: i.qty }));
-  const btn = document.getElementById('place-order-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Placing order...';
-  try {
-    const res = await fetch(PLACE_ORDER_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
-      body: JSON.stringify({ cart: items, name, phone, address, note })
-    });
-    const data = await res.json();
-    if (data.success) {
-      localStorage.removeItem('sohojsell_' + SHOP_ID);
-      window.location.href = ORDER_SUCCESS_URL.replace('/0/success/', '/' + data.order_id + '/success/');
-    } else {
-      showToast('❌ ' + (data.error || 'Failed!')); btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Confirm Order';
-    }
-  } catch(e) {
-    showToast('❌ Network error!'); btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>Confirm Order';
-  }
-}
-
-function getCookie(name) { let v = null; document.cookie.split(';').forEach(c => { c=c.trim(); if(c.startsWith(name+'=')) v=decodeURIComponent(c.slice(name.length+1)); }); return v; }
 let toastTimer; function showToast(msg) { const t = document.getElementById('toast-sf'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500); }
-function shareProduct() { if(navigator.share){ navigator.share({title: '{{ product.name|escapejs }}', url: window.location.href}); } else { navigator.clipboard.writeText(window.location.href).then(()=>showToast('Link Copied!')); } }
+function shareProduct() { if(navigator.share){ navigator.share({title: '{{ product.name|escapejs }}', url: window.location.href}); } else { navigator.clipboard.writeText(window.location.href).then(()=>showToast('লিংক কপি হয়েছে')); } }
 
 window.onload = () => { renderCart(); };
 </script>

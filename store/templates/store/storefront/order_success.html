@@ -160,13 +160,24 @@ body { background: var(--bg); font-family: 'Poppins', sans-serif; min-height: 10
 
   <div class="tick-zone">
     <div class="tick-ring"><i class="bi bi-check-lg"></i></div>
+    {% if payment_pending %}
+    <div class="title">পেমেন্ট বাকি আছে</div>
+    <p class="subtitle"><b>{{ order.customer_name }}</b>, আপনার অর্ডারটা রাখা হয়েছে।<br>নিচের বাটনে পেমেন্ট করলেই অর্ডার কনফার্ম হবে।</p>
+    {% else %}
     <div class="title">অর্ডার কনফার্ম! 🎉</div>
     <p class="subtitle">ধন্যবাদ, <b>{{ order.customer_name }}</b>!<br>আপনার অর্ডারটি সফলভাবে গৃহীত হয়েছে।</p>
+    {% endif %}
+    {% if payment_msg %}
+    <div style="margin:12px auto 0;max-width:420px;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:700;
+                {% if payment_msg.status == 'ok' or payment_msg.status == 'already' %}background:#ECFDF5;color:#047857;{% else %}background:#FFF7ED;color:#B45309;{% endif %}">
+      {{ payment_msg.message }}
+    </div>
+    {% endif %}
   </div>
 
   <div class="order-box">
     <div class="order-lbl">অর্ডার নম্বর</div>
-    <div class="order-num">#SF-{{ order.id }}</div>
+    <div class="order-num">#{{ order_no }}</div>
     <div class="order-shop"><i class="bi bi-shop"></i> {{ shop.name }}</div>
   </div>
 
@@ -209,10 +220,24 @@ body { background: var(--bg); font-family: 'Poppins', sans-serif; min-height: 10
       <span class="rlbl"><i class="bi bi-calendar-check"></i> তারিখ</span>
       <span class="rval">{{ order.created_at|date:"d M Y, h:i A" }}</span>
     </div>
-    <div class="cod-tag">
-      <i class="bi bi-cash-coin"></i>
-      <span>পেমেন্ট: ক্যাশ অন ডেলিভারি</span>
+    {% if order.delivery_zone %}
+    <div class="rrow">
+      <span class="rlbl"><i class="bi bi-truck"></i> ডেলিভারি</span>
+      <span class="rval">{{ order.delivery_zone }} · ৳{{ order.delivery_charge|floatformat:0 }}</span>
     </div>
+    {% endif %}
+    <div class="cod-tag" {% if payment_pending %}style="background:#FFF7ED;color:#B45309;border-color:#FED7AA;"{% endif %}>
+      <i class="bi bi-{% if payment_pending %}hourglass-split{% elif main_order.online_payment_status == 'paid' %}patch-check-fill{% else %}cash-coin{% endif %}"></i>
+      <span>পেমেন্ট: {{ payment_label }}</span>
+    </div>
+    {% if payment_pending and last_payment %}
+    <form method="post" action="{% shop_url 'storefront_payment_retry' shop order.id %}" style="margin-top:12px;">
+      {% csrf_token %}
+      <button type="submit" class="btn-main" style="width:100%;border:none;cursor:pointer;justify-content:center;">
+        <i class="bi bi-credit-card-2-front-fill"></i> ৳{{ last_payment.amount|floatformat:0 }} পেমেন্ট করুন
+      </button>
+    </form>
+    {% endif %}
     <div class="rtotal">
       <span class="rtotal-lbl">মোট পরিমাণ</span>
       <span class="rtotal-val">৳{{ order.total_amount|floatformat:0 }}</span>
@@ -253,9 +278,9 @@ body { background: var(--bg); font-family: 'Poppins', sans-serif; min-height: 10
       </div>
       <div class="pdf-invoice-title">
         <h1>INVOICE</h1>
-        <p>Order No: <strong>#SF-{{ order.id }}</strong></p>
+        <p>Order No: <strong>#{{ order_no }}</strong></p>
         <p>Date: {{ order.created_at|date:"d M Y, h:i A" }}</p>
-        <div class="pdf-badge">Cash on Delivery</div>
+        <div class="pdf-badge">{% if main_order.online_payment_status == 'paid' and not main_order.due_amount %}Paid Online{% elif main_order.online_payment_status == 'paid' %}Partly Paid{% else %}Cash on Delivery{% endif %}</div>
       </div>
     </div>
 
@@ -273,7 +298,7 @@ body { background: var(--bg); font-family: 'Poppins', sans-serif; min-height: 10
         <h3>Payment Status</h3>
         <p>
           <strong>Pending Collection</strong>
-          Method: Cash on Delivery (COD)<br>
+          Method: {% if main_order.online_payment_status == 'paid' and not main_order.due_amount %}Paid online{% elif main_order.online_payment_status == 'paid' %}Advance ৳{{ main_order.advance_paid|floatformat:0 }} paid online, due ৳{{ main_order.due_amount|floatformat:0 }} on delivery{% else %}Cash on Delivery (COD){% endif %}<br>
           Currency: BDT (৳)
         </p>
       </div>
@@ -307,7 +332,7 @@ body { background: var(--bg); font-family: 'Poppins', sans-serif; min-height: 10
     <div class="pdf-bottom-area">
       <div class="pdf-barcode">
         <!-- Dynamic Barcode from tec-it API -->
-        <img src="https://barcode.tec-it.com/barcode.ashx?data=SF-{{ order.id }}&code=Code128&translate-esc=on" alt="Barcode" style="height: 50px; opacity: 0.8;">
+        <img src="https://barcode.tec-it.com/barcode.ashx?data={{ order_no }}&code=Code128&translate-esc=on" alt="Barcode" style="height: 50px; opacity: 0.8;">
       </div>
 
       <div class="pdf-totals">
@@ -386,7 +411,7 @@ async function downloadPDF(){
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
     pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save('Invoice_SF-{{ order.id }}_{{ shop.name|escapejs }}.pdf');
+    pdf.save('Invoice_{{ order_no }}_{{ shop.name|escapejs }}.pdf');
 
   } catch(e) {
     console.error(e);
@@ -397,7 +422,7 @@ async function downloadPDF(){
 }
 
 function shareOrder(){
-  const txt='🎉 অর্ডার কনফার্ম!\n\nঅর্ডার নং: #SF-{{ order.id }}\nশপ: {{ shop.name }}\nমোট: ৳{{ order.total_amount|floatformat:0 }}\n\nধন্যবাদ! 🛍️';
+  const txt='🎉 অর্ডার কনফার্ম!\n\nঅর্ডার নং: #{{ order_no }}\nশপ: {{ shop.name }}\nমোট: ৳{{ order.total_amount|floatformat:0 }}\n\nধন্যবাদ! 🛍️';
   if(navigator.share){navigator.share({title:'অর্ডার কনফার্ম',text:txt});}
   else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>alert('কপি হয়েছে!'));}
 }
