@@ -1,0 +1,38 @@
+{# দোকানের ওয়েবসাইটের সব পেইজের <head>-এর শুরু: শিরোনাম, Facebook/WhatsApp প্রিভিউ, ফেভিকন, ফন্ট #}
+<meta charset="UTF-8">
+{# জুম চালু: কাস্টমার প্রোডাক্টের ছবি বড় করে দেখতে পারে #}
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{ meta.title }}</title>
+<meta name="description" content="{{ meta.description }}">
+<link rel="canonical" href="{{ meta.url }}">
+{% if meta.noindex %}<meta name="robots" content="noindex">{% endif %}
+<meta property="og:site_name" content="{{ shop.name }}">
+<meta property="og:type" content="{{ meta.type }}">
+<meta property="og:title" content="{{ meta.title }}">
+<meta property="og:description" content="{{ meta.description }}">
+<meta property="og:url" content="{{ meta.url }}">
+<meta property="og:locale" content="bn_BD">
+{% if meta.image %}
+<meta property="og:image" content="{{ meta.image }}">
+<meta property="og:image:alt" content="{{ meta.title }}">
+{% if meta.image_width %}<meta property="og:image:width" content="{{ meta.image_width }}">
+<meta property="og:image:height" content="{{ meta.image_height }}">{% endif %}
+{% endif %}
+{% if meta.price %}
+<meta property="product:price:amount" content="{{ meta.price }}">
+<meta property="product:price:currency" content="BDT">
+{% endif %}
+<meta name="twitter:card" content="{% if meta.image %}summary_large_image{% else %}summary{% endif %}">
+<link rel="icon" href="{{ meta.favicon }}">
+{% if meta.touch_icon %}<link rel="apple-touch-icon" href="{{ meta.touch_icon }}">{% endif %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<style>
+  /* ইংরেজি Plus Jakarta Sans-এ, বাংলা Hind Siliguri-তে */
+  body, button, input, select, textarea { font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; }
+  /* ফোনে ঘর ১৬px-এর ছোট হলে iPhone নিজে থেকে জুম করে ফেলে */
+  @media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }
+</style>

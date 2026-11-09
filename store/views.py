@@ -1148,130 +1148,181 @@ def _attach_sold_counts(shop, products):
         p.sold_count = counts.get(p.id, 0)
 
 
+STOREFRONT_PAGE_SIZE = 24
+STOREFRONT_SORTS = [
+    ('new', 'নতুন আগে'),
+    ('popular', 'জনপ্রিয়'),
+    ('price_asc', 'কম দাম আগে'),
+    ('price_desc', 'বেশি দাম আগে'),
+    ('discount', 'বেশি ছাড়'),
+]
+
+
+def _track_storefront_view(request, shop, product=None):
+    """দিনে একই ব্রাউজার থেকে একবার গোনা হয় (ড্যাশবোর্ডের ভিজিটর হিসাব)।"""
+    if not request.session.session_key:
+        request.session.create()
+    session_key = request.session.session_key
+    seen = PageView.objects.filter(shop=shop, product=product, session_key=session_key,
+                                   created_at__date=timezone.now().date()).exists()
+    if not seen:
+        PageView.objects.create(shop=shop, product=product, ip_address=get_client_ip(request),
+                                session_key=session_key)
+
+
+def _visible_products(shop):
+    return Product.objects.filter(shop=shop, is_active=True, stock_quantity__gt=0)
+
+
+def _sorted_products(products, sort):
+    from django.db.models import Case, DecimalField, ExpressionWrapper, Value, When
+    if sort == 'price_asc':
+        return products.order_by('price', '-id')
+    if sort == 'price_desc':
+        return products.order_by('-price', '-id')
+    if sort == 'popular':
+        return products.annotate(
+            sold=Sum('orderitem__quantity', filter=Q(orderitem__order__status__in=SOLD_STATUSES))
+        ).order_by(F('sold').desc(nulls_last=True), '-id')
+    if sort == 'discount':
+        saving = ExpressionWrapper(F('compare_price') - F('price'), output_field=DecimalField())
+        return products.annotate(
+            saving=Case(When(compare_price__gt=F('price'), then=saving), default=Value(0),
+                        output_field=DecimalField())
+        ).order_by('-saving', '-id')
+    return products.order_by('-created_at', '-id')
+
+
+def _top_seller_ids(shop):
+    """সবচেয়ে বেশি বিক্রি হওয়া ৪টা প্রোডাক্ট ("বেশি বিক্রি" ব্যাজের জন্য)।"""
+    if not shop.show_sold_count:
+        return set()
+    rows = (OrderItem.objects.filter(order__shop=shop, order__status__in=SOLD_STATUSES, product__is_active=True)
+            .values('product_id').annotate(total=Sum('quantity')).order_by('-total')[:4])
+    return {row['product_id'] for row in rows}
+
+
 @ensure_csrf_cookie
-def storefront_home(request, shop_slug):
-    """Public e-commerce store for customers"""
+def storefront_home(request, shop_slug, category_id=None):
+    """দোকানের ওয়েবসাইটের হোম আর ক্যাটাগরি পেইজ: ২৪টা করে প্রোডাক্ট, "আরও দেখুন" চাপলে পরেরগুলো।"""
+    from urllib.parse import urlencode
+    from . import seo
     shop = get_object_or_404(Shop, slug=shop_slug)
 
     # ট্রায়ালে আর সব প্ল্যানে চালু; মেয়াদ শেষের পর ৭ দিন পর্যন্ত চালু, তারপর বন্ধ
     if not storefront_is_open(shop):
         return render(request, 'store/storefront/offline.html', {'shop': shop})
 
-    # ==========================================================
-    # 🔍 View Tracking Logic (Shop Homepage)
-    # ==========================================================
-    if not request.session.session_key:
-        request.session.create()
+    search = (request.GET.get('q') or '').strip()[:100]
+    sort = request.GET.get('sort') if request.GET.get('sort') in dict(STOREFRONT_SORTS) else 'new'
 
-    ip = get_client_ip(request)
-    session_key = request.session.session_key
-    today = timezone.now().date()
+    # পুরনো ?cat=5 লিংক → /category/5/
+    old_cat = request.GET.get('cat', '')
+    if category_id is None and old_cat.isdigit() and Category.objects.filter(shop=shop, pk=old_cat).exists():
+        query = {k: v for k, v in (('q', search), ('sort', sort if sort != 'new' else '')) if v}
+        link = storefront_link(shop, 'storefront_category', int(old_cat), request=request)
+        return redirect(link + (f'?{urlencode(query)}' if query else ''))
 
-    # চেক করছি আজকে এই সেশন থেকে শপের হোমপেজে ভিউ হয়েছে কি না
-    view_exists = PageView.objects.filter(
-        shop=shop,
-        product__isnull=True,  # Product Null মানে এটা হোমপেজ ভিউ
-        session_key=session_key,
-        created_at__date=today
-    ).exists()
+    category = get_object_or_404(Category, shop=shop, pk=category_id) if category_id is not None else None
+    partial = request.GET.get('partial') == '1'
+    if not partial:
+        _track_storefront_view(request, shop)
 
-    if not view_exists:
-        PageView.objects.create(shop=shop, product=None, ip_address=ip, session_key=session_key)
-    # ==========================================================
-
-    products = Product.objects.filter(shop=shop, is_active=True, stock_quantity__gt=0).select_related('category')
-    categories = Category.objects.filter(shop=shop)
-
-    # --- ডাটাবেস থেকে শপের অ্যাক্টিভ ব্যানারগুলো আনা ---
-    banners = Banner.objects.filter(shop=shop, is_active=True).order_by('-id')
-
-    # ১. প্রথমে Category filter করুন
-    cat_filter = request.GET.get('cat', '')
-    if cat_filter:
-        products = products.filter(category__id=cat_filter)
-
-    # ২. এরপর Search filter করুন
-    search = request.GET.get('q', '')
+    products = _visible_products(shop).select_related('category')
+    if category:
+        products = products.filter(category=category)
     if search:
-        products = products.filter(name__icontains=search)
+        products = products.filter(Q(name__icontains=search) | Q(description__icontains=search))
+    page_obj = Paginator(_sorted_products(products, sort), STOREFRONT_PAGE_SIZE).get_page(request.GET.get('page'))
+    page_products = list(page_obj.object_list)
+    _attach_sold_counts(shop, page_products)
 
-    # QuerySet কে List এ কনভার্ট করে নিচ্ছি যেন রেন্ডম ভ্যালুগুলো টেমপ্লেটে ঠিকমতো যায়
-    products = list(products)
+    next_url = ''
+    if page_obj.has_next():
+        query = {k: v for k, v in (('q', search), ('sort', sort if sort != 'new' else ''),
+                                   ('page', page_obj.next_page_number())) if v}
+        next_url = f'?{urlencode(query)}'
+    card_context = {'shop': shop, 'products': page_products, 'top_seller_ids': _top_seller_ids(shop)}
 
-    # আসল বিক্রির সংখ্যা (বানানো রেটিং/বিক্রি আর দেখানো হয় না)
-    _attach_sold_counts(shop, products)
-    top_seller_ids = {p.id for p in sorted((p for p in products if p.sold_count), key=lambda p: -p.sold_count)[:4]}
+    if partial:   # "আরও দেখুন": শুধু পরের কার্ডগুলো
+        response = render(request, 'store/storefront/_product_cards.html', card_context)
+        response['X-Next-Page'] = next_url
+        return response
 
-    product_data = [{'id': p.id, 'name': p.name, 'price': float(p.price), 'stock': p.stock_quantity} for p in products]
+    is_landing = not category and not search and page_obj.number == 1
+    sale_products = []
+    if is_landing:
+        sale_products = list(_visible_products(shop).filter(compare_price__gt=F('price'))
+                             .order_by('-created_at')[:10])
+
+    if category:
+        title = f'{category.name} — {shop.name}'
+        description = f'{shop.name}-এ {category.name}: {page_obj.paginator.count}টা প্রোডাক্ট। ঘরে বসে অর্ডার করুন।'
+        meta = seo.storefront_meta(request, shop, title=title, description=description,
+                                   link_name='storefront_category', link_args=(category.id,), noindex=bool(search))
+    else:
+        title = shop.name + (f' — {shop.storefront_tagline}' if shop.storefront_tagline else '')
+        meta = seo.storefront_meta(request, shop, title=title, noindex=bool(search or page_obj.number > 1))
+
+    categories = (Category.objects.filter(shop=shop, product__is_active=True, product__stock_quantity__gt=0)
+                  .distinct().order_by('name'))
 
     return render(request, 'store/storefront/home.html', {
-        'shop': shop,
-        'products': products,
-        'top_seller_ids': top_seller_ids,
-        # ছাড় থাকলে "ছাড় চলছে", না থাকলে নতুন প্রোডাক্ট
-        'highlight_products': ([p for p in products if p.discount_percent][:8]
-                               or sorted(products, key=lambda p: p.created_at, reverse=True)[:6]),
-        'highlight_is_sale': any(p.discount_percent for p in products),
+        **card_context,
+        'meta': meta,
+        'page_obj': page_obj,
+        'total_count': page_obj.paginator.count,
+        'next_url': next_url,
+        'sale_products': sale_products,
         'categories': categories,
-        'banners': banners,
-        'product_data_json': json.dumps(product_data),
-        'cat_filter': cat_filter,
+        'category': category,
+        'banners': Banner.objects.filter(shop=shop, is_active=True).order_by('-id') if is_landing else [],
         'search': search,
+        'sort': sort,
+        'sorts': STOREFRONT_SORTS,
+        'is_landing': is_landing,
         **_checkout_context(shop),
     })
 
 
 @ensure_csrf_cookie
 def storefront_product_detail(request, shop_slug, product_id):
-    """Customer-facing single product details page with related products"""
+    """কাস্টমারের দেখার প্রোডাক্ট পেইজ, সাথে একই ক্যাটাগরির আরও প্রোডাক্ট।"""
+    from . import seo
     shop = get_object_or_404(Shop, slug=shop_slug)
 
     if not storefront_is_open(shop):
         return redirect(storefront_link(shop, request=request))
 
-    product = get_object_or_404(Product, id=product_id, shop=shop, is_active=True)
+    product = get_object_or_404(Product.objects.select_related('category'), id=product_id, shop=shop,
+                                is_active=True)
+    _track_storefront_view(request, shop, product)
 
-    # ==========================================================
-    # 🔍 View Tracking Logic (Product View)
-    # ==========================================================
-    if not request.session.session_key:
-        request.session.create()
-
-    ip = get_client_ip(request)
-    session_key = request.session.session_key
-    today = timezone.now().date()
-
-    # চেক করছি আজকে এই সেশন থেকে এই নির্দিষ্ট প্রোডাক্টে ভিউ হয়েছে কি না
-    view_exists = PageView.objects.filter(
-        shop=shop,
-        product=product,
-        session_key=session_key,
-        created_at__date=today
-    ).exists()
-
-    if not view_exists:
-        PageView.objects.create(shop=shop, product=product, ip_address=ip, session_key=session_key)
-    # ==========================================================
-
-
-    # ম্যাজিক লজিক: একই ক্যাটাগরির অন্য প্রোডাক্টগুলো খুঁজে বের করা (বর্তমান প্রোডাক্ট বাদে)
-    related_products = Product.objects.filter(
-        shop=shop,
-        category=product.category,
-        is_active=True
-    ).exclude(id=product.id).order_by('-id')[:4]  # সর্বোচ্চ ৪টা দেখাবে
-
-    # QuerySet কে List এ কনভার্ট করে নিচ্ছি
-    related_products = list(related_products)
-
+    related_products = list(_visible_products(shop).filter(category=product.category)
+                            .exclude(id=product.id).order_by('-id')[:4])
     _attach_sold_counts(shop, [product] + related_products)
+
+    price = f'৳{product.price:.0f}'
+    if product.discount_percent:
+        price += f' ({product.discount_percent}% ছাড়)'
+    checkout = _checkout_context(shop)
+    extra = 'ক্যাশ অন ডেলিভারি।' if checkout['cod_allowed'] else 'ঘরে বসে অর্ডার করুন।'
+    description = (f'{price} · ' + (product.description or '') if product.description
+                   else f'{price} · {shop.name} থেকে অর্ডার করুন। {extra}')
+    meta = seo.storefront_meta(
+        request, shop, title=f'{product.name} — {shop.name}', description=description,
+        image=product.image, image_size=(product.image_width, product.image_height),
+        link_name='storefront_product_detail', link_args=(product.id,), og_type='product',
+        price=product.price)
 
     return render(request, 'store/storefront/product_detail.html', {
         'shop': shop,
+        'meta': meta,
         'product': product,
         'related_products': related_products,
-        **_checkout_context(shop),
+        **checkout,
     })
+
 
 def storefront_checkout(request, shop_slug):
     """চেকআউট এখন হোম পেইজের ভেতরেই (পপআপ); পুরনো লিংকে এলে হোম পেইজে পাঠানো হয়।"""

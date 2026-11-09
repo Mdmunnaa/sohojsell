@@ -1,17 +1,8 @@
-{% load store_links %}
+{% load store_links bangla %}
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>{{ product.name }} - {{ shop.name }}</title>
-{% if shop.logo %}
-<link rel="icon" href="{{ shop.logo.url }}" type="image/png">
-{% endif %}
-<!-- Premium Font -->
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+{% include 'store/storefront/_head.html' %}
 <style>
 :root {
   --orange: #F57224; --orange-dark: #d85c14; --orange-light: #FFF3EB;
@@ -22,10 +13,10 @@
   --glass: rgba(255, 255, 255, 0.85);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; padding-bottom: 80px; color: var(--text); }
+body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; -webkit-tap-highlight-color: transparent; padding-bottom: 80px; color: var(--text); }
 
 /* MOBILE HEADER */
-.mob-header { position: fixed; top: 0; left: 0; right: 0; padding: 12px 16px; z-index: 100; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+.mob-header { position: absolute; top: 0; left: 0; right: 0; padding: 12px 16px; z-index: 5; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
 .mob-btn { width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); color: var(--dark); border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; pointer-events: all; text-decoration: none; transition: 0.2s; position: relative; }
 .mob-btn:active { transform: scale(0.95); }
 .mob-badge { position: absolute; top: -2px; right: -2px; background: #FF3333; color: #fff; font-size: 10px; font-weight: 900; width: 18px; height: 18px; border-radius: 9px; display: none; align-items: center; justify-content: center; border: 2px solid #fff; }
@@ -35,14 +26,23 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 .desk-store-link { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--dark); font-weight: 900; font-size: 18px; letter-spacing: -0.5px; }
 .desk-store-logo { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; overflow: hidden; }
 .desk-store-logo img { width: 100%; height: 100%; object-fit: cover; }
-.desk-cart-btn { display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; padding: 10px 24px; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: 0.2s; position: relative; box-shadow: 0 4px 12px rgba(var(--orange-rgb),0.25); }
+.desk-cart-btn { display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; padding: 10px 24px; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; transition: 0.2s; position: relative; box-shadow: 0 4px 12px rgba(var(--orange-rgb),0.25); }
 .desk-cart-btn:hover { transform: translateY(-2px); }
 
 /* PRODUCT IMAGE */
 .prod-image-box { background: #fff; width: 100%; height: clamp(320px, 60vw, 450px); position: relative; overflow: hidden; border-bottom-left-radius: 24px; border-bottom-right-radius: 24px; box-shadow: var(--shadow-sm); padding: 20px; }
-.prod-image-box img { width: 100%; height: 100%; object-fit: contain; }
+.prod-image-box img { width: 100%; height: 100%; object-fit: contain; cursor: zoom-in; }
+.zoom-hint { position: absolute; bottom: 14px; right: 14px; background: rgba(15,23,42,.65); color: #fff; font-size: 11.5px; font-weight: 700; padding: 5px 10px; border-radius: 999px; pointer-events: none; }
+#imgViewer { position: fixed; inset: 0; background: #0B0B0F; z-index: 100000; display: none; align-items: center; justify-content: center; touch-action: pinch-zoom; }
+#imgViewer.show { display: flex; }
+#imgViewer img { max-width: 100%; max-height: 100%; object-fit: contain; }
+#imgViewer button { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.15); color: #fff; font-size: 22px; }
+.policy-links { display: flex; justify-content: center; gap: 12px; margin-bottom: 14px; font-size: 13px; flex-wrap: wrap; }
+.policy-links a { color: var(--muted); text-decoration: none; font-weight: 600; }
+.footer-contact { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+.footer-contact a { color: var(--dark); font-weight: 700; text-decoration: none; }
 .prod-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 80px; color: #E8EAF0; }
-.img-badge { position: absolute; top: 16px; left: 0; background: #FF3333; color: #fff; font-size: 12px; font-weight: 900; padding: 6px 16px 6px 12px; border-radius: 0 20px 20px 0; box-shadow: 0 4px 10px rgba(255,51,51,0.3); }
+.img-badge { position: absolute; bottom: 16px; left: 0; background: #FF3333; color: #fff; font-size: 12px; font-weight: 900; padding: 6px 16px 6px 12px; border-radius: 0 20px 20px 0; box-shadow: 0 4px 10px rgba(255,51,51,0.3); }
 .img-badge.low { background: #FF8C00; }
 .img-share { position: absolute; top: 16px; right: 16px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--dark); box-shadow: var(--shadow-sm); transition: 0.2s; }
 .img-share:active { transform: scale(0.9); }
@@ -95,11 +95,11 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: flex; align-items: center; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); gap: 12px; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); z-index: 1000; border-top: 1px solid rgba(255,255,255,0.4); }
 .bar-icon-btn { width: 48px; height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--dark); text-decoration: none; background: #fff; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
 .bar-icon-btn i { font-size: 20px; }
-.btn-buy { flex: 1; height: 48px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: 0 4px 12px rgba(var(--orange-rgb),0.3); }
+.btn-buy { flex: 1; height: 48px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; box-shadow: 0 4px 12px rgba(var(--orange-rgb),0.3); }
 
 /* DESKTOP ACTIONS */
 .desk-btn-row { display: none; gap: 12px; margin-top: 20px; }
-.desk-btn-add, .desk-btn-buy { flex: 1; padding: 16px; border: none; border-radius: 14px; font-size: 16px; font-weight: 900; font-family: 'Plus Jakarta Sans', sans-serif; cursor: pointer; transition: 0.2s; }
+.desk-btn-add, .desk-btn-buy { flex: 1; padding: 16px; border: none; border-radius: 14px; font-size: 16px; font-weight: 900; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; cursor: pointer; transition: 0.2s; }
 .desk-btn-add { background: #F8FAFC; color: var(--dark); border: 2px solid var(--border); }
 .desk-btn-buy { background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; box-shadow: 0 8px 20px rgba(var(--orange-rgb),0.25); }
 .desk-btn-add:hover { background: #E2E8F0; }
@@ -126,7 +126,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 .drawer-footer { padding: 20px; border-top: 1px solid var(--border); background: #fff; }
 .df-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; color: var(--muted); font-weight: 600; }
 .df-total { display: flex; justify-content: space-between; font-size: 20px; font-weight: 900; color: var(--orange); padding-top: 12px; border-top: 1px dashed var(--border); margin-top: 8px; }
-.checkout-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 900; cursor: pointer; margin-top: 16px; box-shadow: 0 8px 20px rgba(var(--orange-rgb),0.3); transition: 0.2s; font-family: 'Plus Jakarta Sans', sans-serif;}
+.checkout-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 900; cursor: pointer; margin-top: 16px; box-shadow: 0 8px 20px rgba(var(--orange-rgb),0.3); transition: 0.2s; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;}
 .checkout-btn:hover { transform: translateY(-2px); }
 
 /* CHECKOUT MODAL */
@@ -134,10 +134,10 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 @keyframes slideUp{from{bottom:-100%}to{bottom:0}}
 @media(min-width:768px){#checkout-modal{display:none; align-items:center; justify-content:center;} #checkout-modal.show{display:flex;} #checkout-box{border-radius:24px; position:relative; bottom:auto; left:auto; transform:none; animation:popIn 0.3s ease;} @keyframes popIn{from{transform:scale(0.9);opacity:0}to{transform:scale(1);opacity:1}}}
 #checkout-box h4 { font-size: 20px; font-weight: 900; margin-bottom: 20px; color: var(--dark); }
-.co-input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 600; margin-bottom: 12px; outline: none; font-family: 'Plus Jakarta Sans', sans-serif; background: #F8FAFC; transition: 0.2s; }
+.co-input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 600; margin-bottom: 12px; outline: none; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; background: #F8FAFC; transition: 0.2s; }
 .co-input:focus { border-color: var(--orange); background: #fff; box-shadow: 0 0 0 4px rgba(var(--orange-rgb),0.1); }
 .co-total-row { background: var(--orange-light); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; margin: 16px 0; border: 1px dashed var(--orange); }
-.cancel-btn { width: 100%; padding: 14px; background: none; border: none; color: var(--muted); font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 8px; font-family: 'Plus Jakarta Sans', sans-serif;}
+.cancel-btn { width: 100%; padding: 14px; background: none; border: none; color: var(--muted); font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 8px; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;}
 
 /* TOAST */
 .toast-sf { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: rgba(15,23,42,0.9); backdrop-filter: blur(8px); color: #fff; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 700; opacity: 0; transition: 0.3s; z-index: 999999; white-space: nowrap; pointer-events: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
@@ -203,7 +203,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
       background: linear-gradient(135deg, var(--orange), var(--orange-2));
       color: #fff; border: none; border-radius: 12px;
       font-size: 15px; font-weight: 800; cursor: pointer;
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;
       box-shadow: 0 4px 14px rgba(var(--orange-rgb),.35);
       display: flex; align-items: center; justify-content: center; gap: 8px;
       transition: transform .15s, box-shadow .15s;
@@ -214,7 +214,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     .cancel-btn {
       width: 100%; padding: 11px; margin-top: 8px; background: none;
       border: none; color: var(--muted); font-size: 13.5px; font-weight: 700;
-      cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif;
+      cursor: pointer; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;
     }
     .cancel-btn:hover { color: var(--orange); }
     #checkout-box {
@@ -239,14 +239,6 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 
 {% if shop.announcement_text %}<div style="background:var(--orange);color:#fff;text-align:center;font-size:13px;font-weight:700;padding:8px 16px;line-height:1.4;">{{ shop.announcement_text }}</div>{% endif %}
 
-<!-- MOBILE HEADER -->
-<div class="mob-header">
-  <a href="{% shop_url 'storefront_home' shop %}" class="mob-btn"><i class="bi bi-chevron-left"></i></a>
-  <div style="display:flex; gap:8px;">
-    <button class="mob-btn" onclick="shareProduct()"><i class="bi bi-share"></i></button>
-    <button class="mob-btn" onclick="openCart()"><i class="bi bi-cart3"></i><span class="mob-badge" id="mob-cart-badge">0</span></button>
-  </div>
-</div>
 
 <!-- DESKTOP HEADER -->
 <div class="desk-header">
@@ -260,7 +252,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
   </a>
   <div class="desk-actions">
     <button class="desk-cart-btn" onclick="openCart()">
-      <i class="bi bi-cart3 fs-5"></i> My Cart (<span id="desktop-cart-badge">0</span>)
+      <i class="bi bi-cart3 fs-5"></i> কার্ট (<span id="desktop-cart-badge">0</span>)
     </button>
   </div>
 </div>
@@ -270,8 +262,17 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 
   <!-- LEFT: IMAGE BOX -->
   <div class="prod-image-box">
+    <!-- MOBILE HEADER: ছবির ওপরেই থাকে, তাই অফারের লাইন ঢাকে না -->
+    <div class="mob-header">
+      <a href="{% shop_url 'storefront_home' shop %}" class="mob-btn" aria-label="দোকানে ফিরুন"><i class="bi bi-chevron-left"></i></a>
+      <div style="display:flex; gap:8px;">
+        <button class="mob-btn" onclick="shareProduct()" aria-label="শেয়ার করুন"><i class="bi bi-share"></i></button>
+        <button class="mob-btn" onclick="openCart()" aria-label="কার্ট"><i class="bi bi-cart3"></i><span class="mob-badge" id="mob-cart-badge">0</span></button>
+      </div>
+    </div>
     {% if product.image %}
-      <img src="{{ product.image.url }}" alt="{{ product.name }}">
+      <img src="{{ product.image.url }}" alt="{{ product.name }}" onclick="openViewer()"{% if product.image_width %} width="{{ product.image_width }}" height="{{ product.image_height }}"{% endif %}>
+      <div class="zoom-hint"><i class="bi bi-zoom-in"></i> বড় করে দেখুন</div>
     {% else %}
       <div class="prod-placeholder"><i class="bi bi-image"></i></div>
     {% endif %}
@@ -279,7 +280,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     {% if product.stock_quantity == 0 %}
       <div class="img-badge">স্টক শেষ</div>
     {% elif product.stock_quantity <= 5 %}
-      <div class="img-badge low">Only {{ product.stock_quantity }} left!</div>
+      <div class="img-badge low">আর মাত্র {{ product.stock_quantity|bn }}টা আছে</div>
     {% endif %}
   </div>
 
@@ -295,16 +296,16 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 
       <div class="meta-row">
         {% if product.stock_quantity > 0 %}
-          <span class="meta-chip stock"><i class="bi bi-check-circle-fill"></i> In Stock</span>
+          <span class="meta-chip stock"><i class="bi bi-check-circle-fill"></i> স্টকে আছে</span>
         {% else %}
-          <span class="meta-chip oos"><i class="bi bi-x-circle-fill"></i> Out of Stock</span>
+          <span class="meta-chip oos"><i class="bi bi-x-circle-fill"></i> স্টক শেষ</span>
         {% endif %}
         {% if product.sold_count %}<span class="meta-chip rating"><i class="bi bi-bag-check-fill"></i> {{ product.sold_count }}টা বিক্রি হয়েছে</span>{% endif %}
       </div>
 
       <div class="desk-btn-row">
-        <button class="desk-btn-add" onclick="addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{% if product.image %}{{ product.image.url }}{% else %}{% endif %}')">কার্টে যোগ করুন</button>
-        <button class="desk-btn-buy" onclick="buyNow({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{% if product.image %}{{ product.image.url }}{% else %}{% endif %}')">এখনই কিনুন</button>
+        <button class="desk-btn-add" onclick="addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{{ product.thumb_url|escapejs }}')">কার্টে যোগ করুন</button>
+        <button class="desk-btn-buy" onclick="buyNow({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{{ product.thumb_url|escapejs }}')">এখনই কিনুন</button>
       </div>
     </div>
 
@@ -344,10 +345,12 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     </div>
 
     <!-- DESCRIPTION -->
+    {% if product.description %}
     <div class="desc-card">
       <div class="card-title">বিস্তারিত</div>
-      <div class="desc-text">{{ product.description|default:"এই প্রোডাক্টের বিস্তারিত এখনো দেওয়া হয়নি।" }}</div>
+      <div class="desc-text">{{ product.description }}</div>
     </div>
+    {% endif %}
 
     <!-- RELATED PRODUCTS -->
     {% if related_products %}
@@ -357,7 +360,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
         {% for rp in related_products %}
         <a href="{% shop_url 'storefront_product_detail' shop rp.id %}" class="rel-card">
           <div class="rel-img">
-            {% if rp.image %}<img src="{{ rp.image.url }}" loading="lazy">{% else %}<i class="bi bi-box fs-1 text-muted"></i>{% endif %}
+            {% if rp.image %}<img src="{{ rp.thumb_url }}" alt="{{ rp.name }}" loading="lazy" decoding="async">{% else %}<i class="bi bi-box fs-1 text-muted"></i>{% endif %}
           </div>
           <div class="rel-body">
             <div class="rel-name">{{ rp.name }}</div>
@@ -372,7 +375,10 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     <!-- FOOTER (UPDATED) -->
     <footer class="site-footer">
       <h4>{{ shop.name }}</h4>
-      <p style="font-size: 13px; color: var(--muted); margin-bottom: 16px;">{{ shop.address|default:"Premium E-commerce Store" }}</p>
+      <div class="footer-contact">
+        {% if shop.address %}<span><i class="bi bi-geo-alt"></i> {{ shop.address }}</span>{% endif %}
+        {% if shop.phone %}<a href="tel:{{ shop.phone }}"><i class="bi bi-telephone"></i> {{ shop.phone }}</a>{% endif %}
+      </div>
 
       <!-- Dynamic Social Links -->
       <div class="social-links">
@@ -387,14 +393,14 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
         {% endif %}
       </div>
 
-      <!-- Policy Links -->
-      <div class="d-flex justify-content-center gap-3 mb-3" style="font-size: 13px;">
-        <a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal" class="text-muted text-decoration-none fw-semibold">Privacy Policy</a>
-        <span class="text-muted">|</span>
-        <a href="#" data-bs-toggle="modal" data-bs-target="#returnModal" class="text-muted text-decoration-none fw-semibold">Return Policy</a>
+      {% if shop.return_policy or shop.privacy_policy %}
+      <div class="policy-links">
+        {% if shop.return_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#returnModal">রিটার্ন পলিসি</a>{% endif %}
+        {% if shop.privacy_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">প্রাইভেসি পলিসি</a>{% endif %}
       </div>
+      {% endif %}
 
-      <div class="copyright">© {% now "Y" %} {{ shop.name }} · Powered by {{ site.name }}</div>
+      <div class="copyright">© {% now "Y" %} {{ shop.name }} · {{ site.name }} দিয়ে তৈরি</div>
     </footer>
 
   </div>
@@ -402,41 +408,49 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 
 <!-- MOBILE BOTTOM BAR -->
 <div class="bottom-bar">
-  <a href="{% shop_url 'storefront_home' shop %}" class="bar-icon-btn"><i class="bi bi-shop"></i></a>
-  <button class="bar-icon-btn" onclick="openCart()"><i class="bi bi-cart3"></i></button>
-  <button class="btn-buy" onclick="buyNow({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{% if product.image %}{{ product.image.url }}{% else %}{% endif %}')">এখনই কিনুন</button>
+  <a href="{% shop_url 'storefront_home' shop %}" class="bar-icon-btn" aria-label="দোকান"><i class="bi bi-shop"></i></a>
+  <button class="bar-icon-btn" onclick="openCart()" aria-label="কার্ট"><i class="bi bi-cart3"></i></button>
+  <button class="btn-buy" onclick="buyNow({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{{ product.thumb_url|escapejs }}')">এখনই কিনুন</button>
 </div>
 
 {% include 'store/storefront/_cart_checkout.html' %}
 
 <!-- ================= MODALS ================= -->
-<!-- Privacy Policy Modal -->
+<!-- প্রাইভেসি পলিসির পপআপ -->
 <div class="modal fade" id="privacyModal" tabindex="-1" aria-hidden="true" style="z-index: 999999;">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content rounded-4 border-0 shadow-lg">
       <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
-        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-shield-check text-success me-2"></i>Privacy Policy</h5>
+        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-shield-check text-success me-2"></i>প্রাইভেসি পলিসি</h5>
         <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.privacy_policy|default:"No privacy policy has been added by the store owner yet." }}</div>
+      <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.privacy_policy }}</div>
     </div>
   </div>
 </div>
 
-<!-- Return Policy Modal -->
+<!-- রিটার্ন পলিসির পপআপ -->
 <div class="modal fade" id="returnModal" tabindex="-1" aria-hidden="true" style="z-index: 999999;">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content rounded-4 border-0 shadow-lg">
       <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
-        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-arrow-return-left text-warning me-2"></i>Return & Refund Policy</h5>
+        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-arrow-return-left text-warning me-2"></i>রিটার্ন ও রিফান্ড পলিসি</h5>
         <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.return_policy|default:"No return policy has been added by the store owner yet." }}</div>
+      <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.return_policy }}</div>
     </div>
   </div>
 </div>
 
 <div class="toast-sf" id="toast-sf"></div>
+
+{% if product.image %}
+<!-- ছবি বড় করে দেখা: দুই আঙুলে আরও জুম করা যায় -->
+<div id="imgViewer" role="dialog" aria-label="{{ product.name }}" onclick="if(event.target===this)closeViewer()">
+  <img src="{{ product.image.url }}" alt="{{ product.name }}">
+  <button type="button" onclick="closeViewer()" aria-label="বন্ধ করুন"><i class="bi bi-x-lg"></i></button>
+</div>
+{% endif %}
 
 <!-- Bootstrap Bundle JS added here for modals -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -463,6 +477,9 @@ function addToCart(id, name, price, stock, image) {
 }
 
 let toastTimer; function showToast(msg) { const t = document.getElementById('toast-sf'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500); }
+function openViewer() { const v = document.getElementById('imgViewer'); if (v) { v.classList.add('show'); document.body.style.overflow = 'hidden'; } }
+function closeViewer() { const v = document.getElementById('imgViewer'); if (v) { v.classList.remove('show'); document.body.style.overflow = ''; } }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeViewer(); });
 function shareProduct() { if(navigator.share){ navigator.share({title: '{{ product.name|escapejs }}', url: window.location.href}); } else { navigator.clipboard.writeText(window.location.href).then(()=>showToast('লিংক কপি হয়েছে')); } }
 
 window.onload = () => { renderCart(); };

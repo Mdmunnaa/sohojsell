@@ -4,6 +4,7 @@ SellPunch টেস্ট: পাবলিক পেইজ, নীতিমা�
 চালানো: python manage.py test
 PayStation-এর নেটওয়ার্ক কল নকল (mock) করা হয়েছে, তাই ইন্টারনেট লাগে না।
 """
+import os
 from datetime import timedelta
 from decimal import Decimal
 from unittest import mock
@@ -788,9 +789,106 @@ class ComparePriceTests(ShopTestMixin, TestCase):
         _user, shop = self.make_shop(slug='plainshop')
         Product.objects.create(shop=shop, name='Plain', price=500, cost_price=300, stock_quantity=2)
         html = self.client.get('/shop/plainshop/', HTTP_HOST='localhost').content.decode()
-        self.assertIn('নতুন এসেছে', html)
         self.assertNotIn('ছাড় চলছে', html)
         self.assertNotIn('%</', html)
+
+
+def _png_upload(name='photo.png', size=(2400, 1600), alpha=True):
+    import io
+    from PIL import Image
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    image = Image.new('RGBA' if alpha else 'RGB', size, (200, 30, 60, 128) if alpha else (200, 30, 60))
+    buffer = io.BytesIO()
+    image.save(buffer, format='PNG')
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type='image/png')
+
+
+class StorefrontPolishTests(ShopTestMixin, TestCase):
+    """দোকানের ওয়েবসাইট: শেয়ার প্রিভিউ, ছোট ছবি, পেজিং, সাজানো, ক্যাটাগরির লিংক, বাংলা লেখা।"""
+
+    def setUp(self):
+        import tempfile
+        self.media = tempfile.mkdtemp()
+        override = override_settings(MEDIA_ROOT=self.media)
+        override.enable()
+        self.addCleanup(override.disable)
+        import shutil
+        self.addCleanup(shutil.rmtree, self.media, True)
+        self.user, self.shop = self.make_shop(slug='polish')
+
+    def _product(self, **fields):
+        from .models import Product
+        data = {'shop': self.shop, 'name': 'Saree', 'price': 900, 'cost_price': 500, 'stock_quantity': 9}
+        data.update(fields)
+        return Product.objects.create(**data)
+
+    def test_uploaded_photo_is_shrunk_with_thumbnail(self):
+        from PIL import Image
+        product = self._product(image=_png_upload())
+        product.refresh_from_db()
+        self.assertTrue(product.image.name.endswith('.jpg'))
+        self.assertEqual((product.image_width, product.image_height), (1200, 800))
+        with Image.open(product.image.path) as main, Image.open(product.thumbnail.path) as thumb:
+            self.assertEqual(main.size, (1200, 800))
+            self.assertEqual(main.mode, 'RGB')                     # স্বচ্ছ অংশ সাদা, কালো না
+            self.assertEqual(max(thumb.size), 480)
+        self.assertIn('-thumb', product.thumb_url)
+
+    def test_old_photos_are_fixed_by_command(self):
+        from django.core.management import call_command
+        from .models import Product
+        product = self._product(image=_png_upload())
+        Product.objects.filter(pk=product.pk).update(thumbnail=None, image_width=None)
+        call_command('optimize_images', stdout=open(os.devnull, 'w'))
+        product.refresh_from_db()
+        self.assertTrue(product.thumbnail)
+        self.assertEqual(product.image_width, 1200)
+
+    def test_product_page_has_facebook_preview_and_bangla(self):
+        product = self._product(name='জামদানি শাড়ি', price=2400, compare_price=3000, stock_quantity=3,
+                                description='হাতে বোনা খাঁটি জামদানি।', image=_png_upload())
+        html = self.client.get(f'/shop/polish/product/{product.id}/', HTTP_HOST='localhost').content.decode()
+        self.assertIn('<meta property="og:title" content="জামদানি শাড়ি — Shop 01711111111">', html)
+        self.assertIn('<meta property="og:type" content="product">', html)
+        self.assertIn('<meta property="og:image" content="http://localhost/media/products/', html)
+        self.assertIn('<meta property="og:image:width" content="1200">', html)
+        self.assertIn('<meta property="product:price:amount" content="2400.00">', html)
+        self.assertIn('৳2400 (20% ছাড়) · হাতে বোনা খাঁটি জামদানি।', html)
+        self.assertNotIn('user-scalable=no', html)
+        for english in ('In Stock', 'Only ', 'Privacy Policy', 'My Cart', 'Premium E-commerce'):
+            self.assertNotIn(english, html)
+        self.assertIn('আর মাত্র ৩টা আছে', html)
+
+    def test_home_pages_in_24s_with_load_more(self):
+        for i in range(30):
+            self._product(name=f'Item {i}', price=100 + i)
+        html = self.client.get('/shop/polish/', HTTP_HOST='localhost').content.decode()
+        self.assertEqual(html.count('class="prod-card"'), 24)
+        self.assertIn('id="loadMore"', html)
+        self.assertIn('(৩০টা)', html)
+        more = self.client.get('/shop/polish/?page=2&partial=1', HTTP_HOST='localhost')
+        self.assertEqual(more.content.decode().count('class="prod-card"'), 6)
+        self.assertEqual(more['X-Next-Page'], '')
+        cheap = self.client.get('/shop/polish/?sort=price_asc', HTTP_HOST='localhost').content.decode()
+        self.assertLess(cheap.index('Item 0<'), cheap.index('Item 1<'))
+        dear = self.client.get('/shop/polish/?sort=price_desc', HTTP_HOST='localhost').content.decode()
+        self.assertLess(dear.index('Item 29<'), dear.index('Item 28<'))
+
+    def test_category_has_its_own_link(self):
+        from .models import Category
+        sarees = Category.objects.create(shop=self.shop, name='শাড়ি')
+        self._product(name='Katan', category=sarees)
+        self._product(name='Lungi')
+        page = self.client.get(f'/shop/polish/category/{sarees.id}/', HTTP_HOST='localhost')
+        html = page.content.decode()
+        self.assertIn('Katan', html)
+        self.assertNotIn('Lungi', html)
+        self.assertIn('<title>শাড়ি — Shop 01711111111</title>', html)
+        self.assertRedirects(self.client.get(f'/shop/polish/?cat={sarees.id}', HTTP_HOST='localhost'),
+                             f'/shop/polish/category/{sarees.id}/', fetch_redirect_response=False)
+        other = Category.objects.create(shop=Shop.objects.create(user=User.objects.create_user(
+            phone_number='01722222222', password='x-Pass-123'), name='Other'), name='X')
+        self.assertEqual(self.client.get(f'/shop/polish/category/{other.id}/', HTTP_HOST='localhost').status_code, 404)
 
 
 class StorefrontThemeTests(ShopTestMixin, TestCase):

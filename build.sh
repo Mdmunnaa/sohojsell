@@ -5,6 +5,8 @@ set -o errexit
 pip install -r requirements.txt
 python manage.py collectstatic --no-input
 python manage.py migrate --no-input
+# আগে আপলোড হওয়া প্রোডাক্টের ছবি ছোট করা (না পারলেও deploy থামবে না)
+python manage.py optimize_images --limit 300 || echo "ছবি ছোট করা যায়নি, পরের deploy-এ আবার চেষ্টা হবে।"
 
 # DJANGO_SUPERUSER_PHONE_NUMBER আর DJANGO_SUPERUSER_PASSWORD দেওয়া থাকলে
 # প্রথমবার admin অ্যাকাউন্ট বানাবে (আগে থেকে থাকলে কিছু করবে না)

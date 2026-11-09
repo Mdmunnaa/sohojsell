@@ -1,17 +1,8 @@
-{% load store_links %}
+{% load store_links bangla %}
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>{{ shop.name }} - Home</title>
-{% if shop.logo %}
-<link rel="icon" href="{{ shop.logo.url }}" type="image/png">
-{% endif %}
-<!-- Premium Font -->
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+{% include 'store/storefront/_head.html' %}
 <style>
 :root {
   --orange: #F57224; --orange-dark: #d85c14; --orange-light: #FFF3EB;
@@ -22,7 +13,7 @@
   --glass: rgba(255, 255, 255, 0.85);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; padding-bottom: 80px; padding-top: 135px; color: var(--text); }
+body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; -webkit-tap-highlight-color: transparent; padding-bottom: 80px; padding-top: 135px; color: var(--text); }
 
 /* ===== PREMIUM TOP BAR (Glassmorphism) ===== */
 .app-top-bar { position: fixed; top: 0; left: 0; right: 0; background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 200; border-bottom: 1px solid rgba(255,255,255,0.3); box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
@@ -69,11 +60,30 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 .flash-img-wrap { width: 100%; height: 120px; border-radius: 12px; background: #fafafa; overflow: hidden; position: relative; margin-bottom: 8px; }
 .flash-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
 .flash-discount { position: absolute; top: 0; left: 0; background: #FF3333; color: #fff; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 0 0 8px 0; }
+.flash-name { font-size: 12px; font-weight: 700; color: var(--dark); line-height: 1.35; height: 32px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 4px; }
 .flash-price { font-size: 15px; font-weight: 900; color: var(--orange); line-height: 1; }
 .flash-old { font-size: 11px; text-decoration: line-through; color: var(--muted); }
 
 /* ===== SECTION HEADER ===== */
-.section-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 16px 12px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 20px 16px 12px; flex-wrap: wrap; }
+.section-count { font-size: 12.5px; font-weight: 600; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
+.sort-form { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.sort-form select { border: 1.5px solid var(--border); background: #fff; border-radius: 10px; padding: 7px 28px 7px 10px; font-weight: 700; color: var(--dark); font-size: 13px; outline: none; }
+.cat-hero { margin: 12px 16px 0; padding: 18px 18px; border-radius: 16px; background: var(--orange-light); border: 1px solid rgba(var(--orange-rgb),.18); }
+.cat-hero .crumb { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.cat-hero .crumb a { color: var(--orange); text-decoration: none; font-weight: 700; }
+.cat-hero h1 { font-size: 21px; font-weight: 900; color: var(--dark); margin: 4px 0 0; letter-spacing: -.3px; }
+.load-more-wrap { text-align: center; padding: 4px 16px 28px; }
+.load-more { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: var(--dark); border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 26px; font-weight: 800; font-size: 14px; text-decoration: none; box-shadow: var(--shadow-sm); }
+.load-more:hover { border-color: var(--orange); color: var(--orange); }
+.load-more .spinner-border { width: 16px; height: 16px; border-width: 2px; display: none; }
+.load-more.loading .spinner-border { display: inline-block; }
+.shown-count { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 8px; }
+.footer-contact { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+.footer-contact a { color: var(--dark); font-weight: 700; text-decoration: none; }
+.policy-links { display: flex; justify-content: center; gap: 12px; margin-bottom: 14px; font-size: 13px; flex-wrap: wrap; }
+.policy-links a { color: var(--muted); text-decoration: none; font-weight: 600; }
+@media(min-width:768px){ .cat-hero, .load-more-wrap { max-width: 1240px; margin-left: auto; margin-right: auto; } .cat-hero { padding: 22px 24px; } }
 .section-title-sf { font-size: 17px; font-weight: 900; color: var(--dark); display: flex; align-items: center; gap: 8px; letter-spacing: -0.5px; }
 .section-title-sf::before { content: ''; display: inline-block; width: 4px; height: 18px; background: var(--orange); border-radius: 4px; }
 
@@ -90,7 +100,8 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 .quick-add { position: absolute; bottom: 8px; right: 8px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.9); backdrop-filter: blur(4px); border: none; color: var(--orange); display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 .quick-add:hover, .quick-add.in-cart { background: var(--orange); color: #fff; }
 .prod-body { padding: 12px; flex: 1; display: flex; flex-direction: column; }
-.prod-title { font-size: 13px; font-weight: 700; color: var(--dark); line-height: 1.4; height: 36px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 6px; }
+.prod-title { font-size: 13px; font-weight: 700; color: var(--dark); line-height: 1.4; height: 36px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 6px; text-decoration: none; }
+.prod-title:hover { color: var(--orange); }
 .prod-price { font-size: 18px; font-weight: 900; color: var(--orange); letter-spacing: -0.5px; }
 .prod-old { font-size: 12px; font-weight: 600; color: var(--muted); text-decoration: line-through; letter-spacing: 0; }
 .prod-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
@@ -142,7 +153,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 .drawer-footer { padding: 20px; border-top: 1px solid var(--border); background: #fff; }
 .df-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; color: var(--muted); font-weight: 600; }
 .df-total { display: flex; justify-content: space-between; font-size: 20px; font-weight: 900; color: var(--orange); padding-top: 12px; border-top: 1px dashed var(--border); margin-top: 8px; }
-.checkout-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 900; cursor: pointer; margin-top: 16px; box-shadow: 0 8px 20px rgba(var(--orange-rgb),0.3); transition: 0.2s; font-family: 'Plus Jakarta Sans', sans-serif;}
+.checkout-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 900; cursor: pointer; margin-top: 16px; box-shadow: 0 8px 20px rgba(var(--orange-rgb),0.3); transition: 0.2s; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;}
 .checkout-btn:hover { transform: translateY(-2px); }
 
 /* CHECKOUT MODAL */
@@ -150,10 +161,10 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 @keyframes slideUp{from{bottom:-100%}to{bottom:0}}
 @media(min-width:768px){#checkout-modal{display:none; align-items:center; justify-content:center;} #checkout-modal.show{display:flex;} #checkout-box{border-radius:24px; position:relative; bottom:auto; left:auto; transform:none; animation:popIn 0.3s ease;} @keyframes popIn{from{transform:scale(0.9);opacity:0}to{transform:scale(1);opacity:1}}}
 #checkout-box h4 { font-size: 20px; font-weight: 900; margin-bottom: 20px; color: var(--dark); }
-.co-input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 600; margin-bottom: 12px; outline: none; font-family: 'Plus Jakarta Sans', sans-serif; background: #F8FAFC; transition: 0.2s; }
+.co-input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 600; margin-bottom: 12px; outline: none; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; background: #F8FAFC; transition: 0.2s; }
 .co-input:focus { border-color: var(--orange); background: #fff; box-shadow: 0 0 0 4px rgba(var(--orange-rgb),0.1); }
 .co-total-row { background: var(--orange-light); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; margin: 16px 0; border: 1px dashed var(--orange); }
-.cancel-btn { width: 100%; padding: 14px; background: none; border: none; color: var(--muted); font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 8px; font-family: 'Plus Jakarta Sans', sans-serif;}
+.cancel-btn { width: 100%; padding: 14px; background: none; border: none; color: var(--muted); font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 8px; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;}
 
 /* TOAST */
 .toast-sf { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: rgba(15,23,42,0.9); backdrop-filter: blur(8px); color: #fff; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 700; opacity: 0; transition: 0.3s; z-index: 999999; white-space: nowrap; pointer-events: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
@@ -170,7 +181,10 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
   .prod-img-wrap { height: 240px; }
   .section-header, .banner-slider, .flash-sale-wrap { max-width: 1240px; margin-left: auto; margin-right: auto; }
   .banner-slider { border-radius: 20px; }
-  .banner-slide img, .banner-slide-default { height: 320px; }
+  .banner-slide img { height: 320px; }
+  .banner-slide-default { height: 220px; }
+  .banner-slide-default h3 { font-size: 30px; }
+  .banner-slide-default p { font-size: 16px; }
 }
 
     /* ── CHECKOUT BUTTON FIX ── */
@@ -179,7 +193,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
       background: linear-gradient(135deg, var(--orange), var(--orange-2));
       color: #fff; border: none; border-radius: 12px;
       font-size: 15px; font-weight: 800; cursor: pointer;
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;
       box-shadow: 0 4px 14px rgba(var(--orange-rgb),.35);
       display: flex; align-items: center; justify-content: center; gap: 8px;
       transition: transform .15s, box-shadow .15s;
@@ -190,7 +204,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     .cancel-btn {
       width: 100%; padding: 11px; margin-top: 8px; background: none;
       border: none; color: var(--muted); font-size: 13.5px; font-weight: 700;
-      cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif;
+      cursor: pointer; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;
     }
     .cancel-btn:hover { color: var(--orange); }
     #checkout-box {
@@ -227,9 +241,9 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
       <div class="shop-name-sf">{{ shop.name }}</div>
       <div class="shop-meta-sf"><i class="bi bi-geo-alt-fill text-orange"></i> {{ shop.address|default:"অনলাইন শপ"|truncatechars:30 }}</div>
     </div>
-    <form method="GET" class="search-form">
+    <form method="GET" action="{% shop_url 'storefront_home' shop %}" class="search-form" role="search">
       <i class="bi bi-search"></i>
-      <input type="text" name="q" value="{{ search }}" placeholder="প্রোডাক্ট খুঁজুন..." class="search-input">
+      <input type="search" name="q" value="{{ search }}" placeholder="প্রোডাক্ট খুঁজুন..." class="search-input" aria-label="প্রোডাক্ট খুঁজুন">
     </form>
     <button class="cart-top-btn" onclick="openCart()">
       <i class="bi bi-cart3 fs-5"></i> কার্ট
@@ -237,25 +251,27 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     </button>
   </div>
   <div class="cat-bar">
-    <a href="?{% if search %}q={{ search }}{% endif %}" class="cat-chip {% if not cat_filter %}active{% endif %}">🏠 সব প্রোডাক্ট</a>
+    <a href="{% shop_url 'storefront_home' shop %}" class="cat-chip {% if not category %}active{% endif %}">সব প্রোডাক্ট</a>
     {% for cat in categories %}
-    <a href="?cat={{ cat.id }}{% if search %}&q={{ search }}{% endif %}" class="cat-chip {% if cat_filter == cat.id|stringformat:'s' %}active{% endif %}">{{ cat.name }}</a>
+    <a href="{% shop_url 'storefront_category' shop cat.id %}" class="cat-chip {% if category.id == cat.id %}active{% endif %}">{{ cat.name }}</a>
     {% endfor %}
+    {% if category and category not in categories %}<span class="cat-chip active">{{ category.name }}</span>{% endif %}
   </div>
 </div>
 
+{% if is_landing %}
 <!-- BANNER SLIDER -->
 <div class="banner-slider" id="bannerSlider">
   <div class="banner-track" id="bannerTrack">
     {% if banners %}
       {% for banner in banners %}
-      <div class="banner-slide"><img src="{{ banner.image.url }}" alt="{{ banner.title }}"></div>
+      <div class="banner-slide"><img src="{{ banner.image.url }}" alt="{{ banner.title|default:shop.name }}"{% if not forloop.first %} loading="lazy"{% endif %}></div>
       {% endfor %}
     {% else %}
     <div class="banner-slide">
       <div class="banner-slide-default">
         <div>
-          <h3>🛍️ {{ shop.name }}</h3>
+          <h3>{{ shop.name }}</h3>
           <p>{{ shop.storefront_tagline|default:"ঘরে বসে অর্ডার করুন, দরজায় পৌঁছে যাবে" }}</p>
         </div>
       </div>
@@ -265,68 +281,72 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
   <div class="banner-dots" id="bannerDots"></div>
 </div>
 
-{# নতুন প্রোডাক্ট (আগে এখানে বানানো ছাড় আর শেষ না হওয়া টাইমার ছিল) #}
-{% if highlight_products %}
+{% if sale_products %}
 <div class="flash-sale-wrap">
   <div class="flash-header">
-    <div class="flash-title">{% if highlight_is_sale %}<i class="bi bi-lightning-charge-fill"></i> ছাড় চলছে{% else %}<i class="bi bi-stars"></i> নতুন এসেছে{% endif %}</div>
+    <div class="flash-title"><i class="bi bi-lightning-charge-fill"></i> ছাড় চলছে</div>
   </div>
   <div class="flash-scroll">
-    {% for product in highlight_products %}
+    {% for product in sale_products %}
     <a href="{% shop_url 'storefront_product_detail' shop product.id %}" class="flash-card">
       <div class="flash-img-wrap">
         {% if product.image %}
-        <img src="{{ product.image.url }}" alt="{{ product.name }}">
+        <img src="{{ product.thumb_url }}" alt="{{ product.name }}" loading="lazy" decoding="async">
         {% else %}
         <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:30px;color:#ccc;"><i class="bi bi-image"></i></div>
         {% endif %}
-        {% if product.discount_percent %}<div class="flash-discount">-{{ product.discount_percent }}%</div>{% endif %}
+        <div class="flash-discount">-{{ product.discount_percent }}%</div>
       </div>
+      <div class="flash-name">{{ product.name }}</div>
       <div class="flash-price">৳{{ product.price|floatformat:0 }}</div>
-      {% if product.discount_percent %}<div class="flash-old">৳{{ product.compare_price|floatformat:0 }}</div>{% endif %}
+      <div class="flash-old">৳{{ product.compare_price|floatformat:0 }}</div>
     </a>
     {% endfor %}
   </div>
 </div>
 {% endif %}
+{% elif category %}
+<div class="cat-hero">
+  <div class="crumb"><a href="{% shop_url 'storefront_home' shop %}">হোম</a> › ক্যাটাগরি</div>
+  <h1>{{ category.name }}</h1>
+</div>
+{% endif %}
 
 <!-- PRODUCTS -->
-<div class="section-header">
-  <div class="section-title-sf">{% if cat_filter or search %}প্রোডাক্ট{% else %}সব প্রোডাক্ট{% endif %}</div>
+<div class="section-header" id="products">
+  <div class="section-title-sf">
+    {% if search %}"{{ search }}" খুঁজে{% elif category %}প্রোডাক্ট{% else %}সব প্রোডাক্ট{% endif %}
+    <span class="section-count">({{ total_count|bn }}টা)</span>
+  </div>
+  {% if total_count > 1 %}
+  <form method="GET" class="sort-form">
+    {% if search %}<input type="hidden" name="q" value="{{ search }}">{% endif %}
+    <label for="sort-select">সাজান</label>
+    <select name="sort" id="sort-select" onchange="this.form.submit()">
+      {% for key, label in sorts %}<option value="{{ key }}" {% if sort == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <noscript><button type="submit">ঠিক আছে</button></noscript>
+  </form>
+  {% endif %}
 </div>
 
 <div class="product-grid" id="productGrid">
-  {% for product in products %}
-  <div class="prod-card" onclick="goToProduct('{% shop_url 'storefront_product_detail' shop product.id %}')">
-    <div class="prod-img-wrap">
-      {% if product.image %}
-      <img src="{{ product.image.url }}" alt="{{ product.name }}" loading="lazy">
-      {% else %}
-      <div class="prod-no-img"><i class="bi bi-box"></i></div>
-      {% endif %}
-      <div class="prod-badge-wrap">
-        {% if product.discount_percent %}<span class="badge-hot">-{{ product.discount_percent }}%</span>{% endif %}
-        {% if product.id in top_seller_ids %}<span class="badge-hot" style="background:#10B981;box-shadow:none;">বেশি বিক্রি</span>{% endif %}
-      </div>
-      <button class="quick-add" id="btn-{{ product.id }}"
-        onclick="event.stopPropagation(); addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{% if product.image %}{{ product.image.url }}{% else %}{% endif %}')">
-        <i class="bi bi-cart-plus-fill"></i>
-      </button>
-    </div>
-    <div class="prod-body">
-      <div class="prod-title">{{ product.name }}</div>
-      <div class="prod-price">৳{{ product.price|floatformat:0 }}{% if product.discount_percent %} <span class="prod-old">৳{{ product.compare_price|floatformat:0 }}</span>{% endif %}</div>
-      {% if product.sold_count %}<div class="prod-sub"><i class="bi bi-bag-check-fill text-success"></i> {{ product.sold_count }}টা বিক্রি হয়েছে</div>{% endif %}
-    </div>
-  </div>
-  {% empty %}
+  {% include 'store/storefront/_product_cards.html' %}
+  {% if not products %}
   <div style="grid-column:1/-1; text-align:center; padding:60px 20px; color:var(--muted);">
     <i class="bi bi-search" style="font-size:48px; display:block; margin-bottom:12px; opacity:.3;"></i>
     <h5 class="fw-bold">কোনো প্রোডাক্ট পাওয়া যায়নি</h5>
-    <a href="?" style="color:var(--orange); font-weight:800; text-decoration:none;">সব প্রোডাক্ট দেখুন</a>
+    <a href="{% shop_url 'storefront_home' shop %}" style="color:var(--orange); font-weight:800; text-decoration:none;">সব প্রোডাক্ট দেখুন</a>
   </div>
-  {% endfor %}
+  {% endif %}
 </div>
+
+{% if next_url %}
+<div class="load-more-wrap">
+  <a href="{{ next_url }}" class="load-more" id="loadMore"><span class="spinner-border" role="status" aria-hidden="true"></span> আরও দেখুন</a>
+  <div class="shown-count" id="shownCount">{{ total_count|bn }}টার মধ্যে <span id="shownNum">{{ page_obj.end_index|bn }}</span>টা দেখানো হচ্ছে</div>
+</div>
+{% endif %}
 
 <!-- TRUST BADGES: দোকানের আসল সেটিং থেকে -->
 <div class="trust-badges">
@@ -357,7 +377,10 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 <!-- FOOTER (UPDATED) -->
 <footer class="site-footer">
   <h4>{{ shop.name }}</h4>
-  <p>{{ shop.address|default:"Premium E-commerce Store" }}</p>
+  <div class="footer-contact">
+    {% if shop.address %}<span><i class="bi bi-geo-alt"></i> {{ shop.address }}</span>{% endif %}
+    {% if shop.phone %}<a href="tel:{{ shop.phone }}"><i class="bi bi-telephone"></i> {{ shop.phone }}</a>{% endif %}
+  </div>
 
   <!-- Dynamic Social Links -->
   <div class="social-links">
@@ -372,14 +395,14 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
     {% endif %}
   </div>
 
-  <!-- Policy Links -->
-  <div class="d-flex justify-content-center gap-3 mb-3" style="font-size: 13px;">
-    <a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal" class="text-muted text-decoration-none fw-semibold">Privacy Policy</a>
-    <span class="text-muted">|</span>
-    <a href="#" data-bs-toggle="modal" data-bs-target="#returnModal" class="text-muted text-decoration-none fw-semibold">Return Policy</a>
+  {% if shop.return_policy or shop.privacy_policy %}
+  <div class="policy-links">
+    {% if shop.return_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#returnModal">রিটার্ন পলিসি</a>{% endif %}
+    {% if shop.privacy_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">প্রাইভেসি পলিসি</a>{% endif %}
   </div>
+  {% endif %}
 
-  <div class="copyright">© {% now "Y" %} {{ shop.name }} · Powered by {{ site.name }}</div>
+  <div class="copyright">© {% now "Y" %} {{ shop.name }} · {{ site.name }} দিয়ে তৈরি</div>
 </footer>
 
 <!-- BOTTOM NAV -->
@@ -387,7 +410,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
   <a href="{% shop_url 'storefront_home' shop %}" class="nav-item-sf active">
     <i class="bi bi-house-fill"></i><span>হোম</span>
   </a>
-  <button class="nav-item-sf" onclick="scrollToTop()">
+  <button class="nav-item-sf" onclick="scrollToProducts()">
     <i class="bi bi-grid-fill"></i><span>প্রোডাক্ট</span>
   </button>
   <button class="nav-item-sf" onclick="openCart()">
@@ -411,28 +434,28 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; -web
 {% include 'store/storefront/_cart_checkout.html' %}
 
 <!-- ================= MODALS ================= -->
-<!-- Privacy Policy Modal -->
+<!-- প্রাইভেসি পলিসির পপআপ -->
 <div class="modal fade" id="privacyModal" tabindex="-1" aria-hidden="true" style="z-index: 999999;">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content rounded-4 border-0 shadow-lg">
       <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
-        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-shield-check text-success me-2"></i>Privacy Policy</h5>
-        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-shield-check text-success me-2"></i>প্রাইভেসি পলিসি</h5>
+        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="বন্ধ করুন"></button>
       </div>
-      <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.privacy_policy|default:"No privacy policy has been added by the store owner yet." }}</div>
+      <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.privacy_policy }}</div>
     </div>
   </div>
 </div>
 
-<!-- Return Policy Modal -->
+<!-- রিটার্ন পলিসির পপআপ -->
 <div class="modal fade" id="returnModal" tabindex="-1" aria-hidden="true" style="z-index: 999999;">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content rounded-4 border-0 shadow-lg">
       <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
-        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-arrow-return-left text-warning me-2"></i>Return & Refund Policy</h5>
-        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-arrow-return-left text-warning me-2"></i>রিটার্ন ও রিফান্ড পলিসি</h5>
+        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="বন্ধ করুন"></button>
       </div>
-      <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.return_policy|default:"No return policy has been added by the store owner yet." }}</div>
+      <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.return_policy }}</div>
     </div>
   </div>
 </div>
@@ -499,7 +522,35 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-function scrollToTop() { window.scrollTo({top: 0, behavior:'smooth'}); }
+function scrollToProducts() {
+  const el = document.getElementById('products');
+  if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 150, behavior: 'smooth' });
+}
+
+// ===== আরও দেখুন: পরের ২৪টা এই পেইজেই যোগ হয় =====
+(function () {
+  const btn = document.getElementById('loadMore');
+  if (!btn) return;
+  const grid = document.getElementById('productGrid');
+  const shown = document.getElementById('shownNum');
+  const bn = n => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+  btn.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (btn.classList.contains('loading')) return;
+    btn.classList.add('loading');
+    const url = btn.getAttribute('href') + (btn.getAttribute('href').includes('?') ? '&' : '?') + 'partial=1';
+    fetch(url, { headers: { 'X-Requested-With': 'fetch' } })
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.text().then(html => [html, r.headers.get('X-Next-Page')]); })
+      .then(([html, next]) => {
+        grid.insertAdjacentHTML('beforeend', html);
+        Object.keys(cart).forEach(id => updateBtn(id));
+        if (shown) shown.textContent = bn(grid.querySelectorAll('.prod-card').length);
+        if (next) { btn.setAttribute('href', next); btn.classList.remove('loading'); }
+        else { btn.remove(); const c = document.getElementById('shownCount'); if (c) c.textContent = 'সবগুলো প্রোডাক্ট দেখানো হয়েছে'; }
+      })
+      .catch(() => { window.location.href = btn.getAttribute('href'); });
+  });
+})();
 
 window.onload = () => { renderCart(); Object.keys(cart).forEach(id => updateBtn(id)); };
 </script>

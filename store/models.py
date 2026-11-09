@@ -119,6 +119,9 @@ class Shop(models.Model):
             self.slug = normalize(self.slug)
         if not self.slug:
             self.slug = generate_unique(self.name, exclude_shop_id=self.pk)
+        from . import images
+        if images.is_new_upload(self.logo):
+            self.logo = images.logo_version(self.logo) or self.logo
         super().save(*args, **kwargs)
 
     @property
@@ -175,6 +178,10 @@ class Product(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True, help_text='Product description for storefront')
     image = models.ImageField(upload_to='products/', blank=True, null=True)
+    # লিস্ট আর কার্টে দেখানোর ছোট ছবি; মূল ছবি আপলোডের সময় নিজে থেকে বানানো হয় (store/images.py)
+    thumbnail = models.ImageField(upload_to='products/thumbs/', blank=True, null=True, editable=False)
+    image_width = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    image_height = models.PositiveIntegerField(null=True, blank=True, editable=False)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     # সেলারের দেওয়া আগের দাম; বিক্রির দামের চেয়ে বেশি হলে ওয়েবসাইটে কেটে দেওয়া দাম আর % ছাড় দেখায়
@@ -190,7 +197,24 @@ class Product(models.Model):
         if not self.barcode:
             import random, string
             self.barcode = ''.join(random.choices(string.digits, k=12))
+        from . import images
+        if images.is_new_upload(self.image):
+            main, thumb, size = images.product_versions(self.image)
+            if main is not None:
+                self.image, self.thumbnail = main, thumb
+                self.image_width, self.image_height = size
+            else:
+                self.thumbnail = self.image_width = self.image_height = None
+        elif not self.image:
+            self.thumbnail = self.image_width = self.image_height = None
         super().save(*args, **kwargs)
+
+    @property
+    def thumb_url(self):
+        """লিস্টে দেখানোর ছবি: ছোট ছবি থাকলে সেটা, নাহলে মূল ছবি।"""
+        if self.thumbnail:
+            return self.thumbnail.url
+        return self.image.url if self.image else ''
 
     @property
     def discount_percent(self):
@@ -358,6 +382,12 @@ class Banner(models.Model):
     title = models.CharField(max_length=200, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        from . import images
+        if images.is_new_upload(self.image):
+            self.image = images.banner_version(self.image) or self.image
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Banner — {self.shop.name}"

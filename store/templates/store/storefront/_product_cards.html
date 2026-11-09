@@ -1,0 +1,25 @@
+{% load store_links %}{# হোমের প্রোডাক্ট কার্ড; "আরও দেখুন" চাপলে শুধু এই অংশটা আসে #}
+{% for product in products %}
+<div class="prod-card" onclick="goToProduct('{% shop_url 'storefront_product_detail' shop product.id %}')">
+  <div class="prod-img-wrap">
+    {% if product.image %}
+    <img src="{{ product.thumb_url }}" alt="{{ product.name }}" loading="lazy" decoding="async">
+    {% else %}
+    <div class="prod-no-img"><i class="bi bi-box"></i></div>
+    {% endif %}
+    <div class="prod-badge-wrap">
+      {% if product.discount_percent %}<span class="badge-hot">-{{ product.discount_percent }}%</span>{% endif %}
+      {% if product.id in top_seller_ids %}<span class="badge-hot" style="background:#10B981;box-shadow:none;">বেশি বিক্রি</span>{% endif %}
+    </div>
+    <button class="quick-add" id="btn-{{ product.id }}" aria-label="{{ product.name }} কার্টে যোগ করুন"
+      onclick="event.stopPropagation(); addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{{ product.thumb_url|escapejs }}')">
+      <i class="bi bi-cart-plus-fill"></i>
+    </button>
+  </div>
+  <div class="prod-body">
+    <a class="prod-title" href="{% shop_url 'storefront_product_detail' shop product.id %}" onclick="event.stopPropagation()">{{ product.name }}</a>
+    <div class="prod-price">৳{{ product.price|floatformat:0 }}{% if product.discount_percent %} <span class="prod-old">৳{{ product.compare_price|floatformat:0 }}</span>{% endif %}</div>
+    {% if product.sold_count %}<div class="prod-sub"><i class="bi bi-bag-check-fill text-success"></i> {{ product.sold_count }}টা বিক্রি হয়েছে</div>{% endif %}
+  </div>
+</div>
+{% endfor %}

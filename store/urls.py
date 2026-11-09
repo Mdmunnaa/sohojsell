@@ -109,6 +109,7 @@ urlpatterns = [
     # PUBLIC E-COMMERCE STOREFRONT (Customer-facing)
     # ============================================================
     path('shop/<slug:shop_slug>/', views.storefront_home, name='storefront_home'),
+    path('shop/<slug:shop_slug>/category/<int:category_id>/', views.storefront_home, name='storefront_category'),
     path('shop/<slug:shop_slug>/checkout/', views.storefront_checkout, name='storefront_checkout'),
     path('shop/<slug:shop_slug>/place-order/', views.storefront_place_order, name='storefront_place_order'),
     path('shop/<slug:shop_slug>/order/<int:order_id>/success/', views.storefront_order_success, name='storefront_order_success'),
