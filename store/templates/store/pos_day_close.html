@@ -58,7 +58,7 @@
   <div class="row big"><span>নিট বিক্রি</span><span>৳{{ summary.net|floatformat:"-2g" }}</span></div>
 
   <h2>ফেরত ও বাকি</h2>
-  <div class="row"><span>ফেরত হওয়া বিল (আজকের)</span><span>{{ summary.returned_count }}টা</span></div>
+  <div class="row"><span>আজ ফেরত নেওয়া হয়েছে</span><span>{{ summary.returned_count }} বার · ৳{{ summary.returned_value|floatformat:"-2g" }}</span></div>
   <div class="row"><span>আজ ফেরত দেওয়া টাকা</span><span>৳{{ summary.refunded|floatformat:"-2g" }}</span></div>
   <div class="row"><span>আজ বাকিতে বিক্রি</span><span>৳{{ summary.due_given|floatformat:"-2g" }}</span></div>
   <div class="row"><span>আজ বাকি আদায়</span><span>৳{{ summary.due_collected|floatformat:"-2g" }}</span></div>

@@ -24,6 +24,7 @@
   .item .name { font-weight: 600; }
   .item .row { color: #111; }
   .total { font-size: 1.35em; font-weight: 700; }
+  .ret-block { border: 1px dashed #000; border-radius: 1.5mm; padding: 1.2mm 1.5mm; margin: 1.5mm 0; }
   .stamp { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%) rotate(-14deg); border: 2px solid #000; padding: 1mm 4mm; font-size: 1.6em; font-weight: 700; letter-spacing: 1px; opacity: .8; background: #fff; }
   #barcode { display: block; margin: 1mm auto 0; max-width: 100%; height: auto; }
   .foot { font-size: .9em; }
@@ -76,8 +77,15 @@
   <div class="row"><span>নগদ দিয়েছেন</span><span>৳{{ order.cash_received|floatformat:"-2g" }}</span></div>
   <div class="row"><span>ফেরত দেওয়া হয়েছে</span><span>৳{{ order.change_given|floatformat:"-2g" }}</span></div>
   {% endif %}
-  {% for p in later_payments %}
+  {% for p in later_payments %}{% if p.kind == 'due' %}
   <div class="row"><span>{{ p.get_kind_display }} · {{ p.created_at|date:"d M" }} · {{ p.get_method_display }}</span><span>৳{{ p.amount|floatformat:"-2g" }}</span></div>
+  {% endif %}{% endfor %}
+  {% for r in sale_returns %}
+  <div class="ret-block">
+    <div class="row" style="font-weight:700;"><span>{% if r.full %}পুরো ফেরত{% else %}ফেরত{% endif %} · {{ r.created_at|date:"d M, h:i A" }}</span><span>−৳{{ r.value|floatformat:"-2g" }}</span></div>
+    {% for ri in r.items.all %}<div class="row" style="padding-left:2mm;"><span>{{ ri.product_name }} × {{ ri.quantity }}</span><span>−৳{{ ri.value|floatformat:"-2g" }}</span></div>{% endfor %}
+    {% if r.refund %}<div class="row" style="padding-left:2mm;"><span>টাকা ফেরত ({{ r.get_refund_method_display }})</span><span>৳{{ r.refund|floatformat:"-2g" }}</span></div>{% endif %}
+  </div>
   {% endfor %}
   {% if order.status != 'Returned' and order.due_amount %}
   <div class="row total" style="font-size:1.15em;"><span>বাকি</span><span>৳{{ order.due_amount|floatformat:"-2g" }}</span></div>

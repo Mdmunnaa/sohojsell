@@ -8,7 +8,6 @@ POS (দোকানে বিক্রি)-র হিসাব আর ডাট
 - নগদে কাস্টমার বেশি দিলে ফেরত হিসাব হয়; পুরো টাকা না পেলে "বাকি" — তখন কাস্টমারের নাম-মোবাইল লাগে।
 - প্রতিটা টাকার লেনদেন SalePayment-এ থাকে, তাই দিনশেষের ক্যাশ হিসাব মেলে।
 """
-from collections import defaultdict
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django.db import IntegrityError, transaction
@@ -311,30 +310,145 @@ def collect_due(shop, user, phone, amount, method, reference=''):
     return amount, total_due - amount
 
 
-def return_sale(shop, user, order_id, reason=''):
-    """পুরো বিক্রি ফেরত: স্টক ফেরত, পাওয়া টাকা ফেরত (একই মাধ্যমে), অর্ডার "Returned"।"""
+def _locked_pos_order(shop, order_id):
+    order = Order.objects.select_for_update().filter(shop=shop, source='pos', pk=order_id).first()
+    if order is None:
+        raise POSError('বিক্রিটা পাওয়া যায়নি।')
+    if order.status in NOT_COUNTED:
+        raise POSError('এই বিক্রি আগেই পুরো ফেরত বা বাতিল হয়েছে।')
+    return order
+
+
+def default_refund_method(order):
+    """যে মাধ্যমে টাকা এসেছিল (একটাই হলে), নাহলে নগদ।"""
+    methods = {m for m, a in order.payments.filter(kind=SalePayment.SALE).values_list('method', 'amount') if a > 0}
+    return methods.pop() if len(methods) == 1 else SalePayment.CASH
+
+
+def _is_vat_inclusive(order, subtotal):
+    return order.vat_amount > 0 and abs(order.total_amount - (subtotal - order.discount)) < CENT
+
+
+def return_items(shop, user, order_id, items=None, method=None, reason=''):
+    """
+    বিক্রির কয়েকটা (বা সব) প্রোডাক্ট ফেরত।
+    - items: [{'item_id', 'qty'}]; না দিলে যা আছে সব।
+    - দাম কমে আনুপাতিক হারে (ছাড় আর VAT সহ)। কাস্টমারের বাকি থাকলে আগে বাকি কমে, তারপর টাকা ফেরত।
+    - সব প্রোডাক্ট ফেরত হলে বিক্রিটা "Returned" (রিপোর্টে আর গোনা হয় না)।
+    """
+    from .models import SaleReturn, SaleReturnItem
+    reason = (reason or '').strip()[:200]
     with transaction.atomic():
-        order = (Order.objects.select_for_update()
-                 .filter(shop=shop, source='pos', pk=order_id).first())
-        if order is None:
-            raise POSError('বিক্রিটা পাওয়া যায়নি।')
-        if order.status in NOT_COUNTED:
-            raise POSError('এই বিক্রি আগেই ফেরত বা বাতিল হয়েছে।')
-        for item in order.items.all():
-            Product.objects.filter(pk=item.product_id).update(stock_quantity=F('stock_quantity') + item.quantity)
-        net = defaultdict(lambda: ZERO)
-        for method, amount in order.payments.values_list('method', 'amount'):
-            net[method] += amount
+        order = _locked_pos_order(shop, order_id)
+        order_items = {item.id: item for item in order.items.select_related('product').order_by('id')}
+        if items is None:
+            wanted = {item_id: item.quantity for item_id, item in order_items.items() if item.quantity > 0}
+        else:
+            wanted = {}
+            for raw in items if isinstance(items, list) else []:
+                try:
+                    item_id, qty = int(raw.get('item_id')), int(raw.get('qty'))
+                except (TypeError, ValueError, AttributeError):
+                    raise POSError('ফেরতের তথ্য ঠিক নেই, আবার চেষ্টা করুন।')
+                if qty <= 0:
+                    continue
+                if item_id not in order_items:
+                    raise POSError('এই প্রোডাক্ট এই বিক্রিতে নেই।')
+                wanted[item_id] = wanted.get(item_id, 0) + qty
+        if not wanted:
+            raise POSError('কোন প্রোডাক্ট কয়টা ফেরত নেবেন বেছে নিন।')
+        for item_id, qty in wanted.items():
+            item = order_items[item_id]
+            if qty > item.quantity:
+                raise POSError(f'"{item.product.name}" এই বিল থেকে সর্বোচ্চ {item.quantity}টা ফেরত নেওয়া যায়।')
+
+        method = (method or default_refund_method(order)).lower()
+        if method not in VALID_METHODS:
+            raise POSError('টাকা ফেরতের মাধ্যমটা ঠিক নেই।')
+
+        subtotal = sum((item.price * item.quantity for item in order_items.values()), ZERO)
+        returned_sub = sum((order_items[i].price * q for i, q in wanted.items()), ZERO)
+        everything = all(wanted.get(i, 0) == item.quantity for i, item in order_items.items())
+        old_total = order.total_amount
+
+        if everything:
+            value = old_total
+            refund = max(order.advance_paid, ZERO)
+            order.advance_paid -= refund
+            order.status = 'Returned'
+        else:
+            remaining_sub = subtotal - returned_sub
+            ratio = remaining_sub / subtotal if subtotal else Decimal('1')
+            inclusive = _is_vat_inclusive(order, subtotal)
+            new_total = (old_total * ratio).quantize(CENT, rounding=ROUND_HALF_UP)
+            new_discount = (order.discount * ratio).quantize(CENT, rounding=ROUND_HALF_UP)
+            if inclusive:
+                new_vat = (order.vat_amount * ratio).quantize(CENT, rounding=ROUND_HALF_UP)
+            else:
+                new_vat = max(new_total - (remaining_sub - new_discount), ZERO)
+            value = old_total - new_total
+            refund = max(order.advance_paid - new_total, ZERO)
+            order.total_amount, order.discount, order.vat_amount = new_total, new_discount, new_vat
+            order.advance_paid -= refund
+            for item_id, qty in wanted.items():
+                OrderItem.objects.filter(pk=item_id).update(quantity=F('quantity') - qty)
+
+        for item_id, qty in wanted.items():
+            Product.objects.filter(pk=order_items[item_id].product_id).update(
+                stock_quantity=F('stock_quantity') + qty)
+
         cashier = user if getattr(user, 'is_authenticated', False) else None
-        refunds = [SalePayment(shop=shop, order=order, method=method, amount=-amount, kind=SalePayment.REFUND,
-                               received_by=cashier)
-                   for method, amount in net.items() if amount > 0]
-        SalePayment.objects.bulk_create(refunds)
-        order.status = 'Returned'
-        note = f'ফেরত{": " + reason.strip()[:200] if reason and reason.strip() else ""}'
+        sale_return = SaleReturn.objects.create(
+            shop=shop, order=order, full=everything, value=value, refund=refund,
+            refund_method=method if refund > 0 else '', reason=reason, created_by=cashier)
+        # প্রতিটা লাইনের ভাগ; শেষ লাইনে পয়সার গরমিল মিলিয়ে নেওয়া
+        rows, assigned = [], ZERO
+        pairs = list(wanted.items())
+        for index, (item_id, qty) in enumerate(pairs):
+            item = order_items[item_id]
+            if index == len(pairs) - 1:
+                share = value - assigned
+            else:
+                share = ((item.price * qty * value / returned_sub) if returned_sub else ZERO).quantize(
+                    CENT, rounding=ROUND_HALF_UP)
+            assigned += share
+            rows.append(SaleReturnItem(sale_return=sale_return, product_id=item.product_id,
+                                       product_name=item.product.name[:200], quantity=qty,
+                                       unit_price=item.price, value=share))
+        SaleReturnItem.objects.bulk_create(rows)
+        if refund > 0:
+            SalePayment.objects.create(shop=shop, order=order, method=method, amount=-refund,
+                                       kind=SalePayment.REFUND, received_by=cashier)
+
+        label = 'পুরো ফেরত' if everything else 'আংশিক ফেরত'
+        note = f'{label}: ' + ', '.join(f'{order_items[i].product.name} ×{q}' for i, q in pairs)
+        if reason:
+            note += f' ({reason})'
         order.note = f'{order.note}\n{note}' if order.note else note
-        order.save(update_fields=['status', 'note'])
-    return order, sum((-r.amount for r in refunds), ZERO)
+        order.save(update_fields=['status', 'note', 'total_amount', 'discount', 'vat_amount', 'advance_paid'])
+    restocked = [{'id': order_items[i].product_id, 'qty': q} for i, q in wanted.items()]
+    return order, sale_return, restocked
+
+
+def return_sale(shop, user, order_id, reason=''):
+    """পুরো বিক্রি ফেরত। ফেরত: (order, ফেরত দেওয়া টাকা)।"""
+    order, sale_return, _restocked = return_items(shop, user, order_id, None, None, reason)
+    return order, sale_return.refund
+
+
+def sale_detail(shop, order_id):
+    """ফেরতের পপআপের জন্য: প্রতিটা লাইনে কয়টা বাকি আছে আর একটা ফেরত দিলে বিল কত কমবে।"""
+    order = (Order.objects.filter(shop=shop, source='pos', pk=order_id)
+             .select_related('customer', 'served_by').first())
+    if order is None:
+        raise POSError('বিক্রিটা পাওয়া যায়নি।')
+    items = list(order.items.select_related('product').order_by('id'))
+    subtotal = sum((i.price * i.quantity for i in items), ZERO)
+    factor = (order.total_amount / subtotal) if subtotal else ZERO
+    return order, [{
+        'item_id': i.id, 'product_id': i.product_id, 'name': i.product.name, 'qty': i.quantity,
+        'price': i.price, 'unit_value': (i.price * factor).quantize(CENT, rounding=ROUND_HALF_UP),
+    } for i in items if i.quantity > 0], default_refund_method(order)
 
 
 # ============================================================
@@ -368,7 +482,9 @@ def day_summary(shop, day):
 
     sale_paid = (SalePayment.objects.filter(order__in=kept, kind=SalePayment.SALE)
                  .aggregate(v=Sum('amount'))['v'] or ZERO)
-    returned = sales.filter(status='Returned')
+    from .models import SaleReturn
+    returns = SaleReturn.objects.filter(shop=shop, created_at__date=day)
+    returns_agg = returns.aggregate(count=Count('id'), value=Sum('value'))
     cashiers = (kept.values('served_by__name', 'served_by__phone_number')
                 .annotate(count=Count('id'), total=Sum('total_amount')).order_by('-total'))
     top = (items.values('product__name').annotate(qty=Sum('quantity'), amount=Sum(F('price') * F('quantity')))
@@ -384,7 +500,8 @@ def day_summary(shop, day):
         'due_given': (totals['net'] or ZERO) - sale_paid,
         'due_collected': payments.filter(kind=SalePayment.DUE_COLLECTION).aggregate(v=Sum('amount'))['v'] or ZERO,
         'refunded': -(payments.filter(kind=SalePayment.REFUND).aggregate(v=Sum('amount'))['v'] or ZERO),
-        'returned_count': returned.count(),
+        'returned_count': returns_agg['count'] or 0,
+        'returned_value': returns_agg['value'] or ZERO,
         'methods': methods,
         'cash_in_drawer': by_method[SalePayment.CASH]['net'],
         'total_received': sum((m['net'] for m in methods), ZERO),

@@ -1021,6 +1021,55 @@ class POSTests(ShopTestMixin, TestCase):
         page = self.client.get(reverse('pos_day_close'))
         self.assertContains(page, 'দিনশেষের হিসাব')
 
+    def give_back(self, sale_id, items=None, method=None):
+        body = {'reason': 'সাইজ'}
+        if items is not None:
+            body['items'] = items
+        if method:
+            body['method'] = method
+        return self.client.post(reverse('pos_return', args=[sale_id]), data=json.dumps(body),
+                                content_type='application/json')
+
+    def test_partial_return_keeps_discount_fair(self):
+        from django.utils import timezone
+        from .pos import day_summary
+        sale = self.sell(items=[{'id': self.shirt.id, 'qty': 2}, {'id': self.cap.id, 'qty': 1}],
+                         discount={'type': 'percent', 'value': 10}).json()['sale']
+        self.assertEqual(sale['total'], 989.55)
+        detail = self.client.get(reverse('pos_sale_detail', args=[sale['id']])).json()
+        shirt_line = next(i for i in detail['items'] if i['product_id'] == self.shirt.id)
+        self.assertEqual((shirt_line['qty'], shirt_line['unit_value']), (2, 405))     # ১০% ছাড় বাদে
+        back = self.give_back(sale['id'], [{'item_id': shirt_line['item_id'], 'qty': 1}]).json()
+        self.assertEqual((back['value'], back['refunded'], back['full']), (405, 405, False))
+        order = Order.objects.get(pk=sale['id'])
+        self.assertEqual((order.total_amount, order.discount, order.status), (Decimal('584.55'), Decimal('64.95'), 'Delivered'))
+        self.assertEqual(order.items.get(product=self.shirt).quantity, 1)
+        self.assertEqual(order.subtotal - order.discount, order.total_amount)
+        self.shirt.refresh_from_db()
+        self.assertEqual(self.shirt.stock_quantity, 9)
+        too_many = self.give_back(sale['id'], [{'item_id': shirt_line['item_id'], 'qty': 2}])
+        self.assertIn('সর্বোচ্চ 1টা', too_many.json()['error'])
+        summary = day_summary(self.shop, timezone.localdate())
+        self.assertEqual((summary['net'], summary['refunded'], summary['returned_count']),
+                         (Decimal('584.55'), Decimal('405'), 1))
+        receipt = self.client.get(reverse('pos_receipt', args=[sale['id']]))
+        self.assertContains(receipt, 'শার্ট × 1')
+        rest = self.give_back(sale['id']).json()                       # বাকি সব
+        self.assertTrue(rest['full'])
+        self.assertEqual(rest['refunded'], 584.55)
+        self.assertEqual(Order.objects.get(pk=sale['id']).status, 'Returned')
+
+    def test_return_on_due_sale_reduces_due_first(self):
+        sale = self.sell(items=[{'id': self.shirt.id, 'qty': 2}], payments=[{'method': 'cash', 'amount': 500}],
+                         allow_due=True, customer={'name': 'করিম', 'phone': '01811111111'}).json()['sale']
+        item_id = self.client.get(reverse('pos_sale_detail', args=[sale['id']])).json()['items'][0]['item_id']
+        back = self.give_back(sale['id'], [{'item_id': item_id, 'qty': 1}], method='bkash').json()
+        self.assertEqual((back['value'], back['refunded']), (450, 50))     # ৪০০ বাকি কাটল, ৫০ ফেরত
+        order = Order.objects.get(pk=sale['id'])
+        self.assertEqual((order.total_amount, order.advance_paid, order.due_amount),
+                         (Decimal('450'), Decimal('450'), Decimal('0')))
+        self.assertEqual(order.payments.get(kind='refund').method, 'bkash')
+
     def test_pages_render(self):
         sale = self.sell(items=[{'id': self.shirt.id, 'qty': 1}],
                          payments=[{'method': 'cash', 'amount': 500, 'full': True}]).json()['sale']

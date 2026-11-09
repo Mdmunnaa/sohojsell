@@ -186,6 +186,10 @@
   .tag.due { background: var(--p-bad-soft); color: var(--p-bad); }
   .sales-top { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
   .sales-top .pr b { font-size: 18px; }
+  .ret-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 84px; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--p-line); }
+  .ret-row.on .c-name { color: var(--p-bad); }
+  .ret-row .c-line { min-width: 0; }
+  .tag.part { background: var(--p-warn-soft); color: var(--p-warn); }
   .shortcut-list { display: grid; grid-template-columns: auto 1fr; gap: 9px 14px; align-items: center; font-size: 13.5px; font-weight: 600; color: var(--p-ink2); }
 
   /* টোস্ট */
@@ -362,17 +366,29 @@
 </div>
 
 <!-- ═══ ফেরত ═══ -->
-<div class="m-back" id="m-return" role="dialog" aria-modal="true">
-  <div class="m-box narrow">
-    <div class="m-head"><h3>বিক্রি ফেরত</h3><button class="m-x" data-close type="button" aria-label="বন্ধ"><i class="bi bi-x-lg"></i></button></div>
+<div class="m-back" id="m-return" role="dialog" aria-modal="true" aria-labelledby="ret-h">
+  <div class="m-box">
+    <div class="m-head"><h3 id="ret-h">ফেরত নিন</h3><button class="m-x" data-close type="button" aria-label="বন্ধ"><i class="bi bi-x-lg"></i></button></div>
     <div class="m-body">
-      <p style="font-size:14px;font-weight:600;color:var(--p-ink2);" id="ret-text"></p>
-      <input class="c-input" id="ret-reason" type="text" maxlength="200" placeholder="কারণ (ঐচ্ছিক), যেমন: সাইজ মেলেনি">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span style="font-size:13px;font-weight:700;color:var(--p-muted);">কোনটা কয়টা ফেরত আসছে বেছে নিন</span>
+        <button type="button" class="link-btn" id="ret-all">সব ফেরত</button>
+      </div>
+      <div id="ret-items"></div>
+      <div class="pay-result mt-3">
+        <div class="pr"><small>বিল কমবে</small><b id="ret-value">৳0</b></div>
+        <div class="pr due"><small>বাকি থেকে কাটবে</small><b id="ret-due">৳0</b></div>
+        <div class="pr change"><small>কাস্টমারকে ফেরত দিন</small><b id="ret-refund">৳0</b></div>
+      </div>
+      <div class="pay-lines mt-3"><div class="pl" style="grid-template-columns:150px 1fr;">
+        <select id="ret-method" aria-label="টাকা ফেরতের মাধ্যম"><option value="cash">নগদে ফেরত</option><option value="bkash">bKash-এ ফেরত</option><option value="nagad">Nagad-এ ফেরত</option><option value="card">কার্ডে ফেরত</option><option value="bank">ব্যাংকে ফেরত</option></select>
+        <input id="ret-reason" type="text" maxlength="200" placeholder="কারণ (ঐচ্ছিক), যেমন: সাইজ মেলেনি">
+      </div></div>
       <div class="m-error" id="ret-error" role="alert"></div>
     </div>
     <div class="m-foot">
       <button class="btn-soft" data-close type="button" style="flex:1;">না</button>
-      <button class="btn-pay" id="btn-ret-ok" type="button" style="flex:1.4;background:var(--p-bad);box-shadow:none;">হ্যাঁ, ফেরত নিন</button>
+      <button class="btn-pay" id="btn-ret-ok" type="button" style="flex:1.6;background:var(--p-bad);box-shadow:none;" disabled>ফেরত নিন</button>
     </div>
   </div>
 </div>
@@ -790,7 +806,7 @@ $('held-list').addEventListener('click', e => {
 });
 
 /* ── আজকের বিক্রি, ফেরত, বাকি আদায় ── */
-let salesTimer, returnId = null;
+let salesTimer;
 async function loadSales(q = '') {
   $('sales-list').innerHTML = '<div class="c-empty"><span class="spinner-border spinner-border-sm"></span></div>';
   const data = await api(`${CFG.urls.sales}${q ? '?q=' + encodeURIComponent(bnDigits(q)) : ''}`);
@@ -802,7 +818,7 @@ async function loadSales(q = '') {
   }
   $('sales-list').innerHTML = data.sales.length ? data.sales.map(s => `
     <div class="list-row"><div>
-      <div class="t">#${esc(s.number)} · ${fmt(cents(s.total))}${s.returned ? '<span class="tag ret">ফেরত</span>' : ''}${!s.returned && s.due > 0 ? `<span class="tag due">বাকি ${fmt(cents(s.due))}</span>` : ''}</div>
+      <div class="t">#${esc(s.number)} · ${fmt(cents(s.total))}${s.returned ? '<span class="tag ret">ফেরত</span>' : ''}${s.partly_returned ? '<span class="tag part">আংশিক ফেরত</span>' : ''}${!s.returned && s.due > 0 ? `<span class="tag due">বাকি ${fmt(cents(s.due))}</span>` : ''}</div>
       <div class="s">${esc(s.time)} · ${esc(s.customer || 'ওয়াক-ইন')}${s.phone ? ' · ' + esc(s.phone) : ''}${s.cashier ? ' · বিক্রেতা ' + esc(s.cashier) : ''}</div>
     </div><div class="acts">
       <button class="sm-btn" type="button" data-print="${esc(s.receipt_url)}"><i class="bi bi-printer"></i></button>
@@ -815,19 +831,61 @@ $('sales-q').addEventListener('input', () => { clearTimeout(salesTimer); salesTi
 $('sales-list').addEventListener('click', e => {
   const p = e.target.closest('[data-print]'); if (p) { printReceipt(p.dataset.print); toast('রসিদ প্রিন্ট হচ্ছে'); return; }
   const r = e.target.closest('[data-return]'); if (!r) return;
-  returnId = Number(r.dataset.return);
-  $('ret-text').textContent = `${r.dataset.label} — পুরো বিক্রি ফেরত নেওয়া হবে। প্রোডাক্ট স্টকে ফিরবে, আর পাওয়া টাকা যে মাধ্যমে নেওয়া হয়েছিল সেভাবে ফেরতের হিসাবে উঠবে।`;
-  $('ret-reason').value = ''; $('ret-error').classList.remove('show'); openModal('m-return');
+  openReturn(Number(r.dataset.return));
 });
+let ret = null;
+async function openReturn(id) {
+  const data = await api(CFG.urls.saleBase.replace('{id}', id));
+  if (!data.success) { toast(data.error || 'বিক্রিটা খোলা যায়নি', 'bad'); return; }
+  ret = { sale: data.sale, items: data.items.map(i => ({ ...i, back: 0 })) };
+  $('ret-h').textContent = `ফেরত নিন — #${data.sale.number}`;
+  $('ret-method').value = data.refund_method || 'cash';
+  $('ret-reason').value = ''; $('ret-error').classList.remove('show');
+  renderReturn(); openModal('m-return');
+}
+function returnCalc() {
+  const all = ret.items.every(i => i.back === i.qty);
+  const value = all ? cents(ret.sale.total) : ret.items.reduce((s, i) => s + cents(i.unit_value) * i.back, 0);
+  const newTotal = cents(ret.sale.total) - value, paid = cents(ret.sale.paid);
+  const refund = Math.max(paid - newTotal, 0);
+  return { value, refund, fromDue: Math.max(value - refund, 0), any: ret.items.some(i => i.back > 0) };
+}
+function renderReturn() {
+  $('ret-items').innerHTML = ret.items.map((i, n) => `
+    <div class="ret-row${i.back ? ' on' : ''}" data-n="${n}">
+      <div><div class="c-name">${esc(i.name)}</div><div class="c-unit">বিলে আছে ${toBn(i.qty)}টা · ${fmt(cents(i.price))} করে</div></div>
+      <div class="qty"><button type="button" data-r="dec" aria-label="কমান">−</button><input type="number" min="0" max="${i.qty}" value="${i.back}" data-r="qty" aria-label="কয়টা ফেরত"><button type="button" data-r="inc" aria-label="বাড়ান">+</button></div>
+      <div class="c-line">${i.back ? '−' + fmt(cents(i.unit_value) * i.back) : '—'}</div>
+    </div>`).join('');
+  const c = returnCalc();
+  $('ret-value').textContent = fmt(c.value); $('ret-due').textContent = fmt(c.fromDue); $('ret-refund').textContent = fmt(c.refund);
+  $('ret-due').parentElement.style.opacity = c.fromDue ? 1 : .45;
+  $('ret-method').disabled = !c.refund;
+  $('btn-ret-ok').disabled = !c.any;
+  $('btn-ret-ok').textContent = !c.any ? 'ফেরত নিন' : (c.refund ? `ফেরত নিন · ${fmt(c.refund)} দিন` : 'ফেরত নিন');
+}
+$('ret-items').addEventListener('click', e => {
+  const b = e.target.closest('[data-r]'); if (!b || b.dataset.r === 'qty') return;
+  const i = ret.items[Number(b.closest('.ret-row').dataset.n)];
+  i.back = Math.min(Math.max(i.back + (b.dataset.r === 'inc' ? 1 : -1), 0), i.qty); renderReturn();
+});
+$('ret-items').addEventListener('change', e => {
+  if (e.target.dataset.r !== 'qty') return;
+  const i = ret.items[Number(e.target.closest('.ret-row').dataset.n)];
+  i.back = Math.min(Math.max(Math.floor(Number(bnDigits(e.target.value)) || 0), 0), i.qty); renderReturn();
+});
+$('ret-all').addEventListener('click', () => { const full = ret.items.every(i => i.back === i.qty); ret.items.forEach(i => i.back = full ? 0 : i.qty); renderReturn(); });
 $('btn-ret-ok').addEventListener('click', async () => {
   const btn = $('btn-ret-ok'); btn.disabled = true;
-  const data = await api(CFG.urls.returnBase.replace('{id}', returnId), { reason: $('ret-reason').value });
-  btn.disabled = false;
-  if (!data.success) { $('ret-error').textContent = data.error; $('ret-error').classList.add('show'); return; }
+  const data = await api(CFG.urls.returnBase.replace('{id}', ret.sale.id), {
+    items: ret.items.filter(i => i.back > 0).map(i => ({ item_id: i.item_id, qty: i.back })),
+    method: $('ret-method').value, reason: $('ret-reason').value,
+  });
+  if (!data.success) { btn.disabled = false; $('ret-error').textContent = data.error; $('ret-error').classList.add('show'); return; }
   (data.restocked || []).forEach(r => { const p = PRODUCTS.get(r.id); if (p) p.stock += r.qty; });
-  renderGrid();
-  closeModal('m-return'); toast(`ফেরত নেওয়া হলো${data.refunded ? ' — কাস্টমারকে দিন ' + fmt(cents(data.refunded)) : ''}`);
-  CFG.todayCount = Math.max(CFG.todayCount - 1, 0); $('today-count').textContent = toBn(CFG.todayCount);
+  renderGrid(); closeModal('m-return');
+  toast(data.refunded ? `ফেরত নেওয়া হলো — কাস্টমারকে দিন ${fmt(cents(data.refunded))}` : 'ফেরত নেওয়া হলো' + (data.value ? ` — বিল কমল ${fmt(cents(data.value))}` : ''));
+  if (data.full) { CFG.todayCount = Math.max(CFG.todayCount - 1, 0); $('today-count').textContent = toBn(CFG.todayCount); }
   loadSales($('sales-q').value.trim());
 });
 $('day-close-link').addEventListener('click', e => { e.preventDefault(); window.open(CFG.urls.dayClose, '_blank', 'noopener'); });

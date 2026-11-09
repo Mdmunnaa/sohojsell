@@ -341,6 +341,38 @@ class SalePayment(models.Model):
         return f'{self.get_method_display()} ৳{self.amount} — #ORD-{self.order_id}'
 
 
+class SaleReturn(models.Model):
+    """
+    POS বিক্রির ফেরত (পুরো বা কয়েকটা প্রোডাক্ট)। value = বিক্রির দাম কতটা কমল (ছাড়-VAT মিলিয়ে),
+    refund = কাস্টমারকে কত টাকা ফেরত দেওয়া হলো (বাকি থাকলে আগে বাকি থেকে কাটে)।
+    """
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='sale_returns')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='returns')
+    full = models.BooleanField(default=False)
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    refund = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    refund_method = models.CharField(max_length=10, blank=True, default='', choices=SalePayment.METHOD_CHOICES)
+    reason = models.CharField(max_length=200, blank=True, default='')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                   related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['created_at', 'id']
+
+    def __str__(self):
+        return f'ফেরত #ORD-{self.order_id} ৳{self.value}'
+
+
+class SaleReturnItem(models.Model):
+    sale_return = models.ForeignKey(SaleReturn, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    product_name = models.CharField(max_length=200)
+    quantity = models.PositiveIntegerField()
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    value = models.DecimalField(max_digits=10, decimal_places=2)
+
+
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)

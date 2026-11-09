@@ -62,6 +62,8 @@ def _sale_json(order):
         'cash_received': _num(order.cash_received),
         'status': order.status,
         'returned': order.status == 'Returned',
+        'partly_returned': order.status != 'Returned' and bool(
+            order.return_count if hasattr(order, 'return_count') else order.returns.exists()),
         'payment': order.payment_method,
         'cashier': (order.served_by.name or order.served_by.phone_number) if order.served_by_id else '',
         'receipt_url': reverse('pos_receipt', args=[order.id]),
@@ -101,6 +103,7 @@ def pos_screen(request):
                 'collect': reverse('pos_collect_due'),
                 'sales': reverse('pos_sales'),
                 'returnBase': reverse('pos_return', args=[0]).replace('/0/', '/{id}/'),
+                'saleBase': reverse('pos_sale_detail', args=[0]).replace('/0/', '/{id}/'),
                 'barcode': reverse('barcode_lookup'),
                 'dayClose': reverse('pos_day_close'),
             },
@@ -178,9 +181,9 @@ def pos_sales(request):
             orders = orders.filter(pk=int(digits))
         else:
             orders = orders.filter(customer__name__icontains=query)
-        orders = orders.order_by('-created_at')[:30]
+        orders = orders.annotate(return_count=Count('returns')).order_by('-created_at')[:30]
     else:
-        orders = pos.sales_on(shop, day)[:300]
+        orders = pos.sales_on(shop, day).annotate(return_count=Count('returns'))[:300]
     return JsonResponse({'success': True, 'sales': [_sale_json(o) for o in orders],
                          'can_return': _can_return(request)})
 
@@ -188,23 +191,37 @@ def pos_sales(request):
 @login_required(login_url=LOGIN)
 @require_POST
 def pos_return(request, order_id):
+    """কয়েকটা প্রোডাক্ট ফেরত ({"items": [{"item_id", "qty"}], "method", "reason"}); items না দিলে পুরো বিল।"""
     if not _can_return(request):
         return _error('বিক্রি ফেরতের অনুমতি নেই। দোকানের মালিককে বলুন।', status=403)
     try:
         data = _json_body(request)
-        order, refunded = pos.return_sale(request.user.shop, request.user, order_id, data.get('reason', ''))
+        order, sale_return, restocked = pos.return_items(
+            request.user.shop, request.user, order_id, data.get('items'), data.get('method'), data.get('reason', ''))
     except pos.POSError as exc:
         return _error(str(exc))
-    restocked = [{'id': i.product_id, 'qty': i.quantity} for i in order.items.all()]
-    return JsonResponse({'success': True, 'sale': _sale_json(order), 'refunded': _num(refunded),
-                         'restocked': restocked})
+    return JsonResponse({'success': True, 'sale': _sale_json(order), 'refunded': _num(sale_return.refund),
+                         'value': _num(sale_return.value), 'full': sale_return.full, 'restocked': restocked})
+
+
+@login_required(login_url=LOGIN)
+def pos_sale_detail(request, order_id):
+    """ফেরতের পপআপ: বিলের প্রোডাক্ট, কয়টা ফেরতযোগ্য, একটা ফেরত দিলে বিল কত কমে।"""
+    try:
+        order, items, method = pos.sale_detail(request.user.shop, order_id)
+    except pos.POSError as exc:
+        return _error(str(exc), status=404)
+    for item in items:
+        item.update(price=_num(item['price']), unit_value=_num(item['unit_value']))
+    return JsonResponse({'success': True, 'sale': _sale_json(order), 'items': items, 'refund_method': method,
+                         'can_return': _can_return(request)})
 
 
 @login_required(login_url=LOGIN)
 def pos_receipt(request, order_id):
     shop = request.user.shop
     order = get_object_or_404(Order.objects.select_related('customer', 'served_by'), id=order_id, shop=shop)
-    items = list(order.items.select_related('product'))
+    items = [i for i in order.items.select_related('product') if i.quantity > 0 or order.status == 'Returned']
     for item in items:
         item.line_total = item.price * item.quantity
     payments = list(order.payments.all())
@@ -214,6 +231,7 @@ def pos_receipt(request, order_id):
         'sale_payments': [p for p in payments if p.kind == p.SALE],
         'later_payments': [p for p in payments if p.kind != p.SALE],
         'walk_in': order.customer.phone == pos.WALK_IN_PHONE,
+        'sale_returns': order.returns.prefetch_related('items'),
         'width': 58 if request.GET.get('w') == '58' else (80 if request.GET.get('w') == '80' else shop.pos_receipt_width),
         'auto_print': request.GET.get('print') == '1',
     })

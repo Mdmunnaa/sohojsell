@@ -60,6 +60,7 @@ urlpatterns = [
     path('pos/customer/', views_pos.pos_customer, name='pos_customer'),
     path('pos/collect-due/', views_pos.pos_collect_due, name='pos_collect_due'),
     path('pos/sales/', views_pos.pos_sales, name='pos_sales'),
+    path('pos/sales/<int:order_id>/', views_pos.pos_sale_detail, name='pos_sale_detail'),
     path('pos/sales/<int:order_id>/return/', views_pos.pos_return, name='pos_return'),
     path('pos/day-close/', views_pos.pos_day_close, name='pos_day_close'),
 
