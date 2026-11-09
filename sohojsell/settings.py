@@ -32,15 +32,15 @@ if not SECRET_KEY:
         raise ImproperlyConfigured('SECRET_KEY environment variable সেট করা নেই।')
     SECRET_KEY = 'django-insecure-local-dev-only'
 
-# দোকানের সাবডোমেইন যে ডোমেইনের নিচে বসবে (যেমন sohojsell.com → munnafashion.sohojsell.com)।
+# দোকানের সাবডোমেইন যে ডোমেইনের নিচে বসবে (যেমন sellpunch.com → munnafashion.sellpunch.com)।
 # ডোমেইন কিনে Render-এ *.ডোমেইন যোগ করার পর Environment-এ বসাবেন। খালি থাকলে দোকানের লিংক হয় /shop/<নাম>/
 STORE_BASE_DOMAIN = os.environ.get('STORE_BASE_DOMAIN', '').strip().lower().strip('.')
 
 ALLOWED_HOSTS = [
-    'localhost', '127.0.0.1', '.sohojsell.com',
+    'localhost', '127.0.0.1', '.sellpunch.com',
     '.pythonanywhere.com',  # পুরনো সার্ভার, পুরোপুরি Render-এ গেলে সরিয়ে দিন
 ] + env_list('ALLOWED_HOSTS')
-CSRF_TRUSTED_ORIGINS = ['https://sohojsell.com', 'https://*.sohojsell.com'] + env_list('CSRF_TRUSTED_ORIGINS')
+CSRF_TRUSTED_ORIGINS = ['https://sellpunch.com', 'https://*.sellpunch.com'] + env_list('CSRF_TRUSTED_ORIGINS')
 if STORE_BASE_DOMAIN:
     ALLOWED_HOSTS.append(f'.{STORE_BASE_DOMAIN}')
     CSRF_TRUSTED_ORIGINS += [f'https://{STORE_BASE_DOMAIN}', f'https://*.{STORE_BASE_DOMAIN}']
@@ -142,6 +142,8 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static'] if (BASE_DIR / 'static').exists() else []
+# collectstatic-এর তালিকায় কোনো ফাইল না থাকলে error না দিয়ে সাধারণ নাম ব্যবহার
+WHITENOISE_MANIFEST_STRICT = False
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -200,7 +202,8 @@ LOGIN_REDIRECT_URL = '/dashboard/'
 # ব্যবসার তথ্য — পাবলিক পেইজের footer, যোগাযোগ আর নীতিমালায় দেখায়।
 # Render-এর Environment-এ বসাবেন; ফাঁকা থাকলে ওই লাইনটা দেখাবে না।
 # ============================================================
-SITE_NAME = 'SohojSell'
+SITE_NAME = os.environ.get('SITE_NAME', 'SellPunch')
+SITE_NAME_BN = os.environ.get('SITE_NAME_BN', 'সেলপাঞ্চ')
 SUPPORT_PHONE = os.environ.get('SUPPORT_PHONE', '')            # যেমন 01XXXXXXXXX
 SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', '')            # যেমন support@yourdomain.com
 SUPPORT_WHATSAPP = os.environ.get('SUPPORT_WHATSAPP', '')      # দেশের কোডসহ, যেমন 8801XXXXXXXXX

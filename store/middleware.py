@@ -1,8 +1,8 @@
 # ============================================================
-# SohojSell — দোকানের সাবডোমেইন / নিজের ডোমেইন
+# SellPunch — দোকানের সাবডোমেইন / নিজের ডোমেইন
 # ============================================================
-# কীভাবে কাজ করে (STORE_BASE_DOMAIN = sohojsell.com ধরে):
-# 1. munnafashion.sohojsell.com/product/5/ → ভেতরে /shop/munnafashion/product/5/ চালানো হয়,
+# কীভাবে কাজ করে (STORE_BASE_DOMAIN = sellpunch.com ধরে):
+# 1. munnafashion.sellpunch.com/product/5/ → ভেতরে /shop/munnafashion/product/5/ চালানো হয়,
 #    কিন্তু ব্রাউজারে ছোট ঠিকানাটাই থাকে।
 # 2. www.munnashop.com (Premium-এর নিজের ডোমেইন) → একইভাবে সেই দোকান।
 # 3. মূল সাইটে পুরনো /shop/munnafashion/... লিংকে ঢুকলে সাবডোমেইনে পাঠিয়ে দেয়,
@@ -71,7 +71,7 @@ class ShopSubdomainMiddleware:
             return False
         if host == getattr(settings, 'RENDER_EXTERNAL_HOSTNAME', None) or host.endswith('.onrender.com'):
             return False
-        return not host.endswith('.sohojsell.com') and host != 'sohojsell.com'
+        return not any(host == d or host.endswith('.' + d) for d in ('sellpunch.com', 'sohojsell.com'))
 
     def _serve_shop(self, request, shop):
         request.storefront_shop_id = shop.pk

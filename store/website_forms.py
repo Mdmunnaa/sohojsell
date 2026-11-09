@@ -61,7 +61,7 @@ class StoreProfileForm(forms.ModelForm):
         value = re.sub(r'^https?://', '', value).split('/')[0].split(':')[0].strip('.')
         if not re.fullmatch(r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}', value):
             raise forms.ValidationError('ডোমেইন ঠিকমতো লিখুন, যেমন www.yourshop.com')
-        base = getattr(settings, 'STORE_BASE_DOMAIN', '') or 'sohojsell.com'
+        base = getattr(settings, 'STORE_BASE_DOMAIN', '') or 'sellpunch.com'
         if value == base or value.endswith('.' + base):
             raise forms.ValidationError('এটা নিজের ডোমেইন না; আপনার সাবডোমেইন উপরে আলাদা করে দেওয়া আছে।')
         return value

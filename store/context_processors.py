@@ -8,6 +8,7 @@ def site_info(request):
     return {
         'site': {
             'name': settings.SITE_NAME,
+            'name_bn': getattr(settings, 'SITE_NAME_BN', ''),
             'phone': settings.SUPPORT_PHONE,
             'email': settings.SUPPORT_EMAIL,
             'whatsapp_url': f'https://wa.me/{whatsapp}' if whatsapp else '',
@@ -15,7 +16,7 @@ def site_info(request):
             'address': settings.BUSINESS_ADDRESS,
             'facebook_url': settings.FACEBOOK_PAGE_URL,
             'policy_updated_on': settings.POLICY_UPDATED_ON,
-            'store_domain': settings.STORE_BASE_DOMAIN or 'sohojsell.com',
+            'store_domain': settings.STORE_BASE_DOMAIN or 'sellpunch.com',
         }
     }
 

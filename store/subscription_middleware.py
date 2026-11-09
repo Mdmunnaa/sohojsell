@@ -1,5 +1,5 @@
 # ============================================================
-# SohojSell — Subscription Lock Middleware
+# SellPunch — Subscription Lock Middleware
 # ============================================================
 from django.shortcuts import redirect
 from django.urls import reverse

@@ -1,5 +1,5 @@
 # ============================================================
-# SohojSell - Store Views (Clean Version)
+# SellPunch - Store Views
 # ============================================================
 import json
 from django.db.models import Count
@@ -1805,7 +1805,7 @@ from django.http import HttpResponse
 @login_required(login_url='/accounts/login/')
 def download_csv_template(request):
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="sohojsell_product_template.csv"'
+    response['Content-Disposition'] = 'attachment; filename="sellpunch_product_template.csv"'
 
     writer = csv.writer(response)
     # Header Row

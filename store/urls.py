@@ -6,7 +6,16 @@ from . import website_views
 from . import views
 from . import payment_views
 
+def favicon(request):
+    from django.shortcuts import redirect
+    from django.templatetags.static import static
+    return redirect(static('brand/favicon.ico'))
+
+
 urlpatterns = [
+    path('favicon.ico', favicon),
+    path('site.webmanifest', TemplateView.as_view(template_name='store/site.webmanifest',
+                                                  content_type='application/manifest+json'), name='webmanifest'),
     # Landing
     path('', views.landing_page, name='landing_page'),
 

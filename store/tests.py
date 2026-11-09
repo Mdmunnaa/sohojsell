@@ -1,5 +1,5 @@
 """
-SohojSell টেস্ট: পাবলিক পেইজ, নীতিমালা, PayStation পেমেন্ট আর Facebook ডিসকানেক্ট।
+SellPunch টেস্ট: পাবলিক পেইজ, নীতিমালা, PayStation পেমেন্ট আর Facebook ডিসকানেক্ট।
 
 চালানো: python manage.py test
 PayStation-এর নেটওয়ার্ক কল নকল (mock) করা হয়েছে, তাই ইন্টারনেট লাগে না।
@@ -401,9 +401,9 @@ class PlanLimitsTests(ShopTestMixin, TestCase):
         self.assertEqual(shop.custom_domain, 'www.example.com')
 
 
-@override_settings(STORE_BASE_DOMAIN='sohojsell.com')
+@override_settings(STORE_BASE_DOMAIN='sellpunch.com')
 class StorefrontDomainTests(ShopTestMixin, TestCase):
-    HOST = 'munna.sohojsell.com'
+    HOST = 'munna.sellpunch.com'
 
     def setUp(self):
         from .models import Product
@@ -423,27 +423,27 @@ class StorefrontDomainTests(ShopTestMixin, TestCase):
         self.assertIn('T-Shirt', detail.content.decode())
 
     def test_old_links_redirect_to_subdomain(self):
-        response = self.client.get(f'/shop/munna/product/{self.product.id}/?ref=fb', HTTP_HOST='sohojsell.com')
+        response = self.client.get(f'/shop/munna/product/{self.product.id}/?ref=fb', HTTP_HOST='sellpunch.com')
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response['Location'], f'https://munna.sohojsell.com/product/{self.product.id}/?ref=fb')
+        self.assertEqual(response['Location'], f'https://munna.sellpunch.com/product/{self.product.id}/?ref=fb')
         on_sub = self.client.get('/shop/munna/', HTTP_HOST=self.HOST)
         self.assertEqual(on_sub.status_code, 301)
         self.assertEqual(on_sub['Location'], '/')
 
     def test_unknown_subdomain_shows_not_found(self):
-        response = self.client.get('/', HTTP_HOST='nobody.sohojsell.com')
+        response = self.client.get('/', HTTP_HOST='nobody.sellpunch.com')
         self.assertEqual(response.status_code, 404)
         self.assertIn('এই ঠিকানায় কোনো দোকান নেই', response.content.decode())
 
     def test_main_site_and_dashboard_unchanged(self):
-        dashboard = self.client.get(reverse('dashboard'), HTTP_HOST='sohojsell.com')
+        dashboard = self.client.get(reverse('dashboard'), HTTP_HOST='sellpunch.com')
         self.assertEqual(dashboard.status_code, 200)
-        self.assertIn('https://munna.sohojsell.com/', dashboard.content.decode())
-        self.assertIn('munna.sohojsell.com', dashboard.content.decode())
-        self.assertEqual(self.shop.storefront_url, 'https://munna.sohojsell.com/')
+        self.assertIn('https://munna.sellpunch.com/', dashboard.content.decode())
+        self.assertIn('munna.sellpunch.com', dashboard.content.decode())
+        self.assertEqual(self.shop.storefront_url, 'https://munna.sellpunch.com/')
         self.client.logout()
-        self.assertEqual(self.client.get('/', HTTP_HOST='sohojsell.com').status_code, 200)
-        self.assertEqual(self.client.get('/', HTTP_HOST='www.sohojsell.com').status_code, 200)
+        self.assertEqual(self.client.get('/', HTTP_HOST='sellpunch.com').status_code, 200)
+        self.assertEqual(self.client.get('/', HTTP_HOST='www.sellpunch.com').status_code, 200)
 
     def test_order_on_subdomain_and_success_page_is_private(self):
         import json
@@ -471,13 +471,13 @@ class StorefrontDomainTests(ShopTestMixin, TestCase):
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock_quantity, 5)
 
-    @override_settings(ALLOWED_HOSTS=['.sohojsell.com', 'www.munnashop.com', 'munnashop.com'])
+    @override_settings(ALLOWED_HOSTS=['.sellpunch.com', 'www.munnashop.com', 'munnashop.com'])
     def test_custom_domain_only_for_premium(self):
         self.shop.custom_domain = 'www.munnashop.com'
         self.shop.save()
         response = self.client.get('/', HTTP_HOST='munnashop.com')
         self.assertEqual(response.status_code, 302)          # Standard না → সাবডোমেইনে
-        self.assertEqual(response['Location'], 'https://munna.sohojsell.com/')
+        self.assertEqual(response['Location'], 'https://munna.sellpunch.com/')
         self.shop.subscription_plan = 'Premium'
         self.shop.valid_until = timezone.localdate() + timedelta(days=10)
         self.shop.save()
@@ -1167,3 +1167,19 @@ class PaymentReturnByPostTests(ShopTestMixin, TestCase):
         self.assertEqual(response.status_code, 302)
         payment.refresh_from_db()
         self.assertEqual(payment.status, 'Completed')
+
+
+class BrandTests(TestCase):
+    def test_new_name_logo_and_icons(self):
+        import json
+        html = self.client.get('/').content.decode()
+        self.assertIn('SellPunch', html)
+        self.assertNotIn('SohojSell', html)
+        self.assertIn('brand/sellpunch-logo.svg', html)
+        self.assertIn('rel="apple-touch-icon"', html)
+        login = self.client.get(reverse('login')).content.decode()
+        self.assertIn('brand/sellpunch-logo.svg', login)
+        manifest = self.client.get('/site.webmanifest')
+        self.assertEqual(manifest['Content-Type'], 'application/manifest+json')
+        self.assertEqual(json.loads(manifest.content)['name'], 'SellPunch')
+        self.assertEqual(self.client.get('/favicon.ico').status_code, 302)

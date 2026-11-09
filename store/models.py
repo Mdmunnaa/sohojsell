@@ -154,7 +154,7 @@ class Shop(models.Model):
         base = getattr(settings, 'STORE_BASE_DOMAIN', '')
         if base:
             return f'{self.slug}.{base}'
-        host = getattr(settings, 'RENDER_EXTERNAL_HOSTNAME', None) or 'sohojsell.com'
+        host = getattr(settings, 'RENDER_EXTERNAL_HOSTNAME', None) or 'sellpunch.com'
         return f'{host}{self.storefront_url}'
 
     def __str__(self):
@@ -283,7 +283,7 @@ class MasterSetting(models.Model):
     sms_api_key = models.CharField(max_length=255, blank=True, null=True)
     sms_sender_id = models.CharField(max_length=255, blank=True, null=True)
 
-    platform_name = models.CharField(max_length=100, default='SohojSell')
+    platform_name = models.CharField(max_length=100, default='SellPunch')
     delivery_charge_default = models.DecimalField(max_digits=8, decimal_places=2, default=100.00)
 
     def __str__(self):

@@ -1,6 +1,6 @@
 # store/subdomains.py
 """
-দোকানের সাবডোমেইন (munnafashion.sohojsell.com-এর "munnafashion" অংশ) — নিয়ম এক জায়গায়।
+দোকানের সাবডোমেইন (munnafashion.sellpunch.com-এর "munnafashion" অংশ) — নিয়ম এক জায়গায়।
 Edumi-র নিয়ম থেকে আনা: ৩-৩০ অক্ষর, ছোট হাতের ইংরেজি অক্ষর/সংখ্যা/হাইফেন, শুরু-শেষে হাইফেন নয়।
 সাবডোমেইন ডেটাবেসে Shop.slug ফিল্ডে থাকে।
 """
@@ -16,7 +16,7 @@ SUBDOMAIN_RE = re.compile(r'^[a-z0-9](?:[a-z0-9-]{1,28})[a-z0-9]$')
 RESERVED_SUBDOMAINS = frozenset({
     'www', 'admin', 'administrator', 'root', 'demo', 'test', 'testing', 'staging', 'dev', 'api', 'app', 'apps',
     'mail', 'email', 'smtp', 'imap', 'pop', 'ftp', 'cdn', 'static', 'media', 'assets', 'files', 'img', 'images',
-    'sohojsell', 'support', 'help', 'helpdesk', 'blog', 'docs', 'guide', 'status', 'billing', 'pay', 'payment',
+    'sohojsell', 'sellpunch', 'support', 'help', 'helpdesk', 'blog', 'docs', 'guide', 'status', 'billing', 'pay', 'payment',
     'master', 'hq', 'dashboard', 'login', 'signup', 'register', 'account', 'accounts', 'info', 'hello', 'refund',
     'partner', 'partners', 'affiliate', 'affiliates', 'news', 'shop', 'store', 'ns1', 'ns2', 'mx',
     'domains', 'domain', 'localhost', 'saas-master', 'webhook', 'webhooks', 'privacy', 'terms', 'contact',
