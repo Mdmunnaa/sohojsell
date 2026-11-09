@@ -79,27 +79,24 @@ class OrderCreateForm(forms.Form):
         super().__init__(*args, **kwargs)
         if shop:
             self.fields['product'].queryset = Product.objects.filter(shop=shop, is_active=True, stock_quantity__gt=0)
-class ShopSettingsForm(forms.ModelForm):
-    """Settings পেইজ: কুরিয়ার আর SMS। দোকান আর ওয়েবসাইটের সব তথ্য এখন website_forms.py-তে।"""
-    # Pathao কানেক্ট করার সময় একবারই লাগে; সেভ হয় না
-    pathao_email = forms.CharField(required=False, max_length=150, widget=forms.EmailInput(
-        attrs={'class': 'form-control', 'placeholder': 'Pathao মার্চেন্ট অ্যাকাউন্টের ইমেইল', 'autocomplete': 'off'}))
-    pathao_password = forms.CharField(required=False, max_length=150, strip=False, widget=forms.PasswordInput(
-        attrs={'class': 'form-control', 'placeholder': 'Pathao পাসওয়ার্ড (সেভ হয় না)', 'autocomplete': 'new-password'}))
 
-    # এগুলো পেইজে দেখানো হয় না; ফাঁকা রেখে সেভ করলে আগেরটাই থাকে
+
+SAVED_SECRET_PLACEHOLDER = '•••••••• সেভ করা আছে (বদলাতে নতুনটা দিন)'
+INPUT = {'class': 'form-control'}
+
+
+class _CourierForm(forms.ModelForm):
+    """
+    Settings পেইজের প্রতিটা কুরিয়ার আলাদা ফর্ম, তাই একটা সেভ করলে অন্যটার কিছু বদলায় না।
+    গোপন চাবিগুলো পেইজে দেখানো হয় না; ফাঁকা রেখে সেভ করলে আগেরটাই থাকে।
+    """
     SECRET_FIELDS = ('steadfast_secret_key', 'pathao_client_secret', 'redx_access_token')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for name in self.SECRET_FIELDS:
-            if self.instance and getattr(self.instance, name, None):
-                self.fields[name].widget.attrs['placeholder'] = '•••••••• সেভ করা আছে (বদলাতে নতুনটা দিন)'
-        stores = (self.instance.pathao_stores or []) if self.instance and self.instance.pk else []
-        if stores:
-            self.fields['pathao_store_id'].widget = forms.Select(
-                attrs={'class': 'form-select'},
-                choices=[(str(st['id']), f"{st['name']} (#{st['id']})") for st in stores])
+            if name in self.fields and getattr(self.instance, name, None):
+                self.fields[name].widget.attrs['placeholder'] = SAVED_SECRET_PLACEHOLDER
 
     def _keep_secret(self, name):
         value = (self.cleaned_data.get(name) or '').strip()
@@ -114,29 +111,97 @@ class ShopSettingsForm(forms.ModelForm):
     def clean_redx_access_token(self):
         return self._keep_secret('redx_access_token')
 
+
+class SteadfastSettingsForm(_CourierForm):
     def clean(self):
         data = super().clean()
-        if data.get('pathao_password') and not data.get('pathao_email'):
-            self.add_error('pathao_email', 'Pathao কানেক্ট করতে ইমেইলও দিন।')
+        if not (data.get('steadfast_api_key') or '').strip():
+            self.add_error('steadfast_api_key', 'Steadfast-এর API Key দিন।')
+        if not data.get('steadfast_secret_key'):
+            self.add_error('steadfast_secret_key', 'Steadfast-এর Secret Key দিন।')
         return data
 
     class Meta:
         model = Shop
-        fields = ['steadfast_api_key', 'steadfast_secret_key',
-                  'pathao_client_id', 'pathao_client_secret', 'pathao_store_id', 'redx_access_token',
-                  'is_sms_active']
+        fields = ['steadfast_api_key', 'steadfast_secret_key']
         widgets = {
-            'steadfast_api_key': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Steadfast API Key'}),
-            'steadfast_secret_key': forms.PasswordInput(
-                attrs={'class': 'form-control', 'placeholder': 'Steadfast Secret Key', 'autocomplete': 'new-password'}),
-            'pathao_client_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Client ID', 'autocomplete': 'off'}),
-            'pathao_client_secret': forms.PasswordInput(
-                attrs={'class': 'form-control', 'placeholder': 'Client Secret', 'autocomplete': 'new-password'}),
-            'pathao_store_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'কানেক্ট করলে নিজে থেকে আসবে'}),
-            'redx_access_token': forms.PasswordInput(
-                attrs={'class': 'form-control', 'placeholder': 'RedX API Access Token', 'autocomplete': 'new-password'}),
-            'is_sms_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'steadfast_api_key': forms.TextInput(attrs={**INPUT, 'placeholder': 'API Key', 'autocomplete': 'off',
+                                                        'spellcheck': 'false'}),
+            'steadfast_secret_key': forms.PasswordInput(attrs={**INPUT, 'placeholder': 'Secret Key',
+                                                               'autocomplete': 'new-password'}),
         }
+
+
+class PathaoSettingsForm(_CourierForm):
+    """
+    কানেক্ট করার আগে: Client ID, Client Secret, ইমেইল আর পাসওয়ার্ড (পাসওয়ার্ড সেভ হয় না)।
+    কানেক্ট হওয়ার পরে: শুধু কোন স্টোর থেকে পার্সেল যাবে।
+    """
+    pathao_email = forms.CharField(required=False, max_length=150, widget=forms.EmailInput(
+        attrs={**INPUT, 'placeholder': 'Pathao-তে লগইনের ইমেইল', 'autocomplete': 'off'}))
+    pathao_password = forms.CharField(required=False, max_length=150, strip=False, widget=forms.PasswordInput(
+        attrs={**INPUT, 'placeholder': 'Pathao পাসওয়ার্ড', 'autocomplete': 'new-password'}))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.connected = bool(self.instance and self.instance.pathao_access_token)
+        if self.connected:
+            for name in ('pathao_client_id', 'pathao_client_secret', 'pathao_email', 'pathao_password'):
+                self.fields.pop(name)
+            stores = self.instance.pathao_stores or []
+            if stores:
+                self.fields['pathao_store_id'].widget = forms.Select(
+                    attrs={'class': 'form-select'},
+                    choices=[(str(st['id']), f"{st['name']} (#{st['id']})") for st in stores])
+        else:
+            self.fields.pop('pathao_store_id')
+
+    def clean(self):
+        data = super().clean()
+        if self.connected:
+            if not data.get('pathao_store_id'):
+                self.add_error('pathao_store_id', 'কোন স্টোর থেকে পার্সেল যাবে বেছে নিন।')
+            return data
+        required = {'pathao_client_id': 'Client ID দিন।', 'pathao_client_secret': 'Client Secret দিন।',
+                    'pathao_email': 'Pathao-তে লগইনের ইমেইল দিন।', 'pathao_password': 'Pathao-র পাসওয়ার্ড দিন।'}
+        for name, message in required.items():
+            if not (data.get(name) or '').strip():
+                self.add_error(name, message)
+        return data
+
+    class Meta:
+        model = Shop
+        fields = ['pathao_client_id', 'pathao_client_secret', 'pathao_store_id']
+        widgets = {
+            'pathao_client_id': forms.TextInput(attrs={**INPUT, 'placeholder': 'Client ID', 'autocomplete': 'off',
+                                                       'spellcheck': 'false'}),
+            'pathao_client_secret': forms.PasswordInput(attrs={**INPUT, 'placeholder': 'Client Secret',
+                                                               'autocomplete': 'new-password'}),
+            'pathao_store_id': forms.TextInput(attrs={**INPUT, 'placeholder': 'স্টোর আইডি'}),
+        }
+
+
+class RedxSettingsForm(_CourierForm):
+    def clean(self):
+        data = super().clean()
+        if not data.get('redx_access_token'):
+            self.add_error('redx_access_token', 'RedX-এর API Access Token দিন।')
+        return data
+
+    class Meta:
+        model = Shop
+        fields = ['redx_access_token']
+        widgets = {
+            'redx_access_token': forms.PasswordInput(attrs={**INPUT, 'placeholder': 'API Access Token',
+                                                            'autocomplete': 'new-password'}),
+        }
+
+
+class SmsSettingsForm(forms.ModelForm):
+    class Meta:
+        model = Shop
+        fields = ['is_sms_active']
+        widgets = {'is_sms_active': forms.CheckboxInput(attrs={'class': 'form-check-input', 'role': 'switch'})}
 
 
 from .models import Banner

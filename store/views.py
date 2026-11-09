@@ -21,7 +21,8 @@ from .plans import (
     can_add_staff, has_custom_domain, has_facebook, plan_label, product_limit, products_remaining,
     staff_limit, storefront_closes_on, storefront_is_open, upgrade_message,
 )
-from .forms import ShopSetupForm, ProductForm, OrderCreateForm, ShopSettingsForm
+from .forms import (ShopSetupForm, ProductForm, OrderCreateForm, SteadfastSettingsForm, PathaoSettingsForm,
+                    RedxSettingsForm, SmsSettingsForm)
 from .links import storefront_link
 from . import couriers
 from .themes import THEMES
@@ -485,58 +486,93 @@ def business_reports(request):
 # ============================================================
 # SETTINGS
 # ============================================================
+SETTINGS_TABS = [
+    ('courier', 'bi-truck', 'কুরিয়ার'),
+    ('sms', 'bi-chat-left-text', 'SMS'),
+    ('facebook', 'bi-facebook', 'Facebook'),
+]
+SETTINGS_FORMS = {
+    'steadfast': SteadfastSettingsForm,
+    'pathao': PathaoSettingsForm,
+    'redx': RedxSettingsForm,
+    'sms': SmsSettingsForm,
+}
+# পুরনো ফর্ম (বা কোনো বাটন) section না পাঠালে বাটনের নাম দেখে বোঝা হয় কোন ভাগ
+COURIER_ACTION_SECTIONS = {
+    'test_Steadfast': 'steadfast', 'steadfast_disconnect': 'steadfast',
+    'test_Pathao': 'pathao', 'pathao_connect': 'pathao', 'pathao_disconnect': 'pathao',
+    'test_RedX': 'redx', 'redx_disconnect': 'redx',
+}
+
+
+def _settings_url(tab, anchor=''):
+    return f"{reverse('settings')}?tab={tab}" + (f'#{anchor}' if anchor else '')
+
+
 @login_required(login_url='/accounts/login/')
 def shop_settings(request):
+    """
+    Settings: কুরিয়ার, SMS আর Facebook — তিনটা ট্যাব। প্রতিটা কুরিয়ার আর SMS আলাদা ফর্ম,
+    তাই একটা সেভ করলে বাকিগুলোর কিছু বদলায় না। দোকানের তথ্য, ডেলিভারি, পেমেন্ট "ওয়েবসাইট" পেইজে।
+    """
     shop = request.user.shop
+    tab_keys = [key for key, _icon, _label in SETTINGS_TABS]
+    active_tab = request.GET.get('tab') if request.GET.get('tab') in tab_keys else 'courier'
+    forms_by_section = {}
+
     if request.method == 'POST':
-        form = ShopSettingsForm(request.POST, request.FILES, instance=shop)
-        if form.is_valid():
-            shop = form.save()
-            messages.success(request, 'সেটিংস সেভ হয়েছে।')
-            _courier_actions_after_save(request, shop, form)
-            return redirect(reverse('settings') + ('#couriers' if request.POST.get('courier_action') else ''))
-    else:
-        form = ShopSettingsForm(instance=shop)
+        action = request.POST.get('courier_action', '')
+        section = request.POST.get('section') or COURIER_ACTION_SECTIONS.get(action, '')
+        if section not in SETTINGS_FORMS:
+            messages.error(request, 'কিছু সেভ হয়নি, পেইজটা রিফ্রেশ করে আবার চেষ্টা করুন।')
+            return redirect('settings')
+        tab = 'sms' if section == 'sms' else 'courier'
+        if action.endswith('_disconnect'):
+            _courier_disconnect(request, shop, action, section)
+            return redirect(_settings_url(tab, section))
+        form = SETTINGS_FORMS[section](request.POST, instance=shop)
+        if form.is_valid() and _save_settings_section(request, shop, form, section, action):
+            return redirect(_settings_url(tab, section))
+        # ফর্ম ভুল বা কুরিয়ার মানেনি: যা টাইপ করেছিলেন তা রেখে ভুলটা দেখানো হয়; দোকানে কিছু সেভ হয়নি
+        shop.refresh_from_db()
+        if section == 'pathao' and bool(shop.pathao_access_token) != form.connected:
+            form = PathaoSettingsForm(instance=shop)    # টোকেন পাওয়া গেছে কিন্তু স্টোর নেই
+        forms_by_section[section] = form
+        active_tab = tab
+
+    for section, form_class in SETTINGS_FORMS.items():
+        forms_by_section.setdefault(section, form_class(instance=shop))
     shop.ensure_webhook_token()
+    connected = couriers.connected(shop)
+    fb_page = getattr(shop, 'fb_page', None)
     return render(request, 'store/settings.html', {
-        'form': form,
+        'shop': shop,
+        'tabs': SETTINGS_TABS,
+        'active_tab': active_tab,
+        'steadfast_form': forms_by_section['steadfast'],
+        'pathao_form': forms_by_section['pathao'],
+        'redx_form': forms_by_section['redx'],
+        'sms_form': forms_by_section['sms'],
+        'courier_connected': connected,
+        'courier_count': sum(connected.values()),
         'facebook_allowed': has_facebook(shop),
-        'courier_connected': couriers.connected(shop),
-        'fb_recent_replies': shop.fb_comment_replies.select_related('product')[:5],
+        'fb_page': fb_page,
+        'fb_recent_replies': shop.fb_comment_replies.select_related('product')[:5] if fb_page else [],
         'steadfast_webhook_url': request.build_absolute_uri(reverse('steadfast_webhook')),
+        'days_left': shop.days_remaining(),
     })
 
 
-def _courier_actions_after_save(request, shop, form):
-    """সেভের পর: Pathao-র পাসওয়ার্ড দিলে কানেক্ট, আর "কানেকশন টেস্ট" বাটন চাপলে টেস্ট।"""
-    password = form.cleaned_data.get('pathao_password')
-    if password:
-        try:
-            stores = couriers.pathao_connect(shop, form.cleaned_data.get('pathao_client_id'),
-                                             form.cleaned_data.get('pathao_client_secret'),
-                                             form.cleaned_data.get('pathao_email'), password)
-            messages.success(request, f'Pathao কানেক্ট হয়েছে ✓ ({len(stores)}টা স্টোর পাওয়া গেছে)। '
-                                      'আপনার Pathao পাসওয়ার্ড আমরা সেভ করি না।')
-        except couriers.CourierError as exc:
-            messages.error(request, str(exc))
-
-    action = request.POST.get('courier_action', '')
-    if action.startswith('test_'):
-        courier = action[5:]
-        if courier in couriers.COURIERS:
-            try:
-                messages.success(request, couriers.test_connection(shop, courier))
-            except couriers.CourierError as exc:
-                messages.error(request, str(exc))
-    elif action == 'steadfast_disconnect':
+def _courier_disconnect(request, shop, action, section=''):
+    if action == 'steadfast_disconnect':
         shop.steadfast_api_key = None
         shop.steadfast_secret_key = None
         shop.save(update_fields=['steadfast_api_key', 'steadfast_secret_key'])
-        messages.info(request, 'Steadfast-এর চাবি সরানো হয়েছে।')
+        messages.info(request, 'Steadfast-এর সংযোগ সরানো হয়েছে।', extra_tags=section)
     elif action == 'redx_disconnect':
         shop.redx_access_token = None
         shop.save(update_fields=['redx_access_token'])
-        messages.info(request, 'RedX টোকেন সরানো হয়েছে।')
+        messages.info(request, 'RedX-এর সংযোগ সরানো হয়েছে।', extra_tags=section)
     elif action == 'pathao_disconnect':
         shop.pathao_access_token = None
         shop.pathao_refresh_token = ''
@@ -546,7 +582,48 @@ def _courier_actions_after_save(request, shop, form):
         shop.pathao_store_id = None
         shop.save(update_fields=['pathao_access_token', 'pathao_refresh_token', 'pathao_token_expires_at',
                                  'pathao_client_secret', 'pathao_stores', 'pathao_store_id'])
-        messages.info(request, 'Pathao-র সংযোগ সরানো হয়েছে।')
+        messages.info(request, 'Pathao-র সংযোগ সরানো হয়েছে।', extra_tags=section)
+
+
+def _save_settings_section(request, shop, form, section, action):
+    """
+    ঠিকঠাক ফর্ম সেভ করে। True = সব ঠিক, False = কুরিয়ার চাবি মানেনি (কিছু সেভ হয়নি)।
+    "যুক্ত করুন" / "কানেকশন টেস্ট" চাপলে আগে কুরিয়ারের সাথে মিলিয়ে দেখা হয়, তারপর সেভ;
+    তাই ভুল চাবি দিয়ে চালু থাকা সংযোগ নষ্ট হয় না।
+    """
+    if section == 'sms':
+        shop = form.save()
+        messages.success(request, 'ওয়েবসাইটের অর্ডারে কাস্টমারকে SMS যাবে ✓' if shop.is_sms_active
+                         else 'অর্ডারের SMS বন্ধ করা হয়েছে।', extra_tags=section)
+        return True
+
+    if section == 'pathao' and not form.connected:
+        data = form.cleaned_data
+        try:
+            stores = couriers.pathao_connect(shop, data['pathao_client_id'], data['pathao_client_secret'],
+                                             data['pathao_email'], data['pathao_password'])
+        except couriers.CourierError as exc:
+            messages.error(request, str(exc), extra_tags=section)
+            return False
+        messages.success(request, f'Pathao যুক্ত হয়েছে ✓ ({len(stores)}টা স্টোর পাওয়া গেছে)। '
+                                  'আপনার Pathao পাসওয়ার্ড আমরা সেভ করি না।', extra_tags=section)
+        return True
+
+    courier = action[5:] if action.startswith('test_') else ''
+    if courier in couriers.COURIERS:
+        candidate = form.save(commit=False)      # এখনো ডাটাবেসে যায়নি
+        try:
+            result = couriers.test_connection(candidate, courier)
+        except couriers.CourierError as exc:
+            messages.error(request, f'{exc} কিছু সেভ হয়নি।', extra_tags=section)
+            return False
+        candidate.save(update_fields=[name for name in form._meta.fields if name in form.fields])
+        messages.success(request, result, extra_tags=section)
+        return True
+
+    form.save()
+    messages.success(request, 'সেভ হয়েছে ✓', extra_tags=section)
+    return True
 
 
 # ============================================================
@@ -1987,12 +2064,13 @@ def fb_page_select(request):
 
         from .facebook_bot import subscribe_page
         if subscribe_page(selected_page_id, page_token):
-            messages.success(request, f"✅ '{selected_page.get('name')}' পেইজ কানেক্ট হয়েছে। "
-                                      "এখন পোস্টে কেউ কমেন্ট করলে তার ইনবক্সে অর্ডারের লিংক চলে যাবে।")
+            messages.success(request, f"'{selected_page.get('name')}' পেইজ যুক্ত হয়েছে ✓ "
+                                      "এখন পোস্টে কেউ কমেন্ট করলে তার ইনবক্সে অর্ডারের লিংক চলে যাবে।",
+                             extra_tags='facebook')
         else:
-            messages.warning(request, f"'{selected_page.get('name')}' পেইজ কানেক্ট হয়েছে, কিন্তু কমেন্টের খবর পাওয়া "
-                                      "চালু করা যায়নি। একটু পরে আবার কানেক্ট করে দেখুন।")
-        return redirect('dashboard')
+            messages.warning(request, f"'{selected_page.get('name')}' পেইজ যুক্ত হয়েছে, কিন্তু কমেন্টের খবর পাওয়া "
+                                      "চালু করা যায়নি। একটু পরে আবার যুক্ত করে দেখুন।", extra_tags='facebook')
+        return redirect(_settings_url('facebook'))
 
     context = {
         'pages': pages,
@@ -2010,7 +2088,7 @@ def fb_disconnect(request):
     কেউ ডিসকানেক্ট করাতে না পারে।
     """
     if request.method != 'POST':
-        return redirect('settings')
+        return redirect(_settings_url('facebook'))
     shop = getattr(request.user, 'shop', None)
     if shop:
         from .facebook_bot import unsubscribe_page
@@ -2018,8 +2096,9 @@ def fb_disconnect(request):
             unsubscribe_page(connection.page_id, connection.page_access_token)
         FacebookPageConnection.objects.filter(shop=shop).delete()
         SocialToken.objects.filter(account__user=request.user, account__provider='facebook').delete()
-        messages.success(request, "Facebook Page disconnect করা হয়েছে, আর সেভ করা Facebook টোকেন মুছে ফেলা হয়েছে।")
-    return redirect('settings')
+        messages.success(request, 'Facebook পেইজের সংযোগ সরানো হয়েছে, আর সেভ করা Facebook টোকেন মুছে ফেলা হয়েছে।',
+                         extra_tags='facebook')
+    return redirect(_settings_url('facebook'))
 
 
 @csrf_exempt
@@ -2062,8 +2141,8 @@ def fb_bot_settings(request):
             connection.comment_bot_enabled = request.POST.get('comment_bot_enabled') == 'on'
             connection.public_reply_enabled = request.POST.get('public_reply_enabled') == 'on'
             connection.save(update_fields=['comment_bot_enabled', 'public_reply_enabled', 'updated_at'])
-            messages.success(request, 'কমেন্ট বটের সেটিং সেভ হয়েছে।')
-    return redirect(reverse('settings') + '#facebook')
+            messages.success(request, 'কমেন্ট থেকে অর্ডারের সেটিং সেভ হয়েছে।', extra_tags='facebook')
+    return redirect(_settings_url('facebook'))
 
 
 @login_required(login_url='/accounts/login/')

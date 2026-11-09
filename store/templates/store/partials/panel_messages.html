@@ -1,0 +1,7 @@
+{# section দিলে শুধু সেই কার্ডের মেসেজ (extra_tags = section), না দিলে সাধারণ মেসেজগুলো #}
+{% for m in messages %}{% if section and m.extra_tags == section or not section and not m.extra_tags %}
+<div class="ws-alert {{ m.level_tag|default:'info' }}" role="{% if m.level_tag == 'error' %}alert{% else %}status{% endif %}">
+  <i class="bi {% if m.level_tag == 'success' %}bi-check-circle-fill{% elif m.level_tag == 'error' %}bi-x-circle-fill{% elif m.level_tag == 'warning' %}bi-exclamation-triangle-fill{% else %}bi-info-circle-fill{% endif %}" aria-hidden="true"></i>
+  <span>{{ m }}</span>
+</div>
+{% endif %}{% endfor %}

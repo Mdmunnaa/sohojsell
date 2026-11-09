@@ -670,6 +670,70 @@ class CourierTests(ShopTestMixin, TestCase):
         self.assertTrue(any('Steadfast কানেক্ট আছে' in m for m in msgs), msgs)
 
 
+class SettingsPageTests(ShopTestMixin, TestCase):
+    """সেটিংস পেইজ: ট্যাব, আলাদা ফর্ম, আর ভুল চাবি দিলে কিছু সেভ না হওয়া।"""
+
+    def setUp(self):
+        self.user, self.shop = self.make_shop()
+
+    def test_every_tab_renders_in_bangla(self):
+        for tab, text in [('courier', 'Steadfast যুক্ত করুন'), ('sms', 'অর্ডার পেলে কাস্টমারকে SMS'),
+                          ('facebook', 'Facebook দিয়ে যুক্ত করুন')]:
+            response = self.client.get(reverse('settings') + f'?tab={tab}')
+            self.assertEqual(response.status_code, 200)
+            html = response.content.decode()
+            self.assertIn(text, html)
+            self.assertIn('<div class="topbar-title">সেটিংস</div>', html)
+        self.assertIn('Steadfast যুক্ত করুন', self.client.get(reverse('settings') + '?tab=nope').content.decode())
+
+    def test_wrong_keys_are_not_saved_and_working_keys_stay(self):
+        self.shop.steadfast_api_key, self.shop.steadfast_secret_key = 'GOODKEY', 'GOODSECRET'
+        self.shop.save()
+        fake = FakeCourierAPI({('GET', '/get_balance'): (401, {'message': 'Unauthorized'})})
+        with mock.patch('store.couriers.requests.request', fake):
+            response = self.client.post(reverse('settings'), {
+                'section': 'steadfast', 'steadfast_api_key': 'BADKEY', 'steadfast_secret_key': 'BADSECRET',
+                'courier_action': 'test_Steadfast'})
+        self.assertEqual(response.status_code, 200)               # ভুল দেখিয়ে একই পেইজ
+        self.assertIn('Steadfast API Key বা Secret Key ভুল।', response.content.decode())
+        self.shop.refresh_from_db()
+        self.assertEqual((self.shop.steadfast_api_key, self.shop.steadfast_secret_key), ('GOODKEY', 'GOODSECRET'))
+
+    def test_new_courier_needs_both_keys(self):
+        response = self.client.post(reverse('settings'), {
+            'section': 'steadfast', 'steadfast_api_key': 'ONLYKEY', 'courier_action': 'test_Steadfast'})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Steadfast-এর Secret Key দিন।', response.content.decode())
+        self.shop.refresh_from_db()
+        self.assertFalse(self.shop.steadfast_api_key)
+
+    def test_sms_toggle_does_not_touch_couriers(self):
+        self.shop.redx_access_token = 'REDX'
+        self.shop.save()
+        response = self.client.post(reverse('settings'), {'section': 'sms'})     # সুইচ বন্ধ
+        self.assertRedirects(response, reverse('settings') + '?tab=sms#sms', fetch_redirect_response=False)
+        self.shop.refresh_from_db()
+        self.assertFalse(self.shop.is_sms_active)
+        self.assertEqual(self.shop.redx_access_token, 'REDX')
+
+    def test_disconnect_and_failed_pathao_connect(self):
+        self.shop.redx_access_token = 'REDX'
+        self.shop.save()
+        self.client.post(reverse('settings'), {'section': 'redx', 'courier_action': 'redx_disconnect'})
+        self.shop.refresh_from_db()
+        self.assertIsNone(self.shop.redx_access_token)
+
+        fake = FakeCourierAPI({('POST', '/aladdin/api/v1/issue-token'): (401, {'message': 'Invalid credentials'})})
+        with mock.patch('store.couriers.requests.request', fake):
+            response = self.client.post(reverse('settings'), {
+                'section': 'pathao', 'pathao_client_id': 'CID', 'pathao_client_secret': 'CSECRET',
+                'pathao_email': 'me@example.com', 'pathao_password': 'x', 'courier_action': 'pathao_connect'})
+        self.assertEqual(response.status_code, 200)
+        self.shop.refresh_from_db()
+        self.assertFalse(self.shop.pathao_client_id)
+        self.assertFalse(self.shop.pathao_access_token)
+
+
 class SoldCountTests(ShopTestMixin, TestCase):
     def setUp(self):
         from .models import Customer, Product

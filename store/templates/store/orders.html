@@ -1,4 +1,5 @@
 {% extends 'store/base.html' %}
+{% block page_title %}অর্ডার{% endblock %}
 
 {% block title %}Orders - {{ request.user.shop.name }}{% endblock %}
 
@@ -196,7 +197,7 @@
           </div>
 
           {% if not courier_connected.Steadfast and not courier_connected.Pathao and not courier_connected.RedX %}
-          <div class="alert alert-warning small mt-3 mb-0">কোনো কুরিয়ার সেটআপ করা নেই। <a href="{% url 'settings' %}#couriers">Settings থেকে যোগ করুন</a>।</div>
+          <div class="alert alert-warning small mt-3 mb-0">কোনো কুরিয়ার সেটআপ করা নেই। <a href="{% url 'settings' %}?tab=courier">সেটিংস থেকে যোগ করুন</a>।</div>
           {% endif %}
         </div>
         <div class="modal-footer border-top-0 px-4 pb-4">

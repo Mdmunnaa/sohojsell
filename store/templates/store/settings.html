@@ -1,337 +1,505 @@
 {% extends 'store/base.html' %}
-{% block title %}Settings — {{ request.user.shop.name }}{% endblock %}
+{% load bangla %}
+{% block title %}সেটিংস — {{ shop.name }}{% endblock %}
+{% block page_title %}সেটিংস{% endblock %}
+{% block message_toasts %}{% endblock %}
 {% block content %}
-
+{% include 'store/partials/panel_styles.html' %}
 <style>
-    /* Ultra-Premium Settings Styles */
-    .settings-wrapper { max-width: 1100px; margin: 0 auto; padding-bottom: 80px; font-family: 'Plus Jakarta Sans', sans-serif; }
+  /* হেডার: প্যাকেজ আর ওয়েবসাইট পেইজের শর্টকাট */
+  .st-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .st-plan { display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 10px 10px 10px 14px; }
+  .st-plan .lbl { font-size: 11.5px; color: #94A3B8; font-weight: 600; }
+  .st-plan .val { font-size: 15px; font-weight: 800; color: #fff; line-height: 1.25; }
+  .st-plan .days { font-size: 12px; color: #94A3B8; font-weight: 600; }
+  .st-plan .days.soon { color: #FCD34D; }
+  .st-plan .days.over { color: #FCA5A5; }
+  .st-plan a { background: #fff; color: #0F172A; border-radius: 10px; padding: 8px 14px; font-weight: 800; font-size: 13px; text-decoration: none; white-space: nowrap; }
+  .st-shortcut { margin-top: 16px; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.04); border: 1px dashed rgba(255,255,255,.16); border-radius: 12px; padding: 10px 14px; font-size: 13px; color: #CBD5E1; text-decoration: none; }
+  .st-shortcut:hover { background: rgba(255,255,255,.08); color: #E2E8F0; }
+  .st-shortcut b { color: #fff; }
+  .st-shortcut .go { margin-left: auto; color: #93C5FD; font-weight: 700; white-space: nowrap; }
 
-    .page-title-box { margin-bottom: 24px; }
-    .page-title { font-weight: 900; color: #0F172A; letter-spacing: -0.5px; margin: 0; font-size: 26px; }
-    .page-subtitle { color: #64748B; font-weight: 500; font-size: 14px; margin-top: 4px; }
+  .min-w-0 { min-width: 0; }
 
-    /* Custom Alert */
-    .alert-premium { border: none; border-radius: 16px; padding: 16px 20px; font-weight: 700; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); }
-    .alert-success-soft { background: #ECFDF5; color: #065F46; border-left: 4px solid #10B981; }
-    .alert-danger-soft { background: #FEF2F2; color: #991B1B; border-left: 4px solid #EF4444; }
+  /* কুরিয়ার কার্ড */
+  .cc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .cc-meter { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 700; color: #475569; white-space: nowrap; }
+  .cc-meter .bars { display: flex; gap: 4px; }
+  .cc-meter .bars span { width: 22px; height: 6px; border-radius: 3px; background: #E2E8F0; }
+  .cc-meter .bars span.on { background: #22C55E; }
+  .cc { border: 1px solid #E2E8F0; border-radius: 18px; background: #fff; margin-bottom: 14px; scroll-margin-top: 76px; overflow: hidden; }
+  .cc.is-on { border-color: #BBF7D0; box-shadow: 0 1px 0 #DCFCE7; }
+  .cc-head { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
+  .cc-logo { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 16px; flex-shrink: 0; letter-spacing: -.3px; font-family: var(--fn-head); }
+  .cc-title { min-width: 0; }
+  .cc-name { font-weight: 800; font-size: 15.5px; color: #0F172A; line-height: 1.25; }
+  .cc-sub { font-size: 12.5px; color: #64748B; margin-top: 2px; }
+  .chip { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; padding: 5px 11px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
+  .chip::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .chip.on { background: #DCFCE7; color: #15803D; }
+  .chip.off { background: #F1F5F9; color: #64748B; }
+  .chip.warn { background: #FEF3C7; color: #B45309; }
+  .cc-body { border-top: 1px solid #F1F5F9; padding: 16px 18px 18px; }
+  .cc-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+  .fact { background: #F8FAFC; border: 1px solid #EEF2F7; border-radius: 12px; padding: 10px 12px; min-width: 0; }
+  .fact .k { font-size: 11.5px; color: #64748B; font-weight: 700; }
+  .fact .v { font-size: 13.5px; font-weight: 800; color: #0F172A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fact .v.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; letter-spacing: .3px; }
+  .howto { display: flex; gap: 10px; align-items: flex-start; background: #F8FAFC; border-radius: 12px; padding: 11px 13px; font-size: 12.5px; color: #475569; margin-bottom: 16px; line-height: 1.6; }
+  .howto i { color: #3B82F6; font-size: 15px; line-height: 1.4; }
+  .cc-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
+  .btn-pill { border-radius: 11px; padding: 9px 16px; font-weight: 800; font-size: 13px; border: 1.5px solid transparent; display: inline-flex; align-items: center; gap: 7px; text-decoration: none; line-height: 1.3; }
+  .btn-dark-s { background: #0F172A; color: #fff; }
+  .btn-dark-s:hover { background: #1E293B; color: #fff; }
+  .btn-line { background: #fff; color: #0F172A; border-color: #E2E8F0; }
+  .btn-line:hover { border-color: #CBD5E1; background: #F8FAFC; color: #0F172A; }
+  .btn-del { background: none; border: 0; color: #DC2626; font-weight: 700; font-size: 13px; padding: 9px 4px; margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-del:hover { color: #B91C1C; text-decoration: underline; }
+  details.cc-more { margin-top: 12px; border: 1px solid #EEF2F7; border-radius: 12px; background: #fff; }
+  details.cc-more summary { list-style: none; cursor: pointer; padding: 11px 14px; font-size: 13px; font-weight: 800; color: #334155; display: flex; align-items: center; gap: 8px; }
+  details.cc-more summary::-webkit-details-marker { display: none; }
+  details.cc-more summary .chev { margin-left: auto; transition: transform .2s; color: #94A3B8; }
+  details.cc-more[open] summary .chev { transform: rotate(180deg); }
+  details.cc-more .more-body { padding: 0 14px 14px; }
+  .copy-row { display: flex; align-items: center; gap: 10px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 8px 8px 8px 12px; margin-top: 8px; min-width: 0; }
+  .copy-row .k { font-size: 11.5px; font-weight: 800; color: #64748B; white-space: nowrap; }
+  .copy-row code { font-size: 12px; color: #0F172A; word-break: break-all; flex: 1; min-width: 0; }
+  .copy-row button { border: 1px solid #E2E8F0; background: #fff; border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 700; color: #334155; white-space: nowrap; }
+  .cod-note { display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; color: #475569; margin-top: 6px; line-height: 1.6; }
+  .cod-note i { color: #16A34A; font-size: 15px; }
 
-    /* Settings Card */
-    .settings-card { background: #fff; border-radius: 24px; border: 1px solid #E2E8F0; box-shadow: 0 10px 30px rgba(0,0,0,0.03); margin-bottom: 24px; overflow: hidden; }
-    .sc-header { padding: 20px 24px; border-bottom: 1px solid #F1F5F9; background: rgba(248, 250, 252, 0.5); display: flex; align-items: center; gap: 10px; }
-    .sc-title { font-size: 16px; font-weight: 900; color: #0F172A; margin: 0; }
-    .sc-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-    .sc-body { padding: 24px; }
+  /* SMS */
+  .sms-hero { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; border-radius: 18px; padding: 20px 22px; background: linear-gradient(135deg, #EFF6FF, #F5F3FF); border: 1px solid #DBEAFE; margin-bottom: 16px; }
+  .sms-hero .ico { width: 52px; height: 52px; border-radius: 16px; background: #fff; color: #4F46E5; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 1px 2px rgba(15,23,42,.06); }
+  .sms-hero .num { font-size: 32px; font-weight: 800; color: #1E1B4B; line-height: 1; }
+  .sms-hero .lbl { font-size: 13px; color: #475569; font-weight: 600; margin-top: 4px; }
+  .sms-hero .buy { margin-left: auto; text-align: right; }
+  .sms-hero .buy small { display: block; font-size: 11.5px; color: #64748B; margin-top: 6px; }
+  .sms-hero.low { background: linear-gradient(135deg, #FFF7ED, #FEF2F2); border-color: #FED7AA; }
+  .sms-hero.low .ico { color: #EA580C; }
+  @media (max-width: 576px) { .sms-hero .buy { margin-left: 0; text-align: left; width: 100%; } }
+  .switch-row { display: flex; align-items: center; gap: 16px; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 16px 18px; cursor: pointer; margin: 0; background: #fff; }
+  .switch-row:has(input:checked) { border-color: #86EFAC; background: #F0FDF4; }
+  .switch-row .t { font-weight: 800; font-size: 14.5px; color: #0F172A; display: block; }
+  .switch-row .d { font-size: 12.5px; color: #64748B; display: block; margin-top: 2px; line-height: 1.55; }
+  .switch-row .form-switch { margin: 0 0 0 auto; padding-left: 2.9em; min-height: 0; flex-shrink: 0; }
+  .switch-row .form-check-input { width: 2.9em; height: 1.55em; cursor: pointer; margin-top: 0; }
+  .switch-row .form-check-input:checked { background-color: #16A34A; border-color: #16A34A; }
+  .switch-stack .switch-row + .switch-row { margin-top: 10px; }
+  .sms-preview { margin-top: 16px; }
+  .sms-preview .from { font-size: 12px; color: #64748B; font-weight: 700; margin-bottom: 6px; }
+  .sms-bubble { max-width: 440px; background: #F1F5F9; border-radius: 18px 18px 18px 4px; padding: 12px 15px; font-size: 13.5px; color: #0F172A; line-height: 1.6; }
 
-    /* Form Controls */
-    .form-label { font-weight: 800; color: #334155; font-size: 13px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;}
-    input[type="text"], input[type="url"], input[type="email"], textarea, input[type="file"], input[type="password"] {
-        width: 100%; padding: 14px 16px; border: 1.5px solid #E2E8F0; border-radius: 12px;
-        font-size: 14px; font-weight: 600; background: #F8FAFC; transition: 0.2s; outline: none; color: #0F172A;
-    }
-    input:focus, textarea:focus { border-color: #3B82F6; background: #fff; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); }
-    textarea { resize: vertical; min-height: 80px; }
+  /* Facebook */
+  .fb-page { display: flex; align-items: center; gap: 14px; }
+  .fb-pic { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; background: #1877F2; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 640px) { .steps { grid-template-columns: 1fr; } }
+  .step { border: 1px solid #EEF2F7; background: #F8FAFC; border-radius: 14px; padding: 12px 13px; font-size: 12.5px; color: #475569; line-height: 1.55; }
+  .step .n { width: 24px; height: 24px; border-radius: 50%; background: #0F172A; color: #fff; font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+  .step b { color: #0F172A; display: block; font-size: 13px; margin-bottom: 2px; }
+  .sub-h { font-weight: 800; font-size: 14px; color: #0F172A; margin: 22px 0 10px; }
+  .reply-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px; color: #334155; }
+  .reply-row:last-child { border-bottom: 0; }
+  .reply-row .when { margin-left: auto; color: #94A3B8; font-size: 12px; white-space: nowrap; }
+  .empty-state { text-align: center; padding: 26px 8px 8px; }
+  .empty-state .ico { width: 64px; height: 64px; border-radius: 20px; margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+  .empty-state h5 { font-weight: 800; font-size: 17px; color: #0F172A; margin-bottom: 6px; }
+  .empty-state p { color: #64748B; font-size: 13.5px; max-width: 460px; margin: 0 auto; }
+  .benefits { list-style: none; padding: 0; margin: 16px auto 22px; max-width: 430px; text-align: left; }
+  .benefits li { display: flex; gap: 10px; font-size: 13.5px; color: #334155; padding: 5px 0; line-height: 1.55; }
+  .benefits li i { color: #16A34A; font-size: 16px; line-height: 1.4; }
+  .btn-fb { background: #1877F2; color: #fff; border-radius: 12px; padding: 11px 22px; font-weight: 800; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-fb:hover { background: #166FE5; color: #fff; }
+  .danger-zone { margin-top: 22px; border: 1px solid #FECACA; background: #FEF2F2; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: #7F1D1D; }
+  .danger-zone b { display: block; font-size: 13.5px; color: #991B1B; }
+  .danger-zone .btn-del { margin-left: auto; background: #fff; border: 1px solid #FECACA; border-radius: 10px; padding: 8px 14px; }
 
-    /* রঙের থিম */
-    .theme-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-    @media (max-width: 576px) { .theme-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    .theme-opt { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 12px; border: 1.5px solid #E2E8F0; border-radius: 12px; cursor: pointer; background: #fff; transition: .15s; }
-    .theme-opt input { position: absolute; opacity: 0; pointer-events: none; }
-    .theme-opt:has(input:checked) { border-color: #0F172A; box-shadow: 0 0 0 3px rgba(15,23,42,.08); }
-    .theme-opt:has(input:focus-visible) { outline: 2px solid #3B82F6; outline-offset: 2px; }
-    .theme-swatch { height: 28px; border-radius: 8px; }
-    .theme-name { font-weight: 800; font-size: 13px; color: #0F172A; }
-    .theme-hint { font-size: 11px; color: #64748B; line-height: 1.3; }
-
-    /* Input Group */
-    .input-group-premium { display: flex; overflow: hidden; border-radius: 12px; border: 1.5px solid #E2E8F0; transition: 0.2s; }
-    .input-group-premium:focus-within { border-color: #10B981; box-shadow: 0 0 0 4px rgba(16,185,129,0.1); }
-    .ig-text { background: #F8FAFC; border: none; padding: 14px 16px; color: #64748B; font-weight: 700; border-right: 1px solid #E2E8F0; }
-    .input-group-premium input { border: none; border-radius: 0; box-shadow: none; background: #fff; }
-    .ig-btn { background: #10B981; color: #fff; border: none; padding: 0 20px; font-weight: 800; text-decoration: none; display: flex; align-items: center; transition: 0.2s; }
-    .ig-btn:hover { background: #059669; color: #fff; }
-
-    /* Custom Toggle Switch for SMS */
-    .form-switch .form-check-input { width: 2.5rem; height: 1.25rem; cursor: pointer; margin-top: 0; }
-    .form-switch .form-check-input:checked { background-color: #10B981; border-color: #10B981; box-shadow: 0 2px 8px rgba(16,185,129,0.3); }
-
-    /* Logo Upload Area */
-    .logo-upload-box { text-align: center; padding: 10px; }
-    .logo-preview-wrap { position: relative; width: 120px; height: 120px; margin: 0 auto 16px; border-radius: 50%; padding: 4px; border: 2px dashed #CBD5E1; background: #F8FAFC; }
-    .logo-preview-wrap img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-    .logo-placeholder { width: 100%; height: 100%; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; font-size: 40px; color: #94A3B8; }
-
-    input[type="file"] { padding: 10px; cursor: pointer; border: 1px dashed #CBD5E1; background: #fff; }
-    input[type="file"]::file-selector-button { background: #F1F5F9; border: none; padding: 8px 16px; border-radius: 8px; color: #334155; font-weight: 800; cursor: pointer; margin-right: 12px; transition: 0.2s; }
-    input[type="file"]::file-selector-button:hover { background: #E2E8F0; color: #0F172A; }
-
-    /* Premium Plan Card */
-    .plan-card { background: linear-gradient(135deg, #0F172A, #1E293B); border-radius: 24px; padding: 30px 24px; text-align: center; color: #fff; position: relative; overflow: hidden; box-shadow: 0 15px 35px rgba(15,23,42,0.2); }
-    .plan-card::before { content: ''; position: absolute; top: -50%; left: -20%; width: 70%; height: 120%; background: rgba(255,255,255,0.05); transform: rotate(30deg); }
-    .plan-icon { font-size: 48px; line-height: 1; margin-bottom: 10px; display: inline-block; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2)); }
-    .plan-label { font-size: 12px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; }
-    .plan-name { font-size: 28px; font-weight: 900; margin: 4px 0 16px; letter-spacing: -0.5px; }
-    .btn-upgrade { background: linear-gradient(135deg, #F59E0B, #D97706); color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 800; font-size: 14px; text-decoration: none; display: inline-block; transition: 0.2s; box-shadow: 0 4px 15px rgba(245,158,11,0.3); }
-    .btn-upgrade:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(245,158,11,0.4); color: #fff; }
-
-    /* Floating Save Bar */
-    .save-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); padding: 12px 20px; border-radius: 100px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.5); z-index: 1000; display: flex; align-items: center; gap: 16px; }
-    .save-bar span { font-weight: 700; color: #475569; font-size: 14px; display: none; }
-    .btn-save { background: linear-gradient(135deg, #3B82F6, #1D4ED8); color: #fff; border: none; padding: 12px 32px; border-radius: 30px; font-weight: 900; font-size: 15px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(59,130,246,0.3); display: flex; align-items: center; gap: 8px; font-family: 'Plus Jakarta Sans', sans-serif;}
-    .btn-save:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(59,130,246,0.4); }
-
-    @media (min-width: 768px) { .save-bar span { display: block; } }
+  @media (max-width: 576px) {
+    .cc-head { padding: 14px; gap: 12px; }
+    .cc-logo { width: 42px; height: 42px; border-radius: 12px; }
+    .cc-body { padding: 14px; }
+    .chip { font-size: 11px; padding: 4px 9px; }
+    .st-plan { width: 100%; }
+    .st-plan a { margin-left: auto; }
+    .st-shortcut .go { display: none; }
+  }
 </style>
 
-<div class="settings-wrapper">
+<div class="ws-wrap">
+  {% include 'store/partials/panel_messages.html' %}
 
-    <div class="page-title-box">
-        <h2 class="page-title">⚙️ App Settings</h2>
-        <p class="page-subtitle">Manage your store details, domain, and integrations.</p>
+  <div class="ws-head">
+    <div class="st-head-row">
+      <div>
+        <h4><i class="bi bi-gear me-2"></i>সেটিংস</h4>
+        <p>কুরিয়ার, SMS আর Facebook — দোকানের সব সংযোগ এক জায়গায়</p>
+      </div>
+      <div class="st-plan">
+        <div>
+          <div class="lbl">আপনার প্যাকেজ</div>
+          <div class="val">{{ plan.label }}</div>
+          {% if days_left > 0 %}
+          <div class="days {% if days_left <= 7 %}soon{% endif %}">আর {{ days_left|bn }} দিন বাকি</div>
+          {% else %}
+          <div class="days over">মেয়াদ শেষ</div>
+          {% endif %}
+        </div>
+        <a href="{% url 'billing' %}">{% if plan.is_trial or days_left <= 0 %}প্যাকেজ কিনুন{% else %}প্যাকেজ দেখুন{% endif %}</a>
+      </div>
+    </div>
+    <a class="st-shortcut" href="{% url 'website_settings' %}">
+      <i class="bi bi-globe2"></i>
+      <span>দোকানের নাম, লোগো, ডেলিভারি চার্জ আর পেমেন্টের নিয়ম আছে <b>ওয়েবসাইট</b> পেইজে</span>
+      <span class="go">খুলুন <i class="bi bi-arrow-right"></i></span>
+    </a>
+  </div>
+
+  <nav class="ws-tabs fit" aria-label="সেটিংসের ভাগ">
+    {% for key, icon, label in tabs %}
+    <a href="?tab={{ key }}" class="ws-tab {% if active_tab == key %}active{% endif %}" {% if active_tab == key %}aria-current="page"{% endif %}>
+      <i class="bi {{ icon }}"></i> {{ label }}
+      {% if key == 'courier' %}<span class="tab-badge {% if courier_count %}ok{% endif %}">{{ courier_count|bn }}/৩</span>
+      {% elif key == 'sms' %}<span class="tab-badge {% if shop.is_sms_active and shop.sms_balance > 0 %}ok{% endif %}">{% if shop.is_sms_active %}চালু{% else %}বন্ধ{% endif %}</span>
+      {% elif key == 'facebook' and fb_page %}<span class="tab-badge ok">যুক্ত</span>{% endif %}
+    </a>
+    {% endfor %}
+  </nav>
+
+  <div class="ws-body">
+
+  {% if active_tab == 'courier' %}
+    <div class="cc-top">
+      <div>
+        <h5 class="ws-section-title">কুরিয়ার</h5>
+        <p class="ws-section-sub mb-0">যে কুরিয়ারে আপনার মার্চেন্ট অ্যাকাউন্ট আছে, শুধু সেটা যুক্ত করলেই হবে। তারপর অর্ডার লিস্ট থেকে এক ক্লিকে পার্সেল বুক হবে।</p>
+      </div>
+      <div class="cc-meter" aria-label="{{ courier_count }}টা কুরিয়ার যুক্ত">
+        <div class="bars">
+          <span class="{% if courier_connected.Steadfast %}on{% endif %}"></span>
+          <span class="{% if courier_connected.Pathao %}on{% endif %}"></span>
+          <span class="{% if courier_connected.RedX %}on{% endif %}"></span>
+        </div>
+        {% if courier_count %}{{ courier_count|bn }}টা যুক্ত{% else %}কোনোটা যুক্ত নেই{% endif %}
+      </div>
     </div>
 
-    {% if messages %}
-        {% for message in messages %}
-        <div class="alert-premium alert-success-soft mb-4">
-            <i class="bi bi-check-circle-fill fs-5"></i> {{ message }}
+    {# ───────── Steadfast ───────── #}
+    {% with on=courier_connected.Steadfast f=steadfast_form %}
+    <section class="cc {% if on %}is-on{% endif %}" id="steadfast" {% if f.errors %}data-focus{% endif %}>
+      <div class="cc-head">
+        <div class="cc-logo" style="background:#12A150;">S</div>
+        <div class="cc-title">
+          <div class="cc-name">Steadfast</div>
+          <div class="cc-sub">{% if on %}অর্ডার থেকে এক ক্লিকে পার্সেল বুক হবে{% else %}লাগবে: API Key আর Secret Key{% endif %}</div>
+        </div>
+        <span class="chip {% if on %}on{% else %}off{% endif %}">{% if on %}যুক্ত{% else %}যুক্ত নয়{% endif %}</span>
+      </div>
+      <div class="cc-body">
+        {% include 'store/partials/panel_messages.html' with section='steadfast' %}
+        <form method="post" action="{% url 'settings' %}" novalidate>{% csrf_token %}
+          <input type="hidden" name="section" value="steadfast">
+          {% if on %}
+            <div class="cc-facts">
+              <div class="fact"><div class="k">API Key</div><div class="v mono">{{ shop.steadfast_api_key|slice:":6" }}••••••</div></div>
+              <div class="fact"><div class="k">Secret Key</div><div class="v">সেভ করা আছে</div></div>
+            </div>
+            <div class="cc-actions">
+              <button type="submit" name="courier_action" value="test_Steadfast" class="btn-pill btn-dark-s"><i class="bi bi-plug"></i> কানেকশন টেস্ট</button>
+              <button type="submit" name="courier_action" value="steadfast_disconnect" class="btn-del" data-confirm="Steadfast-এর সংযোগ সরাবেন? তখন এই কুরিয়ারে পার্সেল পাঠানো যাবে না।"><i class="bi bi-x-circle"></i> সংযোগ সরান</button>
+            </div>
+            <details class="cc-more" {% if f.errors %}open{% endif %}>
+              <summary><i class="bi bi-key"></i> চাবি বদলান <i class="bi bi-chevron-down chev"></i></summary>
+              <div class="more-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label" for="{{ f.steadfast_api_key.id_for_label }}">API Key</label>{{ f.steadfast_api_key }}
+                    {% for e in f.steadfast_api_key.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label" for="{{ f.steadfast_secret_key.id_for_label }}">Secret Key</label>{{ f.steadfast_secret_key }}
+                    {% for e in f.steadfast_secret_key.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+                  </div>
+                </div>
+                <div class="cc-actions mt-3">
+                  <button type="submit" name="courier_action" value="test_Steadfast" class="btn-pill btn-line"><i class="bi bi-check2-circle"></i> মিলিয়ে সেভ করুন</button>
+                </div>
+              </div>
+            </details>
+            <details class="cc-more">
+              <summary><i class="bi bi-arrow-repeat"></i> ডেলিভারি হলে অর্ডার নিজে থেকে আপডেট <i class="bi bi-chevron-down chev"></i></summary>
+              <div class="more-body">
+                <div class="ws-help mt-0" style="font-size:12.5px;">Steadfast প্যানেলের <b>Webhook</b> পেইজে এই দুটো বসান। পার্সেল ডেলিভারি হলে অর্ডার নিজে থেকে "Delivered", ফেরত এলে "Returned" হয়ে যাবে।</div>
+                <div class="copy-row"><span class="k">Callback URL</span><code id="sf-wh-url">{{ steadfast_webhook_url }}</code><button type="button" data-copy="sf-wh-url">কপি</button></div>
+                <div class="copy-row"><span class="k">Auth Token</span><code id="sf-wh-token">{{ shop.courier_webhook_token }}</code><button type="button" data-copy="sf-wh-token">কপি</button></div>
+                <div class="ws-help mt-2"><i class="bi bi-shield-lock"></i> টোকেনটা কাউকে দেবেন না।</div>
+              </div>
+            </details>
+          {% else %}
+            <div class="howto"><i class="bi bi-info-circle"></i><span>Steadfast প্যানেলে লগইন করে <b>API</b> পেইজে গেলে দুটো চাবি পাবেন। কপি করে নিচে বসান; আমরা Steadfast-এর সাথে মিলিয়ে তবেই সেভ করব।</span></div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="{{ f.steadfast_api_key.id_for_label }}">API Key</label>{{ f.steadfast_api_key }}
+                {% for e in f.steadfast_api_key.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="{{ f.steadfast_secret_key.id_for_label }}">Secret Key</label>{{ f.steadfast_secret_key }}
+                {% for e in f.steadfast_secret_key.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+              </div>
+            </div>
+            <div class="cc-actions">
+              <button type="submit" name="courier_action" value="test_Steadfast" class="btn-pill btn-dark-s"><i class="bi bi-plug-fill"></i> Steadfast যুক্ত করুন</button>
+            </div>
+          {% endif %}
+        </form>
+      </div>
+    </section>
+    {% endwith %}
+
+    {# ───────── Pathao ───────── #}
+    {% with on=courier_connected.Pathao f=pathao_form %}
+    <section class="cc {% if on %}is-on{% endif %}" id="pathao" {% if f.errors %}data-focus{% endif %}>
+      <div class="cc-head">
+        <div class="cc-logo" style="background:#E8262D;">P</div>
+        <div class="cc-title">
+          <div class="cc-name">Pathao</div>
+          <div class="cc-sub">{% if on %}অর্ডার থেকে এক ক্লিকে পার্সেল বুক হবে{% elif shop.pathao_access_token %}কোন স্টোর থেকে পার্সেল যাবে বেছে নিন{% else %}লাগবে: Client ID, Client Secret আর Pathao-র লগইন{% endif %}</div>
+        </div>
+        {% if on %}<span class="chip on">যুক্ত</span>{% elif shop.pathao_access_token %}<span class="chip warn">স্টোর বাছুন</span>{% else %}<span class="chip off">যুক্ত নয়</span>{% endif %}
+      </div>
+      <div class="cc-body">
+        {% include 'store/partials/panel_messages.html' with section='pathao' %}
+        <form method="post" action="{% url 'settings' %}" novalidate>{% csrf_token %}
+          <input type="hidden" name="section" value="pathao">
+          {% if shop.pathao_access_token %}
+            <div class="row g-3">
+              <div class="col-md-7">
+                <label class="form-label" for="{{ f.pathao_store_id.id_for_label }}">কোন স্টোর থেকে পার্সেল যাবে</label>
+                {{ f.pathao_store_id }}
+                {% for e in f.pathao_store_id.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+                <div class="ws-help">Pathao-তে নতুন স্টোর বানালে "স্টোর লিস্ট আপডেট" চাপুন।</div>
+              </div>
+            </div>
+            <div class="cc-actions">
+              <button type="submit" class="btn-pill btn-dark-s"><i class="bi bi-check2-circle"></i> সেভ করুন</button>
+              <button type="submit" name="courier_action" value="test_Pathao" class="btn-pill btn-line"><i class="bi bi-arrow-repeat"></i> স্টোর লিস্ট আপডেট</button>
+              <button type="submit" name="courier_action" value="pathao_disconnect" class="btn-del" data-confirm="Pathao-র সংযোগ সরাবেন? আবার যুক্ত করতে Pathao-র পাসওয়ার্ড লাগবে।"><i class="bi bi-x-circle"></i> সংযোগ সরান</button>
+            </div>
+          {% else %}
+            <div class="howto"><i class="bi bi-info-circle"></i><span>merchant.pathao.com-এ লগইন করে <b>Developer API</b> পেইজ থেকে Client ID আর Client Secret নিন। সাথে Pathao-তে লগইনের ইমেইল আর পাসওয়ার্ড দিন — পাসওয়ার্ড শুধু একবার যুক্ত করতে লাগে, আমরা সেভ করি না।</span></div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="{{ f.pathao_client_id.id_for_label }}">Client ID</label>{{ f.pathao_client_id }}
+                {% for e in f.pathao_client_id.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="{{ f.pathao_client_secret.id_for_label }}">Client Secret</label>{{ f.pathao_client_secret }}
+                {% for e in f.pathao_client_secret.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="{{ f.pathao_email.id_for_label }}">ইমেইল</label>{{ f.pathao_email }}
+                {% for e in f.pathao_email.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="{{ f.pathao_password.id_for_label }}">পাসওয়ার্ড</label>{{ f.pathao_password }}
+                {% for e in f.pathao_password.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+              </div>
+            </div>
+            <div class="cc-actions">
+              <button type="submit" name="courier_action" value="pathao_connect" class="btn-pill btn-dark-s"><i class="bi bi-plug-fill"></i> Pathao যুক্ত করুন</button>
+            </div>
+          {% endif %}
+        </form>
+      </div>
+    </section>
+    {% endwith %}
+
+    {# ───────── RedX ───────── #}
+    {% with on=courier_connected.RedX f=redx_form %}
+    <section class="cc {% if on %}is-on{% endif %}" id="redx" {% if f.errors %}data-focus{% endif %}>
+      <div class="cc-head">
+        <div class="cc-logo" style="background:#1F2937;"><span>R<span style="color:#F87171;">X</span></span></div>
+        <div class="cc-title">
+          <div class="cc-name">RedX</div>
+          <div class="cc-sub">{% if on %}পার্সেল পাঠানোর সময় কাস্টমারের এলাকা বেছে দিতে হয়{% else %}লাগবে: API Access Token{% endif %}</div>
+        </div>
+        <span class="chip {% if on %}on{% else %}off{% endif %}">{% if on %}যুক্ত{% else %}যুক্ত নয়{% endif %}</span>
+      </div>
+      <div class="cc-body">
+        {% include 'store/partials/panel_messages.html' with section='redx' %}
+        <form method="post" action="{% url 'settings' %}" novalidate>{% csrf_token %}
+          <input type="hidden" name="section" value="redx">
+          {% if on %}
+            <div class="cc-facts">
+              <div class="fact"><div class="k">API Access Token</div><div class="v">সেভ করা আছে</div></div>
+            </div>
+            <div class="cc-actions">
+              <button type="submit" name="courier_action" value="test_RedX" class="btn-pill btn-dark-s"><i class="bi bi-plug"></i> কানেকশন টেস্ট</button>
+              <button type="submit" name="courier_action" value="redx_disconnect" class="btn-del" data-confirm="RedX-এর সংযোগ সরাবেন? তখন এই কুরিয়ারে পার্সেল পাঠানো যাবে না।"><i class="bi bi-x-circle"></i> সংযোগ সরান</button>
+            </div>
+            <details class="cc-more" {% if f.errors %}open{% endif %}>
+              <summary><i class="bi bi-key"></i> টোকেন বদলান <i class="bi bi-chevron-down chev"></i></summary>
+              <div class="more-body">
+                <label class="form-label" for="{{ f.redx_access_token.id_for_label }}">নতুন API Access Token</label>{{ f.redx_access_token }}
+                {% for e in f.redx_access_token.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+                <div class="cc-actions mt-3">
+                  <button type="submit" name="courier_action" value="test_RedX" class="btn-pill btn-line"><i class="bi bi-check2-circle"></i> মিলিয়ে সেভ করুন</button>
+                </div>
+              </div>
+            </details>
+          {% else %}
+            <div class="howto"><i class="bi bi-info-circle"></i><span>RedX মার্চেন্ট প্যানেলে <b>Developer API</b> পেইজে "Request token" চাপলে টোকেন পাবেন। কপি করে নিচে বসান।</span></div>
+            <label class="form-label" for="{{ f.redx_access_token.id_for_label }}">API Access Token</label>{{ f.redx_access_token }}
+            {% for e in f.redx_access_token.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+            <div class="cc-actions">
+              <button type="submit" name="courier_action" value="test_RedX" class="btn-pill btn-dark-s"><i class="bi bi-plug-fill"></i> RedX যুক্ত করুন</button>
+            </div>
+          {% endif %}
+        </form>
+      </div>
+    </section>
+    {% endwith %}
+
+    <div class="cod-note"><i class="bi bi-shield-check"></i><span>আগে পুরো টাকা নেওয়া অর্ডারে (Paid, bKash, Card) কুরিয়ার কাস্টমারের কাছ থেকে কিছু তুলবে না। অগ্রিম নেওয়া থাকলে শুধু বাকিটুকু তুলবে।</span></div>
+
+  {% elif active_tab == 'sms' %}
+    <h5 class="ws-section-title">অর্ডারের SMS</h5>
+    <p class="ws-section-sub">ওয়েবসাইট থেকে কেউ অর্ডার করলে তার মোবাইলে নিজে থেকে একটা SMS যায়, তাতে কাস্টমার নিশ্চিন্ত থাকে।</p>
+
+    <div class="sms-hero {% if shop.sms_balance < 20 %}low{% endif %}" id="sms">
+      <div class="ico"><i class="bi bi-chat-left-text-fill"></i></div>
+      <div>
+        <div class="num">{{ shop.sms_balance|bn }}টা</div>
+        <div class="lbl">{% if shop.sms_balance <= 0 %}SMS শেষ — কাস্টমারের কাছে SMS যাচ্ছে না{% elif shop.sms_balance < 20 %}SMS প্রায় শেষ{% else %}SMS বাকি আছে{% endif %}</div>
+      </div>
+      <div class="buy">
+        <a href="{% url 'billing' %}#sms" class="btn-pill btn-dark-s"><i class="bi bi-plus-lg"></i> SMS কিনুন</a>
+        <small>৫০০টা ৳২০০ · ১০০০টা ৳৪০০</small>
+      </div>
+    </div>
+
+    {% include 'store/partials/panel_messages.html' with section='sms' %}
+    <form method="post" action="{% url 'settings' %}">{% csrf_token %}
+      <input type="hidden" name="section" value="sms">
+      <label class="switch-row" for="{{ sms_form.is_sms_active.id_for_label }}">
+        <span>
+          <span class="t">অর্ডার পেলে কাস্টমারকে SMS</span>
+          <span class="d">প্রতিটা অর্ডারে ১টা SMS খরচ হয়। অনলাইনে টাকা দেওয়া অর্ডারে SMS যায় পেমেন্ট সফল হওয়ার পরে।</span>
+        </span>
+        <span class="form-check form-switch">{{ sms_form.is_sms_active }}</span>
+      </label>
+      <div class="sms-preview">
+        <div class="from"><i class="bi bi-phone me-1"></i>কাস্টমার যেমন পাবে</div>
+        <div class="sms-bubble">প্রিয় রহিম, {{ shop.name }} থেকে আপনার অর্ডার (#ORD-1024) পাওয়া গেছে। আমরা শীঘ্রই যোগাযোগ করব।</div>
+      </div>
+      <div class="mt-4"><button type="submit" class="ws-save"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button></div>
+    </form>
+
+  {% elif active_tab == 'facebook' %}
+    {% include 'store/partials/panel_messages.html' with section='facebook' %}
+    {% if fb_page %}
+      <div class="fb-page mb-1">
+        {% if fb_page.page_picture %}<img src="{{ fb_page.page_picture }}" alt="" class="fb-pic" referrerpolicy="no-referrer">{% else %}<div class="fb-pic"><i class="bi bi-facebook"></i></div>{% endif %}
+        <div class="min-w-0">
+          <div class="cc-name">{{ fb_page.page_name }}</div>
+          <div class="cc-sub">{% if fb_page.category %}{{ fb_page.category }}{% else %}Facebook পেইজ{% endif %}{% if fb_page.fan_count %} · {{ fb_page.fan_count|bn }} জন ফলো করছে{% endif %}</div>
+        </div>
+        <span class="chip on">যুক্ত</span>
+      </div>
+
+      <div class="sub-h">কমেন্ট থেকে অর্ডার</div>
+      <form method="post" action="{% url 'fb_bot_settings' %}" class="switch-stack">{% csrf_token %}
+        <label class="switch-row" for="cb-bot">
+          <span>
+            <span class="t">কমেন্ট করলে ইনবক্সে দাম আর অর্ডারের লিংক</span>
+            <span class="d">পোস্টে কেউ কমেন্ট করলে তার Messenger-এ প্রোডাক্টের দাম আর অর্ডার করার লিংক নিজে থেকে চলে যাবে।</span>
+          </span>
+          <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="cb-bot" name="comment_bot_enabled" {% if fb_page.comment_bot_enabled %}checked{% endif %}></span>
+        </label>
+        <label class="switch-row" for="cb-public">
+          <span>
+            <span class="t">কমেন্টের নিচে "ইনবক্স চেক করুন ✅"</span>
+            <span class="d">পোস্টে সবাই দেখবে যে উত্তর দেওয়া হয়েছে, তাতে অন্যরাও কমেন্ট করতে উৎসাহ পায়।</span>
+          </span>
+          <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="cb-public" name="public_reply_enabled" {% if fb_page.public_reply_enabled %}checked{% endif %}></span>
+        </label>
+        <div class="mt-3"><button type="submit" class="ws-save"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button></div>
+      </form>
+
+      <div class="sub-h">কীভাবে কাজ করে</div>
+      <div class="steps">
+        <div class="step"><div class="n">১</div><b>পোস্টে কোড লিখুন</b>প্রোডাক্টের কোড, যেমন <code>#P12</code>। কোড প্রোডাক্ট লিস্টে পাবেন।</div>
+        <div class="step"><div class="n">২</div><b>কাস্টমার কমেন্ট করে</b>সাথে সাথে তার ইনবক্সে দাম আর অর্ডারের লিংক যায়। কোড না থাকলে দোকানের লিংক যায়।</div>
+        <div class="step"><div class="n">৩</div><b>নিজেই অর্ডার করে</b>লিংকে গিয়ে অর্ডার দিলে সেটা "ওয়েবসাইটের অর্ডার"-এ চলে আসে।</div>
+      </div>
+
+      {% if fb_recent_replies %}
+      <div class="sub-h">সাম্প্রতিক উত্তর</div>
+      <div class="ws-card py-1">
+        {% for r in fb_recent_replies %}
+        <div class="reply-row">
+          {% if r.status == 'sent' %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-exclamation-triangle-fill text-warning"></i>{% endif %}
+          <span>{{ r.commenter_name|default:"একজন কাস্টমার" }}{% if r.product %} · {{ r.product.name }}{% endif %}</span>
+          <span class="when">{{ r.created_at|date:"j M, g:i A" }}</span>
         </div>
         {% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" action="{% url 'fb_disconnect' %}" class="danger-zone">{% csrf_token %}
+        <div><b>পেইজের সংযোগ সরান</b>পেইজের তথ্য আর Facebook টোকেন আমাদের সার্ভার থেকে মুছে যাবে, কমেন্টের উত্তরও বন্ধ হবে।</div>
+        <button type="submit" class="btn-del" data-confirm="Facebook পেইজের সংযোগ সরাবেন?"><i class="bi bi-x-circle"></i> সংযোগ সরান</button>
+      </form>
+
+    {% elif facebook_allowed %}
+      <div class="empty-state">
+        <div class="ico" style="background:#EBF3FF;color:#1877F2;"><i class="bi bi-facebook"></i></div>
+        <h5>Facebook পেইজ যুক্ত করুন</h5>
+        <p>পেইজ যুক্ত করলে পোস্টের কমেন্ট থেকেই অর্ডার আসবে, আলাদা করে সবাইকে উত্তর দিতে হবে না।</p>
+        <ul class="benefits">
+          <li><i class="bi bi-check-circle-fill"></i><span>কেউ কমেন্ট করলে তার ইনবক্সে নিজে থেকে দাম আর অর্ডারের লিংক</span></li>
+          <li><i class="bi bi-check-circle-fill"></i><span>কাস্টমার লিংকে গিয়ে নিজেই অর্ডার করে, আপনি অর্ডার লিস্টে পান</span></li>
+          <li><i class="bi bi-check-circle-fill"></i><span>যেকোনো সময় বন্ধ করা বা সংযোগ সরানো যায়</span></li>
+        </ul>
+        <a href="{% url 'fb_connect' %}" class="btn-fb"><i class="bi bi-facebook"></i> Facebook দিয়ে যুক্ত করুন</a>
+      </div>
+
+    {% else %}
+      <div class="empty-state">
+        <div class="ico" style="background:#F1F5F9;color:#64748B;"><i class="bi bi-lock-fill"></i></div>
+        <h5>Facebook অটোমেশন Standard আর Premium প্যাকেজে</h5>
+        <p>আপনার এখনকার প্যাকেজ {{ plan.label }}। আপগ্রেড করলে পেইজ যুক্ত করে কমেন্ট থেকে অর্ডার নিতে পারবেন।</p>
+        <div class="mt-4"><a href="{% url 'billing' %}" class="ws-save text-decoration-none d-inline-flex align-items-center gap-2"><i class="bi bi-arrow-up-circle"></i> প্যাকেজ আপগ্রেড করুন</a></div>
+      </div>
     {% endif %}
+  {% endif %}
 
-    {% if form.errors %}
-    <div class="alert-premium alert-danger-soft mb-4 flex-column align-items-start">
-        <div class="d-flex align-items-center gap-2"><i class="bi bi-exclamation-triangle-fill fs-5"></i> <strong>Please fix the errors below:</strong></div>
-        <div class="small mt-1">{{ form.errors }}</div>
-    </div>
-    {% endif %}
-
-    <form method="POST" enctype="multipart/form-data" id="settingsForm">
-        {# Enter চাপলে যেন কুরিয়ার টেস্ট না হয়ে সাধারণ সেভ হয়: ফর্মের প্রথম বাটনটাই Enter-এ কাজ করে #}
-        <button type="submit" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;"></button>
-        {% csrf_token %}
-
-        <div class="row g-4">
-            <!-- LEFT COLUMN -->
-            <div class="col-lg-8">
-
-                <!-- দোকানের তথ্য এখন ওয়েবসাইট পেইজে -->
-                <a href="{% url 'website_settings' %}" class="settings-card d-flex align-items-center gap-3 p-4 text-decoration-none" style="border:1.5px solid #C7D2FE;background:#EEF2FF;">
-                    <div class="sc-icon" style="background:#4F46E5;color:#fff;flex-shrink:0;"><i class="bi bi-globe2"></i></div>
-                    <div class="flex-grow-1">
-                        <div class="fw-bold" style="color:#1E1B4B;">দোকানের তথ্য, লোগো আর ওয়েবসাইট</div>
-                        <div class="small" style="color:#4338CA;">নাম, ঠিকানা, ওয়েবসাইটের ঠিকানা, ডিজাইন, ব্যানার, ক্যাটাগরি, ডেলিভারি চার্জ আর পেমেন্ট — সব "ওয়েবসাইট" পেইজে</div>
-                    </div>
-                    <i class="bi bi-chevron-right" style="color:#4338CA;"></i>
-                </a>
-
-                <!-- API Integrations -->
-                <div class="settings-card" id="couriers">
-                    <div class="sc-header">
-                        <div class="sc-icon" style="background:#fffbeb; color:#F59E0B;"><i class="bi bi-truck"></i></div>
-                        <h4 class="sc-title">কুরিয়ার সংযোগ</h4>
-                    </div>
-                    <div class="sc-body">
-                        <p class="small text-muted mb-4">যে কুরিয়ারে অ্যাকাউন্ট আছে শুধু সেটার তথ্য দিন। তারপর অর্ডার লিস্ট থেকে এক ক্লিকে পার্সেল পাঠাতে পারবেন।
-                            আগে পরিশোধ করা অর্ডারে (Paid, bKash, Card) কুরিয়ার কাস্টমারের কাছ থেকে কিছু তুলবে না।</p>
-
-                        <!-- Steadfast -->
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <h6 class="fw-bold text-success mb-0"><i class="bi bi-truck me-2"></i>Steadfast</h6>
-                            {% if courier_connected.Steadfast %}<span class="badge bg-success-subtle text-success rounded-pill">চাবি দেওয়া আছে</span>{% endif %}
-                        </div>
-                        <div class="row g-3 mb-2">
-                            <div class="col-md-6">
-                                <label class="form-label">API Key</label>
-                                {{ form.steadfast_api_key }}
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Secret Key</label>
-                                {{ form.steadfast_secret_key }}
-                            </div>
-                        </div>
-                        <div class="form-text small mb-2">Steadfast প্যানেলে <b>API</b> পেইজে দুটো চাবি পাবেন।</div>
-                        <details class="small mb-3">
-                            <summary class="fw-semibold text-muted">ডেলিভারি হলে অর্ডার নিজে থেকে আপডেট (Webhook)</summary>
-                            <div class="mt-2 p-3 rounded-3" style="background:#F8FAFC;border:1px dashed #CBD5E1;">
-                                Steadfast প্যানেলের <b>Webhook</b> পেইজে এই দুটো বসান:
-                                <div class="mt-2"><span class="text-muted">Callback URL:</span> <code style="word-break:break-all;">{{ steadfast_webhook_url }}</code></div>
-                                <div class="mt-1"><span class="text-muted">Auth Token:</span> <code style="word-break:break-all;">{{ request.user.shop.courier_webhook_token }}</code></div>
-                                <div class="mt-2 text-muted">ডেলিভারি হলে অর্ডার "Delivered", ফেরত এলে "Returned" হয়ে যাবে। টোকেনটা কাউকে দেবেন না।</div>
-                            </div>
-                        </details>
-                        <div class="d-flex gap-2 flex-wrap mb-4">
-                            <button type="submit" name="courier_action" value="test_Steadfast" class="btn btn-sm btn-outline-success rounded-pill px-3"><i class="bi bi-plug me-1"></i> সেভ করে কানেকশন টেস্ট</button>
-                            {% if courier_connected.Steadfast %}<button type="submit" name="courier_action" value="steadfast_disconnect" class="btn btn-sm btn-link text-muted">সরান</button>{% endif %}
-                        </div>
-
-                        <!-- Pathao -->
-                        <hr class="text-muted opacity-25 my-4">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <h6 class="fw-bold text-danger mb-0"><i class="bi bi-bicycle me-2"></i>Pathao</h6>
-                            {% if courier_connected.Pathao %}<span class="badge bg-success-subtle text-success rounded-pill">কানেক্টেড</span>{% endif %}
-                        </div>
-                        {% if request.user.shop.pathao_access_token %}
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-8">
-                                    <label class="form-label">কোন স্টোর থেকে পার্সেল যাবে</label>
-                                    {{ form.pathao_store_id }}
-                                </div>
-                            </div>
-                            {{ form.pathao_client_id.as_hidden }}
-                            <div class="d-flex gap-2 flex-wrap mb-4">
-                                <button type="submit" name="courier_action" value="test_Pathao" class="btn btn-sm btn-outline-danger rounded-pill px-3"><i class="bi bi-arrow-repeat me-1"></i> স্টোর লিস্ট আপডেট / টেস্ট</button>
-                                <button type="submit" name="courier_action" value="pathao_disconnect" class="btn btn-sm btn-link text-muted">সংযোগ সরান</button>
-                            </div>
-                        {% else %}
-                            <div class="form-text small mb-3">merchant.pathao.com → <b>Developer API</b> থেকে Client ID আর Client Secret নিন। সাথে Pathao-তে লগইন করার ইমেইল-পাসওয়ার্ড দিন। পাসওয়ার্ড শুধু একবার কানেক্ট করতে লাগে, আমরা সেভ করি না।</div>
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6"><label class="form-label">Client ID</label>{{ form.pathao_client_id }}</div>
-                                <div class="col-md-6"><label class="form-label">Client Secret</label>{{ form.pathao_client_secret }}</div>
-                                <div class="col-md-6"><label class="form-label">ইমেইল</label>{{ form.pathao_email }}{% if form.pathao_email.errors %}<div class="text-danger small mt-1">{{ form.pathao_email.errors.0 }}</div>{% endif %}</div>
-                                <div class="col-md-6"><label class="form-label">পাসওয়ার্ড</label>{{ form.pathao_password }}</div>
-                            </div>
-                            <div class="mb-4">
-                                <button type="submit" name="courier_action" value="pathao_connect" class="btn btn-sm btn-danger rounded-pill px-3"><i class="bi bi-plug-fill me-1"></i> Pathao কানেক্ট করুন</button>
-                            </div>
-                        {% endif %}
-
-                        <!-- RedX -->
-                        <hr class="text-muted opacity-25 my-4">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <h6 class="fw-bold mb-0" style="color:#d92128 !important;"><i class="bi bi-box-seam me-2"></i>RedX</h6>
-                            {% if courier_connected.RedX %}<span class="badge bg-success-subtle text-success rounded-pill">টোকেন দেওয়া আছে</span>{% endif %}
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">API Access Token</label>
-                            {{ form.redx_access_token }}
-                        </div>
-                        <div class="form-text small mb-3">RedX মার্চেন্ট প্যানেলে <b>Developer API</b> পেইজে "Request token" চাপলে পাবেন। পার্সেল পাঠানোর সময় কাস্টমারের এলাকা বেছে দিতে হয়।</div>
-                        <div class="d-flex gap-2 flex-wrap mb-4">
-                            <button type="submit" name="courier_action" value="test_RedX" class="btn btn-sm btn-outline-danger rounded-pill px-3" style="color:#d92128;border-color:#d92128;"><i class="bi bi-plug me-1"></i> সেভ করে কানেকশন টেস্ট</button>
-                            {% if courier_connected.RedX %}<button type="submit" name="courier_action" value="redx_disconnect" class="btn btn-sm btn-link text-muted">সরান</button>{% endif %}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="settings-card">
-                    <div class="sc-body">
-                        <!-- SMS Integration & Toggle -->
-                        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-chat-dots-fill me-2"></i>SMS Settings</h6>
-                        <div class="p-3 rounded-4" style="background:#F8FAFC; border:1px dashed #CBD5E1;">
-                            <div class="d-flex align-items-center gap-2 mb-3">
-                                <span class="badge bg-primary px-3 py-2 rounded-pill fw-bold" style="font-size: 14px;"><i class="bi bi-envelope-paper-fill me-1"></i> {{ request.user.shop.sms_balance }} SMS Left</span>
-                                <span class="small fw-semibold text-muted">Current Balance</span>
-                            </div>
-
-                            <!-- iOS Style Toggle for SMS -->
-                            <div class="form-check form-switch bg-white p-3 rounded-3 border d-flex align-items-center mb-0" style="padding-left: 1rem !important;">
-                                {{ form.is_sms_active }}
-                                <label class="form-check-label fw-bold ms-3" for="{{ form.is_sms_active.id_for_label }}" style="margin-top: 1px;">
-                                    Enable Order Confirmation SMS
-                                    <span class="text-muted fw-normal d-block" style="font-size: 12px; margin-top: 2px;">Deducts 1 SMS (0.40 Tk) per order</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- RIGHT COLUMN -->
-            <div class="col-lg-4">
-
-                <!-- Facebook Page সংযোগ -->
-                <div id="facebook"></div>
-                <div class="settings-card">
-                    <div class="sc-body p-4">
-                        <h6 class="fw-bold mb-3"><i class="bi bi-facebook me-2" style="color:#1877F2;"></i>Facebook Page</h6>
-                        {% if request.user.shop.fb_page %}
-                            <p class="small mb-1 fw-semibold">{{ request.user.shop.fb_page.page_name }}</p>
-                            <p class="small text-muted mb-3">কানেক্টেড। ডিসকানেক্ট করলে পেইজের তথ্য আর Facebook টোকেন আমাদের সার্ভার থেকে মুছে যাবে।</p>
-                            {% with conn=request.user.shop.fb_page %}
-                            <div class="p-3 rounded-3 mb-3" style="background:#F8FAFC;border:1px dashed #CBD5E1;">
-                                <div class="fw-bold small mb-2"><i class="bi bi-chat-dots-fill me-1" style="color:#1877F2;"></i>কমেন্ট থেকে অর্ডার</div>
-                                <div class="form-check form-switch mb-2">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="cb-bot" name="comment_bot_enabled" form="fb-bot-form" {% if conn.comment_bot_enabled %}checked{% endif %}>
-                                    <label class="form-check-label small" for="cb-bot">কেউ কমেন্ট করলে তার ইনবক্সে প্রোডাক্টের দাম আর অর্ডারের লিংক পাঠান</label>
-                                </div>
-                                <div class="form-check form-switch mb-2">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="cb-public" name="public_reply_enabled" form="fb-bot-form" {% if conn.public_reply_enabled %}checked{% endif %}>
-                                    <label class="form-check-label small" for="cb-public">কমেন্টের নিচে লিখুন "ইনবক্স চেক করুন ✅"</label>
-                                </div>
-                                <div class="small text-muted mb-2">পোস্টে প্রোডাক্টের কোড লিখুন (যেমন <code>#P12</code>, প্রোডাক্ট লিস্টে পাবেন)। কোড না থাকলে দোকানের লিংক যাবে।</div>
-                                <button type="submit" form="fb-bot-form" class="btn btn-sm btn-primary rounded-pill px-3">সেভ</button>
-                                {% if fb_recent_replies %}
-                                <div class="small fw-semibold mt-3 mb-1">সাম্প্রতিক উত্তর</div>
-                                {% for r in fb_recent_replies %}
-                                <div class="small text-muted">{% if r.status == 'sent' %}✅{% else %}⚠️{% endif %} {{ r.commenter_name|default:"কেউ" }}{% if r.product %} · {{ r.product.name }}{% endif %} · {{ r.created_at|date:"j M, g:i A" }}</div>
-                                {% endfor %}
-                                {% endif %}
-                            </div>
-                            {% endwith %}
-                            <button type="submit" form="fb-disconnect-form" class="btn btn-sm btn-outline-danger rounded-pill px-3"
-                                    onclick="return confirm('Facebook পেইজ ডিসকানেক্ট করবেন?');">
-                                <i class="bi bi-x-circle me-1"></i> Facebook Page Disconnect
-                            </button>
-                        {% elif facebook_allowed %}
-                            <p class="small text-muted mb-3">কোনো পেইজ কানেক্ট করা নেই।</p>
-                            <a href="{% url 'fb_connect' %}" class="btn btn-sm btn-primary rounded-pill px-3">
-                                <i class="bi bi-plug me-1"></i> পেইজ কানেক্ট করুন
-                            </a>
-                        {% else %}
-                            <p class="small text-muted mb-3">Facebook কানেক্ট আর অটোমেশন Standard ও Premium প্যাকেজে আছে।</p>
-                            <a href="{% url 'billing' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
-                                <i class="bi bi-arrow-up-circle me-1"></i> আপগ্রেড করুন
-                            </a>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Subscription Plan -->
-                <div class="plan-card">
-                    <div class="plan-icon">
-                        {% if request.user.shop.subscription_plan == 'Premium' %}👑
-                        {% elif request.user.shop.subscription_plan == 'Standard' %}🚀
-                        {% elif request.user.shop.subscription_plan == 'Basic' %}📱
-                        {% else %}🆓{% endif %}
-                    </div>
-                    <div class="plan-label">Active Plan</div>
-                    <div class="plan-name">{{ request.user.shop.subscription_plan }}</div>
-                    <p class="small text-white-50 fw-semibold mb-4">Unlock more features to grow your business.</p>
-                    <a href="{% url 'billing' %}" class="btn-upgrade">Upgrade Plan <i class="bi bi-arrow-right fw-bold"></i></a>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- Floating Save Bar -->
-        <div class="save-bar">
-            <span>You have unsaved changes.</span>
-            <button type="submit" class="btn-save">
-                <i class="bi bi-check2-circle fs-5"></i> Save Changes
-            </button>
-        </div>
-    </form>
-    <!-- মূল ফর্মের বাইরে আলাদা ফর্ম (ফর্মের ভেতরে ফর্ম রাখা যায় না) -->
-    <form id="fb-disconnect-form" method="POST" action="{% url 'fb_disconnect' %}">{% csrf_token %}</form>
-    <form id="fb-bot-form" method="POST" action="{% url 'fb_bot_settings' %}">{% csrf_token %}</form>
+  </div>
 </div>
 
 <script>
-    // Optional: Only show save bar if inputs change
-    document.addEventListener("DOMContentLoaded", function() {
-        const form = document.getElementById('settingsForm');
-        const saveBar = document.querySelector('.save-bar');
-
-        // Hide initially
-        saveBar.style.transform = 'translate(-50%, 150%)';
-        saveBar.style.opacity = '0';
-        saveBar.style.transition = '0.3s cubic-bezier(0.25, 1, 0.5, 1)';
-
-        // Show on change
-        form.addEventListener('input', function() {
-            saveBar.style.transform = 'translate(-50%, 0)';
-            saveBar.style.opacity = '1';
-        });
+(function () {
+  // কপি বাটন
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var el = document.getElementById(btn.dataset.copy);
+      if (!el || !navigator.clipboard) return;
+      navigator.clipboard.writeText(el.textContent.trim()).then(function () {
+        var old = btn.textContent; btn.textContent = 'কপি হয়েছে ✓';
+        setTimeout(function () { btn.textContent = old; }, 1800);
+      });
     });
+  });
+  // সংযোগ সরানোর আগে জিজ্ঞেস করা
+  document.querySelectorAll('[data-confirm]').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      if (!confirm(btn.dataset.confirm)) e.preventDefault();
+    });
+  });
+  // ভুল থাকলে সেই কার্ডে নিয়ে যাওয়া
+  var bad = document.querySelector('[data-focus]');
+  if (bad && !location.hash) bad.scrollIntoView({ block: 'start' });
+})();
 </script>
 {% endblock %}

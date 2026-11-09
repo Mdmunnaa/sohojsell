@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +8,7 @@
     {% include 'store/partials/brand_head.html' %}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -29,8 +29,8 @@
       --text: #0f172a;
       --text2: #64748b;
       --border: #e2e8f0;
-      --fn-head: 'Syne', sans-serif;
-      --fn-body: 'DM Sans', sans-serif;
+      --fn-head: 'Syne', 'Hind Siliguri', sans-serif;
+      --fn-body: 'DM Sans', 'Hind Siliguri', sans-serif;
       --r: 12px;
       --r-sm: 8px;
       --sh: 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
@@ -136,8 +136,8 @@
 
     /* Section label */
     .sb-label {
-      font-size: 9px; font-weight: 700; letter-spacing: 1.4px;
-      text-transform: uppercase; color: rgba(255,255,255,.18);
+      font-size: 10.5px; font-weight: 600; letter-spacing: .3px;
+      color: rgba(255,255,255,.28);
       padding: 14px 8px 5px;
     }
 
@@ -349,67 +349,67 @@
 
       {% else %}
 
-        <div class="sb-label">Main</div>
+        <div class="sb-label">প্রধান</div>
         <a href="{% url 'dashboard' %}" class="sb-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-          <i class="bi bi-grid-1x2-fill"></i> <span class="sb-text-hide">Dashboard</span>
+          <i class="bi bi-grid-1x2-fill"></i> <span class="sb-text-hide">ড্যাশবোর্ড</span>
         </a>
 
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_use_pos %}
         <a href="{% url 'pos' %}" class="sb-link pos {% if request.resolver_match.url_name == 'pos' %}active{% endif %}">
-          <i class="bi bi-display-fill"></i> <span class="sb-text-hide">POS System</span>
+          <i class="bi bi-display-fill"></i> <span class="sb-text-hide">POS (দোকানে বিক্রি)</span>
         </a>
         {% endif %}
 
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_products %}
         <div class="sb-sep"></div>
-        <div class="sb-label">Inventory</div>
+        <div class="sb-label">প্রোডাক্ট</div>
         <a href="{% url 'product_list' %}" class="sb-link {% if request.resolver_match.url_name == 'product_list' %}active{% endif %}">
-          <i class="bi bi-box-seam"></i> <span class="sb-text-hide">Products</span>
+          <i class="bi bi-box-seam"></i> <span class="sb-text-hide">সব প্রোডাক্ট</span>
         </a>
         <a href="{% url 'website_settings' %}?tab=categories" class="sb-link">
-          <i class="bi bi-tags"></i> <span class="sb-text-hide">Categories</span>
+          <i class="bi bi-tags"></i> <span class="sb-text-hide">ক্যাটাগরি</span>
         </a>
         <a href="{% url 'barcode_print' %}" class="sb-link {% if request.resolver_match.url_name == 'barcode_print' %}active{% endif %}">
-          <i class="bi bi-upc-scan"></i> <span class="sb-text-hide">Barcode Print</span>
+          <i class="bi bi-upc-scan"></i> <span class="sb-text-hide">বারকোড প্রিন্ট</span>
         </a>
         {% endif %}
 
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_orders or request.user.staff_profile.can_manage_customers %}
         <div class="sb-sep"></div>
-        <div class="sb-label">Sales</div>
+        <div class="sb-label">বিক্রি</div>
 
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_orders %}
         <a href="{% url 'order_list' %}" class="sb-link {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}">
-          <i class="bi bi-cart-check"></i> <span class="sb-text-hide">Orders</span>
+          <i class="bi bi-cart-check"></i> <span class="sb-text-hide">সব অর্ডার</span>
         </a>
         <a href="{% url 'storefront_orders' %}" class="sb-link {% if request.resolver_match.url_name == 'storefront_orders' %}active{% endif %}">
-          <i class="bi bi-globe"></i> <span class="sb-text-hide">Online Orders</span>
+          <i class="bi bi-globe"></i> <span class="sb-text-hide">ওয়েবসাইটের অর্ডার</span>
         </a>
         <a href="{% url 'courier' %}" class="sb-link {% if request.resolver_match.url_name == 'courier' %}active{% endif %}">
-          <i class="bi bi-truck"></i> <span class="sb-text-hide">Courier</span>
+          <i class="bi bi-truck"></i> <span class="sb-text-hide">কুরিয়ার</span>
         </a>
         {% endif %}
 
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_customers %}
         <a href="{% url 'customer_list' %}" class="sb-link {% if request.resolver_match.url_name == 'customer_list' %}active{% endif %}">
-          <i class="bi bi-people"></i> <span class="sb-text-hide">Customers</span>
+          <i class="bi bi-people"></i> <span class="sb-text-hide">কাস্টমার</span>
         </a>
         {% endif %}
         {% endif %}
 
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_view_reports or request.user.staff_profile.can_manage_settings %}
         <div class="sb-sep"></div>
-        <div class="sb-label">Manage</div>
+        <div class="sb-label">ব্যবস্থাপনা</div>
 
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_settings %}
         <a href="{% url 'staff_list' %}" class="sb-link {% if 'staff' in request.path %}active{% endif %}">
-          <i class="bi bi-person-vcard"></i> <span class="sb-text-hide">Staff Accounts</span>
+          <i class="bi bi-person-vcard"></i> <span class="sb-text-hide">স্টাফ</span>
         </a>
         {% endif %}
 
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_view_reports %}
         <a href="{% url 'reports' %}" class="sb-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
-          <i class="bi bi-graph-up"></i> <span class="sb-text-hide">Reports</span>
+          <i class="bi bi-graph-up"></i> <span class="sb-text-hide">রিপোর্ট</span>
         </a>
         {% endif %}
 
@@ -419,13 +419,13 @@
         </a>
         <a href="{% url 'billing' %}" class="sb-link {% if request.resolver_match.url_name == 'billing' %}active{% endif %}" style="{% if shop.is_locked %}background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);{% endif %}">
           <i class="bi bi-{% if shop.is_locked %}lock-fill text-danger{% else %}wallet2{% endif %}"></i>
-          <span class="sb-text-hide">Billing{% if shop.is_locked %} 🔒{% endif %}</span>
+          <span class="sb-text-hide">প্যাকেজ ও বিল{% if shop.is_locked %} 🔒{% endif %}</span>
           {% if shop.days_remaining > 0 and shop.days_remaining <= 7 %}
-          <span class="badge bg-warning text-dark ms-auto" style="font-size:10px;">{{ shop.days_remaining }}d</span>
+          <span class="badge bg-warning text-dark ms-auto" style="font-size:10px;">{{ shop.days_remaining }} দিন</span>
           {% endif %}
         </a>
         <a href="{% url 'settings' %}" class="sb-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
-          <i class="bi bi-gear"></i> <span class="sb-text-hide">Settings</span>
+          <i class="bi bi-gear"></i> <span class="sb-text-hide">সেটিংস</span>
         </a>
         {% endif %}
         {% endif %}
@@ -440,13 +440,13 @@
           <div class="sb-u-name">{{ request.user.name|default:request.user.phone_number }}</div>
           <div class="sb-u-role">
             {% if request.user.is_superuser %}Super Admin
-            {% elif request.user.is_shop_staff %}Staff
-            {% else %}Shop Owner{% endif %}
+            {% elif request.user.is_shop_staff %}স্টাফ
+            {% else %}দোকানের মালিক{% endif %}
           </div>
         </div>
       </div>
       <a href="{% url 'logout' %}" class="sb-logout">
-        <i class="bi bi-box-arrow-right"></i> <span class="sb-text-hide">Logout</span>
+        <i class="bi bi-box-arrow-right"></i> <span class="sb-text-hide">লগআউট</span>
       </a>
     </div>
 
@@ -465,7 +465,7 @@
         <i class="bi bi-list"></i>
       </button>
 
-      <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+      <div class="topbar-title">{% block page_title %}ড্যাশবোর্ড{% endblock %}</div>
       <div class="topbar-right">
         <div class="live-pill">
           <span class="live-dot"></span> Live
@@ -513,15 +513,15 @@ document.addEventListener('DOMContentLoaded', function() {
     didOpen: t => { t.addEventListener('mouseenter', Swal.stopTimer); t.addEventListener('mouseleave', Swal.resumeTimer); }
   });
 
-  {% if messages %}
+  {% block message_toasts %}{% if messages %}
     {% for message in messages %}
       (function(){
-        var tag = "{{ message.tags }}";
+        var tag = "{{ message.level_tag }}";
         var icon = ['error','warning','success'].includes(tag) ? tag : 'info';
         Toast.fire({ icon: icon, title: "{{ message|escapejs }}" });
       })();
     {% endfor %}
-  {% endif %}
+  {% endif %}{% endblock %}
 });
 
 /* sidebar scroll save/restore */
