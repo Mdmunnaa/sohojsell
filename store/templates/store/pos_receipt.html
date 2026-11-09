@@ -1,77 +1,111 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
 <meta charset="UTF-8">
-<title>Receipt #ORD-{{ order.id }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>রসিদ #ORD-{{ order.id }} — {{ shop.name }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  @media print { .no-print { display: none !important; } body { margin: 0; } }
-  body { font-family: 'Courier New', monospace; max-width: 320px; margin: 0 auto; padding: 20px; background: #fff; font-size: 13px; }
-  .center { text-align: center; }
-  .shop-name { font-size: 20px; font-weight: 900; letter-spacing: 1px; margin-bottom: 2px; }
-  .divider { border-top: 1px dashed #333; margin: 8px 0; }
-  .row { display: flex; justify-content: space-between; margin: 3px 0; }
-  .row.bold { font-weight: 700; font-size: 15px; }
-  .item-name { flex: 1; }
-  .item-qty { min-width: 40px; text-align: center; }
-  .item-total { min-width: 70px; text-align: right; }
-  .thank-you { text-align: center; margin-top: 16px; font-size: 12px; color: #555; }
-  .actions { display: flex; gap: 10px; margin-top: 20px; justify-content: center; }
-  .btn { padding: 9px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
-  .btn-print { background: #1a1a2e; color: #fff; }
-  .btn-new { background: #0d6efd; color: #fff; }
+  @page { size: {{ width }}mm auto; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #E5E7EB; }
+  body { font-family: 'Hind Siliguri', 'Noto Sans Bengali', Arial, sans-serif; color: #000; font-size: {% if width == 58 %}11px{% else %}12.5px{% endif %}; line-height: 1.35; }
+  .paper { width: {{ width }}mm; margin: 16px auto; background: #fff; padding: {% if width == 58 %}3mm 2.5mm{% else %}4mm{% endif %}; box-shadow: 0 6px 24px rgba(0,0,0,.12); position: relative; }
+  .c { text-align: center; }
+  .logo { max-width: 60%; max-height: 18mm; object-fit: contain; display: block; margin: 0 auto 2mm; filter: grayscale(1) contrast(1.2); }
+  .shop { font-size: 1.45em; font-weight: 700; line-height: 1.15; }
+  .muted { color: #222; font-size: .92em; }
+  .hr { border: 0; border-top: 1px dashed #000; margin: 2mm 0; }
+  .hr.solid { border-top-style: solid; }
+  .row { display: flex; justify-content: space-between; gap: 2mm; }
+  .row > :last-child { text-align: right; white-space: nowrap; }
+  .item { margin: 1.2mm 0; }
+  .item .name { font-weight: 600; }
+  .item .row { color: #111; }
+  .total { font-size: 1.35em; font-weight: 700; }
+  .stamp { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%) rotate(-14deg); border: 2px solid #000; padding: 1mm 4mm; font-size: 1.6em; font-weight: 700; letter-spacing: 1px; opacity: .8; background: #fff; }
+  #barcode { display: block; margin: 1mm auto 0; max-width: 100%; height: auto; }
+  .foot { font-size: .9em; }
+  .actions { width: {{ width }}mm; margin: 0 auto 24px; display: flex; gap: 8px; }
+  .actions button, .actions a { flex: 1; white-space: nowrap; border: 0; border-radius: 10px; padding: 10px; font: 600 14px 'Hind Siliguri', sans-serif; cursor: pointer; text-align: center; text-decoration: none; }
+  .actions .print { background: #0F172A; color: #fff; }
+  .actions .alt { background: #fff; color: #0F172A; border: 1px solid #CBD5E1; }
+  @media print {
+    html, body { background: #fff; }
+    .paper { margin: 0; box-shadow: none; width: auto; }
+    .actions { display: none; }
+  }
 </style>
 </head>
 <body>
-<div class="center">
-  <div class="shop-name">{{ shop.name }}</div>
-  {% if shop.phone %}<div>📞 {{ shop.phone }}</div>{% endif %}
-  {% if shop.address %}<div style="font-size:11px;">{{ shop.address }}</div>{% endif %}
+<div class="paper">
+  {% if order.status == 'Returned' %}<div class="stamp">ফেরত হয়েছে</div>{% endif %}
+  <div class="c">
+    {% if shop.logo %}<img class="logo" src="{{ shop.logo.url }}" alt="">{% endif %}
+    <div class="shop">{{ shop.name }}</div>
+    {% if shop.address %}<div class="muted">{{ shop.address }}</div>{% endif %}
+    {% if shop.phone %}<div class="muted">ফোন: {{ shop.phone }}</div>{% endif %}
+    {% if shop.pos_bin %}<div class="muted">BIN: {{ shop.pos_bin }}</div>{% endif %}
+  </div>
+  <hr class="hr">
+  <div class="row"><span>রসিদ</span><b>#ORD-{{ order.id }}</b></div>
+  <div class="row"><span>তারিখ</span><span>{{ order.created_at|date:"d M Y, h:i A" }}</span></div>
+  {% if order.served_by %}<div class="row"><span>বিক্রেতা</span><span>{{ order.served_by.name|default:order.served_by.phone_number }}</span></div>{% endif %}
+  {% if not walk_in %}<div class="row"><span>কাস্টমার</span><span>{{ order.customer.name }}</span></div>
+  <div class="row"><span>মোবাইল</span><span>{{ order.customer.phone }}</span></div>{% endif %}
+  <hr class="hr">
+  {% for item in items %}
+  <div class="item">
+    <div class="name">{{ item.product.name }}</div>
+    <div class="row"><span>{{ item.quantity }} × ৳{{ item.price|floatformat:"-2g" }}</span><span>৳{{ item.line_total|floatformat:"-2g" }}</span></div>
+  </div>
+  {% endfor %}
+  <hr class="hr">
+  <div class="row"><span>প্রোডাক্টের দাম</span><span>৳{{ subtotal|floatformat:"-2g" }}</span></div>
+  {% if order.discount %}<div class="row"><span>ছাড়</span><span>−৳{{ order.discount|floatformat:"-2g" }}</span></div>{% endif %}
+  {% if order.vat_amount %}<div class="row"><span>VAT{% if shop.pos_vat_percent %} {{ shop.pos_vat_percent|floatformat:"-2g" }}%{% endif %}{% if shop.pos_vat_mode == 'inclusive' %} (দামের মধ্যে){% endif %}</span><span>৳{{ order.vat_amount|floatformat:"-2g" }}</span></div>{% endif %}
+  {% if order.delivery_charge %}<div class="row"><span>ডেলিভারি</span><span>৳{{ order.delivery_charge|floatformat:"-2g" }}</span></div>{% endif %}
+  <hr class="hr solid">
+  <div class="row total"><span>মোট</span><span>৳{{ order.total_amount|floatformat:"-2g" }}</span></div>
+  <hr class="hr">
+  {% for p in sale_payments %}
+  <div class="row"><span>{{ p.get_method_display }}{% if p.reference %} ({{ p.reference }}){% endif %}</span><span>৳{{ p.amount|floatformat:"-2g" }}</span></div>
+  {% endfor %}
+  {% if order.cash_received and order.change_given %}
+  <div class="row"><span>নগদ দিয়েছেন</span><span>৳{{ order.cash_received|floatformat:"-2g" }}</span></div>
+  <div class="row"><span>ফেরত দেওয়া হয়েছে</span><span>৳{{ order.change_given|floatformat:"-2g" }}</span></div>
+  {% endif %}
+  {% for p in later_payments %}
+  <div class="row"><span>{{ p.get_kind_display }} · {{ p.created_at|date:"d M" }} · {{ p.get_method_display }}</span><span>৳{{ p.amount|floatformat:"-2g" }}</span></div>
+  {% endfor %}
+  {% if order.status != 'Returned' and order.due_amount %}
+  <div class="row total" style="font-size:1.15em;"><span>বাকি</span><span>৳{{ order.due_amount|floatformat:"-2g" }}</span></div>
+  {% endif %}
+  <hr class="hr">
+  <svg id="barcode" aria-label="ORD{{ order.id }}"></svg>
+  <div class="c foot">
+    {% if shop.pos_receipt_note %}<div style="margin-top:1.5mm;">{{ shop.pos_receipt_note }}</div>{% endif %}
+    <div style="margin-top:1.5mm;font-weight:600;">আমাদের সাথে কেনাকাটার জন্য ধন্যবাদ</div>
+    <div class="muted" style="margin-top:1mm;font-size:.85em;">{{ site.name }} দিয়ে তৈরি</div>
+  </div>
 </div>
-
-<div class="divider"></div>
-
-<div class="row"><span>Order</span><span>#ORD-{{ order.id }}</span></div>
-<div class="row"><span>Date</span><span>{{ order.created_at|date:"d M Y, H:i" }}</span></div>
-<div class="row"><span>Customer</span><span>{{ order.customer.name }}</span></div>
-{% if order.customer.phone != '00000000000' %}
-<div class="row"><span>Phone</span><span>{{ order.customer.phone }}</span></div>
-{% endif %}
-<div class="row"><span>Payment</span><span>{{ order.payment_method }}</span></div>
-
-<div class="divider"></div>
-
-<div class="row" style="font-weight:700; font-size:11px; color:#555;">
-  <span class="item-name">ITEM</span>
-  <span class="item-qty">QTY</span>
-  <span class="item-total">AMOUNT</span>
+<div class="actions">
+  <button class="print" type="button" onclick="window.print()">প্রিন্ট</button>
+  <a class="alt" href="?w={% if width == 58 %}80{% else %}58{% endif %}">{% if width == 58 %}80mm{% else %}58mm{% endif %} কাগজ</a>
+  <a class="alt" href="{% url 'pos' %}">POS-এ ফিরুন</a>
 </div>
-<div class="divider"></div>
-
-{% for item in order_items %}
-<div class="row">
-  <span class="item-name">{{ item.product.name }}</span>
-  <span class="item-qty">×{{ item.quantity }}</span>
-  <span class="item-total">৳{{ item.price|floatformat:0 }}</span>
-</div>
-{% endfor %}
-
-<div class="divider"></div>
-
-{% if order.discount > 0 %}
-<div class="row"><span>Subtotal</span><span>৳{{ order.total_amount|floatformat:0 }}</span></div>
-<div class="row"><span>Discount</span><span>-৳{{ order.discount|floatformat:0 }}</span></div>
-{% endif %}
-<div class="row bold"><span>TOTAL</span><span>৳{{ order.total_amount|floatformat:0 }}</span></div>
-
-<div class="divider"></div>
-<div class="thank-you">
-  ধন্যবাদ আপনার কেনাকাটার জন্য!<br>
-  Thank you for shopping with us!
-</div>
-
-<div class="actions no-print">
-  <button class="btn btn-print" onclick="window.print()">🖨️ Print</button>
-  <button class="btn btn-new" onclick="window.location.href='{% url 'pos' %}'">+ New Sale</button>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script>
+  (function () {
+    try {
+      JsBarcode('#barcode', 'ORD{{ order.id }}', { format: 'CODE128', width: {% if width == 58 %}1.3{% else %}1.6{% endif %}, height: 34, displayValue: false, margin: 0 });
+    } catch (e) { document.getElementById('barcode').remove(); }
+    {% if auto_print %}
+    const go = () => setTimeout(() => window.print(), 150);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(go); else window.addEventListener('load', go);
+    {% endif %}
+  })();
+</script>
 </body>
 </html>

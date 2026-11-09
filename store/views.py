@@ -22,7 +22,7 @@ from .plans import (
     staff_limit, storefront_closes_on, storefront_is_open, upgrade_message,
 )
 from .forms import (ShopSetupForm, ProductForm, OrderCreateForm, SteadfastSettingsForm, PathaoSettingsForm,
-                    RedxSettingsForm, SmsSettingsForm)
+                    RedxSettingsForm, SmsSettingsForm, PosSettingsForm)
 from .links import storefront_link
 from . import couriers
 from .themes import THEMES
@@ -488,6 +488,7 @@ def business_reports(request):
 # ============================================================
 SETTINGS_TABS = [
     ('courier', 'bi-truck', 'কুরিয়ার'),
+    ('pos', 'bi-printer', 'POS ও রসিদ'),
     ('sms', 'bi-chat-left-text', 'SMS'),
     ('facebook', 'bi-facebook', 'Facebook'),
 ]
@@ -496,7 +497,9 @@ SETTINGS_FORMS = {
     'pathao': PathaoSettingsForm,
     'redx': RedxSettingsForm,
     'sms': SmsSettingsForm,
+    'pos': PosSettingsForm,
 }
+SECTION_TABS = {'sms': 'sms', 'pos': 'pos'}     # বাকি সব section কুরিয়ার ট্যাবের
 # পুরনো ফর্ম (বা কোনো বাটন) section না পাঠালে বাটনের নাম দেখে বোঝা হয় কোন ভাগ
 COURIER_ACTION_SECTIONS = {
     'test_Steadfast': 'steadfast', 'steadfast_disconnect': 'steadfast',
@@ -526,7 +529,7 @@ def shop_settings(request):
         if section not in SETTINGS_FORMS:
             messages.error(request, 'কিছু সেভ হয়নি, পেইজটা রিফ্রেশ করে আবার চেষ্টা করুন।')
             return redirect('settings')
-        tab = 'sms' if section == 'sms' else 'courier'
+        tab = SECTION_TABS.get(section, 'courier')
         if action.endswith('_disconnect'):
             _courier_disconnect(request, shop, action, section)
             return redirect(_settings_url(tab, section))
@@ -553,6 +556,7 @@ def shop_settings(request):
         'pathao_form': forms_by_section['pathao'],
         'redx_form': forms_by_section['redx'],
         'sms_form': forms_by_section['sms'],
+        'pos_form': forms_by_section['pos'],
         'courier_connected': connected,
         'courier_count': sum(connected.values()),
         'facebook_allowed': has_facebook(shop),
@@ -591,6 +595,11 @@ def _save_settings_section(request, shop, form, section, action):
     "যুক্ত করুন" / "কানেকশন টেস্ট" চাপলে আগে কুরিয়ারের সাথে মিলিয়ে দেখা হয়, তারপর সেভ;
     তাই ভুল চাবি দিয়ে চালু থাকা সংযোগ নষ্ট হয় না।
     """
+    if section == 'pos':
+        form.save()
+        messages.success(request, 'POS আর রসিদের সেটিং সেভ হয়েছে ✓', extra_tags=section)
+        return True
+
     if section == 'sms':
         shop = form.save()
         messages.success(request, 'ওয়েবসাইটের অর্ডারে কাস্টমারকে SMS যাবে ✓' if shop.is_sms_active
@@ -1000,120 +1009,7 @@ def master_settings(request):
     return render(request, 'store/master_settings.html', {'setting': setting})
 
 
-# ============================================================
-# POS SYSTEM (NEW)
-# ============================================================
-@login_required(login_url='/accounts/login/')
-def pos_dashboard(request):
-    """Superfast POS interface for offline sales"""
-    shop = request.user.shop
-
-    categories = Category.objects.filter(shop=shop)
-    products = Product.objects.filter(shop=shop, is_active=True, stock_quantity__gt=0).select_related('category')
-
-    # Build product data for JavaScript
-    product_data = []
-    for p in products:
-        product_data.append({
-            'id': p.id,
-            'name': p.name,
-            'price': float(p.price),
-            'cost_price': float(p.cost_price),
-            'stock': p.stock_quantity,
-            'category': p.category.name if p.category else 'General',
-            'category_id': p.category.id if p.category else 0,
-        })
-
-    return render(request, 'store/pos.html', {
-        'shop': shop,
-        'categories': categories,
-        'products': products,
-        'product_data_json': json.dumps(product_data),
-    })
-
-
-@login_required(login_url='/accounts/login/')
-def pos_checkout(request):
-    """Process POS sale - creates order directly"""
-    if request.method != 'POST':
-        return redirect('pos')
-
-    shop = request.user.shop
-
-    try:
-        data = json.loads(request.body)
-        cart_items = data.get('cart', [])
-        payment_method = data.get('payment_method', 'Paid')
-        customer_name = data.get('customer_name', 'Walk-in Customer')
-        customer_phone = data.get('customer_phone', '00000000000')
-        discount = float(data.get('discount', 0))
-
-        if not cart_items:
-            return JsonResponse({'success': False, 'error': 'Cart is empty!'})
-
-        # Get or create walk-in customer
-        customer, _ = Customer.objects.get_or_create(
-            shop=shop, phone=customer_phone,
-            defaults={'name': customer_name, 'address': 'POS / In-store'}
-        )
-        if customer_name != 'Walk-in Customer':
-            customer.name = customer_name
-            customer.save()
-
-        # Create order (POS = no delivery charge)
-        order = Order.objects.create(
-            shop=shop, customer=customer,
-            delivery_charge=0, discount=discount,
-            payment_method=payment_method,
-            status='Delivered',  # POS sale = instantly delivered
-            total_amount=0
-        )
-
-        subtotal = 0
-        for item in cart_items:
-            product = get_object_or_404(Product, id=item['id'], shop=shop)
-            qty = int(item['qty'])
-            price = float(item['price'])
-
-            # Stock validation
-            if product.stock_quantity < qty:
-                order.delete()
-                return JsonResponse({
-                    'success': False,
-                    'error': f"'{product.name}' has only {product.stock_quantity} items in stock!"
-                })
-
-            OrderItem.objects.create(
-                order=order, product=product,
-                price=price, quantity=qty, cost_price=product.cost_price
-            )
-            product.stock_quantity -= qty
-            product.save()
-            subtotal += price * qty
-
-        order.total_amount = max(0, subtotal - discount)
-        order.save()
-
-        return JsonResponse({
-            'success': True,
-            'order_id': order.id,
-            'total': float(order.total_amount),
-            'message': f'Sale complete! Order #ORD-{order.id}'
-        })
-
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
-
-
-@login_required(login_url='/accounts/login/')
-def pos_receipt(request, order_id):
-    """POS thermal receipt"""
-    shop = request.user.shop
-    order = get_object_or_404(Order, id=order_id, shop=shop)
-    order_items = order.items.all()
-    return render(request, 'store/pos_receipt.html', {
-        'shop': shop, 'order': order, 'order_items': order_items
-    })
+# POS (দোকানে বিক্রি): store/views_pos.py
 
 
 # ============================================================
@@ -1612,43 +1508,7 @@ def category_list(request):
 # ============================================================
 # BARCODE SYSTEM
 # ============================================================
-@login_required(login_url='/accounts/login/')
-def barcode_lookup(request):
-    """AJAX: Look up product by barcode — used by POS scanner"""
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            barcode = data.get('barcode', '').strip()
-            shop = request.user.shop
-
-            if not barcode:
-                return JsonResponse({'success': False, 'error': 'No barcode provided'})
-
-            product = Product.objects.get(barcode=barcode, shop=shop, is_active=True)
-
-            if product.stock_quantity <= 0:
-                return JsonResponse({'success': False, 'error': f'"{product.name}" is out of stock!'})
-
-            return JsonResponse({
-                'success': True,
-                'product': {
-                    'id': product.id,
-                    'name': product.name,
-                    'price': float(product.price),
-                    'cost_price': float(product.cost_price),
-                    'stock': product.stock_quantity,
-                    'barcode': product.barcode,
-                    'category': product.category.name if product.category else 'General',
-                    'category_id': product.category.id if product.category else 0,
-                }
-            })
-
-        except Product.DoesNotExist:
-            return JsonResponse({'success': False, 'error': f'No product found for barcode: {data.get("barcode")}'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-
-    return JsonResponse({'success': False, 'error': 'Invalid request'})
+# বারকোড দিয়ে প্রোডাক্ট খোঁজা (POS স্ক্যানার): store/views_pos.py → pos_barcode
 
 
 @login_required(login_url='/accounts/login/')

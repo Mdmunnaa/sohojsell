@@ -69,6 +69,14 @@
   .cod-note { display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; color: #475569; margin-top: 6px; line-height: 1.6; }
   .cod-note i { color: #16A34A; font-size: 15px; }
 
+  /* POS-এর অপশন কার্ড */
+  .opt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .opt { display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid #E2E8F0; border-radius: 14px; padding: 12px 14px; cursor: pointer; margin: 0; }
+  .opt:has(input:checked) { border-color: #0F172A; background: #F8FAFC; box-shadow: 0 0 0 3px rgba(15,23,42,.05); }
+  .opt input { margin-top: 4px; accent-color: #0F172A; }
+  .opt b { display: block; font-size: 14px; color: #0F172A; }
+  .opt small { display: block; font-size: 12px; color: #64748B; margin-top: 2px; line-height: 1.5; }
+
   /* SMS */
   .sms-hero { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; border-radius: 18px; padding: 20px 22px; background: linear-gradient(135deg, #EFF6FF, #F5F3FF); border: 1px solid #DBEAFE; margin-bottom: 16px; }
   .sms-hero .ico { width: 52px; height: 52px; border-radius: 16px; background: #fff; color: #4F46E5; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 1px 2px rgba(15,23,42,.06); }
@@ -134,7 +142,7 @@
     <div class="st-head-row">
       <div>
         <h4><i class="bi bi-gear me-2"></i>সেটিংস</h4>
-        <p>কুরিয়ার, SMS আর Facebook — দোকানের সব সংযোগ এক জায়গায়</p>
+        <p>কুরিয়ার, POS, SMS আর Facebook — দোকানের সব সেটিং এক জায়গায়</p>
       </div>
       <div class="st-plan">
         <div>
@@ -161,6 +169,7 @@
     <a href="?tab={{ key }}" class="ws-tab {% if active_tab == key %}active{% endif %}" {% if active_tab == key %}aria-current="page"{% endif %}>
       <i class="bi {{ icon }}"></i> {{ label }}
       {% if key == 'courier' %}<span class="tab-badge {% if courier_count %}ok{% endif %}">{{ courier_count|bn }}/৩</span>
+      {% elif key == 'pos' %}{% if shop.pos_vat_percent %}<span class="tab-badge">VAT {{ shop.pos_vat_percent|floatformat:"-2"|bn }}%</span>{% endif %}
       {% elif key == 'sms' %}<span class="tab-badge {% if shop.is_sms_active and shop.sms_balance > 0 %}ok{% endif %}">{% if shop.is_sms_active %}চালু{% else %}বন্ধ{% endif %}</span>
       {% elif key == 'facebook' and fb_page %}<span class="tab-badge ok">যুক্ত</span>{% endif %}
     </a>
@@ -362,6 +371,62 @@
     {% endwith %}
 
     <div class="cod-note"><i class="bi bi-shield-check"></i><span>আগে পুরো টাকা নেওয়া অর্ডারে (Paid, bKash, Card) কুরিয়ার কাস্টমারের কাছ থেকে কিছু তুলবে না। অগ্রিম নেওয়া থাকলে শুধু বাকিটুকু তুলবে।</span></div>
+
+  {% elif active_tab == 'pos' %}
+    <h5 class="ws-section-title">POS ও রসিদ</h5>
+    <p class="ws-section-sub">দোকানে বিক্রির VAT আর রসিদে কী ছাপা হবে। <a href="{% url 'pos' %}" class="fw-bold text-decoration-none">POS খুলুন <i class="bi bi-arrow-right"></i></a></p>
+    {% include 'store/partials/panel_messages.html' with section='pos' %}
+    <form method="post" action="{% url 'settings' %}" novalidate>{% csrf_token %}
+      <input type="hidden" name="section" value="pos">
+      {% with f=pos_form %}
+      <div class="cc" id="pos">
+        <div class="cc-head">
+          <div class="cc-logo" style="background:#0F172A;"><i class="bi bi-percent"></i></div>
+          <div class="cc-title"><div class="cc-name">VAT</div><div class="cc-sub">না লাগলে ০ রাখুন</div></div>
+        </div>
+        <div class="cc-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" for="{{ f.pos_vat_percent.id_for_label }}">VAT (%)</label>{{ f.pos_vat_percent }}
+              {% for e in f.pos_vat_percent.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-8">
+              <label class="form-label" for="{{ f.pos_bin.id_for_label }}">BIN নম্বর (রসিদে ছাপা হবে)</label>{{ f.pos_bin }}
+            </div>
+          </div>
+          <div class="opt-grid mt-3">
+            {% for radio in f.pos_vat_mode %}
+            <label class="opt" for="{{ radio.id_for_label }}">{{ radio.tag }}
+              <span><b>{{ radio.choice_label }}</b><small>{% if radio.data.value == 'exclusive' %}যেমন ৳১০০০-এর জিনিসে ৭.৫% VAT → কাস্টমার দেবেন ৳১০৭৫{% else %}যেমন ৳১০০০-এর মধ্যেই VAT ধরা, রসিদে আলাদা করে দেখাবে{% endif %}</small></span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="cc">
+        <div class="cc-head">
+          <div class="cc-logo" style="background:#475569;"><i class="bi bi-receipt"></i></div>
+          <div class="cc-title"><div class="cc-name">রসিদ</div><div class="cc-sub">থার্মাল প্রিন্টারের কাগজের মাপ আর নিচের লেখা</div></div>
+        </div>
+        <div class="cc-body">
+          <label class="form-label">কাগজের মাপ</label>
+          <div class="opt-grid">
+            {% for radio in f.pos_receipt_width %}
+            <label class="opt" for="{{ radio.id_for_label }}">{{ radio.tag }}
+              <span><b>{{ radio.choice_label }}</b><small>{% if radio.data.value == 80 %}বেশিরভাগ দোকানের প্রিন্টার{% else %}ছোট/হাতে নেওয়া প্রিন্টার{% endif %}</small></span>
+            </label>
+            {% endfor %}
+          </div>
+          <label class="form-label mt-3" for="{{ f.pos_receipt_note.id_for_label }}">রসিদের নিচের লেখা</label>{{ f.pos_receipt_note }}
+          <label class="switch-row mt-3" for="{{ f.pos_auto_print.id_for_label }}">
+            <span><span class="t">বিক্রি শেষ হলেই রসিদ প্রিন্ট</span><span class="d">বন্ধ থাকলে বিক্রির পর "রসিদ প্রিন্ট" চাপতে হয়।</span></span>
+            <span class="form-check form-switch">{{ f.pos_auto_print }}</span>
+          </label>
+        </div>
+      </div>
+      {% endwith %}
+      <button type="submit" class="ws-save"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button>
+    </form>
 
   {% elif active_tab == 'sms' %}
     <h5 class="ws-section-title">অর্ডারের SMS</h5>

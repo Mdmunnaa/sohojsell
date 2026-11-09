@@ -75,6 +75,17 @@ class Shop(models.Model):
     payout_account = models.CharField(max_length=150, blank=True, default='',
                                       help_text='মোবাইল নম্বর, বা ব্যাংকের নাম-শাখা-অ্যাকাউন্ট নম্বর')
     payout_account_name = models.CharField(max_length=120, blank=True, default='')
+    # POS (দোকানে বিক্রি) আর রসিদ
+    VAT_EXCLUSIVE, VAT_INCLUSIVE = 'exclusive', 'inclusive'
+    VAT_MODE_CHOICES = [(VAT_EXCLUSIVE, 'দামের সাথে যোগ হবে'), (VAT_INCLUSIVE, 'দামের মধ্যেই ধরা আছে')]
+    pos_vat_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+                                          help_text='০ = VAT নেই')
+    pos_vat_mode = models.CharField(max_length=10, choices=VAT_MODE_CHOICES, default=VAT_EXCLUSIVE)
+    pos_bin = models.CharField('BIN নম্বর', max_length=30, blank=True, default='')
+    pos_receipt_width = models.PositiveSmallIntegerField(choices=[(80, '80mm'), (58, '58mm')], default=80)
+    pos_receipt_note = models.CharField(max_length=200, blank=True, default='',
+                                        help_text='রসিদের নিচে, যেমন: ৭ দিনের মধ্যে বদলানো যাবে')
+    pos_auto_print = models.BooleanField(default=False, help_text='বিক্রি শেষ হলেই রসিদ প্রিন্ট')
     # SaaS Plan
     PLAN_CHOICES = (
         ('Free', 'Free Trial (30 days)'),
@@ -251,7 +262,8 @@ class Order(models.Model):
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     payment_method = models.CharField(
         max_length=20,
-        choices=[('COD', 'Cash on Delivery'), ('Paid', 'Full Paid'), ('bKash', 'bKash'), ('Card', 'Card'), ('Credit', 'Credit')],
+        choices=[('COD', 'Cash on Delivery'), ('Paid', 'Full Paid'), ('bKash', 'bKash'), ('Nagad', 'Nagad'),
+                 ('Card', 'Card'), ('Mixed', 'Mixed'), ('Credit', 'Credit')],
         default='COD'
     )
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -272,6 +284,14 @@ class Order(models.Model):
     ONLINE_NONE, ONLINE_PENDING, ONLINE_PAID = '', 'pending', 'paid'
     online_payment_status = models.CharField(max_length=10, blank=True, default='',
                                              choices=[('', '—'), ('pending', 'পেমেন্ট বাকি'), ('paid', 'পরিশোধিত')])
+    # POS: VAT, নগদ কত দিয়েছে আর কত ফেরত, কে বিক্রি করেছে। POS-এ advance_paid = এখন পর্যন্ত পাওয়া টাকা
+    vat_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    cash_received = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    change_given = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    served_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                  related_name='pos_sales')
+    # একই বিক্রি দুবার জমা হওয়া ঠেকাতে POS স্ক্রিনের দেওয়া আইডি (নেট কেটে আবার পাঠালে)
+    pos_ref = models.CharField(max_length=40, blank=True, default='', db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property
@@ -279,8 +299,46 @@ class Order(models.Model):
         """ডেলিভারির সময় কাস্টমারের কাছ থেকে আর কত নিতে হবে।"""
         return max(self.total_amount - self.advance_paid, 0)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['shop', 'pos_ref'], condition=~models.Q(pos_ref=''),
+                                    name='uniq_pos_ref_per_shop'),
+        ]
+
+    @property
+    def subtotal(self):
+        """ছাড়, VAT আর ডেলিভারির আগে প্রোডাক্টের দাম।"""
+        return sum((item.price * item.quantity for item in self.items.all()), 0)
+
     def __str__(self):
         return f"Order #{self.id} - {self.customer.name}"
+
+
+class SalePayment(models.Model):
+    """
+    POS-এর টাকা লেনদেন: বিক্রির সময় পাওয়া টাকা, পরে বাকি আদায়, বা ফেরতের সময় দেওয়া টাকা (ঋণাত্মক)।
+    দিনশেষের হিসাব এখান থেকেই হয় — যেদিন টাকা হাতে এসেছে সেদিনের।
+    """
+    CASH, BKASH, NAGAD, CARD, BANK = 'cash', 'bkash', 'nagad', 'card', 'bank'
+    METHOD_CHOICES = [(CASH, 'নগদ'), (BKASH, 'bKash'), (NAGAD, 'Nagad'), (CARD, 'কার্ড'), (BANK, 'ব্যাংক')]
+    SALE, DUE_COLLECTION, REFUND = 'sale', 'due', 'refund'
+    KIND_CHOICES = [(SALE, 'বিক্রি'), (DUE_COLLECTION, 'বাকি আদায়'), (REFUND, 'ফেরত')]
+
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='sale_payments')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='payments')
+    method = models.CharField(max_length=10, choices=METHOD_CHOICES)
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default=SALE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    reference = models.CharField(max_length=60, blank=True, default='', help_text='TrxID / কার্ডের শেষ ৪ সংখ্যা')
+    received_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['created_at', 'id']
+
+    def __str__(self):
+        return f'{self.get_method_display()} ৳{self.amount} — #ORD-{self.order_id}'
 
 
 class OrderItem(models.Model):

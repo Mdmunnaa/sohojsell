@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>দিনশেষের হিসাব {{ summary.day|date:"d M Y" }} — {{ shop.name }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  @page { size: 80mm auto; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E5E7EB; font-family: 'Hind Siliguri', 'Noto Sans Bengali', Arial, sans-serif; color: #000; font-size: 12.5px; line-height: 1.4; }
+  .bar { max-width: 80mm; margin: 16px auto 0; display: flex; gap: 6px; align-items: center; }
+  .bar a, .bar button, .bar input { border: 1px solid #CBD5E1; background: #fff; border-radius: 9px; padding: 7px 10px; font: 600 13px 'Hind Siliguri', sans-serif; color: #0F172A; text-decoration: none; cursor: pointer; }
+  .bar input { flex: 1; min-width: 0; }
+  .bar .print { background: #0F172A; color: #fff; border-color: #0F172A; }
+  .paper { width: 80mm; margin: 10px auto 24px; background: #fff; padding: 4mm; box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+  .c { text-align: center; }
+  h1 { font-size: 1.45em; margin: 0; }
+  h2 { font-size: 1.05em; margin: 2.5mm 0 1mm; border-bottom: 1px solid #000; padding-bottom: .5mm; }
+  .hr { border: 0; border-top: 1px dashed #000; margin: 2mm 0; }
+  .row { display: flex; justify-content: space-between; gap: 2mm; }
+  .row > :last-child { white-space: nowrap; text-align: right; }
+  .big { font-size: 1.35em; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: .92em; }
+  th, td { padding: .6mm 0; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { border-bottom: 1px solid #000; font-weight: 600; }
+  .drawer { border: 2px solid #000; border-radius: 2mm; padding: 2mm; margin-top: 2mm; text-align: center; }
+  .drawer b { font-size: 1.6em; display: block; }
+  .sign { display: flex; gap: 6mm; margin-top: 10mm; }
+  .sign div { flex: 1; border-top: 1px solid #000; text-align: center; padding-top: 1mm; font-size: .9em; }
+  .empty { color: #444; font-style: italic; }
+  @media print { body { background: #fff; } .bar { display: none; } .paper { margin: 0; box-shadow: none; width: auto; } }
+</style>
+</head>
+<body>
+<form class="bar" method="get">
+  <a href="#" onclick="return go(-1)">‹</a>
+  <input type="date" name="date" value="{{ summary.day|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" onchange="this.form.submit()" aria-label="তারিখ">
+  <a href="#" onclick="return go(1)">›</a>
+  <button class="print" type="button" onclick="window.print()">প্রিন্ট</button>
+</form>
+<div class="paper">
+  <div class="c">
+    <h1>{{ shop.name }}</h1>
+    <div style="font-weight:600;">দিনশেষের হিসাব (POS)</div>
+    <div>{{ summary.day|date:"l, d F Y" }}</div>
+  </div>
+  <hr class="hr">
+
+  <h2>বিক্রি</h2>
+  <div class="row"><span>বিল</span><span>{{ summary.count }}টা</span></div>
+  <div class="row"><span>প্রোডাক্ট বিক্রি</span><span>{{ summary.items_sold }}টা</span></div>
+  <div class="row"><span>প্রোডাক্টের দাম</span><span>৳{{ summary.gross|floatformat:"-2g" }}</span></div>
+  <div class="row"><span>ছাড়</span><span>−৳{{ summary.discount|floatformat:"-2g" }}</span></div>
+  {% if summary.vat %}<div class="row"><span>VAT</span><span>৳{{ summary.vat|floatformat:"-2g" }}</span></div>{% endif %}
+  <div class="row big"><span>নিট বিক্রি</span><span>৳{{ summary.net|floatformat:"-2g" }}</span></div>
+
+  <h2>ফেরত ও বাকি</h2>
+  <div class="row"><span>ফেরত হওয়া বিল (আজকের)</span><span>{{ summary.returned_count }}টা</span></div>
+  <div class="row"><span>আজ ফেরত দেওয়া টাকা</span><span>৳{{ summary.refunded|floatformat:"-2g" }}</span></div>
+  <div class="row"><span>আজ বাকিতে বিক্রি</span><span>৳{{ summary.due_given|floatformat:"-2g" }}</span></div>
+  <div class="row"><span>আজ বাকি আদায়</span><span>৳{{ summary.due_collected|floatformat:"-2g" }}</span></div>
+
+  <h2>টাকা এসেছে</h2>
+  {% if summary.methods %}
+  <table>
+    <tr><th>মাধ্যম</th><th>বিক্রি</th><th>আদায়</th><th>ফেরত</th><th>মোট</th></tr>
+    {% for m in summary.methods %}
+    <tr><td>{{ m.label }}</td><td>{{ m.sale|floatformat:"-2g" }}</td><td>{{ m.due|floatformat:"-2g" }}</td><td>{{ m.refund|floatformat:"-2g" }}</td><td><b>{{ m.net|floatformat:"-2g" }}</b></td></tr>
+    {% endfor %}
+  </table>
+  <div class="row big" style="margin-top:1.5mm;"><span>মোট পাওয়া</span><span>৳{{ summary.total_received|floatformat:"-2g" }}</span></div>
+  {% else %}<div class="empty">এই দিনে কোনো লেনদেন নেই</div>{% endif %}
+  <div class="drawer">ড্রয়ারে নগদ থাকার কথা<b>৳{{ summary.cash_in_drawer|floatformat:"-2g" }}</b><span style="font-size:.85em;">(দিনের শুরুর খুচরা টাকা বাদে)</span></div>
+
+  {% if summary.cashiers %}
+  <h2>বিক্রেতা অনুযায়ী</h2>
+  {% for c in summary.cashiers %}
+  <div class="row"><span>{{ c.served_by__name|default:c.served_by__phone_number|default:"—" }} ({{ c.count }}টা বিল)</span><span>৳{{ c.total|floatformat:"-2g" }}</span></div>
+  {% endfor %}
+  {% endif %}
+
+  {% if summary.top_products %}
+  <h2>সবচেয়ে বেশি বিক্রি</h2>
+  {% for p in summary.top_products %}
+  <div class="row"><span>{{ p.product__name }} × {{ p.qty }}</span><span>৳{{ p.amount|floatformat:"-2g" }}</span></div>
+  {% endfor %}
+  {% endif %}
+
+  <div class="sign"><div>ক্যাশিয়ার</div><div>ম্যানেজার</div></div>
+  <div class="c" style="margin-top:3mm;font-size:.85em;">প্রিন্ট: {{ printed_at|date:"d M Y, h:i A" }}</div>
+</div>
+<script>
+  function go(delta) {
+    const input = document.querySelector('input[name=date]');
+    const d = new Date(input.value + 'T00:00:00');
+    d.setDate(d.getDate() + delta);
+    const max = new Date(input.max + 'T00:00:00');
+    if (d > max) return false;
+    const pad = (n) => String(n).padStart(2, '0');
+    input.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    input.form.submit();
+    return false;
+  }
+</script>
+</body>
+</html>

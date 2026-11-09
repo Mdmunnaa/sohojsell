@@ -5,6 +5,7 @@ from django.views.generic import RedirectView
 from . import website_views
 from . import views
 from . import payment_views
+from . import views_pos
 
 def favicon(request):
     from django.shortcuts import redirect
@@ -53,9 +54,14 @@ urlpatterns = [
     path('courier/', views.courier_dashboard, name='courier'),
 
     # POS System
-    path('pos/', views.pos_dashboard, name='pos'),
-    path('pos/checkout/', views.pos_checkout, name='pos_checkout'),
-    path('pos/receipt/<int:order_id>/', views.pos_receipt, name='pos_receipt'),
+    path('pos/', views_pos.pos_screen, name='pos'),
+    path('pos/checkout/', views_pos.pos_checkout, name='pos_checkout'),
+    path('pos/receipt/<int:order_id>/', views_pos.pos_receipt, name='pos_receipt'),
+    path('pos/customer/', views_pos.pos_customer, name='pos_customer'),
+    path('pos/collect-due/', views_pos.pos_collect_due, name='pos_collect_due'),
+    path('pos/sales/', views_pos.pos_sales, name='pos_sales'),
+    path('pos/sales/<int:order_id>/return/', views_pos.pos_return, name='pos_return'),
+    path('pos/day-close/', views_pos.pos_day_close, name='pos_day_close'),
 
     # Customers & Reports
     path('customers/', views.customer_list, name='customer_list'),
@@ -80,7 +86,7 @@ urlpatterns = [
     path('saas-master/recharge-sms/', views.recharge_sms, name='recharge_sms'),
 
     # Barcode System
-    path('pos/barcode-lookup/', views.barcode_lookup, name='barcode_lookup'),
+    path('pos/barcode-lookup/', views_pos.pos_barcode, name='barcode_lookup'),
     path('barcodes/', views.barcode_print, name='barcode_print'),
 
     # Banner Management

@@ -4,6 +4,7 @@ SellPunch টেস্ট: পাবলিক পেইজ, নীতিমা�
 চালানো: python manage.py test
 PayStation-এর নেটওয়ার্ক কল নকল (mock) করা হয়েছে, তাই ইন্টারনেট লাগে না।
 """
+import json
 import os
 from datetime import timedelta
 from decimal import Decimal
@@ -905,6 +906,135 @@ class CloudflareHostingTests(TestCase):
         self.assertTemplateNotUsed(response, 'store/storefront/not_found.html')
         from .subdomains import is_valid_format
         self.assertFalse(is_valid_format('cf'))     # কোনো দোকান 'cf' নাম নিতে পারবে না
+
+
+class POSTests(ShopTestMixin, TestCase):
+    """POS: দাম, স্টক, ছাড়, VAT, ভাগ করে পেমেন্ট, ফেরত টাকা, বাকি, দুবার জমা, বিক্রি ফেরত, দিনশেষ।"""
+
+    def setUp(self):
+        from .models import Product
+        self.user, self.shop = self.make_shop()
+        self.shirt = Product.objects.create(shop=self.shop, name='শার্ট', price=Decimal('450'), cost_price=300,
+                                            stock_quantity=10, barcode='111222333')
+        self.cap = Product.objects.create(shop=self.shop, name='Cap', price=Decimal('199.50'), cost_price=100,
+                                          stock_quantity=2)
+
+    def sell(self, **payload):
+        payload.setdefault('payments', [{'method': 'cash', 'amount': 0, 'full': True}])
+        return self.client.post(reverse('pos_checkout'), data=json.dumps(payload), content_type='application/json')
+
+    def test_totals_math(self):
+        from .pos import compute_totals
+        D = Decimal
+        self.assertEqual(compute_totals([D('1000')], 'percent', 10, 0, 'exclusive'), (D('1000'), D('100.00'), 0, D('900')))
+        self.assertEqual(compute_totals([D('1000')], 'amount', 5000, 0, 'exclusive')[1], D('1000'))   # ছাড় দামের বেশি না
+        sub, disc, vat, total = compute_totals([D('1000')], 'amount', 0, D('7.5'), 'exclusive')
+        self.assertEqual((vat, total), (D('75.00'), D('1075.00')))
+        sub, disc, vat, total = compute_totals([D('1075')], 'amount', 0, D('7.5'), 'inclusive')
+        self.assertEqual((vat, total), (D('75.00'), D('1075')))
+
+    def test_sale_uses_server_price_and_gives_change(self):
+        response = self.sell(items=[{'id': self.shirt.id, 'qty': 1}, {'id': self.shirt.id, 'qty': 1}],
+                             discount={'type': 'amount', 'value': 50},
+                             payments=[{'method': 'cash', 'amount': 1000, 'full': True}])
+        data = response.json()
+        self.assertTrue(data['success'], data)
+        self.assertEqual((data['sale']['total'], data['sale']['change'], data['sale']['due']), (850, 150, 0))
+        order = Order.objects.get(pk=data['sale']['id'])
+        self.assertEqual((order.source, order.status, order.payment_method), ('pos', 'Delivered', 'Paid'))
+        self.assertEqual(order.items.get().price, Decimal('450'))
+        self.assertEqual(order.payments.get().amount, Decimal('850'))
+        self.shirt.refresh_from_db()
+        self.assertEqual(self.shirt.stock_quantity, 8)
+
+    def test_out_of_stock_rolls_back_everything(self):
+        response = self.sell(items=[{'id': self.shirt.id, 'qty': 1}, {'id': self.cap.id, 'qty': 3}])
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('স্টকে আছে মাত্র 2টা', response.json()['error'])
+        self.shirt.refresh_from_db()
+        self.assertEqual(self.shirt.stock_quantity, 10)           # আগের প্রোডাক্টের স্টকও আগের মতো
+        self.assertFalse(Order.objects.filter(source='pos').exists())
+
+    def test_split_payment_vat_and_duplicate_submit(self):
+        self.shop.pos_vat_percent = Decimal('5')
+        self.shop.save()
+        payload = dict(ref='abc-123', items=[{'id': self.cap.id, 'qty': 2}],
+                       payments=[{'method': 'bkash', 'amount': 200, 'reference': 'TRX1'},
+                                 {'method': 'cash', 'amount': 300}])
+        first = self.sell(**payload).json()
+        self.assertTrue(first['success'], first)
+        order = Order.objects.get(pk=first['sale']['id'])
+        self.assertEqual((order.vat_amount, order.total_amount), (Decimal('19.95'), Decimal('418.95')))
+        self.assertEqual((order.payment_method, order.change_given), ('Mixed', Decimal('81.05')))
+        again = self.sell(**payload).json()                        # নেট কেটে আবার পাঠালে
+        self.assertEqual(again['sale']['id'], order.id)
+        self.assertFalse(again['created'])
+        self.cap.refresh_from_db()
+        self.assertEqual(self.cap.stock_quantity, 0)
+
+    def test_due_needs_customer_and_can_be_collected(self):
+        partial = dict(items=[{'id': self.shirt.id, 'qty': 2}], payments=[{'method': 'cash', 'amount': 500}])
+        self.assertIn('বাকি', self.sell(**partial).json()['error'])
+        self.assertIn('নাম আর মোবাইল', self.sell(allow_due=True, **partial).json()['error'])
+        sale = self.sell(allow_due=True, customer={'name': 'রহিম', 'phone': '০১৭১২৩৪৫৬৭৮'}, **partial).json()
+        self.assertEqual((sale['sale']['due'], sale['sale']['customer']), (400, 'রহিম'))
+        info = self.client.get(reverse('pos_customer'), {'phone': '01712345678'}).json()['customer']
+        self.assertEqual((info['name'], info['due'], info['orders']), ('রহিম', 400, 1))
+        too_much = self.client.post(reverse('pos_collect_due'), data=json.dumps(
+            {'phone': '01712345678', 'amount': 500, 'method': 'cash'}), content_type='application/json')
+        self.assertIn('মাত্র ৳400', too_much.json()['error'])
+        paid = self.client.post(reverse('pos_collect_due'), data=json.dumps(
+            {'phone': '01712345678', 'amount': 400, 'method': 'bkash'}), content_type='application/json').json()
+        self.assertEqual((paid['collected'], paid['due_left']), (400, 0))
+
+    def test_owner_can_change_price_but_staff_cannot(self):
+        owner = self.sell(items=[{'id': self.shirt.id, 'qty': 1, 'price': 400}]).json()
+        self.assertEqual(owner['sale']['total'], 400)
+        from .models import StaffProfile
+        staff = User.objects.create_user(phone_number='01733333333', password='Staff-pass-1')
+        StaffProfile.objects.create(user=staff, shop=self.shop, can_use_pos=True)
+        self.client.force_login(staff)
+        cashier = self.sell(items=[{'id': self.shirt.id, 'qty': 1, 'price': 1}]).json()
+        self.assertEqual(cashier['sale']['total'], 450)
+        self.assertEqual(Order.objects.get(pk=cashier['sale']['id']).served_by, staff)
+        blocked = self.client.post(reverse('pos_return', args=[cashier['sale']['id']]), data='{}',
+                                   content_type='application/json')
+        self.assertEqual(blocked.status_code, 403)                # ফেরতের অনুমতি নেই
+
+    def test_return_restocks_refunds_and_day_close_adds_up(self):
+        from django.utils import timezone
+        from .pos import day_summary
+        sale = self.sell(items=[{'id': self.shirt.id, 'qty': 3}],
+                         payments=[{'method': 'cash', 'amount': 2000, 'full': True}]).json()['sale']
+        self.sell(items=[{'id': self.cap.id, 'qty': 1}], payments=[{'method': 'card', 'amount': 0, 'full': True}])
+        back = self.client.post(reverse('pos_return', args=[sale['id']]), data=json.dumps({'reason': 'সাইজ'}),
+                                content_type='application/json').json()
+        self.assertEqual(back['refunded'], 1350)
+        self.shirt.refresh_from_db()
+        self.assertEqual(self.shirt.stock_quantity, 10)
+        again = self.client.post(reverse('pos_return', args=[sale['id']]), data='{}', content_type='application/json')
+        self.assertEqual(again.status_code, 400)
+        summary = day_summary(self.shop, timezone.localdate())
+        self.assertEqual((summary['count'], summary['net'], summary['returned_count']), (1, Decimal('199.50'), 1))
+        self.assertEqual(summary['cash_in_drawer'], Decimal('0'))        # ১৩৫০ নিয়ে ১৩৫০ ফেরত
+        self.assertEqual(summary['total_received'], Decimal('199.50'))   # শুধু কার্ডের বিক্রি রইল
+        page = self.client.get(reverse('pos_day_close'))
+        self.assertContains(page, 'দিনশেষের হিসাব')
+
+    def test_pages_render(self):
+        sale = self.sell(items=[{'id': self.shirt.id, 'qty': 1}],
+                         payments=[{'method': 'cash', 'amount': 500, 'full': True}]).json()['sale']
+        screen = self.client.get(reverse('pos'))
+        self.assertContains(screen, 'id="pos-config"')
+        self.assertNotContains(screen, 'cost_price')
+        receipt = self.client.get(reverse('pos_receipt', args=[sale['id']]))
+        self.assertContains(receipt, 'নগদ দিয়েছেন')
+        self.assertContains(receipt, '৳450')
+        found = self.client.get(reverse('pos_sales'), {'q': f"ORD-{sale['id']}"}).json()['sales']
+        self.assertEqual([s['id'] for s in found], [sale['id']])
+        scan = self.client.post(reverse('barcode_lookup'), data=json.dumps({'barcode': '111222333'}),
+                                content_type='application/json').json()
+        self.assertEqual(scan['product']['id'], self.shirt.id)
 
 
 class StorefrontThemeTests(ShopTestMixin, TestCase):

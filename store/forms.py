@@ -197,6 +197,27 @@ class RedxSettingsForm(_CourierForm):
         }
 
 
+class PosSettingsForm(forms.ModelForm):
+    """POS-এর VAT আর রসিদের সেটিং।"""
+    class Meta:
+        model = Shop
+        fields = ['pos_vat_percent', 'pos_vat_mode', 'pos_bin', 'pos_receipt_width', 'pos_receipt_note', 'pos_auto_print']
+        widgets = {
+            'pos_vat_percent': forms.NumberInput(attrs={**INPUT, 'min': '0', 'max': '100', 'step': '0.01', 'placeholder': '০'}),
+            'pos_vat_mode': forms.RadioSelect,
+            'pos_bin': forms.TextInput(attrs={**INPUT, 'placeholder': 'যেমন 000123456-0101', 'autocomplete': 'off'}),
+            'pos_receipt_width': forms.RadioSelect,
+            'pos_receipt_note': forms.TextInput(attrs={**INPUT, 'placeholder': 'যেমন: ক্যাশ মেমো ছাড়া পণ্য ফেরত নেওয়া হয় না'}),
+            'pos_auto_print': forms.CheckboxInput(attrs={'class': 'form-check-input', 'role': 'switch'}),
+        }
+
+    def clean_pos_vat_percent(self):
+        value = self.cleaned_data.get('pos_vat_percent') or 0
+        if value < 0 or value > 100:
+            raise forms.ValidationError('VAT ০ থেকে ১০০%-এর মধ্যে দিন।')
+        return value
+
+
 class SmsSettingsForm(forms.ModelForm):
     class Meta:
         model = Shop
