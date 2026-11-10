@@ -54,6 +54,15 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .meta-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .meta-chip { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; padding: 6px 14px; border-radius: 24px; }
 .meta-chip.stock { background: #E8F5E9; color: #166534; }
+.var-wrap { margin: 14px 0 4px; }
+.var-title { font-size: 13px; font-weight: 800; color: var(--muted); margin-bottom: 8px; }
+.var-title span { color: #0F172A; }
+.var-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.var-chip { border: 2px solid #E2E8F0; background: #fff; border-radius: 12px; padding: 8px 14px; font-weight: 800; font-size: 14px; color: #0F172A; cursor: pointer; min-height: 42px; }
+.var-chip.on { border-color: #0F172A; background: #0F172A; color: #fff; }
+.var-chip.out { color: #94A3B8; text-decoration: line-through; cursor: not-allowed; background: #F8FAFC; }
+.var-wrap.shake { animation: varShake .45s; }
+@keyframes varShake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 .meta-chip.oos { background: #FEF2F2; color: #DC2626; }
 .meta-chip.rating { background: #FEF3C7; color: #B45309; }
 
@@ -289,7 +298,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 
     <!-- INFO CARD -->
     <div class="info-card">
-      <div class="price-main">৳{{ product.price|floatformat:0 }}{% if product.discount_percent %}
+      <div class="price-main"><span id="price-now">৳{{ product.price|floatformat:0 }}</span>{% if product.discount_percent %}
         <span style="font-size:16px;font-weight:600;color:var(--muted);text-decoration:line-through;letter-spacing:0;">৳{{ product.compare_price|floatformat:0 }}</span>
         <span style="font-size:13px;font-weight:800;background:#FF3333;color:#fff;padding:3px 8px;border-radius:6px;letter-spacing:0;vertical-align:middle;">-{{ product.discount_percent }}%</span>{% endif %}</div>
       <div class="prod-title-text">{{ product.name }}</div>
@@ -303,9 +312,18 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
         {% if product.sold_count %}<span class="meta-chip rating"><i class="bi bi-bag-check-fill"></i> {{ product.sold_count }}টা বিক্রি হয়েছে</span>{% endif %}
       </div>
 
+      {% if variant_list %}
+      <div class="var-wrap" id="var-wrap">
+        <div class="var-title">সাইজ / রং বেছে নিন <span id="var-picked"></span></div>
+        <div class="var-chips">
+          {% for v in variant_list %}<button type="button" class="var-chip{% if v.stock <= 0 %} out{% endif %}" data-var="{{ v.id }}"{% if v.stock <= 0 %} disabled{% endif %}>{{ v.name }}</button>{% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
       <div class="desk-btn-row">
-        <button class="desk-btn-add" onclick="addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{{ product.thumb_url|escapejs }}')">কার্টে যোগ করুন</button>
-        <button class="desk-btn-buy" onclick="buyNow({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{{ product.thumb_url|escapejs }}')">এখনই কিনুন</button>
+        <button class="desk-btn-add" onclick="addChosen()">কার্টে যোগ করুন</button>
+        <button class="desk-btn-buy" onclick="buyChosen()">এখনই কিনুন</button>
       </div>
     </div>
 
@@ -410,7 +428,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 <div class="bottom-bar">
   <a href="{% shop_url 'storefront_home' shop %}" class="bar-icon-btn" aria-label="দোকান"><i class="bi bi-shop"></i></a>
   <button class="bar-icon-btn" onclick="openCart()" aria-label="কার্ট"><i class="bi bi-cart3"></i></button>
-  <button class="btn-buy" onclick="buyNow({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{{ product.thumb_url|escapejs }}')">এখনই কিনুন</button>
+  <button class="btn-buy" onclick="buyChosen()">এখনই কিনুন</button>
 </div>
 
 {% include 'store/storefront/_cart_checkout.html' %}
@@ -452,11 +470,35 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 </div>
 {% endif %}
 
+{{ variant_list|json_script:"variant-list" }}
 <!-- Bootstrap Bundle JS added here for modals -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
 
+
+/* সাইজ/রং: কার্টে প্রতিটা আলাদা জিনিস, নম্বর ঋণাত্মক (store/variants.py) */
+const BASE = { id: {{ product.id }}, name: '{{ product.name|escapejs }}', price: {{ product.price }}, stock: {{ product.stock_quantity }}, image: '{{ product.thumb_url|escapejs }}' };
+const VARIANTS = JSON.parse(document.getElementById('variant-list').textContent);
+let picked = null;
+function chosenItem() {
+  if (!VARIANTS.length) return BASE;
+  if (!picked) {
+    showToast('আগে সাইজ/রং বেছে নিন');
+    const w = document.getElementById('var-wrap'); w.classList.add('shake'); setTimeout(() => w.classList.remove('shake'), 500);
+    w.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return null;
+  }
+  return { id: picked.id, name: `${BASE.name} (${picked.name})`, price: picked.price, stock: picked.stock, image: BASE.image };
+}
+function addChosen() { const i = chosenItem(); if (i) addToCart(i.id, i.name, i.price, i.stock, i.image); }
+function buyChosen() { const i = chosenItem(); if (i) buyNow(i.id, i.name, i.price, i.stock, i.image); }
+document.querySelectorAll('.var-chip').forEach(chip => chip.addEventListener('click', () => {
+  picked = VARIANTS.find(v => v.id === Number(chip.dataset.var));
+  document.querySelectorAll('.var-chip').forEach(c => c.classList.toggle('on', c === chip));
+  document.getElementById('var-picked').textContent = '· ' + picked.name;
+  document.getElementById('price-now').textContent = '৳' + Math.round(picked.price).toLocaleString('en-IN');
+}));
 
 function buyNow(id, name, price, stock, image) {
   if (!cart[String(id)]) addToCart(id, name, price, stock, image);

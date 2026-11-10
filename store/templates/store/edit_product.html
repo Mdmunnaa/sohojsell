@@ -196,6 +196,8 @@
                 </div>
             </div>
 
+            {% include 'store/partials/variant_editor.html' %}
+
             <div class="mb-2 form-check form-switch bg-light p-3 rounded-3 border">
                 {{ form.is_active }}
                 <label class="form-check-label ms-2" for="{{ form.is_active.id_for_label }}">Active (Visible to customers)</label>

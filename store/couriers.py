@@ -74,7 +74,7 @@ def recipient_address(order, minimum=0):
 def item_summary(order):
     items = list(order.items.select_related('product'))
     quantity = sum(item.quantity for item in items) or 1
-    description = ', '.join(f'{item.product.name} x{item.quantity}' for item in items)[:200]
+    description = ', '.join(f'{item.display_name} x{item.quantity}' for item in items)[:200]
     return quantity, description
 
 

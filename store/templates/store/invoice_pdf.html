@@ -88,7 +88,7 @@
             <tbody>
                 {% for item in items %}
                 <tr>
-                    <td><strong>{{ item.product.name }}</strong></td>
+                    <td><strong>{{ item.display_name }}</strong></td>
                     <td style="text-align: center;">{{ item.quantity }}</td>
                     <td class="amount">Tk. {{ item.price }}</td>
                     <td class="amount">Tk. {% widthratio item.price 1 item.quantity %}</td>

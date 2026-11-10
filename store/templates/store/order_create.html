@@ -66,7 +66,7 @@
                                             <select name="product[]" class="form-select bg-light border-0 product-select" required>
                                                 <option value="" data-price="0">-- Choose a Product --</option>
                                                 {% for product in products %}
-                                                <option value="{{ product.id }}" data-price="{{ product.price|default:'0' }}">{{ product.name }} (Stock: {{ product.stock_quantity }})</option>
+                                                <option value="{{ product.id }}" data-price="{{ product.price|default:'0' }}">{{ product.name }} (স্টক: {{ product.stock }})</option>
                                                 {% endfor %}
                                             </select>
                                         </td>

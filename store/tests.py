@@ -2071,6 +2071,120 @@ class ReportTests(ShopTestMixin, TestCase):
         self.assertEqual(self.client.get(reverse('reports')).status_code, 200)
 
 
+class VariantTests(ShopTestMixin, TestCase):
+    """সাইজ/রং: ফর্ম থেকে সেভ, মোট স্টক মেলানো, POS-ওয়েবসাইটে বিক্রি, ফেরত, বারকোড, বিলে নাম।"""
+
+    def setUp(self):
+        from .models import Product
+        from . import variants
+        self.user, self.shop = self.make_shop()
+        Shop.objects.filter(pk=self.shop.pk).update(slug='vshop')
+        self.shirt = Product.objects.create(shop=self.shop, name='শার্ট', price=Decimal('450'), cost_price=300,
+                                            stock_quantity=99)
+        variants.save_rows(self.shirt, [{'id': None, 'name': 'লাল / M', 'price': None, 'stock': 3},
+                                        {'id': None, 'name': 'লাল / XL', 'price': Decimal('500'), 'stock': 2}])
+        self.m, self.xl = self.shirt.variants.all()
+
+    def sell(self, **payload):
+        payload.setdefault('payments', [{'method': 'cash', 'amount': 0, 'full': True}])
+        return self.client.post(reverse('pos_checkout'), data=json.dumps(payload), content_type='application/json')
+
+    def test_total_stock_follows_variants(self):
+        self.shirt.refresh_from_db()
+        self.assertTrue(self.shirt.has_variants)
+        self.assertEqual(self.shirt.stock_quantity, 5)                # ফর্মের ৯৯ না, ভ্যারিয়েন্টের যোগফল
+        self.assertEqual((self.m.sell_price, self.xl.sell_price), (Decimal('450'), Decimal('500')))
+        self.assertTrue(self.m.barcode and self.m.barcode != self.xl.barcode)
+
+    def test_product_form_saves_renames_and_removes(self):
+        from .models import ProductVariant
+        form = {'name': 'শার্ট', 'price': '450', 'cost_price': '300', 'stock_quantity': '0', 'is_active': 'on',
+                'variant_id[]': [str(self.m.id), ''], 'variant_name[]': ['লাল / L', 'নীল / M'],
+                'variant_price[]': ['', '৪৮০'], 'variant_stock[]': ['৭', '1']}
+        self.assertRedirects(self.client.post(reverse('edit_product', args=[self.shirt.id]), form),
+                             reverse('product_list'))
+        names = {v.name: (v.stock_quantity, v.price) for v in ProductVariant.objects.filter(product=self.shirt)}
+        self.assertEqual(names, {'লাল / L': (7, None), 'নীল / M': (1, Decimal('480'))})      # XL মুছে গেছে
+        self.assertEqual(ProductVariant.objects.get(name='লাল / L').id, self.m.id)        # একই ভ্যারিয়েন্ট, নতুন নাম
+        self.shirt.refresh_from_db()
+        self.assertEqual(self.shirt.stock_quantity, 8)
+        form.update({'variant_name[]': ['এক', 'এক']})
+        response = self.client.post(reverse('edit_product', args=[self.shirt.id]), form)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('দুবার লেখা হয়েছে', response.content.decode())
+        form.update({'variant_id[]': [], 'variant_name[]': [], 'variant_price[]': [], 'variant_stock[]': [],
+                     'stock_quantity': '12'})
+        self.client.post(reverse('edit_product', args=[self.shirt.id]), form)
+        self.shirt.refresh_from_db()
+        self.assertEqual((self.shirt.has_variants, self.shirt.stock_quantity), (False, 12))
+        page = self.client.get(reverse('add_product')).content.decode()
+        self.assertIn('সাইজ / রং', page)
+
+    def test_pos_sells_and_returns_a_variant(self):
+        data = self.sell(items=[{'id': -self.xl.id, 'qty': 2}]).json()
+        self.assertTrue(data['success'], data)
+        self.assertEqual(data['sale']['total'], 1000)
+        item = OrderItem.objects.get(order_id=data['sale']['id'])
+        self.assertEqual((item.variant_id, item.variant_name, item.display_name), (self.xl.id, 'লাল / XL', 'শার্ট (লাল / XL)'))
+        self.xl.refresh_from_db(); self.shirt.refresh_from_db()
+        self.assertEqual((self.xl.stock_quantity, self.shirt.stock_quantity), (0, 3))
+        self.assertIn('শার্ট (লাল / XL)', self.client.get(reverse('pos_receipt', args=[data['sale']['id']])).content.decode())
+        self.assertIn('স্টকে আছে মাত্র 0টা', self.sell(items=[{'id': -self.xl.id, 'qty': 1}]).json()['error'])
+        self.assertIn('সাইজ/রং', self.sell(items=[{'id': self.shirt.id, 'qty': 1}]).json()['error'])   # কোনটা বলা হয়নি
+        back = self.client.post(reverse('pos_return', args=[data['sale']['id']]), data='{}',
+                                content_type='application/json').json()
+        self.assertTrue(back['success'], back)
+        self.assertEqual(back['restocked'], [{'id': -self.xl.id, 'qty': 2}])
+        self.xl.refresh_from_db(); self.shirt.refresh_from_db()
+        self.assertEqual((self.xl.stock_quantity, self.shirt.stock_quantity), (2, 5))
+
+    def test_pos_screen_and_barcode_know_variants(self):
+        response = self.client.get(reverse('pos'))
+        product = next(p for p in response.context['pos_config']['products'] if p['id'] == self.shirt.id)
+        self.assertEqual([(v['id'], v['name'], v['price'], v['stock']) for v in product['variants']],
+                         [(-self.m.id, 'লাল / M', 450, 3), (-self.xl.id, 'লাল / XL', 500, 2)])
+        hit = self.client.post(reverse('barcode_lookup'), data=json.dumps({'barcode': self.xl.barcode}),
+                               content_type='application/json').json()
+        self.assertEqual((hit['hit'], hit['product']['id']), (-self.xl.id, self.shirt.id))
+        self.assertIn('শার্ট (লাল / XL)', self.client.get(reverse('barcode_print')).content.decode())
+
+    def test_storefront_order_takes_variant_stock(self):
+        self.client.logout()
+        page = self.client.get(f'/shop/vshop/product/{self.shirt.id}/').content.decode()
+        self.assertIn('সাইজ / রং বেছে নিন', page)
+        self.assertIn('লাল / XL', page)
+
+        from .delivery import zones_for
+
+        def place(cart):
+            return self.client.post('/shop/vshop/place-order/', json.dumps({
+                'cart': cart, 'name': 'রহিম', 'phone': '01812345678', 'address': 'Savar', 'payment': 'cod',
+                'zone': zones_for(self.shop)[0].id}),
+                content_type='application/json').json()
+        self.assertIn('সাইজ/রং', place([{'id': self.shirt.id, 'qty': 1}])['error'])
+        self.assertIn('স্টকে আছে মাত্র 2টা', place([{'id': -self.xl.id, 'qty': 3}])['error'])
+        done = place([{'id': -self.xl.id, 'qty': 1}, {'id': -self.m.id, 'qty': 2}])
+        self.assertTrue(done['success'], done)
+        order = Order.objects.get(source='storefront')
+        self.assertEqual(order.total_amount - order.delivery_charge, Decimal('1400'))
+        self.assertEqual(sorted(i.display_name for i in order.items.all()), ['শার্ট (লাল / M)', 'শার্ট (লাল / XL)'])
+        self.xl.refresh_from_db(); self.m.refresh_from_db(); self.shirt.refresh_from_db()
+        self.assertEqual((self.xl.stock_quantity, self.m.stock_quantity, self.shirt.stock_quantity), (1, 1, 2))
+        self.client.force_login(self.user)
+        self.client.post(reverse('order_delete', args=[order.id]))
+        self.shirt.refresh_from_db()
+        self.assertEqual(self.shirt.stock_quantity, 5)
+
+    def test_other_shops_variant_cannot_be_sold(self):
+        from .models import Product
+        from . import variants
+        _other_user, other = self.make_shop(phone='01722222222')
+        theirs = Product.objects.create(shop=other, name='Their', price=10, stock_quantity=0)
+        variants.save_rows(theirs, [{'id': None, 'name': 'A', 'price': None, 'stock': 5}])
+        self.client.force_login(self.user)
+        self.assertFalse(self.sell(items=[{'id': -theirs.variants.get().id, 'qty': 1}]).json()['success'])
+
+
 class BrandTests(TestCase):
     def test_new_name_logo_and_icons(self):
         import json

@@ -320,7 +320,7 @@ body { background: var(--bg); font-family: 'Poppins', 'Hind Siliguri', sans-seri
         {% for item in order.items.all %}
         <tr>
           <td>{{ forloop.counter }}</td>
-          <td><strong>{{ item.product.name }}</strong></td>
+          <td><strong>{{ item.display_name }}</strong></td>
           <td style="text-align: center;">{{ item.quantity }}</td>
           <td>৳{{ item.get_total|floatformat:0 }}</td>
         </tr>

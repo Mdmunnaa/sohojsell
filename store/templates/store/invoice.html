@@ -141,7 +141,7 @@
                     {% for item in order.items.all %}
                     <tr class="item-row">
                         <td>
-                            <span class="fw-bold text-dark">{{ item.product.name|default:"[Product Deleted]" }}</span>
+                            <span class="fw-bold text-dark">{{ item.display_name|default:"[Product Deleted]" }}</span>
                         </td>
                         <td class="text-center fw-medium">{{ item.quantity }}</td>
                         <td class="text-end text-muted text-nowrap">Tk. {{ item.price }}</td>

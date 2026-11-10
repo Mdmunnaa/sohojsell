@@ -59,7 +59,7 @@
   <hr class="hr">
   {% for item in items %}
   <div class="item">
-    <div class="name">{{ item.product.name }}</div>
+    <div class="name">{{ item.display_name }}</div>
     <div class="row"><span>{{ item.quantity }} × ৳{{ item.price|floatformat:"-2g" }}</span><span>৳{{ item.line_total|floatformat:"-2g" }}</span></div>
   </div>
   {% endfor %}

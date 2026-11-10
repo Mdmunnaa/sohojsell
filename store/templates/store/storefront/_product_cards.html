@@ -12,7 +12,7 @@
       {% if product.id in top_seller_ids %}<span class="badge-hot" style="background:#10B981;box-shadow:none;">বেশি বিক্রি</span>{% endif %}
     </div>
     <button class="quick-add" id="btn-{{ product.id }}" aria-label="{{ product.name }} কার্টে যোগ করুন"
-      onclick="event.stopPropagation(); addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{{ product.thumb_url|escapejs }}')">
+      onclick="event.stopPropagation(); {% if product.has_variants %}goToProduct('{% shop_url 'storefront_product_detail' shop product.id %}'){% else %}addToCart({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, {{ product.stock_quantity }}, '{{ product.thumb_url|escapejs }}'){% endif %}">
       <i class="bi bi-cart-plus-fill"></i>
     </button>
   </div>

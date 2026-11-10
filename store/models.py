@@ -202,6 +202,8 @@ class Product(models.Model):
     stock_quantity = models.PositiveIntegerField(default=0)
     barcode = models.CharField(max_length=50, blank=True, null=True, unique=True, help_text='Leave blank to auto-generate')
     is_active = models.BooleanField(default=True)
+    # সাইজ/রং থাকলে True; তখন stock_quantity = সব ভ্যারিয়েন্টের স্টকের যোগফল (store/variants.py ঠিক রাখে)
+    has_variants = models.BooleanField(default=False, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
@@ -237,6 +239,36 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class ProductVariant(models.Model):
+    """
+    একটা প্রোডাক্টের সাইজ/রং (যেমন "লাল / XL")। প্রতিটার আলাদা স্টক আর বারকোড;
+    দাম ফাঁকা থাকলে প্রোডাক্টের দামই চলে। বিক্রি-ফেরতের স্টক store/variants.py দিয়ে বদলায়।
+    """
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
+    name = models.CharField(max_length=80)
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    stock_quantity = models.PositiveIntegerField(default=0)
+    barcode = models.CharField(max_length=50, unique=True, blank=True)
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['position', 'id']
+        constraints = [models.UniqueConstraint(fields=['product', 'name'], name='unique_variant_name_per_product')]
+
+    def save(self, *args, **kwargs):
+        if not self.barcode:
+            import random, string
+            self.barcode = ''.join(random.choices(string.digits, k=12))
+        super().save(*args, **kwargs)
+
+    @property
+    def sell_price(self):
+        return self.price if self.price is not None else self.product.price
+
+    def __str__(self):
+        return f'{self.product.name} ({self.name})'
 
 
 class Customer(models.Model):
@@ -380,9 +412,16 @@ class OrderItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    # কোন সাইজ/রং বিক্রি হয়েছে; ভ্যারিয়েন্ট পরে মুছে গেলেও নামটা বিলে থেকে যায়
+    variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    variant_name = models.CharField(max_length=80, blank=True, default='')
 
     def __str__(self):
-        return f"{self.quantity} x {self.product.name}"
+        return f"{self.quantity} x {self.display_name}"
+
+    @property
+    def display_name(self):
+        return f'{self.product.name} ({self.variant_name})' if self.variant_name else self.product.name
 
     def get_total(self):
         return self.price * self.quantity
@@ -458,9 +497,14 @@ class StorefrontOrderItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    variant_name = models.CharField(max_length=80, blank=True, default='')
 
     def __str__(self):
-        return f"{self.quantity} x {self.product.name}"
+        return f"{self.quantity} x {self.display_name}"
+
+    @property
+    def display_name(self):
+        return f'{self.product.name} ({self.variant_name})' if self.variant_name else self.product.name
 
     def get_total(self):
         return self.price * self.quantity

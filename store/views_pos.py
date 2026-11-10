@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from . import pos
-from .models import Category, Order, Product
+from .models import Category, Order, Product, ProductVariant
 
 LOGIN = '/accounts/login/'
 
@@ -71,14 +71,19 @@ def _sale_json(order):
 
 
 def _product_json(p):
-    return {'id': p.id, 'name': p.name, 'price': _num(p.price), 'stock': p.stock_quantity,
+    data = {'id': p.id, 'name': p.name, 'price': _num(p.price), 'stock': p.stock_quantity,
             'cat': p.category_id or 0, 'barcode': p.barcode or '', 'img': p.thumb_url}
+    if p.has_variants:
+        # সাইজ/রং: কার্টে এদের নম্বর ঋণাত্মক (store/variants.py)
+        data['variants'] = [{'id': -v.id, 'name': v.name, 'price': _num(v.sell_price), 'stock': v.stock_quantity,
+                             'barcode': v.barcode} for v in p.variants.all()]
+    return data
 
 
 @login_required(login_url=LOGIN)
 def pos_screen(request):
     shop = request.user.shop
-    products = Product.objects.filter(shop=shop, is_active=True).order_by('name')
+    products = Product.objects.filter(shop=shop, is_active=True).prefetch_related('variants').order_by('name')
     product_data = [_product_json(p) for p in products]
     used_categories = {p['cat'] for p in product_data}
     categories = [c for c in Category.objects.filter(shop=shop).order_by('name') if c.id in used_categories]
@@ -119,11 +124,17 @@ def pos_barcode(request):
         barcode = str(_json_body(request).get('barcode') or '').strip()[:64]
     except pos.POSError as exc:
         return _error(str(exc))
-    product = (Product.objects.filter(shop=request.user.shop, barcode=barcode, is_active=True).first()
-               if barcode else None)
+    shop = request.user.shop
+    product = Product.objects.filter(shop=shop, barcode=barcode, is_active=True).first() if barcode else None
+    hit = product.id if product else None
+    if product is None and barcode:
+        variant = (ProductVariant.objects.filter(product__shop=shop, product__is_active=True, barcode=barcode)
+                   .select_related('product').first())
+        if variant:
+            product, hit = variant.product, -variant.id
     if product is None:
         return _error(f'এই বারকোডের কোনো প্রোডাক্ট নেই: {barcode}', status=404)
-    return JsonResponse({'success': True, 'product': _product_json(product)})
+    return JsonResponse({'success': True, 'product': _product_json(product), 'hit': hit})
 
 
 @login_required(login_url=LOGIN)

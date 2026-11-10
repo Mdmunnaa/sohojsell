@@ -72,7 +72,7 @@
                                 <div class="d-flex flex-wrap gap-1">
                                     {% for item in order.items.all %}
                                         <span class="badge bg-light text-dark border border-secondary border-opacity-10 fw-medium shadow-sm rounded-pill px-2 py-1" style="font-size: 0.75rem;">
-                                            {{ item.product.name }} <strong class="text-primary ms-1">x{{ item.quantity }}</strong>
+                                            {{ item.display_name }} <strong class="text-primary ms-1">x{{ item.quantity }}</strong>
                                         </span>
                                     {% empty %}
                                         <span class="text-muted small"><i class="bi bi-exclamation-circle"></i> No items</span>

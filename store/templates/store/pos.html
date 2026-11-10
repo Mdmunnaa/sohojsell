@@ -171,6 +171,17 @@
   .ok-change b { font-size: 34px; font-weight: 900; color: var(--p-go-dark); }
   .ok-due { margin: 10px auto 0; color: var(--p-bad); font-weight: 800; }
 
+  /* সাইজ/রং */
+  .p-kids { font-size: 11.5px; font-weight: 700; color: var(--p-muted); margin: -2px 0 2px; }
+  .var-hint { font-size: 13px; color: var(--p-muted); font-weight: 600; margin-bottom: 10px; }
+  .var-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .var-btn { border: 2px solid var(--p-line); background: #fff; border-radius: 14px; padding: 10px 12px; text-align: left; display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+  .var-btn:hover { border-color: var(--p-go); background: var(--p-go-soft); }
+  .var-btn.out { opacity: .5; }
+  .var-btn .vn { font-weight: 800; font-size: 14.5px; color: var(--p-ink); }
+  .var-btn .vn em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--p-go-dark); }
+  .var-btn .vp { font-weight: 800; font-size: 13.5px; color: var(--p-ink2); }
+
   /* তালিকা (হোল্ড, আজকের বিক্রি) */
   .list-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--p-line); }
   .list-row:last-child { border-bottom: 0; }
@@ -347,6 +358,14 @@
   </div>
 </div>
 
+<!-- ═══ সাইজ/রং বাছাই ═══ -->
+<div class="m-back" id="m-variant" role="dialog" aria-modal="true" aria-labelledby="var-h">
+  <div class="m-box">
+    <div class="m-head"><h3 id="var-h">সাইজ/রং</h3><button class="m-x" data-close type="button" aria-label="বন্ধ"><i class="bi bi-x-lg"></i></button></div>
+    <div class="m-body"><div class="var-hint">কোনটা বিক্রি হচ্ছে সেটা বেছে নিন</div><div id="var-list" class="var-list"></div></div>
+  </div>
+</div>
+
 <!-- ═══ আজকের বিক্রি ═══ -->
 <div class="m-back" id="m-sales" role="dialog" aria-modal="true">
   <div class="m-box wide">
@@ -446,8 +465,27 @@
 'use strict';
 const CFG = JSON.parse(document.getElementById('pos-config').textContent);
 const $ = (id) => document.getElementById(id);
-const PRODUCTS = new Map(CFG.products.map(p => [p.id, p]));
-const BY_BARCODE = new Map(CFG.products.filter(p => p.barcode).map(p => [String(p.barcode).toLowerCase(), p]));
+/* সাইজ/রং থাকা প্রোডাক্ট: গ্রিডে একটাই কার্ড, কার্টে প্রতিটা সাইজ/রং আলাদা (নম্বর ঋণাত্মক) */
+const PRODUCTS = new Map(), BY_BARCODE = new Map();
+function register(p) {
+  PRODUCTS.set(p.id, p);
+  if (p.barcode) BY_BARCODE.set(String(p.barcode).toLowerCase(), p);
+  p.kids = (p.variants || []).map(v => {
+    const kid = { id: v.id, name: `${p.name} (${v.name})`, vname: v.name, price: v.price, stock: v.stock,
+                  barcode: v.barcode, img: p.img, cat: p.cat, parent: p.id };
+    PRODUCTS.set(kid.id, kid);
+    if (kid.barcode) BY_BARCODE.set(String(kid.barcode).toLowerCase(), kid);
+    return kid;
+  });
+  if (!p.kids.length) p.kids = null;
+}
+CFG.products.forEach(register);
+const stockOf = (p) => p.kids ? p.kids.reduce((s, k) => s + Math.max(k.stock, 0), 0) : p.stock;
+function cartCounts() {
+  const m = new Map();
+  state.lines.forEach(l => { const p = PRODUCTS.get(l.id); const key = p && p.parent ? p.parent : l.id; m.set(key, (m.get(key) || 0) + l.qty); });
+  return m;
+}
 const KEY_CART = `sp_pos_cart_${CFG.shopId}`, KEY_HELD = `sp_pos_held_${CFG.shopId}`;
 const METHOD_LABEL = { cash: 'নগদ', bkash: 'bKash', nagad: 'Nagad', card: 'কার্ড', bank: 'ব্যাংক' };
 
@@ -491,7 +529,7 @@ function uuid() { return (crypto.randomUUID ? crypto.randomUUID() : 'r' + Date.n
 /* ── অবস্থা ── */
 let state = store.get(KEY_CART, null) || {};
 state = { lines: state.lines || [], discType: state.discType || 'amount', disc: state.disc || '', phone: state.phone || '', name: state.name || '', ref: state.ref || uuid() };
-state.lines = state.lines.filter(l => PRODUCTS.has(l.id));
+state.lines = state.lines.filter(l => PRODUCTS.has(l.id) && !PRODUCTS.get(l.id).kids);
 let activeCat = 0, lastId = null, customer = null, lastSale = null, escArmed = 0;
 
 function save() { store.set(KEY_CART, state); }
@@ -513,29 +551,32 @@ function totals() {
 
 /* ── প্রোডাক্ট গ্রিড ── */
 function stockBadge(p) {
-  if (p.stock <= 0) return '<span class="p-stock none">স্টক শেষ</span>';
-  return `<span class="p-stock${p.stock <= 5 ? ' low' : ''}">${toBn(p.stock)}টা</span>`;
+  const stock = stockOf(p);
+  if (stock <= 0) return '<span class="p-stock none">স্টক শেষ</span>';
+  return `<span class="p-stock${stock <= 5 ? ' low' : ''}">${toBn(stock)}টা</span>`;
 }
 function renderGrid() {
   const q = bnDigits($('q').value.trim().toLowerCase());
   const list = CFG.products.filter(p => (!activeCat || p.cat === activeCat) &&
-    (!q || p.name.toLowerCase().includes(q) || String(p.barcode).toLowerCase().includes(q)));
+    (!q || p.name.toLowerCase().includes(q) || String(p.barcode).toLowerCase().includes(q) ||
+     (p.kids || []).some(k => k.vname.toLowerCase().includes(q) || String(k.barcode).toLowerCase().includes(q))));
   if (!list.length) {
     $('grid').innerHTML = `<div class="p-empty"><i class="bi bi-search"></i>${CFG.products.length ? 'কিছু পাওয়া যায়নি' : 'এখনো কোনো প্রোডাক্ট নেই। আগে প্রোডাক্ট যোগ করুন।'}</div>`;
     return list;
   }
-  const inCart = new Map(state.lines.map(l => [l.id, l.qty]));
+  const inCart = cartCounts();
   $('grid').innerHTML = list.slice(0, 600).map(p => `
-    <div class="p-card${p.stock <= 0 ? ' out' : ''}" data-id="${p.id}" role="button" tabindex="-1" aria-label="${esc(p.name)}">
+    <div class="p-card${stockOf(p) <= 0 ? ' out' : ''}" data-id="${p.id}" role="button" tabindex="-1" aria-label="${esc(p.name)}">
       <div class="p-thumb">${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy" decoding="async">` : '<i class="bi bi-box-seam"></i>'}</div>
       <span class="p-incart${inCart.has(p.id) ? ' show' : ''}">${toBn(inCart.get(p.id) || 0)}</span>
       <div class="p-name">${esc(p.name)}</div>
+      ${p.kids ? `<div class="p-kids"><i class="bi bi-grid-3x3-gap"></i> ${toBn(p.kids.length)}টা সাইজ/রং</div>` : ''}
       <div class="p-meta"><span class="p-price">${fmt(cents(p.price))}</span>${stockBadge(p)}</div>
     </div>`).join('');
   return list;
 }
 function updateGridBadges() {
-  const inCart = new Map(state.lines.map(l => [l.id, l.qty]));
+  const inCart = cartCounts();
   document.querySelectorAll('.p-card').forEach(card => {
     const n = inCart.get(Number(card.dataset.id));
     const b = card.querySelector('.p-incart');
@@ -547,6 +588,7 @@ function updateGridBadges() {
 function add(id, qty = 1) {
   const p = PRODUCTS.get(id);
   if (!p) return false;
+  if (p.kids) { openVariants(p); return false; }
   const line = state.lines.find(l => l.id === id);
   const have = line ? line.qty : 0;
   if (p.stock <= 0) { beep(false); toast(`"${p.name}" স্টকে নেই`, 'bad'); return false; }
@@ -554,7 +596,7 @@ function add(id, qty = 1) {
   if (line) { line.qty += qty; state.lines.splice(state.lines.indexOf(line), 1); state.lines.push(line); }
   else state.lines.push({ id, qty, price: null });
   lastId = id; beep(true); renderCart();
-  const card = document.querySelector(`.p-card[data-id="${id}"]`);
+  const card = document.querySelector(`.p-card[data-id="${p.parent || id}"]`);
   if (card) { card.classList.add('flash'); setTimeout(() => card.classList.remove('flash'), 350); }
   return true;
 }
@@ -603,6 +645,23 @@ function clearCart(keepCustomer) {
   $('disc').value = '';
   renderCart();
 }
+
+/* ── সাইজ/রং বাছাই ── */
+function openVariants(p) {
+  $('var-h').textContent = p.name;
+  const inCart = new Map(state.lines.map(l => [l.id, l.qty]));
+  $('var-list').innerHTML = p.kids.map(k => `
+    <button type="button" class="var-btn${k.stock <= 0 ? ' out' : ''}" data-var="${k.id}">
+      <span class="vn">${esc(k.vname)}${inCart.has(k.id) ? ` <em>কার্টে ${toBn(inCart.get(k.id))}টা</em>` : ''}</span>
+      <span class="vp">${fmt(cents(k.price))}</span>
+      ${stockBadge(k)}
+    </button>`).join('');
+  openModal('m-variant');
+}
+$('var-list').addEventListener('click', e => {
+  const b = e.target.closest('[data-var]'); if (!b) return;
+  if (add(Number(b.dataset.var))) closeModal('m-variant');
+});
 
 /* ── কাস্টমার ── */
 let custTimer;
@@ -800,7 +859,7 @@ $('held-list').addEventListener('click', e => {
   const item = list.splice(Number(open.dataset.held), 1)[0];
   if (state.lines.length) list.unshift({ at: Date.now(), state: JSON.parse(JSON.stringify(state)), total: totals().total });
   store.set(KEY_HELD, list);
-  state = item.state; state.lines = state.lines.filter(l => PRODUCTS.has(l.id));
+  state = item.state; state.lines = state.lines.filter(l => PRODUCTS.has(l.id) && !PRODUCTS.get(l.id).kids);
   $('cust-phone').value = state.phone || ''; $('cust-name').value = state.name || ''; $('disc').value = state.disc || '';
   syncDiscType(); renderCart(); renderHeldCount(); closeModal('m-held'); lookupCustomer();
 });
@@ -916,8 +975,8 @@ async function byBarcode(code) {
   const data = await api(CFG.urls.barcode, { barcode: code });
   if (data.success) {
     const p = data.product;
-    if (!PRODUCTS.has(p.id)) { CFG.products.push(p); PRODUCTS.set(p.id, p); if (p.barcode) BY_BARCODE.set(String(p.barcode).toLowerCase(), p); }
-    return add(p.id);
+    if (!PRODUCTS.has(p.id)) { CFG.products.push(p); register(p); }
+    return add(data.hit ?? p.id);
   }
   beep(false); toast(data.error || 'বারকোড মেলেনি', 'bad'); return false;
 }

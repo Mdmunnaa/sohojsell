@@ -26,7 +26,7 @@ from .plans import (
 from .forms import (ShopSetupForm, ProductForm, OrderCreateForm, SteadfastSettingsForm, PathaoSettingsForm,
                     RedxSettingsForm, PosSettingsForm)
 from .links import storefront_link
-from . import couriers, sms
+from . import couriers, sms, variants
 from .themes import THEMES
 from django.urls import reverse
 
@@ -175,6 +175,19 @@ def product_list(request):
     return render(request, 'store/products.html', {'page_obj': page_obj, 'categories': categories, 'shop': shop})
 
 
+def _variant_rows(request, product):
+    """ফর্মের সাইজ/রং অংশে দেখানোর সারি: ভুল হয়ে ফর্ম ফিরে এলে যা লেখা ছিল, নাহলে সেভ করা ভ্যারিয়েন্ট।"""
+    if request.method == 'POST':
+        post = request.POST
+        return [{'id': i, 'name': n, 'price': p, 'stock': s} for i, n, p, s in zip(
+            post.getlist('variant_id[]'), post.getlist('variant_name[]'),
+            post.getlist('variant_price[]'), post.getlist('variant_stock[]'))]
+    if product is None:
+        return []
+    return [{'id': v.id, 'name': v.name, 'price': '' if v.price is None else f'{v.price.normalize():f}',
+             'stock': v.stock_quantity} for v in product.variants.all()]
+
+
 @login_required(login_url='/accounts/login/')
 def add_product(request):
     shop = request.user.shop
@@ -186,15 +199,21 @@ def add_product(request):
             return redirect('product_list')
 
         form = ProductForm(request.POST, request.FILES)
-        if form.is_valid():
+        try:
+            rows = variants.rows_from_post(request.POST)
+        except variants.VariantError as exc:
+            rows = None
+            messages.error(request, str(exc))
+        if rows is not None and form.is_valid():
             product = form.save(commit=False)
             product.shop = shop
             product.save()
-            messages.success(request, "Product added successfully!")
+            variants.save_rows(product, rows)
+            messages.success(request, "প্রোডাক্ট যোগ হয়েছে।")
             return redirect('product_list')
     else:
         form = ProductForm()
-    return render(request, 'store/add_product.html', {'form': form})
+    return render(request, 'store/add_product.html', {'form': form, 'variant_rows': _variant_rows(request, None)})
 
 
 @login_required(login_url='/accounts/login/')
@@ -202,13 +221,20 @@ def edit_product(request, pk):
     product = get_object_or_404(Product, pk=pk, shop=request.user.shop)
     if request.method == 'POST':
         form = ProductForm(request.POST, request.FILES, instance=product)
-        if form.is_valid():
+        try:
+            rows = variants.rows_from_post(request.POST)
+        except variants.VariantError as exc:
+            rows = None
+            messages.error(request, str(exc))
+        if rows is not None and form.is_valid():
             form.save()
-            messages.success(request, "Product updated!")
+            variants.save_rows(product, rows)
+            messages.success(request, "প্রোডাক্ট আপডেট হয়েছে।")
             return redirect('product_list')
     else:
         form = ProductForm(instance=product)
-    return render(request, 'store/edit_product.html', {'form': form, 'product': product})
+    return render(request, 'store/edit_product.html', {'form': form, 'product': product,
+                                                       'variant_rows': _variant_rows(request, product)})
 
 
 @login_required(login_url='/accounts/login/')
@@ -261,13 +287,19 @@ def order_create(request):
             if p_id:
                 price = float(prices[i] or 0)
                 qty = int(quantities[i] or 1)
-                product = get_object_or_404(Product, id=p_id, shop=shop)
+                # ড্রপডাউনের মান: প্রোডাক্টের id, আর সাইজ/রং হলে ঋণাত্মক ভ্যারিয়েন্ট id (store/variants.py)
+                try:
+                    item = variants.resolve(shop, [int(p_id)]).get(int(p_id))
+                except ValueError:
+                    item = None
+                if item is None or item.needs_choice:
+                    continue
                 OrderItem.objects.create(
-                    order=order, product=product, price=price,
-                    quantity=qty, cost_price=product.cost_price
+                    order=order, product=item.product, variant=item.variant, variant_name=item.variant_name,
+                    price=price, quantity=qty, cost_price=item.cost_price
                 )
-                product.stock_quantity = max(0, product.stock_quantity - qty)
-                product.save()
+                if item.stock > 0:
+                    variants.take(item, min(qty, item.stock))
                 subtotal += price * qty
 
         order.total_amount = max(0, subtotal + delivery_charge - discount)
@@ -275,8 +307,16 @@ def order_create(request):
         messages.success(request, f"Order #ORD-{order.id} created successfully!")
         return redirect('order_list')
 
-    products = Product.objects.filter(shop=shop, is_active=True, stock_quantity__gt=0)
-    return render(request, 'store/order_create.html', {'products': products})
+    options = []
+    for product in (Product.objects.filter(shop=shop, is_active=True, stock_quantity__gt=0)
+                    .prefetch_related('variants').order_by('name')):
+        if product.has_variants:
+            options += [{'id': -v.id, 'name': f'{product.name} ({v.name})', 'price': v.sell_price,
+                         'stock': v.stock_quantity} for v in product.variants.all() if v.stock_quantity > 0]
+        else:
+            options.append({'id': product.id, 'name': product.name, 'price': product.price,
+                            'stock': product.stock_quantity})
+    return render(request, 'store/order_create.html', {'products': options})
 
 
 @login_required(login_url='/accounts/login/')
@@ -335,8 +375,7 @@ def order_delete(request, order_id):
     order = get_object_or_404(Order, id=order_id, shop=shop)
     try:
         for item in order.items.all():
-            item.product.stock_quantity += item.quantity
-            item.product.save()
+            variants.give_back(item.product_id, item.variant_id, item.quantity)
         order.delete()
         messages.success(request, f'Order #ORD-{order_id} deleted & stock restored!')
     except Exception as e:
@@ -1126,10 +1165,13 @@ def storefront_product_detail(request, shop_slug, product_id):
         link_name='storefront_product_detail', link_args=(product.id,), og_type='product',
         price=product.price)
 
+    variant_list = [{'id': -v.id, 'name': v.name, 'price': float(v.sell_price), 'stock': v.stock_quantity}
+                    for v in product.variants.all()] if product.has_variants else []
     return render(request, 'store/storefront/product_detail.html', {
         'shop': shop,
         'meta': meta,
         'product': product,
+        'variant_list': variant_list,
         'related_products': related_products,
         **checkout,
     })
@@ -1182,7 +1224,7 @@ def storefront_place_order(request, shop_slug):
         quantities = {}
         for item in cart_items:
             product_id, qty = int(item['id']), int(item['qty'])
-            if qty < 1 or qty > 999:
+            if qty < 1 or qty > 999 or product_id == 0:
                 return JsonResponse({'success': False, 'error': 'পরিমাণ ঠিক নেই।'})
             quantities[product_id] = quantities.get(product_id, 0) + qty
     except (ValueError, TypeError, KeyError):
@@ -1206,17 +1248,19 @@ def storefront_place_order(request, shop_slug):
 
     with transaction.atomic():
         # একসাথে অনেকে অর্ডার দিলেও স্টকের চেয়ে বেশি বিক্রি না হয়
-        products = {p.id: p for p in Product.objects.select_for_update()
-                    .filter(shop=shop, id__in=quantities.keys(), is_active=True)}
-        if len(products) != len(quantities):
+        chosen = variants.resolve(shop, quantities.keys(), lock=True)
+        if len(chosen) != len(quantities) or any(not item.product.is_active for item in chosen.values()):
             return JsonResponse({'success': False, 'error': 'কার্টের একটা প্রোডাক্ট আর পাওয়া যাচ্ছে না। কার্ট দেখে আবার চেষ্টা করুন।'})
         subtotal = Decimal('0')
-        for product_id, qty in quantities.items():
-            product = products[product_id]
-            if product.stock_quantity < qty:
+        for key, qty in quantities.items():
+            item = chosen[key]
+            if item.needs_choice:
                 return JsonResponse({'success': False,
-                                     'error': f"'{product.name}' স্টকে আছে মাত্র {product.stock_quantity}টা।"})
-            subtotal += product.price * qty
+                                     'error': f"'{item.name}'-এর সাইজ/রং বেছে নিয়ে আবার কার্টে যোগ করুন।"})
+            if item.stock < qty:
+                return JsonResponse({'success': False,
+                                     'error': f"'{item.name}' স্টকে আছে মাত্র {item.stock}টা।"})
+            subtotal += item.price * qty
 
         zone, delivery_charge = delivery.charge_for(shop, data.get('zone'), subtotal)
         if delivery_charge is None:
@@ -1239,13 +1283,14 @@ def storefront_place_order(request, shop_slug):
             online_payment_status=Order.ONLINE_PENDING if pay_now > 0 else Order.ONLINE_NONE)
         sf_order.order = main_order
         sf_order.save(update_fields=['order'])
-        for product_id, qty in quantities.items():
-            product = products[product_id]
-            StorefrontOrderItem.objects.create(order=sf_order, product=product, quantity=qty, price=product.price)
-            OrderItem.objects.create(order=main_order, product=product, price=product.price, quantity=qty,
-                                     cost_price=product.cost_price)
-            product.stock_quantity -= qty
-            product.save(update_fields=['stock_quantity'])
+        for key, qty in quantities.items():
+            item = chosen[key]
+            StorefrontOrderItem.objects.create(order=sf_order, product=item.product, quantity=qty, price=item.price,
+                                               variant_name=item.variant_name)
+            OrderItem.objects.create(order=main_order, product=item.product, variant=item.variant,
+                                     variant_name=item.variant_name, price=item.price, quantity=qty,
+                                     cost_price=item.cost_price)
+            variants.take(item, qty)
 
     # অর্ডার-সফল পেইজে কাস্টমারের নাম-ঠিকানা থাকে; শুধু যে ব্রাউজার থেকে অর্ডার হয়েছে সে-ই দেখতে পাবে
     placed = request.session.get('sf_orders', [])
@@ -1427,7 +1472,15 @@ def category_list(request):
 def barcode_print(request):
     """Bulk barcode print page — seller selects products, prints stickers"""
     shop = request.user.shop
-    products = Product.objects.filter(shop=shop, is_active=True).order_by('name')
+    # সাইজ/রং থাকলে প্রতিটার আলাদা স্টিকার (আলাদা বারকোড); id ঋণাত্মক রাখা যাতে প্রোডাক্টের সাথে না মেলে
+    products = []
+    for product in Product.objects.filter(shop=shop, is_active=True).prefetch_related('variants').order_by('name'):
+        if product.has_variants:
+            products += [{'id': -v.id, 'name': f'{product.name} ({v.name})', 'price': v.sell_price,
+                          'barcode': v.barcode} for v in product.variants.all()]
+        else:
+            products.append({'id': product.id, 'name': product.name, 'price': product.price,
+                             'barcode': product.barcode})
 
     selected_ids = request.GET.getlist('ids')
     selected_products = []

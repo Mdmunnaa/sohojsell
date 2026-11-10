@@ -1,0 +1,78 @@
+{# প্রোডাক্ট ফর্মের "সাইজ / রং" অংশ। variant_rows = [{'id','name','price','stock'}] #}
+<style>
+  .vr-box { border: 1px solid #E2E8F0; border-radius: 16px; padding: 16px; margin-bottom: 20px; background: #F8FAFC; }
+  .vr-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .vr-head b { font-size: 15px; color: #0F172A; }
+  .vr-head small { display: block; color: #64748B; font-size: 12.5px; font-weight: 500; }
+  .vr-gen { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin: 14px 0 6px; }
+  .vr-gen input, .vr-row input { border: 1.5px solid #E2E8F0; border-radius: 10px; padding: 9px 11px; font-size: 14px; width: 100%; background: #fff; }
+  .vr-gen input:focus, .vr-row input:focus { outline: 0; border-color: #6366F1; }
+  .vr-gen button, .vr-add { border: 0; border-radius: 10px; background: #0F172A; color: #fff; font-weight: 700; font-size: 13px; padding: 9px 14px; white-space: nowrap; }
+  .vr-add { background: #fff; color: #0F172A; border: 1.5px dashed #94A3B8; width: 100%; margin-top: 8px; }
+  .vr-tip { font-size: 12px; color: #64748B; margin-bottom: 10px; }
+  .vr-labels, .vr-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, .8fr) 34px; gap: 8px; align-items: center; }
+  .vr-labels { font-size: 11.5px; font-weight: 700; color: #64748B; margin: 10px 0 4px; }
+  .vr-row { margin-bottom: 6px; }
+  .vr-del { border: 0; background: #FEE2E2; color: #DC2626; border-radius: 9px; width: 34px; height: 38px; }
+  .vr-total { margin-top: 10px; font-size: 13px; font-weight: 700; color: #334155; }
+  @media (max-width: 520px) { .vr-gen { grid-template-columns: 1fr; } }
+</style>
+<div class="vr-box">
+  <div class="vr-head">
+    <div><b><i class="bi bi-grid-3x3-gap-fill me-1"></i> সাইজ / রং (ঐচ্ছিক)</b>
+      <small>একই প্রোডাক্টের আলাদা সাইজ বা রং থাকলে এখানে দিন। প্রতিটার স্টক আলাদা থাকবে।</small></div>
+  </div>
+  <div class="vr-gen">
+    <input type="text" id="vr-a" placeholder="সাইজ: S, M, L, XL" autocomplete="off">
+    <input type="text" id="vr-b" placeholder="রং: লাল, নীল (না থাকলে ফাঁকা)" autocomplete="off">
+    <button type="button" id="vr-make">তালিকা বানান</button>
+  </div>
+  <div class="vr-tip">কমা দিয়ে লিখে "তালিকা বানান" চাপুন, অথবা নিচে একটা একটা করে যোগ করুন।</div>
+  <div class="vr-labels" id="vr-labels"><span>নাম (যেমন: লাল / XL)</span><span>দাম (ফাঁকা = মূল দাম)</span><span>স্টক</span><span></span></div>
+  <div id="vr-rows"></div>
+  <button type="button" class="vr-add" id="vr-add"><i class="bi bi-plus-lg me-1"></i> আরেকটা যোগ করুন</button>
+  <div class="vr-total" id="vr-total"></div>
+</div>
+{{ variant_rows|json_script:"variant-rows" }}
+<script>
+(function () {
+  const rows = document.getElementById('vr-rows'), labels = document.getElementById('vr-labels');
+  const stockInput = document.getElementById('id_stock_quantity');
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const toEn = s => String(s).replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+  function addRow(v) {
+    v = v || {};
+    const div = document.createElement('div'); div.className = 'vr-row';
+    div.innerHTML = `<input type="hidden" name="variant_id[]" value="${esc(v.id ?? '')}">
+      <input type="text" name="variant_name[]" maxlength="80" placeholder="লাল / XL" value="${esc(v.name ?? '')}">
+      <input type="text" inputmode="decimal" name="variant_price[]" placeholder="মূল দাম" value="${esc(v.price ?? '')}">
+      <input type="text" inputmode="numeric" name="variant_stock[]" placeholder="0" value="${esc(v.stock ?? '')}">
+      <button type="button" class="vr-del" aria-label="মুছুন"><i class="bi bi-trash3"></i></button>`;
+    rows.appendChild(div);
+  }
+  function refresh() {
+    const list = [...rows.querySelectorAll('.vr-row')].filter(r => r.querySelector('[name="variant_name[]"]').value.trim());
+    labels.style.display = rows.children.length ? 'grid' : 'none';
+    const total = list.reduce((s, r) => s + (parseInt(toEn(r.querySelector('[name="variant_stock[]"]').value), 10) || 0), 0);
+    document.getElementById('vr-total').textContent = list.length ? `মোট স্টক: ${total}টা (${list.length}টা সাইজ/রং মিলিয়ে)` : '';
+    if (stockInput) {
+      stockInput.readOnly = list.length > 0;
+      stockInput.style.background = list.length ? '#F1F5F9' : '';
+      if (list.length) stockInput.value = total;
+    }
+  }
+  JSON.parse(document.getElementById('variant-rows').textContent || '[]').forEach(addRow);
+  document.getElementById('vr-add').addEventListener('click', () => { addRow(); refresh(); rows.lastElementChild.querySelector('[name="variant_name[]"]').focus(); });
+  document.getElementById('vr-make').addEventListener('click', () => {
+    const split = id => document.getElementById(id).value.split(/[,،\n]/).map(x => x.trim()).filter(Boolean);
+    const a = split('vr-a'), b = split('vr-b');
+    const names = !a.length ? b : (!b.length ? a : b.flatMap(y => a.map(x => `${y} / ${x}`)));
+    const have = new Set([...rows.querySelectorAll('[name="variant_name[]"]')].map(i => i.value.trim().toLowerCase()));
+    names.filter(n => !have.has(n.toLowerCase())).slice(0, 60).forEach(n => addRow({ name: n }));
+    refresh();
+  });
+  rows.addEventListener('click', e => { const b = e.target.closest('.vr-del'); if (b) { b.closest('.vr-row').remove(); refresh(); } });
+  rows.addEventListener('input', refresh);
+  refresh();
+})();
+</script>
