@@ -45,8 +45,9 @@ def plan_info(request):
     if shop is None:
         return {}
     from .plans import limits_for, plan_label
+    from .models import ProductReview
     limits = limits_for(shop)
-    return {'plan': {
+    return {'pending_reviews': ProductReview.objects.filter(shop=shop, is_approved=False).count(), 'plan': {
         'label': plan_label(shop),
         'is_trial': shop.subscription_plan == 'Free',
         'products': limits['products'],

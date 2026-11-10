@@ -64,6 +64,45 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .var-wrap.shake { animation: varShake .45s; }
 @keyframes varShake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 .meta-chip.oos { background: #FEF2F2; color: #DC2626; }
+.stars { display: inline-flex; gap: 1px; color: #F59E0B; font-size: 13px; vertical-align: middle; }
+.stars i.off { color: #D1D5DB; }
+.rating-line { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--dark); margin-bottom: 10px; text-decoration: none; }
+.rating-line small { color: var(--muted); font-weight: 600; }
+.wa-order { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; padding: 13px; border-radius: 14px; border: 2px solid #25D366; background: #F0FDF4; color: #128C7E; font-weight: 800; font-size: 15px; text-decoration: none; }
+.wa-order:hover { background: #DCFCE7; color: #128C7E; }
+/* রিভিউ */
+.rv-top { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; margin-bottom: 16px; }
+.rv-big { text-align: center; }
+.rv-big b { display: block; font-size: 40px; font-weight: 900; color: var(--dark); line-height: 1; }
+.rv-big small { display: block; color: var(--muted); font-size: 12px; font-weight: 600; margin-top: 4px; }
+.rv-bars { display: grid; gap: 5px; }
+.rv-bar { display: grid; grid-template-columns: 34px 1fr 30px; gap: 8px; align-items: center; font-size: 12px; font-weight: 700; color: var(--muted); }
+.rv-bar span:first-child { color: var(--dark); }
+.rv-bar i { display: block; height: 7px; border-radius: 99px; background: #F1F5F9; overflow: hidden; }
+.rv-bar i b { display: block; height: 100%; background: #F59E0B; border-radius: 99px; }
+.rv-item { padding: 14px 0; border-top: 1px solid var(--border); }
+.rv-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.rv-name { font-weight: 800; font-size: 14px; color: var(--dark); }
+.rv-verified { font-size: 11px; font-weight: 800; color: #166534; background: #DCFCE7; border-radius: 999px; padding: 2px 8px; }
+.rv-date { font-size: 12px; color: var(--muted); margin-left: auto; }
+.rv-text { font-size: 14px; color: var(--text); line-height: 1.7; white-space: pre-wrap; }
+.rv-img { margin-top: 8px; width: 96px; height: 96px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border); cursor: zoom-in; }
+.rv-form { margin-top: 16px; border-top: 2px dashed var(--border); padding-top: 16px; }
+.rv-form h5 { font-size: 15px; font-weight: 800; color: var(--dark); margin-bottom: 10px; }
+.rv-pick { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; margin-bottom: 10px; }
+.rv-pick input { position: absolute; opacity: 0; pointer-events: none; }
+.rv-pick label { font-size: 30px; color: #D1D5DB; cursor: pointer; line-height: 1; }
+.rv-pick input:checked ~ label, .rv-pick label:hover, .rv-pick label:hover ~ label { color: #F59E0B; }
+.rv-input { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 600; margin-bottom: 10px; background: #F8FAFC; font-family: inherit; }
+.rv-input:focus { outline: 0; border-color: var(--orange); background: #fff; }
+.rv-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rv-file { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.rv-submit { width: 100%; padding: 13px; border: 0; border-radius: 12px; background: var(--dark); color: #fff; font-weight: 800; font-size: 15px; cursor: pointer; font-family: inherit; }
+.rv-msg { border-radius: 12px; padding: 11px 13px; font-size: 13.5px; font-weight: 700; margin-bottom: 12px; }
+.rv-msg.ok { background: #ECFDF5; color: #065F46; }
+.rv-msg.bad { background: #FEF2F2; color: #991B1B; }
+.rv-empty { color: var(--muted); font-size: 13.5px; padding: 6px 0 2px; }
+@media (max-width: 400px) { .rv-row2 { grid-template-columns: 1fr; } }
 .meta-chip.rating { background: #FEF3C7; color: #B45309; }
 
 /* DELIVERY INFO */
@@ -243,6 +282,8 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 
   </style>
 {% include 'store/storefront/_theme.html' %}
+<script type="application/ld+json">{{ product_ld|safe }}</script>
+<script type="application/ld+json">{{ breadcrumb_ld|safe }}</script>
 </head>
 <body>
 
@@ -302,6 +343,9 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
         <span style="font-size:16px;font-weight:600;color:var(--muted);text-decoration:line-through;letter-spacing:0;">৳{{ product.compare_price|floatformat:0 }}</span>
         <span style="font-size:13px;font-weight:800;background:#FF3333;color:#fff;padding:3px 8px;border-radius:6px;letter-spacing:0;vertical-align:middle;">-{{ product.discount_percent }}%</span>{% endif %}</div>
       <div class="prod-title-text">{{ product.name }}</div>
+      {% if product.rating %}
+      <a class="rating-line" href="#reviews">{% include 'store/storefront/_stars.html' with avg=product.rating.avg %} {{ product.rating.avg|bn }} <small>({{ product.rating.count|bn }}টা রিভিউ)</small></a>
+      {% endif %}
 
       <div class="meta-row">
         {% if product.stock_quantity > 0 %}
@@ -325,6 +369,9 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
         <button class="desk-btn-add" onclick="addChosen()">কার্টে যোগ করুন</button>
         <button class="desk-btn-buy" onclick="buyChosen()">এখনই কিনুন</button>
       </div>
+      {% if shop.whatsapp_number %}
+      <a class="wa-order" href="https://wa.me/{{ shop.whatsapp_number }}?text={{ wa_text|urlencode }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp-এ অর্ডার করুন</a>
+      {% endif %}
     </div>
 
     <!-- ডেলিভারি আর পেমেন্ট: দোকানের আসল সেটিং থেকে -->
@@ -370,6 +417,45 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
     </div>
     {% endif %}
 
+    <!-- REVIEWS -->
+    {% if shop.reviews_enabled or review_list %}
+    <div class="desc-card" id="reviews">
+      <div class="card-title">কাস্টমারের রিভিউ{% if product.rating %} <span style="font-size:13px;color:var(--muted);font-weight:700;">({{ product.rating.count|bn }}টা)</span>{% endif %}</div>
+      {% if product.rating %}
+      <div class="rv-top">
+        <div class="rv-big"><b>{{ product.rating.avg|bn }}</b>{% include 'store/storefront/_stars.html' with avg=product.rating.avg %}<small>৫-এর মধ্যে</small></div>
+        <div class="rv-bars">{% for bar in review_bars %}<div class="rv-bar"><span>{{ bar.star|bn }} <i class="bi bi-star-fill" style="font-size:10px;color:#F59E0B;display:inline;height:auto;background:none;"></i></span><i><b style="width:{{ bar.pct }}%;"></b></i><span>{{ bar.count|bn }}</span></div>{% endfor %}</div>
+      </div>
+      {% endif %}
+      {% for r in review_list %}
+      <div class="rv-item">
+        <div class="rv-head">{% include 'store/storefront/_stars.html' with avg=r.rating %}<span class="rv-name">{{ r.name }}</span>{% if r.verified %}<span class="rv-verified"><i class="bi bi-patch-check-fill"></i> যাচাই করা ক্রেতা</span>{% endif %}<span class="rv-date">{{ r.created_at|bn_day }}</span></div>
+        {% if r.text %}<div class="rv-text">{{ r.text }}</div>{% endif %}
+        {% if r.image %}<a href="{{ r.image.url }}" target="_blank" rel="noopener"><img class="rv-img" src="{{ r.image.url }}" alt="রিভিউর ছবি" loading="lazy"></a>{% endif %}
+      </div>
+      {% empty %}
+      <div class="rv-empty">এখনো কোনো রিভিউ নেই।{% if shop.reviews_enabled %} আপনিই প্রথম রিভিউ দিন।{% endif %}</div>
+      {% endfor %}
+      {% if shop.reviews_enabled %}
+      <form class="rv-form" method="post" action="{% shop_url 'storefront_review' shop product.id %}" enctype="multipart/form-data" id="review-form">
+        {% csrf_token %}
+        <h5>আপনার রিভিউ দিন</h5>
+        {% if review_msg %}<div class="rv-msg {% if review_msg.ok %}ok{% else %}bad{% endif %}">{{ review_msg.text }}</div>{% endif %}
+        <div class="rv-pick" aria-label="তারা দিন">
+          {% for n in "54321" %}<input type="radio" name="rating" id="star{{ n }}" value="{{ n }}"{% if n == "5" %} checked{% endif %}><label for="star{{ n }}" title="{{ n|bn }} তারা"><i class="bi bi-star-fill"></i></label>{% endfor %}
+        </div>
+        <div class="rv-row2">
+          <input class="rv-input" type="text" name="name" placeholder="আপনার নাম *" maxlength="80" required>
+          <input class="rv-input" type="tel" name="phone" placeholder="মোবাইল নম্বর * (দেখানো হবে না)" maxlength="20" inputmode="tel" required>
+        </div>
+        <textarea class="rv-input" name="text" rows="3" maxlength="1000" placeholder="প্রোডাক্টটা কেমন লাগল? (ঐচ্ছিক)"></textarea>
+        <div class="rv-file"><label><i class="bi bi-camera"></i> ছবি দিতে চাইলে: <input type="file" name="image" accept="image/*"></label></div>
+        <button class="rv-submit" type="submit"><i class="bi bi-send-fill"></i> রিভিউ জমা দিন</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <!-- RELATED PRODUCTS -->
     {% if related_products %}
     <div class="related-section">
@@ -382,6 +468,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
           </div>
           <div class="rel-body">
             <div class="rel-name">{{ rp.name }}</div>
+            {% if rp.rating %}<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:2px;">{% include 'store/storefront/_stars.html' with avg=rp.rating.avg %} {{ rp.rating.avg|bn }}</div>{% endif %}
             <div class="rel-price">৳{{ rp.price|floatformat:0 }}{% if rp.discount_percent %} <span style="font-size:11px;font-weight:600;color:var(--muted);text-decoration:line-through;">৳{{ rp.compare_price|floatformat:0 }}</span>{% endif %}</div>
           </div>
         </a>

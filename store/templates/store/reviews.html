@@ -1,0 +1,77 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}রিভিউ — {{ shop.name }}{% endblock %}
+{% block page_title %}রিভিউ{% endblock %}
+
+{% block content %}
+{% include 'store/partials/ledger_styles.html' %}
+<style>
+  .rv-tabs { display: flex; gap: 6px; }
+  .rv-tab { border-radius: 999px; padding: 7px 14px; font-weight: 700; font-size: 13.5px; color: var(--ink2); background: var(--soft); text-decoration: none; }
+  .rv-tab.on { background: #0F172A; color: #fff; }
+  .rv-stars { color: #F59E0B; font-size: 13px; } .rv-stars .off { color: #D1D5DB; }
+  .rv-img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; border: 1px solid var(--line); }
+  .rv-txt { white-space: pre-wrap; font-size: 14px; color: var(--ink2); }
+  .sw-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--soft); }
+  .sw-row:last-child { border-bottom: 0; }
+  .sw-row b { display: block; font-size: 14px; } .sw-row small { color: var(--muted); font-size: 12.5px; }
+  .sw-row .form-switch { margin-left: auto; flex-shrink: 0; padding-left: 2.6em; }
+  .sw-row .form-check-input { width: 2.6em; height: 1.4em; margin-left: -2.6em; cursor: pointer; }
+  .sw-row .form-check-input:checked { background-color: #16A34A; border-color: #16A34A; }
+</style>
+<div class="lg">
+  <section class="lg-hero">
+    <div class="lg-hero-top">
+      <div>
+        <div class="lg-kicker"><i class="bi bi-star"></i> কাস্টমারের মতামত</div>
+        <h1>রিভিউ</h1>
+        <p>কাস্টমার প্রোডাক্ট পেজে রিভিউ দেয়। আপনি দেখে অনুমোদন দিলে ওয়েবসাইটে দেখায়।</p>
+      </div>
+      <div class="rv-tabs">
+        <a class="rv-tab{% if show == 'pending' %} on{% endif %}" href="?show=pending">অপেক্ষায় {{ pending_count|bn }}</a>
+        <a class="rv-tab{% if show == 'approved' %} on{% endif %}" href="?show=approved">দেখানো হচ্ছে {{ approved_count|bn }}</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="lg-grid2">
+    <section class="lg-card">
+      <div class="lg-head"><div><h2><i class="bi bi-chat-square-quote"></i> {% if show == 'pending' %}অনুমোদনের অপেক্ষায়{% else %}ওয়েবসাইটে দেখানো রিভিউ{% endif %}</h2></div></div>
+      {% if page_obj.object_list %}
+      <div class="lg-table-wrap" style="margin-top: 8px;">
+        <table class="lg-table stack">
+          <thead><tr><th>প্রোডাক্ট ও কাস্টমার</th><th>রিভিউ</th><th class="r"></th></tr></thead>
+          <tbody>
+            {% for r in page_obj %}
+            <tr>
+              <td class="a"><a class="row-link" href="{% url 'edit_product' r.product_id %}">{{ r.product.name }}</a><small>{{ r.name }}{% if r.verified %} · <span style="color:#166534;font-weight:700;">যাচাই করা ক্রেতা</span>{% endif %} · <span class="num">{{ r.phone }}</span></small><small>{{ r.created_at|bn_day }}</small></td>
+              <td class="c"><div class="rv-stars">{% for on in r.rating|star_flags %}<i class="bi bi-star-fill{% if not on %} off{% endif %}"></i>{% endfor %}</div>{% if r.text %}<div class="rv-txt">{{ r.text }}</div>{% endif %}{% if r.image %}<a href="{{ r.image.url }}" target="_blank" rel="noopener"><img class="rv-img" src="{{ r.image.url }}" alt=""></a>{% endif %}</td>
+              <td class="r d"><div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
+                <form method="post" action="{% url 'review_action' r.id %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  {% if r.is_approved %}<input type="hidden" name="action" value="hide"><button class="lg-btn line sm" type="submit"><i class="bi bi-eye-slash"></i> সরান</button>
+                  {% else %}<input type="hidden" name="action" value="approve"><button class="lg-btn green sm" type="submit"><i class="bi bi-check2"></i> দেখান</button>{% endif %}</form>
+                <form method="post" action="{% url 'review_action' r.id %}" onsubmit="return confirm('রিভিউটা মুছে ফেলবেন?');">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><input type="hidden" name="action" value="delete"><button class="lg-btn red sm" type="submit" aria-label="মুছুন"><i class="bi bi-trash3"></i></button></form>
+              </div></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="lg-empty"><i class="bi bi-star"></i><b>{% if show == 'pending' %}অপেক্ষায় কোনো রিভিউ নেই{% else %}এখনো কোনো রিভিউ দেখানো হচ্ছে না{% endif %}</b>কাস্টমার প্রোডাক্ট পেজ থেকে রিভিউ দিলে এখানে আসবে</div>
+      {% endif %}
+    </section>
+
+    <section class="lg-card">
+      <div class="lg-head"><div><h2><i class="bi bi-sliders"></i> সেটিং</h2></div></div>
+      <form class="lg-body" method="post">
+        {% csrf_token %}<input type="hidden" name="section" value="settings">
+        <label class="sw-row" for="rv-on"><span><b>কাস্টমার রিভিউ দিতে পারবে</b><small>বন্ধ করলে প্রোডাক্ট পেজে রিভিউর ফর্ম থাকবে না (আগের রিভিউ থাকবে)</small></span><span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="rv-on" name="reviews_enabled"{% if shop.reviews_enabled %} checked{% endif %}></span></label>
+        <label class="sw-row" for="rv-auto"><span><b>নতুন রিভিউ নিজে থেকেই দেখাবে</b><small>বন্ধ থাকলে আপনি দেখে অনুমোদন দিলে তবেই ওয়েবসাইটে দেখায়</small></span><span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="rv-auto" name="reviews_auto_approve"{% if shop.reviews_auto_approve %} checked{% endif %}></span></label>
+        <button class="lg-btn dark" type="submit" style="margin-top: 12px; width: 100%; justify-content: center;"><i class="bi bi-check-lg"></i> সেভ করুন</button>
+        <div class="lg-help" style="margin-top: 12px;">যে নম্বরে প্রোডাক্টটা ডেলিভারি হয়েছে, সেই নম্বর থেকে রিভিউ এলে "যাচাই করা ক্রেতা" লেখা থাকে।</div>
+      </form>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -33,7 +33,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold text-muted small">Phone Number <span class="text-danger">*</span></label>
-                                <input type="text" name="customer_phone" id="oc-phone" class="form-control bg-light border-0 py-2" placeholder="e.g. 01712345678" required>
+                                <input type="text" name="customer_phone" id="oc-phone" class="form-control bg-light border-0 py-2" placeholder="e.g. 01712345678" required value="{{ request.GET.phone|default:'' }}">
                                 <div id="oc-risk" class="mt-2" aria-live="polite"></div>
                             </div>
                             <div class="col-12">
@@ -279,6 +279,7 @@
     } catch (e) { box.innerHTML = ''; }
   }
   phone.addEventListener('blur', check);
+  if (phone.value.replace(/\D/g, '').length >= 11) check();     // অসম্পূর্ণ অর্ডার থেকে এলে নম্বর আগে থেকেই বসানো
   phone.addEventListener('input', () => { if (phone.value.replace(/\D/g, '').length >= 11) check(); });
 })();
 </script>

@@ -105,6 +105,8 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .prod-price { font-size: 18px; font-weight: 900; color: var(--orange); letter-spacing: -0.5px; }
 .prod-old { font-size: 12px; font-weight: 600; color: var(--muted); text-decoration: line-through; letter-spacing: 0; }
 .prod-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+.stars { display: inline-flex; gap: 1px; color: #F59E0B; font-size: 11px; }
+.stars i.off { color: #D1D5DB; }
 
 /* ===== TRUST BADGES ===== */
 .announce-bar { background: var(--orange); color: #fff; text-align: center; font-size: 13px; font-weight: 700; padding: 8px 16px; line-height: 1.4; }
@@ -224,6 +226,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 
   </style>
 {% include 'store/storefront/_theme.html' %}
+{% if shop_ld %}<script type="application/ld+json">{{ shop_ld|safe }}</script>{% endif %}
 </head>
 <body>
 

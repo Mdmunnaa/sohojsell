@@ -16,6 +16,17 @@
   .co-summary .row-line.now { color: var(--orange); font-weight: 900; }
   .co-free-note { font-size: 11.5px; color: #059669; font-weight: 700; margin-top: 6px; }
   #checkout-box { max-height: 92vh; overflow-y: auto; }
+  .co-coupon { display: flex; gap: 8px; margin-top: 4px; }
+  .co-coupon .co-input { margin: 0; text-transform: uppercase; }
+  .co-coupon button { flex-shrink: 0; border: 0; border-radius: 12px; padding: 0 16px; font-weight: 800; font-size: 14px; background: var(--dark, #0F172A); color: #fff; cursor: pointer; font-family: inherit; }
+  .co-coupon-msg { font-size: 12.5px; font-weight: 700; margin-top: 6px; display: none; }
+  .co-coupon-msg.ok { display: block; color: #059669; }
+  .co-coupon-msg.bad { display: block; color: #DC2626; }
+  .co-coupon-on { display: none; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; background: #ECFDF5; border: 1px dashed #6EE7B7; border-radius: 12px; padding: 10px 12px; font-size: 13px; font-weight: 700; color: #065F46; }
+  .co-coupon-on.show { display: flex; }
+  .co-coupon-on button { background: none; border: 0; color: #991B1B; font-weight: 800; font-size: 12.5px; cursor: pointer; font-family: inherit; }
+  .co-summary .row-line.off { color: #059669; font-weight: 800; }
+  .co-wa { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 10px; padding: 12px; border-radius: 12px; border: 2px solid #25D366; color: #128C7E; background: #F0FDF4; font-weight: 800; font-size: 14px; text-decoration: none; }
 </style>
 
 <!-- কার্ট -->
@@ -79,8 +90,17 @@
     </div>
     {% endif %}
 
+    <div class="co-label">কুপন কোড <span style="font-weight:600;">(থাকলে)</span></div>
+    <div class="co-coupon" id="co-coupon-box">
+      <input type="text" id="co-coupon" class="co-input" placeholder="যেমন: EID20" maxlength="30" autocomplete="off" autocapitalize="characters">
+      <button type="button" id="co-coupon-btn" onclick="applyCoupon()">লাগান</button>
+    </div>
+    <div class="co-coupon-on" id="co-coupon-on"><span><i class="bi bi-ticket-perforated-fill"></i> <b id="co-coupon-code"></b> · <span id="co-coupon-text"></span></span><button type="button" onclick="removeCoupon()">বাদ দিন</button></div>
+    <div class="co-coupon-msg" id="co-coupon-msg"></div>
+
     <div class="co-summary">
       <div class="row-line"><span>প্রোডাক্টের দাম</span><span id="co-subtotal">৳0</span></div>
+      <div class="row-line off" id="co-discount-row" style="display:none;"><span>কুপনে ছাড়</span><span id="co-discount">− ৳0</span></div>
       <div class="row-line"><span>ডেলিভারি চার্জ</span><span id="co-delivery">৳0</span></div>
       <div class="row-line total"><span>মোট</span><span id="co-total-display">৳0</span></div>
       <div class="row-line now" id="co-now-row" style="display:none;"><span>এখন অনলাইনে দেবেন</span><span id="co-now">৳0</span></div>
@@ -91,6 +111,7 @@
     <button class="place-order-btn" id="place-order-btn" onclick="placeOrder()">
       <i class="bi bi-check-circle-fill me-2"></i><span id="place-order-label">অর্ডার কনফার্ম করুন</span>
     </button>
+    {% if shop.whatsapp_number %}<a class="co-wa" id="co-wa" href="#" target="_blank" rel="noopener" onclick="return whatsappOrder()"><i class="bi bi-whatsapp"></i> WhatsApp-এ অর্ডার পাঠান</a>{% endif %}
     <button class="cancel-btn" onclick="document.getElementById('checkout-modal').classList.remove('show')">← কার্টে ফিরে যান</button>
   </div>
 </div>
@@ -98,6 +119,10 @@
 <script>
 const SHOP_ID = '{{ shop.id }}';
 const PLACE_ORDER_URL = '{% shop_url "storefront_place_order" shop %}';
+const COUPON_URL = '{% shop_url "storefront_coupon_check" shop %}';
+const DRAFT_URL = '{% shop_url "storefront_checkout_draft" shop %}';
+const WA_NUMBER = '{{ shop.whatsapp_number }}';
+let coupon = null;   // {code, discount, delivery_off, text}
 const FREE_DELIVERY_MIN = {% if shop.free_delivery_min %}{{ shop.free_delivery_min|floatformat:0 }}{% else %}null{% endif %};
 const FALLBACK_DELIVERY = {{ fallback_delivery|default:0|floatformat:0 }};
 let cart = {};
@@ -124,11 +149,16 @@ function checkoutNumbers() {
   const zone = document.querySelector('input[name="co-zone"]:checked');
   let delivery = keys.length ? (zone ? Number(zone.dataset.charge) : FALLBACK_DELIVERY) : 0;
   if (FREE_DELIVERY_MIN !== null && subtotal >= FREE_DELIVERY_MIN) delivery = 0;
-  const total = subtotal + delivery;
+  let discount = 0;
+  if (coupon) {
+    discount = Math.min(coupon.discount || 0, subtotal);
+    if (coupon.delivery_off) delivery = 0;
+  }
+  const total = subtotal - discount + delivery;
   const payEl = document.querySelector('input[name="co-pay"]:checked');
   const pay = payEl ? payEl.value : 'cod';
   const now = pay === 'full' ? total : (pay === 'advance' ? delivery : 0);
-  return { keys, subtotal, delivery, total, pay, now };
+  return { keys, subtotal, delivery, total, pay, now, discount };
 }
 
 function renderCart() {
@@ -143,6 +173,8 @@ function renderCart() {
   document.getElementById('sf-delivery').textContent = deliveryText;
   document.getElementById('sf-total').textContent = money(n.total);
   document.getElementById('co-subtotal').textContent = money(n.subtotal);
+  document.getElementById('co-discount-row').style.display = n.discount > 0 ? 'flex' : 'none';
+  document.getElementById('co-discount').textContent = '− ' + money(n.discount);
   document.getElementById('co-delivery').textContent = deliveryText;
   document.getElementById('co-total-display').textContent = money(n.total);
   document.getElementById('co-now-row').style.display = n.now > 0 ? 'flex' : 'none';
@@ -168,6 +200,63 @@ function renderCart() {
       <button onclick="removeItem(${safeId})" aria-label="সরান" style="background:none;border:none;color:#FF3333;cursor:pointer;font-size:18px;padding:0 0 0 8px;"><i class="bi bi-trash3-fill"></i></button>
     </div>`;
   }).join('');
+}
+
+/* ── কুপন ── */
+function cartPayload() { return Object.values(cart).map(i => ({ id: i.id, qty: i.qty })); }
+async function applyCoupon() {
+  const input = document.getElementById('co-coupon'), msg = document.getElementById('co-coupon-msg'), btn = document.getElementById('co-coupon-btn');
+  const code = input.value.trim().toUpperCase();
+  if (!code) { msg.className = 'co-coupon-msg bad'; msg.textContent = 'কুপন কোড লিখুন'; return; }
+  const zone = document.querySelector('input[name="co-zone"]:checked');
+  btn.disabled = true;
+  try {
+    const res = await fetch(COUPON_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') || '' },
+      body: JSON.stringify({ code, cart: cartPayload(), zone: zone ? zone.value : null }) });
+    const data = await res.json().catch(() => ({}));
+    if (data.ok) {
+      coupon = data;
+      document.getElementById('co-coupon-code').textContent = data.code;
+      document.getElementById('co-coupon-text').textContent = data.text;
+      document.getElementById('co-coupon-on').classList.add('show');
+      document.getElementById('co-coupon-box').style.display = 'none';
+      msg.className = 'co-coupon-msg'; renderCart();
+    } else { coupon = null; msg.className = 'co-coupon-msg bad'; msg.textContent = data.error || 'কুপনটা নেওয়া যায়নি'; renderCart(); }
+  } catch (e) { msg.className = 'co-coupon-msg bad'; msg.textContent = 'ইন্টারনেট সংযোগ দেখুন'; }
+  btn.disabled = false;
+}
+function removeCoupon() {
+  coupon = null;
+  document.getElementById('co-coupon-on').classList.remove('show');
+  document.getElementById('co-coupon-box').style.display = '';
+  document.getElementById('co-coupon').value = '';
+  document.getElementById('co-coupon-msg').className = 'co-coupon-msg';
+  renderCart();
+}
+document.getElementById('co-coupon').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyCoupon(); } });
+
+/* ── অসম্পূর্ণ অর্ডার: নম্বর লিখলেই কার্টটা দোকানে জমা থাকে ── */
+let draftTimer, draftLast = '';
+function saveDraft() {
+  const phone = document.getElementById('co-phone').value.trim();
+  if (phone.replace(/\D/g, '').length < 11 || !Object.keys(cart).length) return;
+  const body = JSON.stringify({ phone, name: document.getElementById('co-name').value.trim(), address: document.getElementById('co-address').value.trim(), cart: cartPayload() });
+  if (body === draftLast) return;
+  draftLast = body;
+  fetch(DRAFT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') || '' }, body, keepalive: true }).catch(() => {});
+}
+['co-phone', 'co-name', 'co-address'].forEach(id => document.getElementById(id).addEventListener('input', () => { clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 1200); }));
+
+/* ── WhatsApp-এ অর্ডার: কার্টের তালিকা লিখে পাঠানো ── */
+function whatsappOrder() {
+  const n = checkoutNumbers();
+  if (!n.keys.length || !WA_NUMBER) return false;
+  const lines = n.keys.map(k => `• ${cart[k].name} × ${cart[k].qty} = ${money(cart[k].price * cart[k].qty)}`);
+  const name = document.getElementById('co-name').value.trim(), address = document.getElementById('co-address').value.trim();
+  const text = ['আসসালামু আলাইকুম, আমি অর্ডার করতে চাই:', ...lines, `মোট (প্রোডাক্ট): ${money(n.subtotal)}`,
+                name ? `নাম: ${name}` : '', address ? `ঠিকানা: ${address}` : ''].filter(Boolean).join('\n');
+  window.open('https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  return false;
 }
 
 function openCart() { document.getElementById('cart-overlay').classList.add('show'); document.getElementById('cart-drawer').classList.add('open'); }
@@ -201,14 +290,15 @@ async function placeOrder() {
     const res = await fetch(PLACE_ORDER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') || '' },
-      body: JSON.stringify({ cart: Object.values(cart).map(i => ({ id: i.id, qty: i.qty })), name, phone, address, note,
-                             zone: zone ? zone.value : null, payment: n.pay })
+      body: JSON.stringify({ cart: cartPayload(), name, phone, address, note,
+                             zone: zone ? zone.value : null, payment: n.pay, coupon: coupon ? coupon.code : '' })
     });
     const data = await res.json().catch(() => ({}));
     if (data.success && data.redirect) {
       try { localStorage.removeItem('sohojsell_' + SHOP_ID); } catch (e) {}
       window.location.href = data.redirect;
     } else {
+      if (data.coupon_error) removeCoupon();
       showToast('❌ ' + (data.error || 'অর্ডার নেওয়া যায়নি, আবার চেষ্টা করুন'));
       restore();
     }

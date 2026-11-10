@@ -2529,6 +2529,177 @@ class OrderFlowTests(ShopTestMixin, TestCase):
         self.assertFalse(self.customer.is_blocked)
 
 
+class OffersReviewsSeoTests(ShopTestMixin, TestCase):
+    """কুপন (হিসাব, শর্ত, ব্যবহার), অসম্পূর্ণ অর্ডার, রিভিউ (জমা, অনুমোদন, যাচাই), sitemap/robots/JSON-LD।"""
+
+    def setUp(self):
+        from .models import Product
+        self.user, self.shop = self.make_shop(slug='ofshop', whatsapp_number='8801711111111')
+        self.shirt = Product.objects.create(shop=self.shop, name='শার্ট', price=Decimal('500'), cost_price=300,
+                                            stock_quantity=10)
+        self.cap = Product.objects.create(shop=self.shop, name='Cap', price=Decimal('200'), cost_price=100,
+                                          stock_quantity=5)
+
+    def make_coupon(self, **extra):
+        data = {'code': 'EID20', 'kind': 'percent', 'value': '20', 'min_order': '', 'max_discount': '',
+                'usage_limit': '', 'starts_on': '', 'ends_on': '', **extra}
+        return self.client.post(reverse('coupon_list'), data)
+
+    def place(self, cart, **extra):
+        from .delivery import zones_for
+        body = {'cart': cart, 'name': 'রহিম', 'phone': '01812345678', 'address': 'Savar', 'payment': 'cod',
+                'zone': zones_for(self.shop)[0].id, **extra}
+        return self.client.post('/shop/ofshop/place-order/', json.dumps(body), content_type='application/json').json()
+
+    def test_coupon_math_and_rules(self):
+        from . import offers
+        from .models import Coupon
+        self.assertRedirects(self.make_coupon(max_discount='150', min_order='৫০০'), reverse('coupon_list'))
+        self.make_coupon(code='flat100', kind='amount', value='100')
+        self.make_coupon(code='FREESHIP', kind='free_delivery', usage_limit='1')
+        self.assertIn('আগে থেকেই আছে', self.make_coupon().content.decode())
+        self.assertIn('বেশি হতে পারে না', self.make_coupon(code='BIG', value='150').content.decode())
+        self.assertIn('২–৩০ অক্ষরের', self.make_coupon(code='ঈদ').content.decode())
+        self.assertEqual(Coupon.objects.filter(shop=self.shop).count(), 3)
+        eid = Coupon.objects.get(code='EID20')
+        self.assertEqual((eid.kind, eid.value, eid.max_discount, eid.min_order),
+                         ('percent', Decimal('20'), Decimal('150'), Decimal('500')))
+        # % ছাড়, সর্বোচ্চে আটকানো; কমপক্ষে অর্ডারের শর্ত; ফ্রি ডেলিভারি; টাকা ছাড়
+        coupon, discount, delivery_off = offers.find(self.shop, 'eid20', Decimal('1000'), Decimal('60'))
+        self.assertEqual((coupon.code, discount, delivery_off), ('EID20', Decimal('150'), Decimal('0')))
+        self.assertEqual(offers.find(self.shop, 'EID20', Decimal('500'), 60)[1], Decimal('100'))
+        with self.assertRaisesRegex(offers.CouponError, 'কমপক্ষে'):
+            offers.find(self.shop, 'EID20', Decimal('400'), 60)
+        self.assertEqual(offers.find(self.shop, 'FREESHIP', Decimal('100'), Decimal('60'))[1:], (Decimal('0'), Decimal('60')))
+        self.assertEqual(offers.find(self.shop, 'FLAT100', Decimal('80'), 60)[1], Decimal('80'))      # দামের বেশি না
+        with self.assertRaisesRegex(offers.CouponError, 'ঠিক নেই'):
+            offers.find(self.shop, 'NOPE', Decimal('1000'), 60)
+        self.assertEqual(offers.find(self.shop, '', Decimal('1000'), 60), (None, Decimal('0'), Decimal('0')))
+        self.assertEqual(offers.describe(eid), '২০% ছাড় (সর্বোচ্চ ৳১৫০) · কমপক্ষে ৳৫০০ অর্ডারে')
+
+    def test_coupon_in_checkout_and_usage_limit(self):
+        from .models import Coupon
+        from .delivery import zones_for
+        self.make_coupon(code='FREESHIP', kind='free_delivery', usage_limit='1')
+        self.make_coupon()
+        self.client.logout()
+        zone = zones_for(self.shop)[0]
+        check = self.client.post('/shop/ofshop/coupon/', json.dumps({'code': 'eid20', 'zone': zone.id,
+                                 'cart': [{'id': self.shirt.id, 'qty': 2}]}), content_type='application/json').json()
+        self.assertEqual((check['ok'], check['code'], check['discount']), (True, 'EID20', 200.0))
+        bad = self.client.post('/shop/ofshop/coupon/', json.dumps({'code': 'XX', 'cart': []}),
+                               content_type='application/json').json()
+        self.assertFalse(bad['ok'])
+        done = self.place([{'id': self.shirt.id, 'qty': 2}], coupon='FREESHIP')
+        self.assertTrue(done['success'], done)
+        order = Order.objects.get(source='storefront')
+        self.assertEqual((order.delivery_charge, order.discount, order.total_amount, order.coupon_code),
+                         (Decimal('0'), Decimal('0'), Decimal('1000'), 'FREESHIP'))
+        self.assertIn('কুপন FREESHIP', order.note)
+        self.assertEqual(Coupon.objects.get(code='FREESHIP').used_count, 1)
+        again = self.place([{'id': self.cap.id, 'qty': 1}], coupon='FREESHIP')         # সীমা শেষ
+        self.assertEqual((again['success'], again.get('coupon_error')), (False, True))
+        pct = self.place([{'id': self.shirt.id, 'qty': 2}], coupon='EID20')
+        self.assertTrue(pct['success'], pct)
+        order = Order.objects.filter(source='storefront').latest('id')
+        self.assertEqual((order.discount, order.total_amount), (Decimal('200'), Decimal('800') + zone.charge))
+        self.client.force_login(self.user)
+        page = self.client.get(reverse('coupon_list')).content.decode()
+        self.assertIn('সীমা শেষ', page)
+        self.assertIn('EID20', page)
+        self.client.post(reverse('coupon_action', args=[Coupon.objects.get(code='EID20').id]), {'action': 'toggle'})
+        self.assertFalse(Coupon.objects.get(code='EID20').is_active)
+
+    def test_abandoned_checkout_saved_then_recovered(self):
+        from .models import AbandonedCheckout
+        self.client.logout()
+        draft = {'phone': '০১৮১২৩৪৫৬৭৮', 'name': 'রহিম', 'address': 'Savar', 'cart': [{'id': self.shirt.id, 'qty': 2}]}
+        self.assertTrue(self.client.post('/shop/ofshop/checkout-draft/', json.dumps(draft),
+                                         content_type='application/json').json()['ok'])
+        draft['cart'] = [{'id': self.shirt.id, 'qty': 1}, {'id': self.cap.id, 'qty': 1}]
+        self.client.post('/shop/ofshop/checkout-draft/', json.dumps(draft), content_type='application/json')
+        row = AbandonedCheckout.objects.get()                                         # একই নম্বর → একটাই
+        self.assertEqual((row.phone, row.total, [i['name'] for i in row.cart]), ('01812345678', Decimal('700'), ['শার্ট', 'Cap']))
+        self.assertFalse(self.client.post('/shop/ofshop/checkout-draft/', json.dumps({'phone': '123', 'cart': []}),
+                                          content_type='application/json').json()['ok'])
+        self.client.force_login(self.user)
+        page = self.client.get(reverse('abandoned_list')).content.decode()
+        for text in ['শার্ট × ১', '01812345678', '৳৭০০', 'অর্ডার করে দিন']:
+            self.assertIn(text, page)
+        self.client.logout()
+        self.assertTrue(self.place([{'id': self.cap.id, 'qty': 1}])['success'])
+        row.refresh_from_db()
+        self.assertIsNotNone(row.recovered_order)
+        self.client.force_login(self.user)
+        self.assertNotIn('01812345678', self.client.get(reverse('abandoned_list')).content.decode())
+
+    def test_reviews_flow(self):
+        from .models import Customer, ProductReview
+        customer = Customer.objects.create(shop=self.shop, name='রহিম', phone='01812345678', address='Savar')
+        order = Order.objects.create(shop=self.shop, customer=customer, source='storefront', status='Delivered',
+                                     total_amount=500)
+        OrderItem.objects.create(order=order, product=self.shirt, price=500, quantity=1, cost_price=300)
+        self.client.logout()
+        url = f'/shop/ofshop/product/{self.shirt.id}/review/'
+        self.client.post(url, {'name': 'রহিম', 'phone': '01812345678', 'rating': '৪', 'text': 'ভালো কাপড়'})
+        self.client.post(url, {'name': 'করিম', 'phone': '01999999999', 'rating': '5', 'text': ''})
+        self.client.post(url, {'name': 'রহিম', 'phone': '01812345678', 'rating': '1', 'text': 'দুবার'})   # একই নম্বর
+        self.client.post(url, {'name': 'X', 'phone': '123', 'rating': '5'})                             # ভুল নম্বর
+        rows = {r.phone: r for r in ProductReview.objects.filter(product=self.shirt)}
+        self.assertEqual(len(rows), 2)
+        self.assertEqual((rows['01812345678'].rating, rows['01812345678'].verified, rows['01812345678'].is_approved),
+                         (4, True, False))
+        self.assertFalse(rows['01999999999'].verified)
+        page = self.client.get(f'/shop/ofshop/product/{self.shirt.id}/', HTTP_HOST='localhost').content.decode()
+        self.assertNotIn('ভালো কাপড়', page)                                             # অনুমোদনের আগে দেখায় না
+        self.assertIn('আপনার রিভিউ দিন', page)
+        self.assertIn('WhatsApp-এ অর্ডার করুন', page)
+        self.assertIn('"@type": "Product"', page)
+        self.client.force_login(self.user)
+        self.assertIn('অপেক্ষায় ২', self.client.get(reverse('review_list')).content.decode())
+        self.client.post(reverse('review_action', args=[rows['01812345678'].id]), {'action': 'approve'})
+        self.client.post(reverse('review_action', args=[rows['01999999999'].id]), {'action': 'approve'})
+        self.client.logout()
+        page = self.client.get(f'/shop/ofshop/product/{self.shirt.id}/', HTTP_HOST='localhost').content.decode()
+        for text in ['ভালো কাপড়', 'যাচাই করা ক্রেতা', '৪.৫', '"ratingValue": "4.5"', '"reviewCount": 2']:
+            self.assertIn(text, page)
+        home = self.client.get('/shop/ofshop/', HTTP_HOST='localhost').content.decode()
+        self.assertIn('৪.৫ (২)', home)
+        self.assertIn('"@type": "OnlineStore"', home)
+        # রিভিউ বন্ধ করলে ফর্ম থাকে না; অটো অনুমোদন চালু করলে সাথে সাথে দেখায়
+        self.client.force_login(self.user)
+        self.client.post(reverse('review_list'), {'section': 'settings', 'reviews_enabled': 'on', 'reviews_auto_approve': 'on'})
+        self.client.logout()
+        self.client.post(url, {'name': 'সালমা', 'phone': '01777777777', 'rating': '5', 'text': 'অটো'})
+        self.assertTrue(ProductReview.objects.get(phone='01777777777').is_approved)
+        self.client.force_login(self.user)
+        self.client.post(reverse('review_list'), {'section': 'settings'})
+        self.client.logout()
+        page = self.client.get(f'/shop/ofshop/product/{self.shirt.id}/', HTTP_HOST='localhost').content.decode()
+        self.assertNotIn('আপনার রিভিউ দিন', page)
+        self.assertIn('অটো', page)
+
+    def test_sitemap_and_robots(self):
+        from .models import Category
+        cat = Category.objects.create(shop=self.shop, name='জামা')
+        self.shirt.category = cat
+        self.shirt.save()
+        self.client.logout()
+        xml = self.client.get('/shop/ofshop/sitemap.xml', HTTP_HOST='localhost')
+        self.assertEqual(xml['Content-Type'], 'application/xml')
+        body = xml.content.decode()
+        for path in ['/shop/ofshop/</loc>', f'/shop/ofshop/product/{self.shirt.id}/', f'/shop/ofshop/category/{cat.id}/', '/shop/ofshop/track/']:
+            self.assertIn(path, body)
+        robots = self.client.get('/shop/ofshop/robots.txt', HTTP_HOST='localhost')
+        self.assertEqual(robots['Content-Type'], 'text/plain')
+        self.assertIn('Sitemap: http://localhost/shop/ofshop/sitemap.xml', robots.content.decode())
+        self.assertIn('Disallow: /place-order/', robots.content.decode())
+        # সাবডোমেইনে /robots.txt দোকানেরটাই
+        with self.settings(STORE_BASE_DOMAIN='sellpunch.com', ALLOWED_HOSTS=['*']):
+            response = self.client.get('/robots.txt', HTTP_HOST='ofshop.sellpunch.com')
+            self.assertIn('://ofshop.sellpunch.com/sitemap.xml', response.content.decode())
+
+
 class BrandTests(TestCase):
     def test_new_name_logo_and_icons(self):
         import json

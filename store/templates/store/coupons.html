@@ -1,0 +1,109 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}কুপন ও অফার — {{ shop.name }}{% endblock %}
+{% block page_title %}কুপন ও অফার{% endblock %}
+
+{% block content %}
+{% include 'store/partials/ledger_styles.html' %}
+<style>
+  .cp-kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .cp-kind { position: relative; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; cursor: pointer; background: #fff; }
+  .cp-kind input { position: absolute; opacity: 0; pointer-events: none; }
+  .cp-kind:has(input:checked) { border-color: #0F172A; box-shadow: 0 0 0 3px rgba(15,23,42,.08); }
+  .cp-kind b { display: block; font-size: 13.5px; color: var(--ink); }
+  .cp-kind small { color: var(--muted); font-size: 11.5px; }
+  .cp-code { font-family: ui-monospace, monospace; font-weight: 800; font-size: 15px; letter-spacing: .5px; color: var(--ink); background: var(--soft); border-radius: 8px; padding: 3px 9px; }
+  .lg-chip.live { background: #DCFCE7; color: #166534; } .lg-chip.off { background: var(--soft); color: var(--ink2); }
+  .lg-chip.expired, .lg-chip.used_up { background: #FEE2E2; color: #991B1B; } .lg-chip.upcoming { background: #DBEAFE; color: #1E40AF; }
+  @media (max-width: 520px) { .cp-kinds { grid-template-columns: 1fr; } }
+</style>
+<div class="lg">
+  <section class="lg-hero">
+    <div class="lg-hero-top">
+      <div>
+        <div class="lg-kicker"><i class="bi bi-ticket-perforated"></i> বিক্রি বাড়ানো</div>
+        <h1>কুপন ও অফার</h1>
+        <p>কাস্টমার ওয়েবসাইটে চেকআউটের সময় কোড লিখলে ছাড় পাবে। কোডটা Facebook পোস্টে বা SMS-এ দিন।</p>
+      </div>
+      <div class="lg-actions"><a class="lg-btn ghost" href="{{ storefront_url }}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> ওয়েবসাইট দেখুন</a></div>
+    </div>
+    <div class="lg-stats">
+      <div class="lg-stat"><small>চালু কুপন</small><b class="num">{{ live_count|bn }}টা</b></div>
+      <div class="lg-stat"><small>মোট ব্যবহার হয়েছে</small><b class="num">{{ used_total|bn }} বার</b></div>
+    </div>
+  </section>
+
+  <div class="lg-grid2">
+    <section class="lg-card">
+      <div class="lg-head"><div><h2><i class="bi bi-list-ul"></i> সব কুপন</h2></div></div>
+      {% if coupons %}
+      <div class="lg-table-wrap" style="margin-top: 8px;">
+        <table class="lg-table stack">
+          <thead><tr><th>কোড</th><th>কী ছাড়</th><th>মেয়াদ</th><th class="r">ব্যবহার</th><th class="r">অবস্থা</th><th></th></tr></thead>
+          <tbody>
+            {% for c in coupons %}
+            <tr>
+              <td class="a"><span class="cp-code">{{ c.code }}</span></td>
+              <td class="c">{{ c.text }}<small>{% if c.starts_on or c.ends_on %}{% if c.starts_on %}{{ c.starts_on|bn_day }}{% else %}এখন{% endif %} – {% if c.ends_on %}{{ c.ends_on|bn_day }}{% else %}যতদিন বন্ধ না করেন{% endif %}{% else %}মেয়াদ নেই{% endif %}</small></td>
+              <td class="hide-sm">{% if c.starts_on or c.ends_on %}{% if c.starts_on %}{{ c.starts_on|bn_day }}{% else %}এখন{% endif %} – {% if c.ends_on %}{{ c.ends_on|bn_day }}{% else %}খোলা{% endif %}{% else %}—{% endif %}</td>
+              <td class="r num b">{{ c.used_count|bn }}{% if c.usage_limit %} / {{ c.usage_limit|bn }}{% endif %} বার</td>
+              <td class="r d"><span class="lg-chip {{ c.state }}">{{ c.state_label }}</span>
+                <form method="post" action="{% url 'coupon_action' c.id %}" class="d-inline ms-1">{% csrf_token %}<input type="hidden" name="action" value="toggle"><button class="lg-btn line sm" type="submit">{% if c.is_active %}বন্ধ করুন{% else %}চালু করুন{% endif %}</button></form>
+                <form method="post" action="{% url 'coupon_action' c.id %}" class="d-inline" onsubmit="return confirm('কুপন {{ c.code }} মুছে ফেলবেন?');">{% csrf_token %}<input type="hidden" name="action" value="delete"><button class="lg-btn red sm" type="submit" aria-label="মুছুন"><i class="bi bi-trash3"></i></button></form></td>
+              <td class="hide-sm"></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="lg-empty"><i class="bi bi-ticket-perforated"></i><b>এখনো কোনো কুপন নেই</b>পাশের ফর্ম থেকে প্রথম কুপনটা বানান, যেমন EID20 = ২০% ছাড়</div>
+      {% endif %}
+    </section>
+
+    <section class="lg-card">
+      <div class="lg-head"><div><h2><i class="bi bi-plus-circle"></i> নতুন কুপন</h2></div></div>
+      <form class="lg-body" method="post" autocomplete="off">
+        {% csrf_token %}
+        <div style="display: grid; gap: 12px;">
+          <div><label for="cp-code">কুপন কোড</label><input class="lg-input" type="text" name="code" id="cp-code" maxlength="30" required value="{{ form.code }}" placeholder="যেমন: EID20" style="text-transform: uppercase;"><div class="lg-help">ইংরেজি অক্ষর আর সংখ্যা, ছোট আর মনে রাখার মতো</div></div>
+          <div><label>কী ধরনের ছাড়</label>
+            <div class="cp-kinds">
+              {% for key, label in kinds %}<label class="cp-kind"><input type="radio" name="kind" value="{{ key }}"{% if form.kind == key %} checked{% endif %}><b>{{ label }}</b><small>{% if key == 'percent' %}যেমন ২০%{% elif key == 'amount' %}যেমন ৳১০০{% else %}ডেলিভারি চার্জ লাগবে না{% endif %}</small></label>{% endfor %}
+            </div></div>
+          <div class="lg-fields" id="cp-value-row">
+            <div><label for="cp-value" id="cp-value-label">কত ছাড়</label><input class="lg-input num" type="text" inputmode="decimal" name="value" id="cp-value" value="{{ form.value }}" placeholder="২০"></div>
+            <div id="cp-max-box"><label for="cp-max">সর্বোচ্চ ছাড় (টাকা, ঐচ্ছিক)</label><input class="lg-input num" type="text" inputmode="decimal" name="max_discount" id="cp-max" value="{{ form.max_discount }}" placeholder="যেমন ৫০০"></div>
+          </div>
+          <div class="lg-fields">
+            <div><label for="cp-min">কমপক্ষে কত টাকার অর্ডারে (ঐচ্ছিক)</label><input class="lg-input num" type="text" inputmode="decimal" name="min_order" id="cp-min" value="{{ form.min_order }}" placeholder="যেমন ১০০০"></div>
+            <div><label for="cp-limit">মোট কতবার ব্যবহার করা যাবে (ঐচ্ছিক)</label><input class="lg-input num" type="text" inputmode="numeric" name="usage_limit" id="cp-limit" value="{{ form.usage_limit }}" placeholder="ফাঁকা = সীমা নেই"></div>
+          </div>
+          <div class="lg-fields">
+            <div><label for="cp-start">শুরুর তারিখ (ঐচ্ছিক)</label><input class="lg-input num" type="date" name="starts_on" id="cp-start" value="{{ form.starts_on }}"></div>
+            <div><label for="cp-end">শেষের তারিখ (ঐচ্ছিক)</label><input class="lg-input num" type="date" name="ends_on" id="cp-end" value="{{ form.ends_on }}"></div>
+          </div>
+          <button class="lg-btn dark" type="submit" style="justify-content: center;"><i class="bi bi-check-lg"></i> কুপন চালু করুন</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+<script>
+(function () {
+  const kinds = document.querySelectorAll('input[name=kind]'), row = document.getElementById('cp-value-row'),
+        label = document.getElementById('cp-value-label'), maxBox = document.getElementById('cp-max-box'), value = document.getElementById('cp-value');
+  function sync() {
+    const kind = (document.querySelector('input[name=kind]:checked') || {}).value || 'percent';
+    row.hidden = kind === 'free_delivery';
+    maxBox.hidden = kind !== 'percent';
+    label.textContent = kind === 'amount' ? 'কত টাকা ছাড়' : 'কত শতাংশ (%) ছাড়';
+    value.placeholder = kind === 'amount' ? '১০০' : '২০';
+  }
+  kinds.forEach(k => k.addEventListener('change', sync));
+  if (!document.querySelector('input[name=kind]:checked')) kinds[0].checked = true;
+  sync();
+  document.getElementById('cp-code').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+})();
+</script>
+{% endblock %}

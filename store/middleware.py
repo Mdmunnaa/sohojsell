@@ -19,7 +19,7 @@ from django.shortcuts import redirect, render
 from .models import Shop
 
 # দোকানের সাইটেও এগুলো মূল অ্যাপ থেকে আসবে
-PASSTHROUGH_PREFIXES = ('/static/', '/media/', '/favicon.ico', '/robots.txt')
+PASSTHROUGH_PREFIXES = ('/static/', '/media/', '/favicon.ico')     # robots.txt দোকানের নিজের (store/seo.py)
 OLD_SHOP_PATH_RE = re.compile(r'^/shop/(?P<slug>[a-z0-9-]+)(?P<rest>/.*)?$')
 # এই সাবডোমেইনগুলো দোকান না, মূল সাইট হিসেবেই চলবে
 MAIN_SUBDOMAINS = {'www'}
@@ -129,7 +129,8 @@ class StaffAccessMiddleware:
                     (('/pos/',), staff.can_use_pos, "POS System"),
                     (('/products/', '/categories/', '/barcode/', '/purchases/', '/suppliers/'),
                      staff.can_manage_products, "Product Management"),
-                    (('/orders/', '/storefront-orders/', '/courier/'), staff.can_manage_orders, "Order Management"),
+                    (('/orders/', '/storefront-orders/', '/courier/', '/offers/', '/reviews/'),
+                     staff.can_manage_orders, "Order Management"),
                     (('/customers/',), staff.can_manage_customers, "Customer Database"),
                     (('/sms/',), staff.can_send_sms, "SMS Panel"),
                     (('/reports/', '/expenses/'), staff.can_view_reports, "Business Reports"),

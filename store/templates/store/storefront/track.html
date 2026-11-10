@@ -110,7 +110,7 @@ body { margin: 0; background: var(--bg); color: var(--ink2); min-height: 100vh; 
   <section class="tk-card">
     <h2><i class="bi bi-headset"></i> দোকানে যোগাযোগ</h2>
     {% if shop.phone %}<a class="tk-btn line" style="margin-top: 0;" href="tel:{{ shop.phone }}"><i class="bi bi-telephone-fill"></i> কল করুন {{ shop.phone }}</a>{% endif %}
-    {% if shop.whatsapp_number %}<a class="tk-btn line" style="margin-top: 10px;" href="https://wa.me/88{{ shop.whatsapp_number }}?text={{ wa_text|urlencode }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp" style="color:#25D366;"></i> WhatsApp-এ লিখুন</a>{% endif %}
+    {% if shop.whatsapp_number %}<a class="tk-btn line" style="margin-top: 10px;" href="https://wa.me/{{ shop.whatsapp_number }}?text={{ wa_text|urlencode }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp" style="color:#25D366;"></i> WhatsApp-এ লিখুন</a>{% endif %}
   </section>
   {% endif %}
 {% else %}

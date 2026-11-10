@@ -26,7 +26,7 @@ from .plans import (
 from .forms import (ShopSetupForm, ProductForm, OrderCreateForm, SteadfastSettingsForm, PathaoSettingsForm,
                     RedxSettingsForm, PosSettingsForm)
 from .links import storefront_link
-from . import couriers, order_flow, risk, sms, variants
+from . import couriers, offers, order_flow, reviews, risk, sms, variants
 from .themes import THEMES
 from django.urls import reverse
 
@@ -1129,6 +1129,7 @@ def storefront_home(request, shop_slug, category_id=None):
     page_obj = Paginator(_sorted_products(products, sort), STOREFRONT_PAGE_SIZE).get_page(request.GET.get('page'))
     page_products = list(page_obj.object_list)
     _attach_sold_counts(shop, page_products)
+    reviews.attach(page_products)
 
     next_url = ''
     if page_obj.has_next():
@@ -1163,6 +1164,7 @@ def storefront_home(request, shop_slug, category_id=None):
     return render(request, 'store/storefront/home.html', {
         **card_context,
         'meta': meta,
+        'shop_ld': seo.shop_ld(request, shop, meta) if is_landing else '',
         'page_obj': page_obj,
         'total_count': page_obj.paginator.count,
         'next_url': next_url,
@@ -1210,11 +1212,28 @@ def storefront_product_detail(request, shop_slug, product_id):
 
     variant_list = [{'id': -v.id, 'name': v.name, 'price': float(v.sell_price), 'stock': v.stock_quantity}
                     for v in product.variants.all()] if product.has_variants else []
+    reviews.attach([product] + related_products)
+    review_msg = request.session.pop('review_msg', None)
+    if review_msg and review_msg.get('product') != product.id:
+        review_msg = None
+    product_url = request.build_absolute_uri(storefront_link(shop, 'storefront_product_detail', product.id,
+                                                             request=request))
+    wa_text = f'আসসালামু আলাইকুম, আমি "{product.name}" (৳{product.price:.0f}) অর্ডার করতে চাই।\n{product_url}'
     return render(request, 'store/storefront/product_detail.html', {
         'shop': shop,
         'meta': meta,
         'product': product,
         'variant_list': variant_list,
+        'review_list': reviews.approved_for(product, limit=20),
+        'review_bars': reviews.stars_breakdown(product) if product.rating else [],
+        'review_msg': review_msg,
+        'product_ld': seo.product_ld(request, shop, product, meta, product.rating),
+        'breadcrumb_ld': seo.breadcrumb_ld(request, shop, [
+            (shop.name, storefront_link(shop, request=request))]
+            + ([(product.category.name, storefront_link(shop, 'storefront_category', product.category_id, request=request))]
+               if product.category_id else [])
+            + [(product.name, storefront_link(shop, 'storefront_product_detail', product.id, request=request))]),
+        'wa_text': wa_text,
         'related_products': related_products,
         **checkout,
     })
@@ -1306,6 +1325,94 @@ def storefront_track_order(request, shop_slug, code):
     return render(request, 'store/storefront/track.html', _track_context(request, shop, order))
 
 
+def _cart_subtotal(shop, cart):
+    """কুপন যাচাই আর ড্রাফটের জন্য কার্টের দাম (সার্ভারের দামে)।"""
+    from decimal import Decimal
+    quantities = {}
+    for item in cart or []:
+        try:
+            key, qty = int(item['id']), int(item['qty'])
+        except (ValueError, TypeError, KeyError):
+            continue
+        if 0 < qty <= 999 and key:
+            quantities[key] = quantities.get(key, 0) + qty
+    chosen = variants.resolve(shop, quantities.keys())
+    return sum((chosen[k].price * q for k, q in quantities.items() if k in chosen), Decimal('0')), chosen, quantities
+
+
+def storefront_coupon_check(request, shop_slug):
+    """চেকআউটে কুপন কোড লিখলে: কত ছাড় হবে (JSON)। আসল হিসাব অর্ডারের সময় আবার হয়।"""
+    from . import delivery
+    shop = get_object_or_404(Shop, slug=shop_slug)
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    try:
+        data = json.loads(request.body or b'{}')
+    except ValueError:
+        return JsonResponse({'ok': False, 'error': 'তথ্য ঠিক নেই।'})
+    subtotal, _chosen, _q = _cart_subtotal(shop, data.get('cart'))
+    _zone, charge = delivery.charge_for(shop, data.get('zone'), subtotal)
+    try:
+        coupon, discount, delivery_off = offers.find(shop, data.get('code'), subtotal, charge or 0)
+    except offers.CouponError as exc:
+        return JsonResponse({'ok': False, 'error': str(exc)})
+    if coupon is None:
+        return JsonResponse({'ok': False, 'error': 'কুপন কোড লিখুন।'})
+    return JsonResponse({'ok': True, 'code': coupon.code, 'discount': float(discount),
+                         'delivery_off': float(delivery_off), 'text': offers.describe(coupon)})
+
+
+def storefront_checkout_draft(request, shop_slug):
+    """কাস্টমার চেকআউটে নম্বর লিখলেই কার্টটা জমা থাকে — অর্ডার না করলে সেলার পরে দেখতে পায়।"""
+    shop = get_object_or_404(Shop, slug=shop_slug)
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    try:
+        data = json.loads(request.body or b'{}')
+    except ValueError:
+        return JsonResponse({'ok': False})
+    phone = _storefront_customer_phone(data.get('phone') or '')
+    if not phone:
+        return JsonResponse({'ok': False})
+    subtotal, chosen, quantities = _cart_subtotal(shop, data.get('cart'))
+    cart = [{'key': k, 'name': chosen[k].name, 'price': float(chosen[k].price), 'qty': q}
+            for k, q in quantities.items() if k in chosen]
+    offers.save_draft(shop, phone, data.get('name'), data.get('address'), cart, subtotal)
+    return JsonResponse({'ok': True})
+
+
+def storefront_review_submit(request, shop_slug, product_id):
+    """প্রোডাক্ট পেইজের রিভিউ ফর্ম (multipart, ছবি থাকতে পারে)।"""
+    shop = get_object_or_404(Shop, slug=shop_slug)
+    product = get_object_or_404(Product, id=product_id, shop=shop, is_active=True)
+    back = storefront_link(shop, 'storefront_product_detail', product.id, request=request)
+    if request.method != 'POST':
+        return redirect(back)
+    try:
+        review = reviews.submit(shop, product, name=request.POST.get('name'), phone=request.POST.get('phone'),
+                                rating=request.POST.get('rating'), text=request.POST.get('text'),
+                                image=request.FILES.get('image'))
+    except reviews.ReviewError as exc:
+        request.session['review_msg'] = {'product': product.id, 'ok': False, 'text': str(exc)}
+    else:
+        request.session['review_msg'] = {'product': product.id, 'ok': True, 'text':
+                                         'ধন্যবাদ! আপনার রিভিউ ওয়েবসাইটে দেখানো হচ্ছে।' if review.is_approved
+                                         else 'ধন্যবাদ! দোকান দেখে নেওয়ার পর আপনার রিভিউ ওয়েবসাইটে দেখানো হবে।'}
+    return redirect(back + '#reviews')
+
+
+def storefront_sitemap(request, shop_slug):
+    from . import seo
+    shop = get_object_or_404(Shop, slug=shop_slug)
+    return HttpResponse(seo.sitemap_xml(shop, request), content_type='application/xml')
+
+
+def storefront_robots(request, shop_slug):
+    from . import seo
+    shop = get_object_or_404(Shop, slug=shop_slug)
+    return HttpResponse(seo.robots_txt(shop, request), content_type='text/plain')
+
+
 def _storefront_customer_phone(raw):
     from accounts.forms import normalize_bd_mobile
     return normalize_bd_mobile(raw)
@@ -1378,7 +1485,12 @@ def storefront_place_order(request, shop_slug):
         zone, delivery_charge = delivery.charge_for(shop, data.get('zone'), subtotal)
         if delivery_charge is None:
             return JsonResponse({'success': False, 'error': 'ডেলিভারির এলাকা বেছে নিন।'})
-        total = subtotal + delivery_charge
+        try:
+            coupon, discount, delivery_off = offers.find(shop, data.get('coupon'), subtotal, delivery_charge)
+        except offers.CouponError as exc:
+            return JsonResponse({'success': False, 'error': str(exc), 'coupon_error': True})
+        delivery_charge = delivery_charge - delivery_off
+        total = subtotal - discount + delivery_charge
         pay_now = shop_payments.amount_now(choice, total, delivery_charge)
 
         sf_order = StorefrontOrder.objects.create(
@@ -1389,13 +1501,18 @@ def storefront_place_order(request, shop_slug):
                                                      defaults={'name': name, 'address': address})
         customer.name, customer.address = name, address
         customer.save(update_fields=['name', 'address'])
-        order_note = ' · '.join(x for x in [f'এলাকা: {zone.name}' if zone else '', note] if x) or None
+        order_note = ' · '.join(x for x in [f'এলাকা: {zone.name}' if zone else '',
+                                            f'কুপন {coupon.code}' if coupon else '', note] if x) or None
         main_order = Order.objects.create(
-            shop=shop, customer=customer, source='storefront', delivery_charge=delivery_charge, discount=0,
+            shop=shop, customer=customer, source='storefront', delivery_charge=delivery_charge, discount=discount,
             payment_method='COD', status='Pending', total_amount=total, note=order_note,
+            coupon_code=coupon.code if coupon else '',
             online_payment_status=Order.ONLINE_PENDING if pay_now > 0 else Order.ONLINE_NONE)
         sf_order.order = main_order
         sf_order.save(update_fields=['order'])
+        if coupon:
+            offers.mark_used(coupon)
+        offers.mark_recovered(shop, phone, main_order)
         for key, qty in quantities.items():
             item = chosen[key]
             StorefrontOrderItem.objects.create(order=sf_order, product=item.product, quantity=qty, price=item.price,

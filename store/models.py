@@ -55,6 +55,9 @@ class Shop(models.Model):
     show_sold_count = models.BooleanField(default=True, help_text="ওয়েবসাইটে কয়টা বিক্রি হয়েছে দেখান")
     storefront_theme = models.CharField(max_length=20, default=DEFAULT_THEME, choices=THEME_CHOICES,
                                         help_text='ওয়েবসাইটের রঙ')
+    # রিভিউ: কাস্টমার রিভিউ দিতে পারবে কিনা, আর নতুন রিভিউ নিজে থেকে দেখাবে নাকি সেলার দেখে অনুমোদন দেবে
+    reviews_enabled = models.BooleanField(default=True)
+    reviews_auto_approve = models.BooleanField(default=False)
     # ওয়েবসাইটের ডিজাইন (লেআউট) আর নিজের বেছে নেওয়া রঙ (#RRGGBB; ফাঁকা হলে উপরের থিমের রঙ)
     storefront_design = models.CharField(max_length=20, default=DEFAULT_DESIGN, choices=DESIGN_CHOICES)
     storefront_color = models.CharField(max_length=7, blank=True, default='')
@@ -340,6 +343,7 @@ class Order(models.Model):
                                   related_name='pos_sales')
     # একই বিক্রি দুবার জমা হওয়া ঠেকাতে POS স্ক্রিনের দেওয়া আইডি (নেট কেটে আবার পাঠালে)
     pos_ref = models.CharField(max_length=40, blank=True, default='', db_index=True)
+    coupon_code = models.CharField(max_length=30, blank=True, default='')
     # বাতিল/ফেরত হয়ে মাল স্টকে ফিরে গেছে কিনা (store/order_flow.py) — দুবার ফেরত না যায়
     stock_returned = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -929,3 +933,67 @@ class Expense(models.Model):
 
     class Meta:
         ordering = ['-spent_on', '-id']
+
+
+# ============================================================
+# কুপন ও অফার, অসম্পূর্ণ অর্ডার, রিভিউ (store/offers.py, store/reviews.py)
+# ============================================================
+class Coupon(models.Model):
+    """ওয়েবসাইটে চেকআউটে কুপন কোড: % ছাড়, নির্দিষ্ট টাকা ছাড়, বা ফ্রি ডেলিভারি।"""
+    PERCENT, AMOUNT, FREE_DELIVERY = 'percent', 'amount', 'free_delivery'
+    KIND_CHOICES = [(PERCENT, 'শতাংশ ছাড়'), (AMOUNT, 'টাকা ছাড়'), (FREE_DELIVERY, 'ফ্রি ডেলিভারি')]
+
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='coupons')
+    code = models.CharField(max_length=30)
+    kind = models.CharField(max_length=15, choices=KIND_CHOICES, default=PERCENT)
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text='% বা টাকা')
+    min_order = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text='কমপক্ষে এত টাকার অর্ডারে')
+    max_discount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                       help_text='% ছাড়ে সর্বোচ্চ কত টাকা')
+    usage_limit = models.PositiveIntegerField(null=True, blank=True, help_text='মোট কতবার ব্যবহার করা যাবে')
+    used_count = models.PositiveIntegerField(default=0)
+    starts_on = models.DateField(null=True, blank=True)
+    ends_on = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-id']
+        constraints = [models.UniqueConstraint(fields=['shop', 'code'], name='unique_coupon_code_per_shop')]
+
+    def __str__(self):
+        return self.code
+
+
+class AbandonedCheckout(models.Model):
+    """কাস্টমার চেকআউটে নম্বর দিয়ে অর্ডার না করে চলে গেলে — সেলার দেখে কল বা SMS করতে পারে।"""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='abandoned_checkouts')
+    phone = models.CharField(max_length=15, db_index=True)
+    name = models.CharField(max_length=150, blank=True, default='')
+    address = models.CharField(max_length=500, blank=True, default='')
+    cart = models.JSONField(default=list)        # [{'key', 'name', 'price', 'qty'}]
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    recovered_order = models.ForeignKey(Order, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    contacted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+
+class ProductReview(models.Model):
+    """কাস্টমারের রিভিউ: সেলার অনুমোদন দিলে ওয়েবসাইটে দেখায়।"""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='reviews')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    name = models.CharField(max_length=80)
+    phone = models.CharField(max_length=15, blank=True, default='')
+    rating = models.PositiveSmallIntegerField(default=5)
+    text = models.TextField(max_length=1000, blank=True, default='')
+    image = models.ImageField(upload_to='reviews/', blank=True, null=True)
+    verified = models.BooleanField(default=False, help_text='এই নম্বরে এই প্রোডাক্ট ডেলিভারি হয়েছে')
+    is_approved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-id']

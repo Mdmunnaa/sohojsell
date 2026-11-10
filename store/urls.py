@@ -8,6 +8,7 @@ from . import payment_views
 from . import views_pos
 from . import views_sms
 from . import views_ledger
+from . import views_offers
 
 def favicon(request):
     from django.shortcuts import redirect
@@ -62,6 +63,12 @@ urlpatterns = [
     path('sms/buy/', views_sms.sms_buy, name='sms_buy'),
     path('sms/auto/', views_sms.sms_auto, name='sms_auto'),
     path('sms/customers/', views_sms.sms_customer_search, name='sms_customer_search'),
+    path('offers/', views_offers.coupon_list, name='coupon_list'),
+    path('offers/<int:coupon_id>/', views_offers.coupon_action, name='coupon_action'),
+    path('orders/abandoned/', views_offers.abandoned_list, name='abandoned_list'),
+    path('orders/abandoned/<int:draft_id>/', views_offers.abandoned_action, name='abandoned_action'),
+    path('reviews/', views_offers.review_list, name='review_list'),
+    path('reviews/<int:review_id>/', views_offers.review_action, name='review_action'),
     path('orders/risk/', views.order_risk, name='order_risk'),
     path('customers/<int:customer_id>/block/', views.customer_block, name='customer_block'),
     path('purchases/', views_ledger.purchase_list, name='purchase_list'),
@@ -139,6 +146,11 @@ urlpatterns = [
     path('shop/<slug:shop_slug>/category/<int:category_id>/', views.storefront_home, name='storefront_category'),
     path('shop/<slug:shop_slug>/checkout/', views.storefront_checkout, name='storefront_checkout'),
     path('shop/<slug:shop_slug>/place-order/', views.storefront_place_order, name='storefront_place_order'),
+    path('shop/<slug:shop_slug>/coupon/', views.storefront_coupon_check, name='storefront_coupon_check'),
+    path('shop/<slug:shop_slug>/checkout-draft/', views.storefront_checkout_draft, name='storefront_checkout_draft'),
+    path('shop/<slug:shop_slug>/product/<int:product_id>/review/', views.storefront_review_submit, name='storefront_review'),
+    path('shop/<slug:shop_slug>/sitemap.xml', views.storefront_sitemap, name='storefront_sitemap'),
+    path('shop/<slug:shop_slug>/robots.txt', views.storefront_robots, name='storefront_robots'),
     path('shop/<slug:shop_slug>/track/', views.storefront_track, name='storefront_track'),
     path('shop/<slug:shop_slug>/t/<str:code>/', views.storefront_track_order, name='storefront_track_order'),
     path('shop/<slug:shop_slug>/order/<int:order_id>/success/', views.storefront_order_success, name='storefront_order_success'),

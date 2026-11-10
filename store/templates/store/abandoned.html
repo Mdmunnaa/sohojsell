@@ -1,0 +1,69 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}অসম্পূর্ণ অর্ডার — {{ shop.name }}{% endblock %}
+{% block page_title %}অসম্পূর্ণ অর্ডার{% endblock %}
+
+{% block content %}
+{% include 'store/partials/ledger_styles.html' %}
+{% include 'store/partials/risk_styles.html' %}
+<style>
+  .ab-cart { font-size: 13px; color: var(--ink2); }
+  .ab-cart span { display: block; }
+  .ab-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .ab-acts .lg-btn { padding: 6px 10px; }
+  tr.done td { opacity: .55; }
+</style>
+<div class="lg">
+  <section class="lg-hero">
+    <div class="lg-hero-top">
+      <div>
+        <div class="lg-kicker"><i class="bi bi-cart-x"></i> ফিরিয়ে আনুন</div>
+        <h1>অসম্পূর্ণ অর্ডার</h1>
+        <p>যারা ওয়েবসাইটে চেকআউটে নম্বর দিয়েও অর্ডার শেষ করেনি। একটা কল বা SMS দিলে অনেকেই অর্ডারটা করে ফেলে।</p>
+      </div>
+    </div>
+    <div class="lg-stats">
+      <div class="lg-stat warn"><small>অর্ডার হয়নি</small><b class="num">{{ open_count|bn }}টা</b><em class="num">মোট {{ open_value|taka }}</em></div>
+      <div class="lg-stat"><small>পরে অর্ডার হয়েছে</small><b class="num">{{ recovered|bn }}টা</b></div>
+    </div>
+  </section>
+
+  <section class="lg-card">
+    <div class="lg-head"><div><h2><i class="bi bi-list-ul"></i> গত ৩০ দিনে</h2><p>নতুনটা উপরে · কাস্টমার অর্ডার করে ফেললে এখান থেকে সরে যায়</p></div></div>
+    {% if rows %}
+    <div class="lg-table-wrap" style="margin-top: 8px;">
+      <table class="lg-table stack">
+        <thead><tr><th>কাস্টমার</th><th>কার্টে যা ছিল</th><th>কখন</th><th class="r">টাকা</th><th class="r"></th></tr></thead>
+        <tbody>
+          {% for d in rows %}
+          <tr{% if d.contacted %} class="done"{% endif %}>
+            <td class="a"><b style="font-weight: 700;">{{ d.name|default:"নাম দেয়নি" }}</b><small class="num"><a href="tel:{{ d.phone }}">{{ d.phone }}</a></small>{% include 'store/partials/risk_chip.html' with r=d.risk %}{% if d.address %}<small>{{ d.address|truncatechars:60 }}</small>{% endif %}</td>
+            <td class="c ab-cart">{% for i in d.cart %}<span>{{ i.name }} × {{ i.qty|bn }}</span>{% endfor %}</td>
+            <td class="hide-sm">{{ d.updated_at|date:"j M, g:i A"|bn }}</td>
+            <td class="r num b">{{ d.total|taka }}</td>
+            <td class="r d"><div class="ab-acts">
+              <a class="lg-btn line sm" href="tel:{{ d.phone }}"><i class="bi bi-telephone"></i> কল</a>
+              {% if can_sms %}<a class="lg-btn line sm" href="{% url 'sms_panel' %}?to={{ d.phone|urlencode }}#compose"><i class="bi bi-chat-dots"></i> SMS</a>{% endif %}
+              <a class="lg-btn line sm" href="https://wa.me/88{{ d.phone }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp" style="color:#25D366;"></i></a>
+              <a class="lg-btn dark sm" href="{% url 'order_create' %}?phone={{ d.phone }}"><i class="bi bi-plus-lg"></i> অর্ডার করে দিন</a>
+              <form method="post" action="{% url 'abandoned_action' d.id %}">{% csrf_token %}<input type="hidden" name="action" value="contacted"><button class="lg-btn {% if d.contacted %}green{% else %}line{% endif %} sm" type="submit" title="যোগাযোগ করা হয়েছে"><i class="bi bi-check2"></i></button></form>
+              <form method="post" action="{% url 'abandoned_action' d.id %}">{% csrf_token %}<input type="hidden" name="action" value="delete"><button class="lg-btn red sm" type="submit" aria-label="মুছুন"><i class="bi bi-trash3"></i></button></form>
+            </div></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page_obj.has_other_pages %}
+    <div class="lg-pager">
+      {% if page_obj.has_previous %}<a class="lg-btn line sm" href="?page={{ page_obj.previous_page_number }}">আগের</a>{% endif %}
+      <span>পাতা {{ page_obj.number|bn }} / {{ page_obj.paginator.num_pages|bn }}</span>
+      {% if page_obj.has_next %}<a class="lg-btn line sm" href="?page={{ page_obj.next_page_number }}">পরের</a>{% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="lg-empty"><i class="bi bi-cart-check"></i><b>কোনো অসম্পূর্ণ অর্ডার নেই</b>কেউ চেকআউটে নম্বর দিয়ে অর্ডার না করে চলে গেলে এখানে দেখা যাবে</div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -45,3 +45,13 @@ def bn_month(number):
         return BN_MONTHS[int(str(number).translate(str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789'))) - 1]
     except (ValueError, IndexError):
         return ''
+
+
+@register.filter
+def star_flags(avg):
+    """৪.৩ → [True, True, True, True, False] (কোন তারাগুলো ভরা)।"""
+    try:
+        value = float(avg)
+    except (TypeError, ValueError):
+        value = 0.0
+    return [n <= value + 0.5 for n in range(1, 6)]
