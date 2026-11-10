@@ -1921,6 +1921,36 @@ class SettlementAndBillingTests(ShopTestMixin, TestCase):
         self.assertFalse(PaymentRequest.objects.exists())
 
 
+class BanglaDigitFontTests(ShopTestMixin, TestCase):
+    """Hind Siliguri-র ভাঙা "১" — প্রতিটা পেইজে Google Fonts-এর পরে Noto-র "১" বসানো আছে কিনা।"""
+
+    FIX = 'fonts/bn-digit-one-400.woff2'
+
+    def assertFixed(self, html):
+        self.assertIn(self.FIX, html)
+        self.assertIn('unicode-range:U+09E7', html)
+        # Google Fonts-এর লিংকের পরে থাকতে হবে, নাহলে ব্রাউজার Hind-এর ভাঙা "১"-ই নেয়
+        self.assertLess(html.index('family=Hind+Siliguri') if 'family=Hind+Siliguri' in html else -1, html.index(self.FIX))
+
+    def test_every_page_type_has_the_fix(self):
+        from django.test import Client
+        _user, shop = self.make_shop(slug='digitshop')
+        self.assertFixed(self.client.get(reverse('dashboard')).content.decode())        # প্যানেল
+        self.assertFixed(self.client.get(reverse('pos_day_close')).content.decode())    # দিনশেষের হিসাব
+        guest = Client()
+        self.assertFixed(guest.get(reverse('login')).content.decode())                  # লগইন/সাইনআপ
+        self.assertFixed(guest.get('/shop/digitshop/', HTTP_HOST='localhost').content.decode())   # ওয়েবসাইট
+        with override_settings(STORE_BASE_DOMAIN='sellpunch.com', ALLOWED_HOSTS=['.sellpunch.com', 'localhost', 'testserver']):
+            self.assertFixed(guest.get('/', HTTP_HOST='nosuchshop.sellpunch.com').content.decode())   # ভুল সাবডোমেইন
+        self.assertFixed(guest.get(reverse('landing_page')).content.decode())          # হোমপেইজ
+
+    def test_fix_font_files_exist(self):
+        from pathlib import Path
+        folder = Path(__file__).resolve().parent / 'static' / 'fonts'
+        for weight in (400, 500, 600):
+            self.assertGreater((folder / f'bn-digit-one-{weight}.woff2').stat().st_size, 300)
+
+
 class BrandTests(TestCase):
     def test_new_name_logo_and_icons(self):
         import json
