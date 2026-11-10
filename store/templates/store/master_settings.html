@@ -57,6 +57,11 @@
                             <label class="form-label fw-bold text-secondary small">Sender ID</label>
                             <input type="text" name="sms_sender_id" class="form-control bg-light" value="{{ setting.sms_sender_id|default_if_none:'' }}" placeholder="e.g. MyBrand">
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small">সেলারদের জন্য SMS-এর দাম (৳ প্রতি SMS)</label>
+                            <input type="number" name="sms_rate" step="0.001" min="0.05" max="5" class="form-control bg-light" value="{{ setting.sms_rate|stringformat:'s' }}">
+                            <div class="form-text">SMS প্যানেলে কেনার সময় এই রেটে হিসাব হয়।</div>
+                        </div>
                     </div>
                 </div>
             </div>

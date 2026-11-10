@@ -359,7 +359,7 @@ a.dh-prow:hover { background: var(--bg2); color: var(--ink); }
         {% else %}
           <a class="dh-chip {% if trial_days <= 7 %}warn{% else %}gold{% endif %}" href="{% url 'billing' %}"><i class="bi bi-gem"></i> {{ plan.label }} প্যাকেজ{% if trial_days <= 7 %} · আর {{ trial_days|bn }} দিন{% endif %}</a>
         {% endif %}
-        <a class="dh-chip" href="{% url 'settings' %}?tab=sms" title="SMS ব্যালেন্স"><i class="bi bi-chat-dots"></i> <span class="num">{{ shop.sms_balance }}</span> SMS</a>
+        <a class="dh-chip" href="{% url 'sms_panel' %}" title="SMS প্যানেল"><i class="bi bi-chat-dots"></i> <span class="num">{{ shop.sms_balance }}</span> SMS</a>
       </div>
       {% endif %}
     </div>

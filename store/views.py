@@ -10,6 +10,8 @@ from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import get_template
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from decimal import Decimal
+
 from django.db.models import Count, F, Sum, Q
 from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -22,9 +24,9 @@ from .plans import (
     staff_limit, storefront_closes_on, storefront_is_open, upgrade_message,
 )
 from .forms import (ShopSetupForm, ProductForm, OrderCreateForm, SteadfastSettingsForm, PathaoSettingsForm,
-                    RedxSettingsForm, SmsSettingsForm, PosSettingsForm)
+                    RedxSettingsForm, PosSettingsForm)
 from .links import storefront_link
-from . import couriers
+from . import couriers, sms
 from .themes import THEMES
 from django.urls import reverse
 
@@ -492,17 +494,15 @@ def business_reports(request):
 SETTINGS_TABS = [
     ('courier', 'bi-truck', 'কুরিয়ার'),
     ('pos', 'bi-printer', 'POS ও রসিদ'),
-    ('sms', 'bi-chat-left-text', 'SMS'),
     ('facebook', 'bi-facebook', 'Facebook'),
 ]
 SETTINGS_FORMS = {
     'steadfast': SteadfastSettingsForm,
     'pathao': PathaoSettingsForm,
     'redx': RedxSettingsForm,
-    'sms': SmsSettingsForm,
     'pos': PosSettingsForm,
 }
-SECTION_TABS = {'sms': 'sms', 'pos': 'pos'}     # বাকি সব section কুরিয়ার ট্যাবের
+SECTION_TABS = {'pos': 'pos'}     # বাকি সব section কুরিয়ার ট্যাবের (SMS এখন আলাদা SMS প্যানেলে)
 # পুরনো ফর্ম (বা কোনো বাটন) section না পাঠালে বাটনের নাম দেখে বোঝা হয় কোন ভাগ
 COURIER_ACTION_SECTIONS = {
     'test_Steadfast': 'steadfast', 'steadfast_disconnect': 'steadfast',
@@ -518,10 +518,12 @@ def _settings_url(tab, anchor=''):
 @login_required(login_url='/accounts/login/')
 def shop_settings(request):
     """
-    Settings: কুরিয়ার, SMS আর Facebook — তিনটা ট্যাব। প্রতিটা কুরিয়ার আর SMS আলাদা ফর্ম,
-    তাই একটা সেভ করলে বাকিগুলোর কিছু বদলায় না। দোকানের তথ্য, ডেলিভারি, পেমেন্ট "ওয়েবসাইট" পেইজে।
+    Settings: কুরিয়ার, POS আর Facebook — প্রতিটা কুরিয়ার আলাদা ফর্ম, তাই একটা সেভ করলে বাকিগুলোর কিছু বদলায় না।
+    দোকানের তথ্য, ডেলিভারি, পেমেন্ট "ওয়েবসাইট" পেইজে; SMS আলাদা SMS প্যানেলে।
     """
     shop = request.user.shop
+    if request.GET.get('tab') == 'sms':          # পুরনো লিংক
+        return redirect('sms_panel')
     tab_keys = [key for key, _icon, _label in SETTINGS_TABS]
     active_tab = request.GET.get('tab') if request.GET.get('tab') in tab_keys else 'courier'
     forms_by_section = {}
@@ -558,7 +560,6 @@ def shop_settings(request):
         'steadfast_form': forms_by_section['steadfast'],
         'pathao_form': forms_by_section['pathao'],
         'redx_form': forms_by_section['redx'],
-        'sms_form': forms_by_section['sms'],
         'pos_form': forms_by_section['pos'],
         'courier_connected': connected,
         'courier_count': sum(connected.values()),
@@ -601,12 +602,6 @@ def _save_settings_section(request, shop, form, section, action):
     if section == 'pos':
         form.save()
         messages.success(request, 'POS আর রসিদের সেটিং সেভ হয়েছে ✓', extra_tags=section)
-        return True
-
-    if section == 'sms':
-        shop = form.save()
-        messages.success(request, 'ওয়েবসাইটের অর্ডারে কাস্টমারকে SMS যাবে ✓' if shop.is_sms_active
-                         else 'অর্ডারের SMS বন্ধ করা হয়েছে।', extra_tags=section)
         return True
 
     if section == 'pathao' and not form.connected:
@@ -709,59 +704,6 @@ def courier_dashboard(request):
     except (EmptyPage, PageNotAnInteger):
         page_obj = paginator.page(1)
     return render(request, 'store/courier.html', {'page_obj': page_obj, 'courier_stats': courier_stats})
-
-
-def _send_sms(phone, text_message):
-    print("\n🚀 [DEBUG] _send_sms function called!")
-    print(f"📞 Target Phone: {phone}")
-
-    import requests
-    from .models import MasterSetting
-
-    base_url = "https://api.smsgateway.com.bd/api/send-message"
-
-    try:
-        setting = MasterSetting.objects.get(id=1)
-        client_id = setting.sms_client_id
-        api_key = setting.sms_api_key
-        sender_id = setting.sms_sender_id
-    except Exception as e:
-        print(f"❌ DB Error: {e}")
-        return False
-
-    if not client_id or not api_key:
-        print("❌ SMS Cancelled: Client ID or API Key is missing in the database!")
-        return False
-
-    headers = {
-        'Content-Type': 'application/json'
-    }
-
-    payload = {
-        "client_id": client_id.strip(),
-        "key": api_key.strip(),
-        "recipient": phone,
-        "message": text_message
-    }
-
-    if sender_id:
-        payload["sender_id"] = sender_id.strip()
-
-    try:
-        print("⏳ Sending request to gateway...")
-        response = requests.post(base_url, headers=headers, json=payload, timeout=10)
-        result = response.json()
-        print(f"📥 Gateway Response: {result}")
-
-        if result.get("response_code") == 200:
-            print("✅ SMS Sent Successfully!")
-            return True
-        else:
-            print("❌ Gateway Rejected the SMS!")
-            return False
-    except Exception as e:
-        print(f"❌ Connection Error: {e}")
-        return False
 
 
 # ============================================================
@@ -1005,6 +947,12 @@ def master_settings(request):
         setting.sms_client_id = request.POST.get('sms_client_id')
         setting.sms_api_key = request.POST.get('sms_api_key')
         setting.sms_sender_id = request.POST.get('sms_sender_id')
+        try:
+            rate = Decimal(request.POST.get('sms_rate') or setting.sms_rate)
+            if Decimal('0.05') <= rate <= Decimal('5'):
+                setting.sms_rate = rate
+        except (ArithmeticError, ValueError):
+            pass
 
         setting.save()
         messages.success(request, "Master Settings Updated!")
@@ -1348,10 +1296,7 @@ def storefront_place_order(request, shop_slug):
                                  'message': result.get('error')})
         return JsonResponse({'success': True, 'order_id': sf_order.id, 'redirect': result['payment_url']})
 
-    if shop.is_sms_active and (shop.sms_balance or 0) > 0:
-        _send_sms(phone, f"প্রিয় {name}, {shop.name} থেকে আপনার অর্ডার (#ORD-{main_order.id}) পাওয়া গেছে। "
-                         "আমরা শীঘ্রই যোগাযোগ করব।")
-        Shop.objects.filter(pk=shop.pk, sms_balance__gt=0).update(sms_balance=F('sms_balance') - 1)
+    sms.send_auto(shop, phone, sms.order_received_text(shop, main_order), f'অর্ডার নং {sms.bn_num(main_order.id)}')
     return JsonResponse({'success': True, 'order_id': sf_order.id, 'redirect': success_url})
 
 
@@ -1570,6 +1515,7 @@ def add_edit_staff(request, staff_id=None):
         can_manage_customers = request.POST.get('can_manage_customers') == 'on'
         can_view_reports = request.POST.get('can_view_reports') == 'on'
         can_manage_settings = request.POST.get('can_manage_settings') == 'on'
+        can_send_sms = request.POST.get('can_send_sms') == 'on'
 
         try:
             if staff_profile:
@@ -1589,6 +1535,7 @@ def add_edit_staff(request, staff_id=None):
                 staff_profile.can_manage_customers = can_manage_customers
                 staff_profile.can_view_reports = can_view_reports
                 staff_profile.can_manage_settings = can_manage_settings
+                staff_profile.can_send_sms = can_send_sms
                 staff_profile.save()
 
                 messages.success(request, "Staff account updated successfully!")
@@ -1616,7 +1563,8 @@ def add_edit_staff(request, staff_id=None):
                     can_manage_orders=can_manage_orders,
                     can_manage_customers=can_manage_customers,
                     can_view_reports=can_view_reports,
-                    can_manage_settings=can_manage_settings
+                    can_manage_settings=can_manage_settings,
+                    can_send_sms=can_send_sms,
                 )
                 messages.success(request, "New staff account created!")
 
@@ -1662,6 +1610,7 @@ def billing_page(request):
         'storefront_closes_on': storefront_closes_on(shop),
         'paystation_sandbox': paystation.current_environment() == 'sandbox',
         'online_payments': shop.online_payments.all()[:10],
+        'manual_number': django_settings.MANUAL_PAYMENT_NUMBER,
     })
 
 
@@ -1723,11 +1672,8 @@ def approve_payment(request, request_id):
     shop = pay_req.shop
     today = timezone.now().date()
 
-    if pay_req.plan_name == 'SMS Recharge':
-        # ০.৪০ টাকা করে SMS হিসাব
-        sms_added = int(float(pay_req.amount) / 0.40)
-        shop.sms_balance += sms_added
-        shop.save(update_fields=['sms_balance'])
+    if pay_req.plan_name == sms.MANUAL_REQUEST_NAME:
+        sms_added = sms.approve_manual_request(pay_req)      # এখনকার রেটে
         messages.success(request, f"Added {sms_added} SMS to {shop.name}!")
     else:
         advance_days = int(request.POST.get('advance_days', 30))

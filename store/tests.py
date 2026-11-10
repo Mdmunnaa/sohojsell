@@ -15,7 +15,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import FacebookPageConnection, OnlinePayment, Order, OrderItem, Shop
+from .models import FacebookPageConnection, OnlinePayment, Order, OrderItem, PaymentRequest, Shop
 from .payments import recheck_pending
 
 User = get_user_model()
@@ -679,8 +679,7 @@ class SettingsPageTests(ShopTestMixin, TestCase):
         self.user, self.shop = self.make_shop()
 
     def test_every_tab_renders_in_bangla(self):
-        for tab, text in [('courier', 'Steadfast যুক্ত করুন'), ('sms', 'অর্ডার পেলে কাস্টমারকে SMS'),
-                          ('facebook', 'Facebook দিয়ে যুক্ত করুন')]:
+        for tab, text in [('courier', 'Steadfast যুক্ত করুন'), ('facebook', 'Facebook দিয়ে যুক্ত করুন')]:
             response = self.client.get(reverse('settings') + f'?tab={tab}')
             self.assertEqual(response.status_code, 200)
             html = response.content.decode()
@@ -712,8 +711,11 @@ class SettingsPageTests(ShopTestMixin, TestCase):
     def test_sms_toggle_does_not_touch_couriers(self):
         self.shop.redx_access_token = 'REDX'
         self.shop.save()
-        response = self.client.post(reverse('settings'), {'section': 'sms'})     # সুইচ বন্ধ
-        self.assertRedirects(response, reverse('settings') + '?tab=sms#sms', fetch_redirect_response=False)
+        # SMS এখন আলাদা SMS প্যানেলে; পুরনো সেটিংস লিংক সেখানে নিয়ে যায়
+        self.assertRedirects(self.client.get(reverse('settings') + '?tab=sms'), reverse('sms_panel'),
+                             fetch_redirect_response=False)
+        response = self.client.post(reverse('sms_auto'), {})     # সুইচ বন্ধ
+        self.assertRedirects(response, reverse('sms_panel'), fetch_redirect_response=False)
         self.shop.refresh_from_db()
         self.assertFalse(self.shop.is_sms_active)
         self.assertEqual(self.shop.redx_access_token, 'REDX')
@@ -1626,6 +1628,171 @@ class DashboardTests(ShopTestMixin, TestCase):
         self.assertEqual(dashboard.short_taka(250000), '2.5 লাখ')
         self.assertEqual(dashboard.nice_ceiling(3740), 4000)
         self.assertEqual(dashboard.nice_ceiling(12300), 15000)
+
+
+class SmsPanelTests(ShopTestMixin, TestCase):
+    """SMS প্যানেল: ঠিক খরচ (বাংলা ৭০/৬৭), ব্যালেন্স আগে কাটা আর যা যায়নি তা ফেরত, কাদের পাঠানো হবে, কেনা, অনুমতি।"""
+
+    def setUp(self):
+        from .models import Customer
+        self.user, self.shop = self.make_shop()
+        Shop.objects.filter(pk=self.shop.pk).update(sms_balance=100)
+        self.rahim = Customer.objects.create(shop=self.shop, name='রহিম', phone='01812345678', address='Savar')
+
+    def balance(self):
+        return Shop.objects.values_list('sms_balance', flat=True).get(pk=self.shop.pk)
+
+    def order(self, customer, days_ago=0, **extra):
+        order = Order.objects.create(shop=self.shop, customer=customer, total_amount=Decimal('500'), **extra)
+        Order.objects.filter(pk=order.pk).update(created_at=timezone.now() - timedelta(days=days_ago))
+        return order
+
+    def test_cost_and_numbers(self):
+        from . import sms
+        self.assertEqual([sms.segments('a' * n) for n in (1, 160, 161, 306, 307)], [1, 1, 2, 2, 3])
+        self.assertEqual([sms.segments('অ' * n) for n in (70, 71, 134, 135)], [1, 2, 2, 3])
+        self.assertEqual(sms.segments('Hi €'), 1)                     # ইউনিকোড ধরা হয় (সাবধানী হিসাব)
+        self.assertEqual(sms.segments('a' * 159 + '€'), 3)
+        good, bad = sms.split_phone_text('01712345678, +880 1812-345678\n০১৯১২৩৪৫৬৭৮ 01712345678; 12345')
+        self.assertEqual(good, ['01712345678', '01812345678', '01912345678'])
+        self.assertEqual(bad, ['12345'])
+        self.assertEqual(sms.count_for_amount(200), 500)
+        self.assertEqual(sms.parse_buy_amount('১,০০০'), (1000, ''))
+        self.assertIsNone(sms.parse_buy_amount('20')[0])
+
+    def test_charges_first_and_refunds_what_failed(self):
+        from . import sms
+        from .models import SmsLog
+        calls = []
+
+        def gateway(batch, message):
+            calls.append(list(batch))
+            return (False, 'বন্ধ নম্বর') if len(calls) == 2 else (True, 'ok')
+
+        with mock.patch.object(sms, 'GATEWAY_BATCH', 2):
+            result = sms.send(self.shop, ['01711111111', '01722222222', '01733333333', '01711111111'],
+                              'অ' * 80, 'test', sender=gateway, background=False)
+        self.assertTrue(result.ok)
+        self.assertEqual((result.recipients, result.delivered, result.failed, result.charged), (3, 2, 1, 4))
+        self.assertEqual(self.balance(), 96)
+        log = SmsLog.objects.get()
+        self.assertEqual((log.status, log.sms_used, log.delivered, log.failed), (SmsLog.PARTIAL, 4, 2, 1))
+        self.assertEqual(calls, [['01711111111', '01722222222'], ['01733333333']])
+
+    def test_not_enough_balance_sends_nothing(self):
+        from . import sms
+        from .models import SmsLog
+        Shop.objects.filter(pk=self.shop.pk).update(sms_balance=1)
+        gateway = mock.Mock(return_value=(True, 'ok'))
+        result = sms.send(self.shop, ['01711111111', '01722222222'], 'hello', 'test', sender=gateway)
+        self.assertFalse(result.ok)
+        self.assertEqual(result.needed, 2)
+        self.assertEqual(self.balance(), 1)
+        gateway.assert_not_called()
+        self.assertFalse(SmsLog.objects.exists())
+
+    def test_gateway_down_refunds_everything(self):
+        from . import sms
+        result = sms.send(self.shop, ['01711111111'], 'hello', 'test', sender=lambda b, m: (False, 'down'))
+        self.assertFalse(result.ok)
+        self.assertEqual(self.balance(), 100)
+
+    def test_audiences(self):
+        from . import sms
+        from .models import Customer
+        from .pos import WALK_IN_PHONE
+        old = Customer.objects.create(shop=self.shop, name='Old', phone='01911111111', address='-')
+        due = Customer.objects.create(shop=self.shop, name='Due', phone='01611111111', address='-')
+        walk_in = Customer.objects.create(shop=self.shop, name='Walk-in', phone=WALK_IN_PHONE, address='-')
+        Customer.objects.create(shop=self.shop, name='রহিম আবার', phone='+8801812345678', address='-')   # একই নম্বর
+        self.order(self.rahim, days_ago=3)
+        self.order(old, days_ago=120)
+        self.order(due, days_ago=40, source='pos', status='Delivered', advance_paid=Decimal('300'))
+        self.order(walk_in, days_ago=1, source='pos', status='Delivered', advance_paid=Decimal('500'))
+        self.assertEqual(sorted(sms.audience_phones(self.shop, 'all')), ['01611111111', '01812345678', '01911111111'])
+        self.assertEqual(sms.audience_phones(self.shop, 'recent'), ['01812345678'])
+        self.assertEqual(sms.audience_phones(self.shop, 'inactive'), ['01911111111'])
+        self.assertEqual(sms.audience_phones(self.shop, 'due'), ['01611111111'])
+        self.assertEqual(sms.search_customers(self.shop, 'রহি'), [{'name': 'রহিম আবার', 'phone': '01812345678'}])
+
+    def test_panel_send_and_double_submit(self):
+        page = self.client.get(reverse('sms_panel'))
+        self.assertEqual(page.status_code, 200)
+        html = page.content.decode()
+        for text in ['SMS প্যানেল', 'কাকে পাঠাবেন?', 'সব কাস্টমার', 'SMS কিনুন', 'ওয়েবসাইটের অর্ডারে অটো SMS']:
+            self.assertIn(text, html)
+        data = {'audience': 'all', 'message': 'নতুন কালেকশন এসেছে!', 'sign': 'on', 'send_id': 'abc123'}
+        with mock.patch('store.sms.gateway_send', return_value=(True, 'ok')) as gateway:
+            response = self.client.post(reverse('sms_send'), data)
+            self.client.post(reverse('sms_send'), data)                        # দুইবার চাপ
+        self.assertRedirects(response, reverse('sms_panel') + '#history', fetch_redirect_response=False)
+        self.assertEqual(gateway.call_count, 1)
+        self.assertEqual(gateway.call_args[0], (['01812345678'], f'নতুন কালেকশন এসেছে!\n- {self.shop.name}'))
+        self.assertEqual(self.balance(), 99)
+        self.assertIn('১ জনকে SMS পাঠানো হয়েছে', self.client.get(reverse('sms_panel')).content.decode())
+
+    def test_wrong_number_sends_nothing_and_keeps_draft(self):
+        with mock.patch('store.sms.gateway_send') as gateway:
+            response = self.client.post(reverse('sms_send'), {
+                'audience': 'manual', 'numbers': '01712345678, 0171234', 'message': 'আসসালামু আলাইকুম'})
+        gateway.assert_not_called()
+        self.assertEqual(self.balance(), 100)
+        html = self.client.get(response.url).content.decode()
+        self.assertIn('এই নম্বরগুলো ঠিক নেই: 0171234', html)
+        self.assertIn('আসসালামু আলাইকুম</textarea>', html)
+
+    def test_customer_link_prefills_number(self):
+        html = self.client.get(reverse('sms_panel') + '?to=01812345678').content.decode()
+        self.assertIn('>01812345678</textarea>', html)
+
+    def test_staff_needs_sms_permission(self):
+        from .models import StaffProfile
+        staff = User.objects.create_user(phone_number='01922222222', password='Test-pass-123', name='Karim')
+        profile = StaffProfile.objects.create(user=staff, shop=self.shop, can_use_pos=True)
+        self.client.force_login(staff)
+        self.assertRedirects(self.client.get(reverse('sms_panel')), reverse('dashboard'), fetch_redirect_response=False)
+        profile.can_send_sms = True
+        profile.save()
+        html = self.client.get(reverse('sms_panel')).content.decode()
+        self.assertIn('SMS কিনতে দোকানের মালিককে বলুন', html)
+        self.client.post(reverse('sms_buy'), {'amount': '200', 'method': 'manual', 'payment_method': 'bKash',
+                                              'sender_number': '01799999999', 'transaction_id': 'ABC123XYZ'})
+        self.assertFalse(PaymentRequest.objects.exists())
+
+    def test_buy_by_bkash_and_approve_at_current_rate(self):
+        from . import sms
+        from .models import MasterSetting
+        response = self.client.post(reverse('sms_buy'), {'amount': '20', 'method': 'manual'})
+        self.assertRedirects(response, reverse('sms_panel') + '#buy', fetch_redirect_response=False)
+        self.assertFalse(PaymentRequest.objects.exists())
+        self.client.post(reverse('sms_buy'), {'amount': '300', 'method': 'manual', 'payment_method': 'bKash',
+                                              'sender_number': '01799999999', 'transaction_id': 'abc123xyz'})
+        request = PaymentRequest.objects.get()
+        self.assertEqual((request.plan_name, request.amount, request.transaction_id),
+                         (sms.MANUAL_REQUEST_NAME, Decimal('300'), 'ABC123XYZ'))
+        MasterSetting.objects.create(sms_rate=Decimal('0.35'))
+        self.assertEqual(sms.approve_manual_request(request), 857)
+        self.assertEqual(self.balance(), 957)
+
+    def test_online_sms_codes(self):
+        from .payments import resolve_item
+        self.assertEqual(resolve_item('SMS-TK-350')['sms_count'], 875)
+        self.assertEqual(resolve_item('SMS-500')['sms_count'], 500)
+        self.assertIsNone(resolve_item('SMS-TK-20'))
+
+    def test_auto_order_sms_costs_real_parts(self):
+        from . import sms
+        from .models import SmsLog
+        order = self.order(self.rahim)
+        text = sms.order_received_text(self.shop, order)
+        self.assertEqual(sms.segments(text), 1)
+        self.assertIn(sms.bn_num(order.id), text)
+        with mock.patch('store.sms.gateway_send', return_value=(True, 'ok')):
+            sms.send_auto(self.shop, self.rahim.phone, 'অ' * 100, 'অর্ডার')
+        self.assertEqual(self.balance(), 98)
+        self.assertEqual(SmsLog.objects.get().kind, SmsLog.KIND_AUTO)
+        self.shop.is_sms_active = False
+        self.assertIsNone(sms.send_auto(self.shop, self.rahim.phone, 'hello', 'অর্ডার'))
 
 
 class BrandTests(TestCase):

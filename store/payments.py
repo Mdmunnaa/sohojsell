@@ -31,11 +31,12 @@ PLAN_PRICES = {
 }
 PLAN_DAYS = 30
 
-# কোড: (দাম, কতটা SMS) — ০.৪০ টাকা প্রতি SMS
+# পুরনো billing বাটনের কোড → কত টাকার SMS। নতুন SMS প্যানেল যেকোনো টাকার কোড পাঠায়: 'SMS-TK-350'
 SMS_PACKS = {
-    'SMS-500': (Decimal('200'), 500),
-    'SMS-1000': (Decimal('400'), 1000),
+    'SMS-500': 200,
+    'SMS-1000': 400,
 }
+SMS_AMOUNT_RE = re.compile(r'^SMS-TK-(\d{1,6})$')
 
 INVOICE_RE = re.compile(r'^SS-\d{1,10}-[0-9A-F]{12}$')
 TRX_ID_RE = re.compile(r'^[A-Za-z0-9_-]{4,40}$')
@@ -52,13 +53,25 @@ def resolve_item(code):
             'kind': OnlinePayment.KIND_PLAN, 'plan_name': code, 'amount': PLAN_PRICES[code],
             'days': PLAN_DAYS, 'sms_count': 0, 'label': f'{settings.SITE_NAME} {code} Plan (30 days)',
         }
-    if code in SMS_PACKS:
-        amount, count = SMS_PACKS[code]
-        return {
-            'kind': OnlinePayment.KIND_SMS, 'plan_name': f'SMS Recharge ({count})', 'amount': amount,
-            'days': 0, 'sms_count': count, 'label': f'{count} SMS',
-        }
+    match = SMS_AMOUNT_RE.match(code)
+    if code in SMS_PACKS or match:
+        return sms_item(SMS_PACKS[code] if code in SMS_PACKS else int(match.group(1)))
     return None
+
+
+def sms_item(amount):
+    """যত টাকার SMS কেনা হচ্ছে (এখনকার রেটে কয়টা)। টাকা সীমার বাইরে বা SMS শূন্য হলে None।"""
+    from . import sms
+    amount, error = sms.parse_buy_amount(amount)
+    if error:
+        return None
+    count = sms.count_for_amount(amount)
+    if count < 1:
+        return None
+    return {
+        'kind': OnlinePayment.KIND_SMS, 'plan_name': f'SMS Recharge ({count})', 'amount': Decimal(amount),
+        'days': 0, 'sms_count': count, 'label': f'{count} SMS',
+    }
 
 
 def online_payment_available(shop):

@@ -1,6 +1,7 @@
 from django.db import models
 from .themes import DEFAULT_THEME, THEME_CHOICES
 from django.conf import settings
+from decimal import Decimal
 from datetime import timedelta
 from django.utils import timezone
 from django.utils.text import slugify
@@ -399,6 +400,8 @@ class MasterSetting(models.Model):
 
     platform_name = models.CharField(max_length=100, default='SellPunch')
     delivery_charge_default = models.DecimalField(max_digits=8, decimal_places=2, default=100.00)
+    sms_rate = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal('0.400'),
+                                   help_text='সেলাররা প্রতি SMS কত টাকায় কিনবে')
 
     def __str__(self):
         return "SaaS Master Settings"
@@ -497,6 +500,7 @@ class StaffProfile(models.Model):
     can_manage_customers = models.BooleanField(default=False, help_text="Can view customer details")
     can_view_reports = models.BooleanField(default=False, help_text="Can view revenue & profit reports")
     can_manage_settings = models.BooleanField(default=False, help_text="Can access shop settings")
+    can_send_sms = models.BooleanField(default=False, help_text="Can send SMS to customers from the SMS panel")
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -696,3 +700,41 @@ class OnlinePayment(models.Model):
 
     def __str__(self):
         return f"{self.invoice_number} — {self.shop.name} — {self.plan_name} — {self.status}"
+
+
+# ============================================================
+# SMS-এর ইতিহাস — প্যানেল থেকে পাঠানো আর অর্ডারের অটো SMS, দুটোই (store/sms.py)
+# ============================================================
+class SmsLog(models.Model):
+    KIND_MANUAL = 'manual'
+    KIND_AUTO = 'auto'
+    KIND_CHOICES = ((KIND_MANUAL, 'প্যানেল থেকে'), (KIND_AUTO, 'অটো'))
+
+    SENDING, SENT, PARTIAL, FAILED, UNKNOWN = 'sending', 'sent', 'partial', 'failed', 'unknown'
+    STATUS_CHOICES = (
+        (SENDING, 'পাঠানো হচ্ছে'),
+        (SENT, 'গেছে'),
+        (PARTIAL, 'কিছু যায়নি'),
+        (FAILED, 'যায়নি'),
+        (UNKNOWN, 'অবস্থা জানা যায়নি'),
+    )
+
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='sms_logs')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default=KIND_MANUAL)
+    audience = models.CharField(max_length=120, help_text='কাদের: "সব কাস্টমার", একটা নম্বর, "অর্ডার নং ১২"')
+    message = models.TextField()
+    recipients = models.PositiveIntegerField(default=0)
+    delivered = models.PositiveIntegerField(default=0, help_text='গেটওয়ে যতজনের SMS নিয়েছে')
+    failed = models.PositiveIntegerField(default=0)
+    sms_used = models.PositiveIntegerField(default=0, help_text='ব্যালেন্স থেকে কাটা (যা যায়নি তা ফেরত দেওয়ার পরে)')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=SENDING, db_index=True)
+    error = models.CharField(max_length=255, blank=True, default='')
+    sent_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.shop.name} — {self.audience} — {self.sms_used} SMS'

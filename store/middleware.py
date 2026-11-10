@@ -130,6 +130,7 @@ class StaffAccessMiddleware:
                     (('/products/', '/categories/', '/barcode/'), staff.can_manage_products, "Product Management"),
                     (('/orders/', '/storefront-orders/', '/courier/'), staff.can_manage_orders, "Order Management"),
                     (('/customers/',), staff.can_manage_customers, "Customer Database"),
+                    (('/sms/',), staff.can_send_sms, "SMS Panel"),
                     (('/reports/',), staff.can_view_reports, "Business Reports"),
                     (('/settings/', '/staff/', '/banners/', '/billing/', '/website/'), staff.can_manage_settings, "Shop Settings"),
                 ]

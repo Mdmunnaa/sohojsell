@@ -16,7 +16,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import F, Sum
+from django.db.models import Sum
 from django.utils import timezone
 
 from . import paystation
@@ -185,15 +185,11 @@ def _notify_customer(payment):
     """অনলাইন অর্ডারের "অর্ডার পেয়েছি" SMS পেমেন্টের পরে যায় (দোকানের SMS ব্যালেন্স থেকে)।"""
     order = payment.order
     shop = payment.shop
-    if order is None or not shop.is_sms_active or (shop.sms_balance or 0) <= 0:
+    if order is None:
         return
-    try:
-        from .views import _send_sms
-        _send_sms(order.customer.phone, f'প্রিয় {order.customer.name}, {shop.name}-এ আপনার ৳{payment.amount:.0f} '
-                                        f'পেমেন্ট আর অর্ডার (#ORD-{order.id}) পাওয়া গেছে। ধন্যবাদ!')
-        Shop.objects.filter(pk=shop.pk, sms_balance__gt=0).update(sms_balance=F('sms_balance') - 1)
-    except Exception:
-        logger.exception('Payment SMS failed')
+    from . import sms
+    sms.send_auto(shop, order.customer.phone, sms.payment_received_text(shop, order, payment.amount),
+                  f'অর্ডার নং {sms.bn_num(order.id)} (পেমেন্ট)')
 
 
 # ---------------------------------------------------------------- সেলারের হিসাব

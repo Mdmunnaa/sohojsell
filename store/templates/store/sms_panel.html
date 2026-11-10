@@ -1,0 +1,730 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}SMS — {{ shop.name }}{% endblock %}
+{% block page_title %}SMS{% endblock %}
+{% block message_toasts %}{% endblock %}
+
+{% block content %}
+<style>
+.sp {
+  --ink: #0F172A; --ink2: #334155; --muted: #64748B; --faint: #94A3B8;
+  --line: #E2E8F0; --soft: #F1F5F9; --bg2: #F8FAFC;
+  --blue: #2563EB; --green: #16A34A; --amber: #D97706; --red: #DC2626; --violet: #6D28D9;
+  max-width: 1240px; margin: 0 auto; color: var(--ink);
+  font-family: 'Hind Siliguri', 'DM Sans', sans-serif;
+}
+.sp .num { font-family: 'DM Sans', 'Hind Siliguri', sans-serif; font-variant-numeric: tabular-nums; }
+.sp a { text-decoration: none; }
+.sp [hidden] { display: none !important; }
+
+/* ── হেডার ── */
+.sp-hero { position: relative; overflow: hidden; border-radius: 22px; color: #F8FAFC; padding: 22px 26px;
+  display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+  background: radial-gradient(520px 240px at 100% 0%, rgba(99,102,241,.32), transparent 70%),
+              radial-gradient(380px 200px at 0% 100%, rgba(34,197,94,.14), transparent 70%),
+              linear-gradient(135deg, #0B1220 0%, #0F172A 45%, #1E293B 100%);
+  box-shadow: 0 18px 40px -18px rgba(15,23,42,.55); }
+.sp-hero::after { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.07) 1px, transparent 0); background-size: 22px 22px; }
+.sp-hero > * { position: relative; z-index: 1; }
+.sp-hero-main { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 240px; }
+.sp-hero-ic { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; font-size: 24px; flex-shrink: 0;
+  background: linear-gradient(135deg, #6366F1, #4F46E5); box-shadow: 0 10px 22px -8px rgba(79,70,229,.8); }
+.sp-hero h1 { font-size: 24px; font-weight: 700; margin: 0; color: #fff; }
+.sp-hero p { margin: 2px 0 0; font-size: 14px; color: #CBD5E1; }
+.sp-bal { text-align: right; }
+.sp-bal .lbl { font-size: 12.5px; font-weight: 600; color: #94A3B8; }
+.sp-bal .val { font-size: 34px; font-weight: 700; line-height: 1.1; color: #fff; }
+.sp-bal .val span { font-size: 15px; font-weight: 600; color: #CBD5E1; margin-left: 3px; }
+.sp-bal .sub { font-size: 12.5px; color: #94A3B8; margin-top: 2px; }
+.sp-bal.low .val { color: #FBBF24; }
+.sp-hero-btn { display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 18px; border-radius: 13px;
+  background: #fff; color: var(--ink); font-weight: 700; font-size: 14.5px; white-space: nowrap; transition: background .15s; }
+.sp-hero-btn:hover { background: #E2E8F0; color: var(--ink); }
+
+.sp-alerts { margin: 16px 0 0; display: flex; flex-direction: column; gap: 8px; }
+.sp-alert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 15px; border-radius: 14px; font-size: 14px; line-height: 1.55;
+  border: 1px solid; }
+.sp-alert i { font-size: 16px; margin-top: 1px; }
+.sp-alert.success { background: #F0FDF4; border-color: #BBF7D0; color: #166534; }
+.sp-alert.error { background: #FEF2F2; border-color: #FECACA; color: #991B1B; }
+.sp-alert.warning { background: #FFFBEB; border-color: #FDE68A; color: #92400E; }
+.sp-alert.info { background: #EFF6FF; border-color: #BFDBFE; color: #1E40AF; }
+
+/* ── গ্রিড ও কার্ড ── */
+.sp-grid { display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 22px; align-items: start; margin-top: 20px; }
+.sp-side { display: flex; flex-direction: column; gap: 22px; }
+.sp-card { background: #fff; border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.04);
+  scroll-margin-top: 80px; }
+.sp-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 18px 20px 0; }
+.sp-head h2 { font-size: 17px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px; }
+.sp-head h2 i { color: #4F46E5; }
+.sp-body { padding: 14px 20px 20px; }
+
+/* ── পাঠানো ── */
+.sp-step { display: flex; align-items: center; gap: 9px; font-size: 14.5px; font-weight: 700; margin: 6px 0 10px; color: var(--ink2); }
+.sp-step .n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px;
+  background: var(--ink); color: #fff; }
+.sp-step + .sp-step, .sp-gap { margin-top: 20px; }
+.sp-aud { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.sp-aopt { position: relative; display: flex; align-items: center; gap: 11px; padding: 12px 13px; border: 1.5px solid var(--line);
+  border-radius: 15px; cursor: pointer; background: #fff; transition: border-color .15s, background .15s, box-shadow .15s; margin: 0; }
+.sp-aopt input { position: absolute; opacity: 0; pointer-events: none; }
+.sp-aopt .ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex-shrink: 0;
+  background: var(--soft); color: var(--ink2); font-size: 16px; transition: background .15s, color .15s; }
+.sp-aopt b { display: block; font-size: 14px; font-weight: 700; line-height: 1.3; }
+.sp-aopt small { display: block; font-size: 12.5px; color: var(--muted); }
+.sp-aopt:hover { border-color: #C7D2FE; }
+.sp-aopt:has(input:checked) { border-color: #4F46E5; background: #F5F7FF; box-shadow: 0 0 0 3px rgba(79,70,229,.12); }
+.sp-aopt:has(input:checked) .ic { background: #4F46E5; color: #fff; }
+.sp-aopt:has(input:focus-visible) { outline: 2px solid #4F46E5; outline-offset: 2px; }
+.sp-aopt.empty { opacity: .55; cursor: not-allowed; }
+.sp-aopt.empty:hover { border-color: var(--line); }
+
+.sp-manual { margin-top: 12px; padding: 14px; border-radius: 16px; background: var(--bg2); border: 1px solid var(--line); }
+.sp-search { position: relative; }
+.sp-search > i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--faint); }
+.sp-input, .sp-text { width: 100%; border: 1.5px solid #CBD5E1; border-radius: 13px; background: #fff; color: var(--ink);
+  font: 500 15px 'Hind Siliguri', 'DM Sans', sans-serif; transition: border-color .15s, box-shadow .15s; }
+.sp-input { height: 46px; padding: 0 14px; }
+.sp-search .sp-input { padding-left: 38px; }
+.sp-text { padding: 12px 14px; line-height: 1.6; resize: vertical; display: block; }
+.sp-input:focus, .sp-text:focus { outline: none; border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79,70,229,.14); }
+.sp-results { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: 0 16px 34px -14px rgba(15,23,42,.35); padding: 6px; max-height: 280px; overflow: auto; }
+.sp-results button { display: flex; width: 100%; align-items: center; gap: 10px; padding: 9px 10px; border: 0; background: transparent;
+  border-radius: 10px; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
+.sp-results button:hover, .sp-results button.on { background: #EEF2FF; }
+.sp-results .av { width: 32px; height: 32px; border-radius: 10px; background: #E0E7FF; color: #4338CA; display: grid; place-items: center;
+  font-weight: 700; flex-shrink: 0; }
+.sp-results b { display: block; font-size: 14px; font-weight: 600; }
+.sp-results small { color: var(--muted); font-size: 12.5px; }
+.sp-results .none { padding: 10px; color: var(--muted); font-size: 13.5px; }
+.sp-manual textarea { margin-top: 10px; }
+.sp-numinfo { font-size: 12.5px; color: var(--muted); margin-top: 7px; min-height: 18px; }
+.sp-numinfo .bad { color: var(--red); font-weight: 600; }
+.sp-numinfo .good { color: var(--green); font-weight: 600; }
+
+.sp-tpls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.sp-tpl { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line);
+  background: #fff; font: 600 13px 'Hind Siliguri', sans-serif; color: var(--ink2); cursor: pointer; transition: all .15s; }
+.sp-tpl i { color: #6366F1; }
+.sp-tpl:hover { border-color: #A5B4FC; background: #F5F7FF; color: var(--ink); }
+.sp-sign { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 13.5px; color: var(--ink2); cursor: pointer; flex-wrap: wrap; }
+.sp-sign input { width: 17px; height: 17px; accent-color: #4F46E5; }
+.sp-sign code { font-family: 'Hind Siliguri', sans-serif; font-size: 13px; color: #4338CA; background: #EEF2FF; padding: 1px 8px; border-radius: 6px; }
+.sp-meter { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; padding: 10px 14px; border-radius: 12px; background: var(--bg2);
+  font-size: 13px; color: var(--muted); }
+.sp-meter b { color: var(--ink); font-weight: 700; }
+
+.sp-summary { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; margin-top: 18px; align-items: start; }
+.sp-phone { border-radius: 20px; background: linear-gradient(180deg, #F8FAFC, #EEF2F7); border: 1px solid var(--line); padding: 14px; }
+.sp-phone .from { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); font-weight: 600; margin-bottom: 10px; }
+.sp-phone .from .dot { width: 26px; height: 26px; border-radius: 50%; background: #CBD5E1; color: #fff; display: grid; place-items: center; font-size: 13px; }
+.sp-bubble { background: #fff; border: 1px solid var(--line); border-radius: 18px 18px 18px 5px; padding: 11px 14px; font-size: 14px;
+  line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: var(--ink); max-width: 100%; box-shadow: 0 1px 2px rgba(15,23,42,.05); }
+.sp-bubble.ph { color: var(--faint); }
+.sp-cost { border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
+.sp-cost .r { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; color: var(--muted); padding: 4px 0; }
+.sp-cost .r b { color: var(--ink); font-weight: 700; }
+.sp-cost .r.total { border-top: 1px dashed #CBD5E1; margin-top: 4px; padding-top: 9px; font-size: 14.5px; color: var(--ink2); }
+.sp-cost .r.total b { font-size: 17px; }
+.sp-short { margin-top: 10px; padding: 9px 12px; border-radius: 12px; background: #FEF2F2; color: #991B1B; font-size: 13px; line-height: 1.5; }
+.sp-short a { color: #991B1B; font-weight: 700; text-decoration: underline; }
+.sp-send { margin-top: 18px; width: 100%; height: 54px; border: 0; border-radius: 15px; display: flex; align-items: center; justify-content: center;
+  gap: 9px; font: 700 16px 'Hind Siliguri', sans-serif; color: #fff; cursor: pointer;
+  background: linear-gradient(135deg, #4F46E5, #4338CA); box-shadow: 0 14px 26px -14px rgba(67,56,202,.9); transition: transform .12s, filter .15s; }
+.sp-send:hover:not(:disabled) { filter: brightness(1.08); }
+.sp-send:active:not(:disabled) { transform: scale(.99); }
+.sp-send:disabled { background: #CBD5E1; box-shadow: none; cursor: not-allowed; color: #F8FAFC; }
+
+/* ── কেনা ── */
+.sp-rate { font-size: 12.5px; font-weight: 700; color: #15803D; background: #DCFCE7; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.sp-packs { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.sp-pack { border: 1.5px solid var(--line); background: #fff; border-radius: 14px; padding: 10px 12px; text-align: left; cursor: pointer;
+  font-family: 'Hind Siliguri', sans-serif; transition: border-color .15s, background .15s; }
+.sp-pack b { display: block; font-size: 16px; color: var(--ink); }
+.sp-pack span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.sp-pack:hover { border-color: #86EFAC; }
+.sp-pack.on { border-color: var(--green); background: #F0FDF4; box-shadow: 0 0 0 3px rgba(22,163,74,.12); }
+.sp-label { display: block; font-size: 13px; font-weight: 600; color: var(--ink2); margin: 14px 0 6px; }
+.sp-amount { position: relative; }
+.sp-amount span { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--muted); }
+.sp-amount .sp-input { padding-left: 32px; font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 17px; }
+.sp-get { margin-top: 10px; padding: 11px 14px; border-radius: 13px; background: #F0FDF4; border: 1px solid #BBF7D0; font-size: 14px;
+  color: #166534; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.sp-get b { font-size: 17px; }
+.sp-get.bad { background: #FEF2F2; border-color: #FECACA; color: #991B1B; }
+.sp-pay { margin-top: 12px; width: 100%; height: 48px; border: 0; border-radius: 13px; display: flex; align-items: center; justify-content: center;
+  gap: 8px; font: 700 15px 'Hind Siliguri', sans-serif; color: #fff; background: linear-gradient(135deg, #16A34A, #15803D); cursor: pointer;
+  box-shadow: 0 12px 24px -14px rgba(21,128,61,.9); }
+.sp-pay:hover { filter: brightness(1.06); }
+.sp-pay.dark { background: var(--ink); box-shadow: none; }
+.sp-pay:disabled { background: #CBD5E1; box-shadow: none; cursor: not-allowed; }
+.sp-linkbtn { display: block; margin: 10px auto 0; border: 0; background: transparent; color: var(--blue); font: 600 13.5px 'Hind Siliguri', sans-serif;
+  cursor: pointer; }
+.sp-mp { margin-top: 14px; padding-top: 14px; border-top: 1px dashed #CBD5E1; }
+.sp-sendto { padding: 12px 14px; border-radius: 14px; background: #FDF2F8; border: 1px solid #FBCFE8; font-size: 13.5px; color: #831843; line-height: 1.6; }
+.sp-sendto .no { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.sp-sendto .no b { font: 700 19px 'DM Sans', sans-serif; letter-spacing: .5px; color: #500724; }
+.sp-copy { border: 1px solid #F9A8D4; background: #fff; color: #9D174D; border-radius: 9px; padding: 4px 10px; font: 600 12.5px 'Hind Siliguri', sans-serif; cursor: pointer; }
+.sp-copy.done { background: #16A34A; border-color: #16A34A; color: #fff; }
+.sp-seg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.sp-seg2 label { margin: 0; display: flex; align-items: center; justify-content: center; gap: 6px; height: 42px; border: 1.5px solid var(--line);
+  border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; }
+.sp-seg2 input { position: absolute; opacity: 0; pointer-events: none; }
+.sp-seg2 label:has(input:checked) { border-color: var(--ink); background: var(--ink); color: #fff; }
+.sp-mp .sp-input { margin-top: 8px; }
+.sp-pending { display: flex; gap: 10px; padding: 11px 13px; border-radius: 13px; background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E;
+  font-size: 13px; line-height: 1.5; margin-bottom: 14px; }
+.sp-note { font-size: 12.5px; color: var(--muted); margin-top: 9px; text-align: center; }
+
+/* ── অটো SMS ── */
+.sp-switch { display: flex; gap: 14px; align-items: flex-start; cursor: pointer; margin: 0; }
+.sp-switch b { display: block; font-size: 14.5px; }
+.sp-switch small { display: block; font-size: 12.5px; color: var(--muted); line-height: 1.5; margin-top: 2px; }
+.sp-switch .form-switch { margin-left: auto; padding-left: 2.9em; flex-shrink: 0; }
+.sp-switch .form-check-input { width: 2.9em; height: 1.55em; cursor: pointer; margin-top: 2px; }
+.sp-switch .form-check-input:checked { background-color: var(--green); border-color: var(--green); }
+.sp-auto-sample { margin-top: 12px; font-size: 13px; background: var(--bg2); border-radius: 13px 13px 13px 4px; padding: 9px 12px; color: var(--ink2); line-height: 1.55; }
+
+.sp-tips { list-style: none; margin: 0; padding: 0; }
+.sp-tips li { display: flex; gap: 10px; font-size: 13px; color: var(--ink2); line-height: 1.55; padding: 6px 0; }
+.sp-tips li i { color: #6366F1; margin-top: 2px; }
+
+/* ── ইতিহাস ── */
+.sp-history { margin-top: 22px; }
+.sp-tabs { display: inline-flex; background: var(--soft); border-radius: 12px; padding: 3px; }
+.sp-tabs button { border: 0; background: transparent; padding: 6px 13px; border-radius: 9px; font: 600 13.5px 'Hind Siliguri', sans-serif; color: var(--muted); cursor: pointer; }
+.sp-tabs button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+.sp-logs { padding: 8px 10px 12px; }
+.sp-log { display: flex; gap: 12px; padding: 12px 10px; border-radius: 14px; align-items: flex-start; }
+.sp-log + .sp-log { border-top: 1px solid var(--soft); }
+.sp-log .ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; font-size: 16px;
+  background: #EEF2FF; color: #4F46E5; }
+.sp-log .ic.auto { background: #ECFEFF; color: #0E7490; }
+.sp-log .main { flex: 1; min-width: 0; }
+.sp-log .top { font-size: 14px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sp-log .top b { font-weight: 700; }
+.sp-log .top .when { color: var(--muted); font-size: 12.5px; }
+.sp-log .tag { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: #ECFEFF; color: #0E7490; }
+.sp-log .msg { font-size: 13px; color: var(--ink2); margin-top: 3px; line-height: 1.55; white-space: pre-line;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sp-log .err { font-size: 12.5px; color: #B45309; margin-top: 3px; }
+.sp-log .end { text-align: right; flex-shrink: 0; }
+.sp-log .end b { display: block; font-size: 14.5px; }
+.sp-log .end small { display: block; font-size: 12px; color: var(--muted); }
+.sp-st { display: inline-block; margin-top: 4px; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.sp-st.sent, .sp-st.ok { background: #DCFCE7; color: #15803D; }
+.sp-st.sending, .sp-st.wait { background: #DBEAFE; color: #1D4ED8; }
+.sp-st.partial, .sp-st.unknown { background: #FEF3C7; color: #B45309; }
+.sp-st.failed, .sp-st.bad { background: #FEE2E2; color: #B91C1C; }
+.sp-empty { text-align: center; padding: 30px 20px 34px; }
+.sp-empty .ic { width: 56px; height: 56px; margin: 0 auto 10px; border-radius: 16px; display: grid; place-items: center; font-size: 24px; background: #EEF2FF; color: #4F46E5; }
+.sp-empty b { display: block; font-size: 15px; }
+.sp-empty p { margin: 4px auto 0; font-size: 13px; color: var(--muted); max-width: 340px; }
+
+@media (max-width: 1100px) {
+  .sp-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .sp-hero { padding: 18px 16px; gap: 14px; border-radius: 18px; }
+  .sp-hero-ic { width: 44px; height: 44px; font-size: 20px; border-radius: 13px; }
+  .sp-hero h1 { font-size: 20px; }
+  .sp-hero p { font-size: 13px; }
+  .sp-bal { text-align: left; flex: 1; }
+  .sp-bal .val { font-size: 28px; }
+  .sp-grid { gap: 18px; margin-top: 16px; }
+  .sp-side { gap: 18px; }
+  .sp-head { padding: 16px 16px 0; }
+  .sp-body { padding: 12px 16px 18px; }
+  .sp-aud { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sp-aopt { flex-direction: column; align-items: flex-start; gap: 8px; padding: 11px; }
+  .sp-aopt b { font-size: 13.5px; }
+  .sp-tpls { flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px 10px; padding: 0 16px 4px; scrollbar-width: none; }
+  .sp-tpls::-webkit-scrollbar { display: none; }
+  .sp-tpl { flex-shrink: 0; }
+  .sp-summary { grid-template-columns: 1fr; }
+  .sp-send { position: sticky; bottom: 12px; z-index: 6; }
+  .sp-log { padding: 12px 6px; }
+  .sp-history { margin-top: 18px; }
+  .sp-history .sp-head { flex-wrap: wrap; }
+}
+</style>
+
+<div class="sp" id="sp"
+     data-balance="{{ balance }}" data-rate="{{ rate }}" data-min="{{ min_buy }}" data-max="{{ max_buy }}"
+     data-signature="{{ signature }}" data-search="{% url 'sms_customer_search' %}" data-sending="{% if sending %}1{% endif %}"
+     data-max-numbers="{{ max_numbers }}">
+
+  {# ── হেডার ── #}
+  <section class="sp-hero">
+    <div class="sp-hero-main">
+      <div class="sp-hero-ic"><i class="bi bi-chat-dots-fill"></i></div>
+      <div>
+        <h1>SMS প্যানেল</h1>
+        <p>একজন কাস্টমারকে বা সবাইকে একসাথে — অফার, ধন্যবাদ, বাকির কথা</p>
+      </div>
+    </div>
+    <div class="sp-bal {% if balance < 20 %}low{% endif %}">
+      <div class="lbl">{% if balance <= 0 %}SMS শেষ — কিনে নিন{% elif balance < 20 %}SMS প্রায় শেষ{% else %}SMS ব্যালেন্স{% endif %}</div>
+      <div class="val">{{ balance|floatformat:"0g"|bn }}<span>টা</span></div>
+      <div class="sub">এই মাসে খরচ {{ used_this_month|floatformat:"0g"|bn }}টা · মেয়াদ শেষ হয় না</div>
+    </div>
+    {% if can_manage %}<a class="sp-hero-btn" href="#buy"><i class="bi bi-plus-lg"></i> SMS কিনুন</a>{% endif %}
+  </section>
+
+  {% if messages %}
+  <div class="sp-alerts">
+    {% for m in messages %}
+    <div class="sp-alert {{ m.level_tag|default:'info' }}" role="{% if m.level_tag == 'error' %}alert{% else %}status{% endif %}">
+      <i class="bi {% if m.level_tag == 'success' %}bi-check-circle-fill{% elif m.level_tag == 'error' %}bi-x-circle-fill{% elif m.level_tag == 'warning' %}bi-exclamation-triangle-fill{% else %}bi-info-circle-fill{% endif %}"></i>
+      <span>{{ m }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="sp-grid">
+    {# ── SMS পাঠান ── #}
+    <form class="sp-card" id="compose" method="post" action="{% url 'sms_send' %}" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="send_id" value="{{ send_id }}">
+      <header class="sp-head"><h2><i class="bi bi-send-fill"></i> SMS পাঠান</h2></header>
+      <div class="sp-body">
+        <div class="sp-step"><span class="n">১</span> কাকে পাঠাবেন?</div>
+        <div class="sp-aud" role="radiogroup" aria-label="কাকে পাঠাবেন">
+          <label class="sp-aopt">
+            <input type="radio" name="audience" value="manual" {% if not draft.audience or draft.audience == 'manual' %}checked{% endif %}>
+            <span class="ic"><i class="bi bi-person-fill"></i></span>
+            <span><b>নির্দিষ্ট নম্বরে</b><small>একজন বা কয়েকজন</small></span>
+          </label>
+          {% for a in audiences %}
+          <label class="sp-aopt {% if not a.count %}empty{% endif %}" title="{{ a.hint }}">
+            <input type="radio" name="audience" value="{{ a.key }}" data-count="{{ a.count }}" {% if not a.count %}disabled{% endif %} {% if draft.audience == a.key and a.count %}checked{% endif %}>
+            <span class="ic"><i class="bi {{ a.icon }}"></i></span>
+            <span><b>{{ a.label }}</b><small>{% if a.count %}{{ a.count|floatformat:"0g"|bn }} জন{% else %}এখন কেউ নেই{% endif %}</small></span>
+          </label>
+          {% endfor %}
+        </div>
+
+        <div class="sp-manual" id="spManual">
+          <div class="sp-search">
+            <i class="bi bi-search"></i>
+            <input type="search" class="sp-input" id="spSearch" placeholder="কাস্টমারের নাম বা নম্বর দিয়ে খুঁজুন" autocomplete="off" aria-label="কাস্টমার খুঁজুন">
+            <div class="sp-results" id="spResults" hidden></div>
+          </div>
+          <textarea class="sp-text" name="numbers" id="spNumbers" rows="3" placeholder="মোবাইল নম্বর, যেমন 01712345678&#10;কয়েকটা হলে কমা বা নতুন লাইনে লিখুন" aria-label="মোবাইল নম্বর">{{ draft.numbers }}</textarea>
+          <div class="sp-numinfo" id="spNumInfo" aria-live="polite"></div>
+        </div>
+
+        <div class="sp-step sp-gap"><span class="n">২</span> মেসেজ লিখুন</div>
+        <div class="sp-tpls" aria-label="তৈরি মেসেজ">
+          {% for t in templates %}
+          <button type="button" class="sp-tpl" data-text="{{ t.text }}" data-audience="{{ t.audience }}"><i class="bi {{ t.icon }}"></i> {{ t.label }}</button>
+          {% endfor %}
+        </div>
+        <textarea class="sp-text" name="message" id="spMsg" rows="5" maxlength="{{ max_chars }}" placeholder="যেমন: নতুন কালেকশন চলে এসেছে! দেখুন আর অর্ডার করুন: {{ shop.storefront_host_preview }}" aria-label="মেসেজ">{{ draft.message }}</textarea>
+        <label class="sp-sign"><input type="checkbox" name="sign" id="spSign" {% if not draft or draft.sign %}checked{% endif %}> শেষে দোকানের নাম যোগ হবে <code>{{ signature }}</code></label>
+        <div class="sp-meter" aria-live="polite">
+          <span><i class="bi bi-translate"></i> <b id="mLang">বাংলা</b> <span id="mRule">(৭০ অক্ষরে ১টা SMS)</span></span>
+          <span>অক্ষর <b id="mChars">০</b></span>
+          <span>প্রতি জনে <b id="mParts">০</b>টা SMS</span>
+        </div>
+
+        <div class="sp-summary">
+          <div class="sp-phone">
+            <div class="from"><span class="dot"><i class="bi bi-person-fill"></i></span> কাস্টমার যেমন দেখবে</div>
+            <div class="sp-bubble ph" id="spBubble">মেসেজ লিখলে এখানে দেখাবে</div>
+          </div>
+          <div class="sp-cost">
+            <div class="r"><span>প্রাপক</span><b id="cRec">০ জন</b></div>
+            <div class="r"><span>প্রতি জনে</span><b id="cPer">০টা SMS</b></div>
+            <div class="r total"><span>মোট কাটবে</span><b id="cTotal">০টা</b></div>
+            <div class="r"><span>পাঠানোর পরে থাকবে</span><b id="cAfter">{{ balance|floatformat:"0g"|bn }}টা</b></div>
+            <div class="sp-short" id="cShort" hidden>ব্যালেন্স কম — আরও <b id="cNeed">০</b>টা SMS লাগবে।{% if can_manage %} <a href="#buy">SMS কিনুন</a>{% endif %}</div>
+          </div>
+        </div>
+        <button type="submit" class="sp-send" id="spSend" disabled><i class="bi bi-send-fill"></i> <span id="spSendText">SMS পাঠান</span></button>
+      </div>
+    </form>
+
+    <aside class="sp-side">
+      {# ── SMS কিনুন ── #}
+      <section class="sp-card" id="buy">
+        <header class="sp-head"><h2><i class="bi bi-bag-plus-fill"></i> SMS কিনুন</h2><span class="sp-rate">প্রতিটা ৳{{ rate|floatformat:"-2"|bn }}</span></header>
+        <div class="sp-body">
+          {% if not can_manage %}
+          <div class="sp-pending"><i class="bi bi-info-circle-fill"></i><span>SMS কিনতে দোকানের মালিককে বলুন।</span></div>
+          {% else %}
+          {% if pending_request %}
+          <div class="sp-pending"><i class="bi bi-hourglass-split"></i><span>৳{{ pending_request.amount|floatformat:"0g"|bn }}-এর অনুরোধ যাচাই হচ্ছে ({{ pending_request.payment_method }} · {{ pending_request.transaction_id }})। মিললেই SMS যোগ হবে।</span></div>
+          {% endif %}
+          <form method="post" action="{% url 'sms_buy' %}" id="spBuy" novalidate>
+            {% csrf_token %}
+            <div class="sp-packs">
+              {% for q in quick_amounts %}
+              <button type="button" class="sp-pack {% if q.amount == 200 %}on{% endif %}" data-amount="{{ q.amount }}"><b>{{ q.count|floatformat:"0g"|bn }}টা</b><span>৳{{ q.amount|floatformat:"0g"|bn }}</span></button>
+              {% endfor %}
+            </div>
+            <label class="sp-label" for="spAmount">অথবা যত টাকার কিনবেন</label>
+            <div class="sp-amount"><span>৳</span><input class="sp-input" type="number" name="amount" id="spAmount" min="{{ min_buy }}" max="{{ max_buy }}" step="1" inputmode="numeric" value="200"></div>
+            <div class="sp-get" id="spGet"><span>আপনি পাবেন</span><b id="spGetCount">৫০০টা SMS</b></div>
+            {% if online_payment_available %}
+            <button type="submit" name="method" value="online" class="sp-pay" id="spPayOnline"><i class="bi bi-lightning-charge-fill"></i> অনলাইনে পেমেন্ট করুন</button>
+            <div class="sp-note">bKash, Nagad, Rocket বা কার্ড — পেমেন্ট হলেই সাথে সাথে SMS যোগ হবে</div>
+            <button type="button" class="sp-linkbtn" id="spShowManual">নিজে bKash/Nagad-এ পাঠাতে চান?</button>
+            {% endif %}
+            <div class="sp-mp" id="spManualPay" {% if online_payment_available %}hidden{% endif %}>
+              <div class="sp-sendto">
+                bKash বা Nagad থেকে উপরের টাকাটা <b>Send Money</b> করুন (Personal নম্বর):
+                <div class="no"><b>{{ manual_number }}</b><button type="button" class="sp-copy" data-copy="{{ manual_number }}">কপি</button></div>
+              </div>
+              <div class="sp-seg2" role="radiogroup" aria-label="কোনটা দিয়ে পাঠিয়েছেন">
+                <label><input type="radio" name="payment_method" value="bKash" checked> bKash</label>
+                <label><input type="radio" name="payment_method" value="Nagad"> Nagad</label>
+              </div>
+              <input class="sp-input" type="tel" name="sender_number" inputmode="tel" placeholder="যে নম্বর থেকে পাঠিয়েছেন" aria-label="যে নম্বর থেকে পাঠিয়েছেন">
+              <input class="sp-input" type="text" name="transaction_id" autocapitalize="characters" placeholder="লেনদেন নম্বর (TrxID)" aria-label="লেনদেন নম্বর">
+              <button type="submit" name="method" value="manual" class="sp-pay dark" id="spPayManual"><i class="bi bi-check2-circle"></i> জমা দিন</button>
+              <div class="sp-note">টাকা মিলিয়ে দেখা হলেই SMS যোগ হবে</div>
+            </div>
+          </form>
+          {% endif %}
+        </div>
+      </section>
+
+      {# ── অর্ডারের অটো SMS ── #}
+      <section class="sp-card">
+        <div class="sp-body" style="padding-top:18px;">
+          <form method="post" action="{% url 'sms_auto' %}">
+            {% csrf_token %}
+            <label class="sp-switch" for="spAuto">
+              <span><b>ওয়েবসাইটের অর্ডারে অটো SMS</b><small>কেউ অর্ডার করলেই নিজে থেকে SMS যাবে — প্রতি অর্ডারে ১টা।{% if not can_manage %} বদলাতে মালিককে বলুন।{% endif %}</small></span>
+              <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="spAuto" name="is_sms_active" {% if shop.is_sms_active %}checked{% endif %} {% if not can_manage %}disabled{% endif %} onchange="this.form.submit()"></span>
+            </label>
+            <noscript><button type="submit" class="sp-pay dark">সেভ করুন</button></noscript>
+          </form>
+          <div class="sp-auto-sample">{{ auto_sample }}</div>
+        </div>
+      </section>
+
+      {# ── নিয়ম ── #}
+      <section class="sp-card">
+        <header class="sp-head"><h2><i class="bi bi-lightbulb-fill"></i> জেনে রাখুন</h2></header>
+        <div class="sp-body">
+          <ul class="sp-tips">
+            <li><i class="bi bi-check2-circle"></i><span>বাংলায় ৭০ অক্ষর পর্যন্ত ১টা SMS। লম্বা হলে প্রতি ৬৭ অক্ষরে আরেকটা কাটে।</span></li>
+            <li><i class="bi bi-check2-circle"></i><span>শুধু ইংরেজিতে লিখলে ১৬০ অক্ষর পর্যন্ত ১টা SMS।</span></li>
+            <li><i class="bi bi-check2-circle"></i><span>যে নম্বরে SMS যায়নি, তার খরচ ব্যালেন্সে ফেরত আসে।</span></li>
+            <li><i class="bi bi-check2-circle"></i><span>একই নম্বর দুইবার থাকলেও SMS একবারই যায়।</span></li>
+          </ul>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  {# ── ইতিহাস ── #}
+  <section class="sp-card sp-history" id="history">
+    <header class="sp-head">
+      <h2><i class="bi bi-clock-history"></i> ইতিহাস</h2>
+      <div class="sp-tabs" role="tablist">
+        <button type="button" class="on" role="tab" aria-selected="true" data-tab="sent">পাঠানো SMS</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="bought">SMS কেনা</button>
+      </div>
+    </header>
+    <div data-pane="sent" role="tabpanel">
+      {% if logs %}
+      <div class="sp-logs">
+        {% for log in logs %}
+        <div class="sp-log">
+          <span class="ic {{ log.kind }}"><i class="bi {% if log.kind == 'auto' %}bi-robot{% else %}bi-send{% endif %}"></i></span>
+          <div class="main">
+            <div class="top"><b>{{ log.audience }}</b>{% if log.kind == 'auto' %}<span class="tag">অটো</span>{% endif %}<span class="when">· {{ log.ago }}{% if log.sent_by_name %} · {{ log.sent_by_name }}{% endif %}</span></div>
+            <div class="msg">{{ log.message }}</div>
+            {% if log.error %}<div class="err"><i class="bi bi-info-circle"></i> {{ log.error }}</div>{% endif %}
+          </div>
+          <div class="end">
+            <b>{% if log.sms_used %}−{{ log.sms_used|floatformat:"0g"|bn }}{% else %}০{% endif %} SMS</b>
+            <small>{{ log.recipients|floatformat:"0g"|bn }} জন{% if log.failed %} · {{ log.failed|bn }}টা যায়নি{% endif %}</small>
+            <span class="sp-st {{ log.status }}">{{ log.get_status_display }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="sp-empty">
+        <div class="ic"><i class="bi bi-chat-square-text"></i></div>
+        <b>এখনো কোনো SMS পাঠানো হয়নি</b>
+        <p>উপরে কাকে পাঠাবেন বেছে নিয়ে মেসেজ লিখুন। অর্ডারের অটো SMS-ও এখানে দেখাবে।</p>
+      </div>
+      {% endif %}
+    </div>
+    <div data-pane="bought" role="tabpanel" hidden>
+      {% if purchases %}
+      <div class="sp-logs">
+        {% for p in purchases %}
+        <div class="sp-log">
+          <span class="ic" style="background:#DCFCE7;color:#15803D;"><i class="bi bi-bag-check-fill"></i></span>
+          <div class="main">
+            <div class="top"><b>{{ p.count|floatformat:"0g"|bn }}টা SMS</b>{% if p.test %}<span class="tag" style="background:#FEF3C7;color:#B45309;">টেস্ট</span>{% endif %}<span class="when">· {{ p.when|date:"d M Y, h:i A" }}</span></div>
+            <div class="msg">{{ p.method }}</div>
+          </div>
+          <div class="end">
+            <b>৳{{ p.amount|floatformat:"0g"|bn }}</b>
+            <span class="sp-st {{ p.tone }}">{{ p.status }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="sp-empty">
+        <div class="ic" style="background:#DCFCE7;color:#15803D;"><i class="bi bi-bag"></i></div>
+        <b>এখনো SMS কেনা হয়নি</b>
+        <p>৳{{ min_buy|bn }} থেকে যত টাকার খুশি SMS কিনতে পারবেন, মেয়াদ শেষ হয় না।</p>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var root = document.getElementById('sp');
+  var BN = '০১২৩৪৫৬৭৮৯';
+  function bn(value) { return String(value).replace(/[0-9]/g, function (d) { return BN[d]; }); }
+  function fmt(n) { return bn(Number(n).toLocaleString('en-US')); }
+  var balance = parseInt(root.dataset.balance, 10) || 0;
+  var signature = root.dataset.signature;
+  var maxNumbers = parseInt(root.dataset.maxNumbers, 10) || 500;
+
+  // ── SMS-এর ভাগ: সার্ভারের store/sms.py-র segments()-এর মতো ──
+  var GSM = new Set("@$\n\r_ !\"#%&'()*+,-./0123456789:;<=>?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
+  var EXT = new Set('^{}\\[~]|');
+  function isGsm(text) { for (var ch of text) { if (!GSM.has(ch) && !EXT.has(ch)) return false; } return true; }
+  function units(text, gsm) {
+    var out = [];
+    for (var ch of text) out.push(gsm ? (EXT.has(ch) ? 2 : 1) : (ch.codePointAt(0) > 0xFFFF ? 2 : 1));
+    return out;
+  }
+  function segments(text) {
+    if (!text) return 0;
+    var gsm = isGsm(text), u = units(text, gsm), total = u.reduce(function (a, b) { return a + b; }, 0);
+    var single = gsm ? 160 : 70, part = gsm ? 153 : 67;
+    if (total <= single) return 1;
+    var parts = 1, used = 0;
+    u.forEach(function (size) { if (used + size > part) { parts++; used = 0; } used += size; });
+    return parts;
+  }
+
+  // ── নম্বর ──
+  function normPhone(value) {
+    var d = String(value).replace(/[০-৯]/g, function (c) { return BN.indexOf(c); }).trim().replace(/[ -]/g, '');
+    if (d.charAt(0) === '+') d = d.slice(1);
+    if (d.indexOf('880') === 0) d = d.slice(2);
+    return /^01[3-9]\d{8}$/.test(d) ? d : null;
+  }
+  function parseNumbers(text) {
+    var good = [], bad = [];
+    function add(p) { if (good.indexOf(p) === -1) good.push(p); }
+    text.split(/[,;\n\/،]+/).forEach(function (part) {
+      part = part.trim();
+      if (!part) return;
+      var p = normPhone(part);
+      if (p) { add(p); return; }
+      var pieces = part.split(/\s+/), cleaned = pieces.map(normPhone);
+      if (pieces.length > 1 && cleaned.every(Boolean)) cleaned.forEach(add); else bad.push(part);
+    });
+    return { good: good, bad: bad };
+  }
+
+  var form = document.getElementById('compose');
+  var msg = document.getElementById('spMsg');
+  var sign = document.getElementById('spSign');
+  var numbers = document.getElementById('spNumbers');
+  var manualBox = document.getElementById('spManual');
+  var sendBtn = document.getElementById('spSend');
+  var $ = function (id) { return document.getElementById(id); };
+
+  function audience() { var r = form.querySelector('input[name=audience]:checked'); return r ? r : null; }
+  function fullText() {
+    var body = msg.value.replace(/\r\n?/g, '\n').trim();
+    return body ? (sign.checked ? body + '\n' + signature : body) : '';
+  }
+
+  function update() {
+    var aud = audience();
+    var manual = aud && aud.value === 'manual';
+    manualBox.hidden = !manual;
+    var rec = 0, bad = [];
+    if (manual) {
+      var parsed = parseNumbers(numbers.value);
+      rec = parsed.good.length; bad = parsed.bad;
+      var info = '';
+      if (rec) info += '<span class="good">' + bn(rec) + 'টা সঠিক নম্বর</span>';
+      if (bad.length) info += (info ? ' · ' : '') + '<span class="bad">' + bn(bad.length) + 'টা ঠিক নেই: ' +
+        bad.slice(0, 3).map(function (b) { return b.replace(/[<>&"]/g, ''); }).join(', ') + '</span>';
+      if (rec > maxNumbers) info += ' · <span class="bad">একবারে সর্বোচ্চ ' + bn(maxNumbers) + 'টা</span>';
+      $('spNumInfo').innerHTML = info || 'নম্বর লিখুন বা উপরে কাস্টমার খুঁজে যোগ করুন';
+    } else if (aud) {
+      rec = parseInt(aud.dataset.count, 10) || 0;
+    }
+    var text = fullText();
+    var gsm = isGsm(text);
+    var per = segments(text);
+    var total = per * rec;
+    var length = units(text, gsm).reduce(function (a, b) { return a + b; }, 0);
+    $('mLang').textContent = text ? (gsm ? 'ইংরেজি' : 'বাংলা') : 'বাংলা';
+    $('mRule').textContent = (text && gsm) ? '(১৬০ অক্ষরে ১টা SMS)' : '(৭০ অক্ষরে ১টা SMS)';
+    $('mChars').textContent = bn(length);
+    $('mParts').textContent = bn(per);
+    var bubble = $('spBubble');
+    bubble.textContent = text || 'মেসেজ লিখলে এখানে দেখাবে';
+    bubble.classList.toggle('ph', !text);
+    $('cRec').textContent = fmt(rec) + ' জন';
+    $('cPer').textContent = bn(per) + 'টা SMS';
+    $('cTotal').textContent = fmt(total) + 'টা';
+    $('cAfter').textContent = fmt(Math.max(balance - total, 0)) + 'টা';
+    var short = total > balance;
+    $('cShort').hidden = !short;
+    $('cNeed').textContent = fmt(total - balance);
+    var ok = rec > 0 && text && !short && !bad.length && rec <= maxNumbers;
+    sendBtn.disabled = !ok;
+    $('spSendText').textContent = rec > 0 && text ? fmt(rec) + ' জনকে পাঠান · ' + fmt(total) + 'টা SMS' : 'SMS পাঠান';
+    sendBtn.dataset.rec = rec; sendBtn.dataset.total = total;
+  }
+
+  form.addEventListener('input', update);
+  form.addEventListener('change', update);
+  form.addEventListener('submit', function (e) {
+    update();
+    if (sendBtn.disabled) { e.preventDefault(); return; }
+    var rec = parseInt(sendBtn.dataset.rec, 10), total = parseInt(sendBtn.dataset.total, 10);
+    if (rec > 1 && !window.confirm(fmt(rec) + ' জনকে SMS যাবে, ব্যালেন্স থেকে ' + fmt(total) + 'টা কাটবে। পাঠাবেন?')) {
+      e.preventDefault(); return;
+    }
+    sendBtn.disabled = true;
+    $('spSendText').textContent = 'পাঠানো হচ্ছে…';
+  });
+
+  // তৈরি মেসেজ
+  document.querySelectorAll('.sp-tpl').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var text = btn.dataset.text;
+      if (msg.value.trim() && msg.value.trim() !== text && !window.confirm('লেখা মেসেজটা বদলে এটা বসবে?')) return;
+      msg.value = text;
+      var target = btn.dataset.audience && form.querySelector('input[name=audience][value="' + btn.dataset.audience + '"]');
+      if (target && !target.disabled) target.checked = true;
+      update();
+      msg.focus();
+    });
+  });
+
+  // কাস্টমার খোঁজা
+  var search = $('spSearch'), results = $('spResults'), timer = null, active = -1;
+  function addNumber(phone) {
+    var parsed = parseNumbers(numbers.value);
+    if (parsed.good.indexOf(phone) === -1) {
+      numbers.value = (numbers.value.trim() ? numbers.value.trim() + '\n' : '') + phone;
+    }
+    search.value = ''; results.hidden = true; update(); search.focus();
+  }
+  function render(list) {
+    active = -1;
+    results.innerHTML = '';
+    if (!list.length) { results.innerHTML = '<div class="none">কাউকে পাওয়া যায়নি</div>'; results.hidden = false; return; }
+    list.forEach(function (c) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      var av = document.createElement('span'); av.className = 'av'; av.textContent = (c.name || '?').charAt(0).toUpperCase();
+      var t = document.createElement('span');
+      var n = document.createElement('b'); n.textContent = c.name;
+      var p = document.createElement('small'); p.textContent = c.phone;
+      t.appendChild(n); t.appendChild(p); b.appendChild(av); b.appendChild(t);
+      b.addEventListener('mousedown', function (e) { e.preventDefault(); addNumber(c.phone); });
+      results.appendChild(b);
+    });
+    results.hidden = false;
+  }
+  search.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = search.value.trim();
+    if (q.length < 2) { results.hidden = true; return; }
+    timer = setTimeout(function () {
+      fetch(root.dataset.search + '?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) { if (search.value.trim() === q) render(data.results || []); })
+        .catch(function () {});
+    }, 220);
+  });
+  search.addEventListener('keydown', function (e) {
+    var items = results.querySelectorAll('button');
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!items.length) return;
+      e.preventDefault();
+      active = (active + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      items.forEach(function (it, i) { it.classList.toggle('on', i === active); });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (items[active]) items[active].dispatchEvent(new MouseEvent('mousedown'));
+      else if (items.length === 1) items[0].dispatchEvent(new MouseEvent('mousedown'));
+      else { var p = normPhone(search.value); if (p) addNumber(p); }
+    } else if (e.key === 'Escape') { results.hidden = true; }
+  });
+  search.addEventListener('blur', function () { setTimeout(function () { results.hidden = true; }, 120); });
+
+  update();
+  if (location.hash === '#compose' && !numbers.value.trim()) { search.focus(); }
+  else if (location.hash === '#compose') { msg.focus(); }
+
+  // ── কেনা ──
+  var amount = $('spAmount');
+  if (amount) {
+    var rateMilli = Math.round(parseFloat(root.dataset.rate) * 1000) || 400;
+    var min = parseInt(root.dataset.min, 10), max = parseInt(root.dataset.max, 10);
+    var packs = document.querySelectorAll('.sp-pack');
+    function calc() {
+      var value = parseInt(String(amount.value).replace(/[০-৯]/g, function (c) { return BN.indexOf(c); }), 10) || 0;
+      var count = Math.floor(value * 1000 / rateMilli);
+      var bad = value < min || value > max;
+      $('spGet').classList.toggle('bad', bad);
+      $('spGetCount').textContent = bad ? (value < min ? 'সর্বনিম্ন ৳' + bn(min) : 'সর্বোচ্চ ৳' + fmt(max)) : fmt(count) + 'টা SMS';
+      ['spPayOnline', 'spPayManual'].forEach(function (id) { if ($(id)) $(id).disabled = bad; });
+      packs.forEach(function (p) { p.classList.toggle('on', parseInt(p.dataset.amount, 10) === value); });
+    }
+    packs.forEach(function (p) { p.addEventListener('click', function () { amount.value = p.dataset.amount; calc(); }); });
+    amount.addEventListener('input', calc);
+    calc();
+    var showManual = $('spShowManual');
+    if (showManual) showManual.addEventListener('click', function () {
+      $('spManualPay').hidden = false; showManual.hidden = true;
+      var first = $('spManualPay').querySelector('input[name=sender_number]'); if (first) first.focus();
+    });
+  }
+  document.querySelectorAll('.sp-copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var text = btn.dataset.copy;
+      var done = function () { btn.classList.add('done'); btn.textContent = 'কপি হয়েছে'; setTimeout(function () { btn.classList.remove('done'); btn.textContent = 'কপি'; }, 1500); };
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, function () {});
+      else { window.prompt('নম্বরটা কপি করুন:', text); }
+    });
+  });
+
+  // ── ইতিহাস ──
+  document.querySelectorAll('.sp-tabs button').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.sp-tabs button').forEach(function (t) {
+        var on = t === tab; t.classList.toggle('on', on); t.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      document.querySelectorAll('[data-pane]').forEach(function (pane) { pane.hidden = pane.dataset.pane !== tab.dataset.tab; });
+    });
+  });
+  if (location.hash === '#bought') { var b = document.querySelector('.sp-tabs [data-tab=bought]'); if (b) b.click(); }
+
+  // পেছনে SMS যাচ্ছে — কিছু না লিখে থাকলে কয়েক সেকেন্ড পর ফলাফলের জন্য রিফ্রেশ
+  if (root.dataset.sending) {
+    setTimeout(function () { if (!msg.value.trim() && !numbers.value.trim()) location.reload(); }, 8000);
+  }
+})();
+</script>
+{% endblock %}

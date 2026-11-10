@@ -77,16 +77,6 @@
   .opt b { display: block; font-size: 14px; color: #0F172A; }
   .opt small { display: block; font-size: 12px; color: #64748B; margin-top: 2px; line-height: 1.5; }
 
-  /* SMS */
-  .sms-hero { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; border-radius: 18px; padding: 20px 22px; background: linear-gradient(135deg, #EFF6FF, #F5F3FF); border: 1px solid #DBEAFE; margin-bottom: 16px; }
-  .sms-hero .ico { width: 52px; height: 52px; border-radius: 16px; background: #fff; color: #4F46E5; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 1px 2px rgba(15,23,42,.06); }
-  .sms-hero .num { font-size: 32px; font-weight: 800; color: #1E1B4B; line-height: 1; }
-  .sms-hero .lbl { font-size: 13px; color: #475569; font-weight: 600; margin-top: 4px; }
-  .sms-hero .buy { margin-left: auto; text-align: right; }
-  .sms-hero .buy small { display: block; font-size: 11.5px; color: #64748B; margin-top: 6px; }
-  .sms-hero.low { background: linear-gradient(135deg, #FFF7ED, #FEF2F2); border-color: #FED7AA; }
-  .sms-hero.low .ico { color: #EA580C; }
-  @media (max-width: 576px) { .sms-hero .buy { margin-left: 0; text-align: left; width: 100%; } }
   .switch-row { display: flex; align-items: center; gap: 16px; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 16px 18px; cursor: pointer; margin: 0; background: #fff; }
   .switch-row:has(input:checked) { border-color: #86EFAC; background: #F0FDF4; }
   .switch-row .t { font-weight: 800; font-size: 14.5px; color: #0F172A; display: block; }
@@ -95,9 +85,6 @@
   .switch-row .form-check-input { width: 2.9em; height: 1.55em; cursor: pointer; margin-top: 0; }
   .switch-row .form-check-input:checked { background-color: #16A34A; border-color: #16A34A; }
   .switch-stack .switch-row + .switch-row { margin-top: 10px; }
-  .sms-preview { margin-top: 16px; }
-  .sms-preview .from { font-size: 12px; color: #64748B; font-weight: 700; margin-bottom: 6px; }
-  .sms-bubble { max-width: 440px; background: #F1F5F9; border-radius: 18px 18px 18px 4px; padding: 12px 15px; font-size: 13.5px; color: #0F172A; line-height: 1.6; }
 
   /* Facebook */
   .fb-page { display: flex; align-items: center; gap: 14px; }
@@ -142,7 +129,7 @@
     <div class="st-head-row">
       <div>
         <h4><i class="bi bi-gear me-2"></i>সেটিংস</h4>
-        <p>কুরিয়ার, POS, SMS আর Facebook — দোকানের সব সেটিং এক জায়গায়</p>
+        <p>কুরিয়ার, POS আর Facebook — দোকানের সেটিং এক জায়গায়</p>
       </div>
       <div class="st-plan">
         <div>
@@ -170,7 +157,6 @@
       <i class="bi {{ icon }}"></i> {{ label }}
       {% if key == 'courier' %}<span class="tab-badge {% if courier_count %}ok{% endif %}">{{ courier_count|bn }}/৩</span>
       {% elif key == 'pos' %}{% if shop.pos_vat_percent %}<span class="tab-badge">VAT {{ shop.pos_vat_percent|floatformat:"-2"|bn }}%</span>{% endif %}
-      {% elif key == 'sms' %}<span class="tab-badge {% if shop.is_sms_active and shop.sms_balance > 0 %}ok{% endif %}">{% if shop.is_sms_active %}চালু{% else %}বন্ধ{% endif %}</span>
       {% elif key == 'facebook' and fb_page %}<span class="tab-badge ok">যুক্ত</span>{% endif %}
     </a>
     {% endfor %}
@@ -426,39 +412,6 @@
       </div>
       {% endwith %}
       <button type="submit" class="ws-save"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button>
-    </form>
-
-  {% elif active_tab == 'sms' %}
-    <h5 class="ws-section-title">অর্ডারের SMS</h5>
-    <p class="ws-section-sub">ওয়েবসাইট থেকে কেউ অর্ডার করলে তার মোবাইলে নিজে থেকে একটা SMS যায়, তাতে কাস্টমার নিশ্চিন্ত থাকে।</p>
-
-    <div class="sms-hero {% if shop.sms_balance < 20 %}low{% endif %}" id="sms">
-      <div class="ico"><i class="bi bi-chat-left-text-fill"></i></div>
-      <div>
-        <div class="num">{{ shop.sms_balance|bn }}টা</div>
-        <div class="lbl">{% if shop.sms_balance <= 0 %}SMS শেষ — কাস্টমারের কাছে SMS যাচ্ছে না{% elif shop.sms_balance < 20 %}SMS প্রায় শেষ{% else %}SMS বাকি আছে{% endif %}</div>
-      </div>
-      <div class="buy">
-        <a href="{% url 'billing' %}#sms" class="btn-pill btn-dark-s"><i class="bi bi-plus-lg"></i> SMS কিনুন</a>
-        <small>৫০০টা ৳২০০ · ১০০০টা ৳৪০০</small>
-      </div>
-    </div>
-
-    {% include 'store/partials/panel_messages.html' with section='sms' %}
-    <form method="post" action="{% url 'settings' %}">{% csrf_token %}
-      <input type="hidden" name="section" value="sms">
-      <label class="switch-row" for="{{ sms_form.is_sms_active.id_for_label }}">
-        <span>
-          <span class="t">অর্ডার পেলে কাস্টমারকে SMS</span>
-          <span class="d">প্রতিটা অর্ডারে ১টা SMS খরচ হয়। অনলাইনে টাকা দেওয়া অর্ডারে SMS যায় পেমেন্ট সফল হওয়ার পরে।</span>
-        </span>
-        <span class="form-check form-switch">{{ sms_form.is_sms_active }}</span>
-      </label>
-      <div class="sms-preview">
-        <div class="from"><i class="bi bi-phone me-1"></i>কাস্টমার যেমন পাবে</div>
-        <div class="sms-bubble">প্রিয় রহিম, {{ shop.name }} থেকে আপনার অর্ডার (#ORD-1024) পাওয়া গেছে। আমরা শীঘ্রই যোগাযোগ করব।</div>
-      </div>
-      <div class="mt-4"><button type="submit" class="ws-save"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button></div>
     </form>
 
   {% elif active_tab == 'facebook' %}

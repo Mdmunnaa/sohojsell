@@ -374,7 +374,7 @@
         </a>
         {% endif %}
 
-        {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_orders or request.user.staff_profile.can_manage_customers %}
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_orders or request.user.staff_profile.can_manage_customers or request.user.staff_profile.can_send_sms %}
         <div class="sb-sep"></div>
         <div class="sb-label">বিক্রি</div>
 
@@ -393,6 +393,13 @@
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_customers %}
         <a href="{% url 'customer_list' %}" class="sb-link {% if request.resolver_match.url_name == 'customer_list' %}active{% endif %}">
           <i class="bi bi-people"></i> <span class="sb-text-hide">কাস্টমার</span>
+        </a>
+        {% endif %}
+
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_send_sms %}
+        <a href="{% url 'sms_panel' %}" class="sb-link {% if request.resolver_match.url_name == 'sms_panel' %}active{% endif %}">
+          <i class="bi bi-chat-dots"></i> <span class="sb-text-hide">SMS</span>
+          {% if shop.sms_balance < 20 %}<span class="badge ms-auto sb-text-hide" style="font-size:10px;background:rgba(245,158,11,.18);color:#FBBF24;">কম</span>{% endif %}
         </a>
         {% endif %}
         {% endif %}

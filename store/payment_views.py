@@ -60,18 +60,22 @@ def paystation_start(request):
     """Billing পেইজের "অনলাইনে পেমেন্ট" বাটন — রেকর্ড বানিয়ে PayStation-এর পেমেন্ট পেইজে পাঠায়।"""
     if request.method != 'POST':
         return redirect('billing')
-
     shop = getattr(request.user, 'shop', None)
     if shop is None:
         return redirect('setup_shop')
-    if not online_payment_available(shop):
-        messages.warning(request, 'অনলাইন পেমেন্ট এখনো চালু হয়নি। আপাতত bKash/Nagad-এ পাঠিয়ে লেনদেন নম্বর জমা দিন।')
-        return redirect('billing')
-
     item = resolve_item(request.POST.get('item'))
+    back = 'sms_panel' if item and item['kind'] == OnlinePayment.KIND_SMS else 'billing'
     if item is None:
         messages.error(request, 'প্যাকেজটা পাওয়া যায়নি, আবার চেষ্টা করুন।')
         return redirect('billing')
+    return start_online_payment(request, shop, item, back)
+
+
+def start_online_payment(request, shop, item, back='billing'):
+    """প্ল্যান বা SMS — যেকোনো কেনাকাটার জন্য PayStation-এর পেমেন্ট পেইজে পাঠায়; সমস্যা হলে back পেইজে ফেরত।"""
+    if not online_payment_available(shop):
+        messages.warning(request, 'অনলাইন পেমেন্ট এখনো চালু হয়নি। আপাতত bKash/Nagad-এ পাঠিয়ে লেনদেন নম্বর জমা দিন।')
+        return redirect(back)
 
     # কেউ যেন বারবার চাপ দিয়ে হাজারটা ইনভয়েস বানাতে না পারে
     recent = shop.online_payments.filter(
@@ -79,7 +83,7 @@ def paystation_start(request):
     ).count()
     if recent >= 5:
         messages.warning(request, 'অনেকবার চেষ্টা হয়েছে। ১০ মিনিট পর আবার চেষ্টা করুন।')
-        return redirect('billing')
+        return redirect(back)
 
     payment = OnlinePayment.objects.create(
         shop=shop,
@@ -110,7 +114,13 @@ def paystation_start(request):
     payment.status = OnlinePayment.STATUS_FAILED
     payment.save(update_fields=['status'])
     messages.error(request, result.get('error') or 'পেমেন্ট শুরু করা যায়নি।')
-    return redirect('billing')
+    return redirect(back)
+
+
+def _back_for(invoice):
+    """SMS কেনা হলে SMS প্যানেলে, প্ল্যান হলে billing-এ ফেরত।"""
+    kind = OnlinePayment.objects.filter(invoice_number=invoice).values_list('kind', flat=True).first()
+    return 'sms_panel' if kind == OnlinePayment.KIND_SMS else 'billing'
 
 
 @csrf_exempt
@@ -124,10 +134,11 @@ def paystation_callback(request):
         messages.error(request, 'পেমেন্ট নিশ্চিত করা যায়নি।')
         return redirect('billing')
 
+    back = _back_for(invoice)
     gateway_status = (request.GET.get('status') or request.POST.get('status') or '').strip().lower()
     if gateway_status in ('failed', 'canceled', 'cancelled', 'cancel'):
         messages.warning(request, 'পেমেন্ট সম্পন্ন হয়নি (বাতিল বা ব্যর্থ)। চাইলে আবার চেষ্টা করুন।')
-        return redirect('billing')
+        return redirect(back)
 
     trx_id = valid_trx_id(request.GET.get('trx_id') or request.POST.get('trx_id'))
     if trx_id and trx_id != invoice:
@@ -143,7 +154,7 @@ def paystation_callback(request):
         messages.warning(request, f'⏳ {msg}' if status == 'unverified' else msg)
     else:
         messages.error(request, f'❌ {msg}')
-    return redirect('billing')
+    return redirect(back)
 
 
 @csrf_exempt

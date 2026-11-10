@@ -157,23 +157,16 @@
   </div>
 </div>
 
-<!-- BUY SMS BUNDLE -->
+<!-- SMS — কেনা আর পাঠানো এখন SMS প্যানেলে -->
 <div class="row mb-4 mt-4" id="sms" style="scroll-margin-top:72px;">
   <div class="col-12">
     <div class="card border-0 shadow-sm rounded-4" style="background:#f0fdf4; border:2px solid #22c55e !important;">
-      <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap">
+      <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
-          <h5 class="fw-bold mb-1" style="color:#15803d;"><i class="bi bi-envelope-paper-fill me-2"></i>Buy SMS Package</h5>
-          <p class="text-muted mb-0" style="font-size:13px;">Flat rate: 0.40 Tk per SMS. Engage your customers instantly!</p>
+          <h5 class="fw-bold mb-1" style="color:#15803d;"><i class="bi bi-chat-dots-fill me-2"></i>SMS কিনুন</h5>
+          <p class="text-muted mb-0" style="font-size:13px;">যত টাকার খুশি SMS কিনুন, মেয়াদ নেই। ব্যালেন্স এখন: {{ shop.sms_balance }}টা</p>
         </div>
-        <div class="d-flex gap-2 mt-3 mt-md-0">
-          <button class="btn btn-outline-success fw-bold rounded-pill px-4" onclick="showPaymentForm('SMS Recharge', 200)">
-            500 SMS (200 Tk)
-          </button>
-          <button class="btn btn-success fw-bold rounded-pill px-4" onclick="showPaymentForm('SMS Recharge', 400)">
-            1000 SMS (400 Tk)
-          </button>
-        </div>
+        <a href="{% url 'sms_panel' %}#buy" class="btn btn-success fw-bold rounded-pill px-4"><i class="bi bi-arrow-right-circle me-1"></i> SMS প্যানেলে যান</a>
       </div>
     </div>
   </div>
@@ -214,7 +207,7 @@
           <div class="rounded-3 p-3 text-center" style="background:#e8f5e9;border:1px solid #a5d6a7;">
             <div style="font-size:22px;">📱</div>
             <div class="fw-bold" style="color:#2e7d32;font-size:14px;">bKash</div>
-            <div class="fw-bold" style="font-size:16px;letter-spacing:1px;">01923513404</div>
+            <div class="fw-bold" style="font-size:16px;letter-spacing:1px;">{{ manual_number }}</div>
             <div style="font-size:11px;color:#66bb6a;">Personal</div>
           </div>
         </div>
@@ -222,7 +215,7 @@
           <div class="rounded-3 p-3 text-center" style="background:#fff3e0;border:1px solid #ffcc80;">
             <div style="font-size:22px;">💰</div>
             <div class="fw-bold" style="color:#e65100;font-size:14px;">Nagad</div>
-            <div class="fw-bold" style="font-size:16px;letter-spacing:1px;">01923513404</div>
+            <div class="fw-bold" style="font-size:16px;letter-spacing:1px;">{{ manual_number }}</div>
             <div style="font-size:11px;color:#ffa726;">Personal</div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import sys
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -231,6 +232,11 @@ PAYSTATION_PAY_WITH_CHARGE = os.environ.get('PAYSTATION_PAY_WITH_CHARGE', '0')
 # sandbox চলার সময় শুধু এই শপগুলো (slug, কমা দিয়ে) অনলাইন পেমেন্ট বাটন দেখবে —
 # যাতে টেস্ট মোডে কোনো আসল সেলার বিনা টাকায় প্ল্যান চালু করতে না পারে।
 PAYSTATION_TEST_SHOPS = env_list('PAYSTATION_TEST_SHOPS')
+
+# SMS: ১০০-র বেশি নম্বর বা অর্ডারের অটো SMS পেছনে (thread) যায়, যাতে পেইজ আটকে না থাকে। টেস্টে সরাসরি।
+SMS_BACKGROUND = env_bool('SMS_BACKGROUND', default=sys.argv[1:2] != ['test'])
+# bKash/Nagad-এ হাতে টাকা পাঠানোর নম্বর (প্যাকেজ বা SMS কেনা)
+MANUAL_PAYMENT_NUMBER = os.environ.get('MANUAL_PAYMENT_NUMBER', '01923513404')
 # কাস্টমার দোকানের ওয়েবসাইটে অনলাইনে টাকা দিলে প্ল্যাটফর্ম কত % রাখবে (বাকিটা সেলারের পাওনা)।
 # PayStation-এর নিজের চার্জ এর মধ্যেই ধরা।
 STOREFRONT_PAYMENT_FEE_PERCENT = os.environ.get('STOREFRONT_PAYMENT_FEE_PERCENT', '2')

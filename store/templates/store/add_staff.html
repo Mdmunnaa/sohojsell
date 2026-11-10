@@ -101,6 +101,14 @@
 
                 <div class="perm-row">
                     <div class="perm-info">
+                        <h6><i class="bi bi-chat-dots text-primary me-2"></i>Send SMS</h6>
+                        <p>কাস্টমারদের SMS পাঠাতে পারবে (দোকানের SMS ব্যালেন্স থেকে কাটবে)।</p>
+                    </div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="can_send_sms" {% if staff.can_send_sms %}checked{% endif %}></div>
+                </div>
+
+                <div class="perm-row">
+                    <div class="perm-info">
                         <h6><i class="bi bi-graph-up text-danger me-2"></i>View Reports</h6>
                         <p>Allow staff to see total revenue and net profit data.</p>
                     </div>

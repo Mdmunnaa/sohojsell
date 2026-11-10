@@ -218,13 +218,6 @@ class PosSettingsForm(forms.ModelForm):
         return value
 
 
-class SmsSettingsForm(forms.ModelForm):
-    class Meta:
-        model = Shop
-        fields = ['is_sms_active']
-        widgets = {'is_sms_active': forms.CheckboxInput(attrs={'class': 'form-check-input', 'role': 'switch'})}
-
-
 from .models import Banner
 
 class BannerForm(forms.ModelForm):

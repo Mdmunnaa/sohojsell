@@ -1,4 +1,5 @@
 from django.contrib import admin
+from . import sms
 from .models import Shop, Category, Product, Customer, Order, OrderItem, PaymentRequest
 
 admin.site.register(Shop)
@@ -21,11 +22,8 @@ class PaymentRequestAdmin(admin.ModelAdmin):
     def approve_payments(self, request, queryset):
         for req in queryset.filter(status='Pending'):
             shop = req.shop
-            if req.plan_name == 'SMS Recharge':
-                # ০.৪০ টাকা রেটে SMS যোগ হবে
-                sms_added = int(float(req.amount) / 0.40)
-                shop.sms_balance += sms_added
-                shop.save(update_fields=['sms_balance'])
+            if req.plan_name == sms.MANUAL_REQUEST_NAME:
+                sms.approve_manual_request(req)      # এখনকার রেটে SMS যোগ
             else:
                 # শুধু প্ল্যান আপডেট হবে, কোনো ফ্রি SMS পাবে না
                 shop.subscription_plan = req.plan_name
@@ -133,3 +131,14 @@ class ShopPayoutAdmin(admin.ModelAdmin):
 class DeliveryZoneAdmin(admin.ModelAdmin):
     list_display = ['shop', 'name', 'charge', 'is_active', 'sort_order']
     search_fields = ['shop__name', 'name']
+
+
+from .models import SmsLog  # noqa: E402
+
+
+@admin.register(SmsLog)
+class SmsLogAdmin(admin.ModelAdmin):
+    list_display = ['created_at', 'shop', 'kind', 'audience', 'recipients', 'delivered', 'sms_used', 'status']
+    list_filter = ['status', 'kind']
+    search_fields = ['shop__name', 'audience', 'message']
+    raw_id_fields = ['shop', 'sent_by']

@@ -6,6 +6,7 @@ from . import website_views
 from . import views
 from . import payment_views
 from . import views_pos
+from . import views_sms
 
 def favicon(request):
     from django.shortcuts import redirect
@@ -54,6 +55,12 @@ urlpatterns = [
     path('courier/', views.courier_dashboard, name='courier'),
 
     # POS System
+    # SMS প্যানেল
+    path('sms/', views_sms.sms_panel, name='sms_panel'),
+    path('sms/send/', views_sms.sms_send, name='sms_send'),
+    path('sms/buy/', views_sms.sms_buy, name='sms_buy'),
+    path('sms/auto/', views_sms.sms_auto, name='sms_auto'),
+    path('sms/customers/', views_sms.sms_customer_search, name='sms_customer_search'),
     path('pos/', views_pos.pos_screen, name='pos'),
     path('pos/checkout/', views_pos.pos_checkout, name='pos_checkout'),
     path('pos/receipt/<int:order_id>/', views_pos.pos_receipt, name='pos_receipt'),
