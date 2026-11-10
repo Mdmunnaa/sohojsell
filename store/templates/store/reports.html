@@ -544,7 +544,7 @@
         <div class="rp-kpi-sub" style="margin-bottom:6px;">{{ dues.people|bn }} জন কাস্টমারের কাছে</div>
         <div class="rp-kv"><span>এই সময়ে বাকিতে বিক্রি</span><b>৳{{ dues.given|floatformat:"0g"|bn }}</b></div>
         <div class="rp-kv"><span>এই সময়ে বাকি আদায়</span><b>৳{{ dues.collected|floatformat:"0g"|bn }}</b></div>
-        {% if dues.outstanding %}<a class="rp-callout" style="margin-top:10px;" href="{% url 'pos' %}"><i class="bi bi-display"></i> POS থেকে বাকি আদায় করুন</a>{% endif %}
+        {% if dues.outstanding %}<a class="rp-callout" style="margin-top:10px;" href="{% url 'due_list' %}"><i class="bi bi-journal-bookmark"></i> বাকির খাতা দেখুন</a>{% endif %}
       </div>
     </section>
   </div>

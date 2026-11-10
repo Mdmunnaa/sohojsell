@@ -1,0 +1,127 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}বাকির খাতা — {{ shop.name }}{% endblock %}
+{% block page_title %}বাকির খাতা{% endblock %}
+
+{% block content %}
+{% include 'store/partials/ledger_styles.html' %}
+<style>
+  .du-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .du-filter { border-radius: 999px; padding: 6px 13px; font-weight: 700; font-size: 13px; color: var(--ink2); background: var(--soft); text-decoration: none; }
+  .du-filter.on { background: #0F172A; color: #fff; }
+  .lg-chip.old { background: #FEE2E2; color: #991B1B; } .lg-chip.mid { background: #FEF3C7; color: #92400E; } .lg-chip.new { background: var(--soft); color: var(--ink2); }
+  .du-check { width: 18px; height: 18px; accent-color: #0F172A; }
+  .du-sample { background: var(--bg2); border: 1px dashed var(--line); border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--ink2); line-height: 1.6; }
+  .sw-row { display: flex; gap: 12px; align-items: center; padding: 10px 0; }
+  .sw-row b { display: block; font-size: 14px; } .sw-row small { color: var(--muted); font-size: 12.5px; }
+</style>
+<div class="lg">
+  <section class="lg-hero">
+    <div class="lg-hero-top">
+      <div>
+        <div class="lg-kicker"><i class="bi bi-journal-bookmark"></i> দোকানের হিসাব</div>
+        <h1>বাকির খাতা</h1>
+        <p>দোকানে (POS) বাকিতে বিক্রি করা টাকা — কার কাছে কত, কত দিনের, আর তাগাদা দেওয়ার ব্যবস্থা</p>
+      </div>
+      <div class="lg-actions">
+        {% if can_sms and rows %}
+        <form method="post" action="{% url 'due_remind_all' %}" onsubmit="return confirm('বাকি থাকা {{ summary.people|bn }} জনকে তাগাদা SMS যাবে (প্রতিজনে ১টা SMS কাটবে)। পাঠাবেন?');">{% csrf_token %}
+          <button class="lg-btn white" type="submit"><i class="bi bi-chat-dots-fill"></i> সবাইকে তাগাদা SMS</button>
+        </form>
+        {% endif %}
+        <a class="lg-btn ghost" href="{% url 'pos' %}"><i class="bi bi-shop"></i> POS</a>
+      </div>
+    </div>
+    <div class="lg-stats">
+      <div class="lg-stat warn"><small>মোট বাকি</small><b class="num">{{ summary.total|taka }}</b><em>{{ summary.people|bn }} জনের কাছে</em></div>
+      <div class="lg-stat"><small>৩০ দিনের বেশি পুরনো</small><b class="num">{{ summary.old|taka }}</b><em>{{ summary.old_people|bn }} জন</em></div>
+      <div class="lg-stat"><small>এই মাসে আদায়</small><b class="num">{{ summary.collected_month|taka }}</b></div>
+      <div class="lg-stat"><small>কথা দিয়ে দেয়নি</small><b class="num">{{ summary.promise_passed|bn }} জন</b></div>
+    </div>
+  </section>
+
+  <div class="lg-grid2">
+    <section class="lg-card">
+      <div class="lg-head">
+        <div><h2><i class="bi bi-people"></i> কার কাছে কত বাকি</h2><p>বেশি বাকি যার, সে উপরে</p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <div class="du-filters">
+            <a class="du-filter{% if not show %} on{% endif %}" href="?{% if q %}q={{ q|urlencode }}{% endif %}">সবাই</a>
+            <a class="du-filter{% if show == 'old' %} on{% endif %}" href="?show=old{% if q %}&q={{ q|urlencode }}{% endif %}">৩০ দিন+</a>
+            <a class="du-filter{% if show == 'promise' %} on{% endif %}" href="?show=promise{% if q %}&q={{ q|urlencode }}{% endif %}">কথা দিয়ে দেয়নি</a>
+          </div>
+          <form class="lg-search" method="get">{% if show %}<input type="hidden" name="show" value="{{ show }}">{% endif %}
+            <input class="lg-input" type="search" name="q" value="{{ q }}" placeholder="নাম বা নম্বর" aria-label="খুঁজুন" style="min-height:40px;padding:6px 12px;">
+            <button class="lg-btn dark sm" type="submit"><i class="bi bi-search"></i></button>
+          </form>
+        </div>
+      </div>
+      {% if rows %}
+      <form method="post" action="{% url 'due_remind_all' %}" id="du-form" onsubmit="return confirm('বাছাই করা কাস্টমারদের তাগাদা SMS যাবে। পাঠাবেন?');">{% csrf_token %}
+      <div class="lg-table-wrap" style="margin-top: 8px;">
+        <table class="lg-table stack">
+          <thead><tr>{% if can_sms %}<th style="width:30px;"></th>{% endif %}<th>কাস্টমার</th><th>কত দিনের</th><th class="r">বিল</th><th class="r">বাকি</th><th class="r"></th></tr></thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              {% if can_sms %}<td class="hide-sm"><input class="du-check" type="checkbox" name="phones" value="{{ r.phone }}" aria-label="{{ r.name }} বাছুন"></td>{% endif %}
+              <td class="a"><a class="row-link" href="{% url 'due_detail' r.phone %}">{{ r.name|default:"নাম নেই" }}</a><small class="num">{{ r.phone }}{% if r.promise %} · কথা: {{ r.promise|bn_day }}{% if r.promise_passed %} <span style="color:#B91C1C;font-weight:700;">(পার হয়ে গেছে)</span>{% endif %}{% endif %}</small>{% if r.note %}<small>{{ r.note }}</small>{% endif %}</td>
+              <td class="c"><span class="lg-chip {{ r.age }}">{% if r.days == 0 %}আজকের{% else %}{{ r.days|bn }} দিন{% endif %}</span> <small style="display:inline;">সবচেয়ে পুরনো বিল {{ r.oldest|bn_day }}{% if r.reminded_at %} · শেষ তাগাদা {{ r.reminded_at|bn_day }}{% endif %}</small></td>
+              <td class="r num hide-sm">{{ r.bills|bn }}টা</td>
+              <td class="r num b" style="color:#B45309;">{{ r.due|taka }}</td>
+              <td class="r d"><div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;">
+                <a class="lg-btn line sm" href="tel:{{ r.phone }}"><i class="bi bi-telephone"></i></a>
+                <a class="lg-btn dark sm" href="{% url 'due_detail' r.phone %}"><i class="bi bi-cash-coin"></i> আদায় / খাতা</a>
+              </div></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if can_sms %}<div class="lg-body" style="padding-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <label style="margin:0;font-weight:600;font-size:13px;cursor:pointer;"><input type="checkbox" class="du-check" id="du-all"> সবগুলো বাছুন</label>
+        <button class="lg-btn line sm" type="submit" id="du-send" disabled><i class="bi bi-chat-dots"></i> বাছাই করাদের তাগাদা SMS</button>
+      </div>{% endif %}
+      </form>
+      {% elif q or show %}
+      <div class="lg-empty"><i class="bi bi-search"></i>এই ছাঁকনিতে কাউকে পাওয়া যায়নি</div>
+      {% else %}
+      <div class="lg-empty"><i class="bi bi-emoji-smile"></i><b>কারো কাছে কোনো বাকি নেই</b>POS-এ বিল করার সময় পুরো টাকা না নিলে এখানে বাকি হিসেবে উঠবে</div>
+      {% endif %}
+    </section>
+
+    <div>
+      <section class="lg-card">
+        <div class="lg-head"><div><h2><i class="bi bi-chat-dots"></i> তাগাদা SMS</h2></div></div>
+        <div class="lg-body">
+          <div class="lg-help" style="margin:0 0 8px;">কাস্টমারকে যা যাবে (নাম আর টাকার অঙ্ক বসে যায়):</div>
+          <div class="du-sample">{{ sample_text }}</div>
+          <div class="lg-help" style="margin-top:8px;">প্রতিজনে ১টা SMS কাটে। একই কাস্টমারকে দিনে একবারের বেশি যায় না।</div>
+        </div>
+      </section>
+      <section class="lg-card">
+        <div class="lg-head"><div><h2><i class="bi bi-alarm"></i> নিজে থেকে তাগাদা</h2></div></div>
+        <form class="lg-body" method="post" action="{% url 'due_auto_setting' %}">
+          {% csrf_token %}
+          <div class="lg-help" style="margin:0 0 10px;">চালু রাখলে বাকি থাকা কাস্টমারদের নির্দিষ্ট দিন পর পর নিজে থেকে SMS যাবে, আপনাকে কিছু করতে হবে না।</div>
+          <select class="lg-input" name="days"{% if request.user.is_shop_staff %} disabled{% endif %}>
+            {% for days, label in auto_choices %}<option value="{{ days }}"{% if shop.due_reminder_days == days %} selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+          {% if not request.user.is_shop_staff %}<button class="lg-btn dark" type="submit" style="margin-top:10px;width:100%;justify-content:center;"><i class="bi bi-check-lg"></i> সেভ করুন</button>{% endif %}
+          {% if shop.due_reminder_days %}<div class="lg-help" style="margin-top:8px;color:#166534;"><i class="bi bi-check-circle-fill"></i> চালু আছে: {{ shop.due_reminder_days|bn }} দিন পর পর</div>{% endif %}
+        </form>
+      </section>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  const all = document.getElementById('du-all'), send = document.getElementById('du-send');
+  if (!all) return;
+  const boxes = () => [...document.querySelectorAll('input[name=phones]')];
+  const sync = () => { send.disabled = !boxes().some(b => b.checked); };
+  all.addEventListener('change', () => { boxes().forEach(b => b.checked = all.checked); sync(); });
+  boxes().forEach(b => b.addEventListener('change', sync));
+})();
+</script>
+{% endblock %}

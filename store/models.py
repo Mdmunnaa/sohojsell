@@ -51,6 +51,8 @@ class Shop(models.Model):
     sms_api_key = models.CharField(max_length=255, blank=True, null=True)
     sms_balance = models.IntegerField(default=0)
     is_sms_active = models.BooleanField(default=True, help_text="Turn on/off SMS sending")
+    # বাকির তাগাদা নিজে থেকে: ০ = বন্ধ; নাহলে এত দিন পর পর (বাকি থাকা কাস্টমারদের) SMS
+    due_reminder_days = models.PositiveSmallIntegerField(default=0)
     # অটো SMS: উপরেরটা মূল সুইচ; নিচেরগুলো কোন কোন সময়ে কাস্টমারকে SMS যাবে (store/order_flow.py)
     sms_on_received = models.BooleanField(default=True)
     sms_on_confirmed = models.BooleanField(default=False)
@@ -299,6 +301,10 @@ class Customer(models.Model):
     address = models.TextField()
     # সেলার ব্লক করলে এই নম্বর থেকে ওয়েবসাইটে আর অর্ডার নেওয়া হয় না (ভুয়া অর্ডার ঠেকাতে)
     is_blocked = models.BooleanField(default=False)
+    # বাকির খাতা (store/dues.py): কবে দেবে বলেছে, শেষ কবে তাগাদা দেওয়া হলো
+    due_promise = models.DateField(null=True, blank=True)
+    due_note = models.CharField(max_length=200, blank=True, default='')
+    due_reminded_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

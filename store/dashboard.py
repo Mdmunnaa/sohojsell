@@ -337,9 +337,9 @@ def todo_items(can, pipeline, dues, stock):
     if dues and dues['amount'] > 0 and can['pos']:
         amount = f"{dues['amount']:,.0f}" if dues['amount'] == dues['amount'].to_integral_value() \
             else f"{dues['amount']:,.2f}"
-        items.append({'icon': 'bi-wallet2', 'tone': 'violet', 'url': reverse('pos'),
+        items.append({'icon': 'bi-wallet2', 'tone': 'violet', 'url': reverse('due_list'),
                       'title': f'৳{amount} বাকি তুলতে হবে',
-                      'sub': f"{bn_num(dues['people'])} জন কাস্টমারের কাছে · POS থেকে আদায় করুন"})
+                      'sub': f"{bn_num(dues['people'])} জন কাস্টমারের কাছে · বাকির খাতায় তাগাদা দিন"})
     if can['orders'] and pipeline['shipped']:
         items.append({'icon': 'bi-truck', 'tone': 'slate', 'url': reverse('courier'),
                       'title': f"{bn_num(pipeline['shipped'])}টা পার্সেল পথে আছে",

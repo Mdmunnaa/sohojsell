@@ -1,0 +1,126 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}{{ customer.name }} — বাকির খাতা{% endblock %}
+{% block page_title %}বাকির খাতা{% endblock %}
+
+{% block content %}
+{% include 'store/partials/ledger_styles.html' %}
+<div class="lg">
+  <section class="lg-hero">
+    <div class="lg-hero-top">
+      <div>
+        <div class="lg-kicker"><a href="{% url 'due_list' %}"><i class="bi bi-arrow-left"></i> বাকির খাতা</a></div>
+        <h1>{{ customer.name|default:"নাম নেই" }}</h1>
+        <p class="num"><i class="bi bi-telephone"></i> {{ phone }}{% if customer.address %} · {{ customer.address }}{% endif %}</p>
+      </div>
+      <div class="lg-actions">
+        <a class="lg-btn white" href="tel:{{ phone }}"><i class="bi bi-telephone-fill"></i> কল করুন</a>
+        {% if can_sms and due > 0 %}
+        <form method="post" onsubmit="return confirm('তাগাদা SMS পাঠাবেন? ১টা SMS কাটবে।');">{% csrf_token %}<input type="hidden" name="action" value="remind">
+          <button class="lg-btn ghost" type="submit"><i class="bi bi-chat-dots"></i> তাগাদা SMS</button></form>
+        {% endif %}
+      </div>
+    </div>
+    <div class="lg-stats">
+      <div class="lg-stat{% if due > 0 %} warn{% endif %}"><small>এখন বাকি</small><b class="num">{{ due|taka }}</b>{% if due_bills %}<em>{{ due_bills|length|bn }}টা বিলে</em>{% endif %}</div>
+      <div class="lg-stat"><small>মোট কেনাকাটা</small><b class="num">{{ bought|taka }}</b><em>{{ bills|length|bn }}টা বিল</em></div>
+      <div class="lg-stat"><small>বাকি থেকে আদায় হয়েছে</small><b class="num">{{ paid_total|taka }}</b></div>
+    </div>
+  </section>
+
+  <div class="lg-grid2">
+    <div>
+      <section class="lg-card">
+        <div class="lg-head"><div><h2><i class="bi bi-receipt"></i> যে বিলগুলোতে বাকি আছে</h2></div></div>
+        {% if due_bills %}
+        <div class="lg-table-wrap" style="margin-top: 8px;">
+          <table class="lg-table stack">
+            <thead><tr><th>বিল</th><th class="r">মোট</th><th class="r">দিয়েছে</th><th class="r">বাকি</th></tr></thead>
+            <tbody>
+              {% for b in due_bills %}
+              <tr>
+                <td class="a"><a class="row-link" href="{% url 'pos_receipt' b.id %}" target="_blank">বিল #{{ b.id|bn }}</a><small>{{ b.created_at|date:"j M Y, g:i A"|bn }}</small></td>
+                <td class="r num hide-sm">{{ b.total_amount|taka }}</td>
+                <td class="r num hide-sm">{{ b.advance_paid|taka }}</td>
+                <td class="r num b" style="color:#B45309;">{{ b.due|taka }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="lg-empty"><i class="bi bi-check-circle" style="color:#22C55E;"></i>কোনো বাকি নেই</div>
+        {% endif %}
+      </section>
+
+      <section class="lg-card">
+        <div class="lg-head"><div><h2><i class="bi bi-clock-history"></i> আদায়ের ইতিহাস</h2></div></div>
+        {% if payments %}
+        <div class="lg-table-wrap" style="margin-top: 8px;">
+          <table class="lg-table stack">
+            <thead><tr><th>কখন</th><th>কীভাবে</th><th>কোন বিলে</th><th class="r">টাকা</th></tr></thead>
+            <tbody>
+              {% for p in payments %}
+              <tr>
+                <td class="a">{{ p.created_at|date:"j M Y"|bn }}<small>{{ p.created_at|date:"g:i A"|bn }}{% if p.received_by %} · {{ p.received_by.name|default:p.received_by.phone_number }}{% endif %}</small></td>
+                <td class="c">{{ p.get_method_display }}{% if p.reference %} · {{ p.reference }}{% endif %}</td>
+                <td class="hide-sm num">বিল #{{ p.order_id|bn }}</td>
+                <td class="r num b" style="color:#15803D;">{{ p.amount|taka }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="lg-empty" style="padding:20px;">এখনো কোনো আদায় হয়নি</div>
+        {% endif %}
+      </section>
+    </div>
+
+    <div>
+      <section class="lg-card">
+        <div class="lg-head"><div><h2><i class="bi bi-cash-coin"></i> বাকি আদায়</h2></div></div>
+        {% if due > 0 %}
+        <form class="lg-body" method="post" autocomplete="off">
+          {% csrf_token %}<input type="hidden" name="action" value="collect">
+          <div style="display:grid;gap:12px;">
+            <div><label for="du-amount">কত টাকা পেলেন</label><input class="lg-input num" type="text" inputmode="decimal" name="amount" id="du-amount" required placeholder="সর্বোচ্চ {{ due|taka }}">
+              <div class="lg-help"><a href="#" id="du-all" data-due="{{ due|floatformat:'-2' }}">পুরো {{ due|taka }} বসান</a></div></div>
+            <div><label for="du-method">কীভাবে</label><select class="lg-input" name="method" id="du-method">{% for key, label in methods %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></div>
+            <div><label for="du-ref">নোট / TrxID <span style="font-weight:500;color:var(--muted);">(ঐচ্ছিক)</span></label><input class="lg-input" type="text" name="reference" id="du-ref" maxlength="60"></div>
+            <button class="lg-btn green" type="submit" style="justify-content:center;"><i class="bi bi-check-circle-fill"></i> আদায় লিখুন</button>
+            <div class="lg-help">পুরনো বিল আগে শোধ হয়। রসিদে "বাকি আদায়" হিসেবে থাকে।</div>
+          </div>
+        </form>
+        {% else %}
+        <div class="lg-empty" style="padding:20px;"><i class="bi bi-check-circle" style="color:#22C55E;"></i>এই কাস্টমারের কোনো বাকি নেই</div>
+        {% endif %}
+      </section>
+
+      {% if due > 0 %}
+      <section class="lg-card">
+        <div class="lg-head"><div><h2><i class="bi bi-calendar-check"></i> কবে দেবে বলেছে</h2></div></div>
+        <form class="lg-body" method="post" autocomplete="off">
+          {% csrf_token %}<input type="hidden" name="action" value="promise">
+          <div style="display:grid;gap:12px;">
+            <div><label for="du-promise">তারিখ</label><input class="lg-input num" type="date" name="promise" id="du-promise" value="{{ customer.due_promise|date:'Y-m-d' }}" min="{{ today|date:'Y-m-d' }}"></div>
+            <div><label for="du-note">নোট <span style="font-weight:500;color:var(--muted);">(যেমন: বেতন পেলে দেবে)</span></label><input class="lg-input" type="text" name="note" id="du-note" maxlength="200" value="{{ customer.due_note }}"></div>
+            <button class="lg-btn dark" type="submit" style="justify-content:center;"><i class="bi bi-check-lg"></i> লিখে রাখুন</button>
+          </div>
+          {% if customer.due_reminded_at %}<div class="lg-help" style="margin-top:10px;">শেষ তাগাদা SMS: {{ customer.due_reminded_at|date:"j M Y, g:i A"|bn }}</div>{% endif %}
+        </form>
+      </section>
+      {% if reminder_text %}
+      <section class="lg-card"><div class="lg-body"><div class="lg-help" style="margin:0 0 6px;">তাগাদা SMS-এ যা যাবে:</div><div style="background:var(--bg2);border:1px dashed var(--line);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.6;">{{ reminder_text }}</div></div></section>
+      {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  const all = document.getElementById('du-all');
+  if (all) all.addEventListener('click', e => { e.preventDefault(); document.getElementById('du-amount').value = Number(all.dataset.due); });
+})();
+</script>
+{% endblock %}

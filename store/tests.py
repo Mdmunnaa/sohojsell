@@ -2835,6 +2835,123 @@ class LandingPageTests(ShopTestMixin, TestCase):
         self.assertTrue(LandingPage.objects.filter(pk=page.pk).exists())
 
 
+class DueBookTests(ShopTestMixin, TestCase):
+    """বাকির খাতা: কার কত বাকি, বয়স, খাতা, আদায়, প্রতিশ্রুতি, তাগাদা SMS (হাতে, বাছাই করে, নিজে থেকে)।"""
+
+    def setUp(self):
+        from .models import Customer, Product
+        self.user, self.shop = self.make_shop()
+        Shop.objects.filter(pk=self.shop.pk).update(sms_balance=20)
+        self.shop.refresh_from_db()
+        self.shirt = Product.objects.create(shop=self.shop, name='শার্ট', price=450, cost_price=300, stock_quantity=50)
+        self.rahim = Customer.objects.create(shop=self.shop, name='রহিম উদ্দিন', phone='01812345678', address='Savar')
+        self.karim = Customer.objects.create(shop=self.shop, name='করিম', phone='01911111111', address='Dhaka')
+        self.walkin = Customer.objects.create(shop=self.shop, name='Walk-in', phone='00000000000', address='')
+
+    def sale(self, customer, total, paid, days_ago=0):
+        order = Order.objects.create(shop=self.shop, customer=customer, source='pos', status='Delivered',
+                                     delivery_charge=0, total_amount=Decimal(total), advance_paid=Decimal(paid))
+        OrderItem.objects.create(order=order, product=self.shirt, price=450, quantity=1, cost_price=300)
+        if days_ago:
+            Order.objects.filter(pk=order.pk).update(created_at=timezone.now() - timedelta(days=days_ago))
+        return order
+
+    def test_rows_and_summary(self):
+        from . import dues
+        self.sale(self.rahim, 1000, 400, days_ago=40)        # ৬০০ বাকি, পুরনো
+        self.sale(self.rahim, 500, 500)                       # শোধ
+        self.sale(self.rahim, 300, 0)                         # ৩০০ বাকি
+        self.sale(self.karim, 200, 50, days_ago=3)            # ১৫০ বাকি
+        self.sale(self.walkin, 100, 0)                        # walk-in ধরা হয় না
+        cancelled = self.sale(self.karim, 900, 0)
+        Order.objects.filter(pk=cancelled.pk).update(status='Returned')
+        rows = dues.rows(self.shop)
+        self.assertEqual([(r['phone'], r['due'], r['bills'], r['age']) for r in rows],
+                         [('01812345678', Decimal('900'), 2, 'old'), ('01911111111', Decimal('150'), 1, 'new')])
+        self.assertEqual(rows[0]['days'], 40)
+        summary = dues.summary(self.shop, rows)
+        self.assertEqual((summary['total'], summary['people'], summary['old'], summary['old_people']),
+                         (Decimal('1050'), 2, Decimal('900'), 1))
+        page = self.client.get(reverse('due_list')).content.decode()
+        for text in ['রহিম উদ্দিন', '৳৯০০', '৪০ দিন', 'সবাইকে তাগাদা SMS', 'নিজে থেকে তাগাদা']:
+            self.assertIn(text, page)
+        self.assertNotIn('Walk-in', page)
+        self.assertEqual(len(self.client.get(reverse('due_list') + '?show=old').context['rows']), 1)
+        self.assertEqual(len(self.client.get(reverse('due_list') + '?q=করিম').context['rows']), 1)
+
+    def test_ledger_collect_and_promise(self):
+        from .models import Customer, SalePayment
+        self.sale(self.rahim, 1000, 400, days_ago=10)
+        self.sale(self.rahim, 300, 0)
+        url = reverse('due_detail', args=['01812345678'])
+        page = self.client.get(url).content.decode()
+        self.assertIn('৳৯০০', page)
+        self.assertIn('বাকি আদায়', page)
+        too_much = self.client.post(url, {'action': 'collect', 'amount': '2000'}, follow=True).content.decode()
+        self.assertIn('বাকি আছে মাত্র', too_much)
+        self.client.post(url, {'action': 'collect', 'amount': '৭০০', 'method': 'bkash', 'reference': 'TX9'})
+        orders = list(Order.objects.filter(customer=self.rahim).order_by('created_at'))
+        self.assertEqual((orders[0].advance_paid, orders[1].advance_paid), (Decimal('1000'), Decimal('100')))   # পুরনোটা আগে
+        self.assertEqual(SalePayment.objects.filter(kind=SalePayment.DUE_COLLECTION).count(), 2)
+        page = self.client.get(url).content.decode()
+        self.assertIn('৳২০০', page)
+        self.assertIn('TX9', page)
+        self.client.post(url, {'action': 'promise', 'promise': '2026-12-01', 'note': 'বেতন পেলে দেবে'})
+        self.rahim.refresh_from_db()
+        self.assertEqual((str(self.rahim.due_promise), self.rahim.due_note), ('2026-12-01', 'বেতন পেলে দেবে'))
+        self.assertEqual(self.client.get(reverse('due_detail', args=['01700000000'])).status_code, 302)
+
+    @mock.patch('store.sms.gateway_send', return_value=(True, 'ok'))
+    def test_reminders_manual_selected_and_auto(self, gateway):
+        from types import SimpleNamespace
+        from . import dues, sms
+        from .models import Customer, SmsLog
+        self.sale(self.rahim, 1000, 0)
+        self.sale(self.karim, 500, 250)
+        # সবাইকে
+        response = self.client.post(reverse('due_remind_all'), follow=True)
+        self.assertIn('২ জনকে SMS পাঠানো হয়েছে', response.content.decode())
+        log = SmsLog.objects.get()
+        self.assertEqual((log.recipients, log.sms_used, log.audience), (2, 2, 'বাকির তাগাদা'))
+        texts = [call.args[1] for call in gateway.call_args_list]
+        self.assertTrue(any('১,০০০' in t for t in texts), texts)
+        self.assertTrue(any('২৫০' in t for t in texts), texts)
+        self.assertIn('রহিম', sms.due_reminder_text(SimpleNamespace(name='মুন্না ফ্যাশন'), 'রহিম উদ্দিন', Decimal('1000')))
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.sms_balance, 18)
+        # একই দিনে আবার না
+        again = self.client.post(reverse('due_remind_all'), follow=True)
+        self.assertIn('তাগাদা পাঠানোর মতো কেউ নেই', again.content.decode())
+        self.assertEqual(SmsLog.objects.count(), 1)
+        # একজনকে বাছাই করে (খাতা থেকে, একই দিনে হলেও যায়)
+        self.client.post(reverse('due_detail', args=['01911111111']), {'action': 'remind'})
+        self.assertEqual(SmsLog.objects.count(), 2)
+        # নিজে থেকে: ৭ দিন পর পর
+        self.client.post(reverse('due_auto_setting'), {'days': '7'})
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.due_reminder_days, 7)
+        self.assertEqual(dues.run_auto_reminders(), {})                                   # আজই তাগাদা গেছে
+        Customer.objects.filter(shop=self.shop).update(due_reminded_at=timezone.now() - timedelta(days=8))
+        self.assertEqual(dues.run_auto_reminders(), {self.shop.id: 2})
+        self.assertEqual(SmsLog.objects.filter(kind='auto').count(), 1)
+        # SMS বন্ধ থাকলে তাগাদা যায় না
+        Shop.objects.filter(pk=self.shop.pk).update(is_sms_active=False)
+        Customer.objects.filter(shop=self.shop).update(due_reminded_at=None)
+        self.assertIn('বন্ধ আছে', self.client.post(reverse('due_remind_all'), follow=True).content.decode())
+        self.assertEqual(dues.run_auto_reminders(), {})
+
+    def test_staff_needs_pos_permission(self):
+        from .models import StaffProfile
+        staff = User.objects.create_user(phone_number='01922222222', password='Test-pass-123', name='Karim')
+        profile = StaffProfile.objects.create(user=staff, shop=self.shop, can_manage_orders=True, can_use_pos=False)
+        self.client.force_login(staff)
+        self.assertEqual(self.client.get(reverse('due_list')).status_code, 302)
+        profile.can_use_pos = True
+        profile.save()
+        self.assertEqual(self.client.get(reverse('due_list')).status_code, 200)
+        self.assertIn('এটা মালিক বদলাতে পারবেন', self.client.post(reverse('due_auto_setting'), {'days': '7'}, follow=True).content.decode())
+
+
 class BrandTests(TestCase):
     def test_new_name_logo_and_icons(self):
         import json

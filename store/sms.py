@@ -376,6 +376,71 @@ def _deliver(log_id, phones, message, per_person, sender=None):
                      balance=balance, log_id=log.pk, error=note)
 
 
+def send_each(shop, pairs, audience, *, user=None, kind='manual', sender=None):
+    """
+    প্রতিজনকে আলাদা লেখা (যেমন বাকির তাগাদা: নাম আর টাকার অঙ্ক সহ)। pairs = [(phone, message), ...]।
+    একটাই SmsLog, খরচ আগে কাটে, যেগুলো যায়নি সেগুলোর খরচ ফেরত।
+    """
+    from .models import Shop, SmsLog
+    cleaned = []
+    for phone, message in pairs:
+        phones = clean_phones([phone])
+        message = clean_message(message)
+        if phones and message and len(message) <= MAX_MESSAGE_CHARS:
+            cleaned.append((phones[0], message, segments(message)))
+    if not cleaned:
+        return SmsResult(False, error='পাঠানোর মতো কোনো সঠিক মোবাইল নম্বর পাওয়া যায়নি।')
+    total = sum(units for _p, _m, units in cleaned)
+    with transaction.atomic():
+        balance = Shop.objects.select_for_update().values_list('sms_balance', flat=True).get(pk=shop.pk) or 0
+        if balance < total:
+            return SmsResult(False, recipients=len(cleaned), needed=total, balance=balance,
+                             error=f'SMS ব্যালেন্স কম — লাগবে {bn_num(total)}টা, আছে {bn_num(balance)}টা। '
+                                   'SMS কিনে আবার পাঠান (কিছু পাঠানো হয়নি)।')
+        Shop.objects.filter(pk=shop.pk).update(sms_balance=F('sms_balance') - total)
+        log = SmsLog.objects.create(
+            shop=shop, kind=kind, audience=str(audience)[:120], message=cleaned[0][1], recipients=len(cleaned),
+            sms_used=total, status=SmsLog.SENDING, sent_by=user if getattr(user, 'pk', None) else None)
+    send_one = sender or gateway_send
+    delivered, refund, last_error = 0, 0, ''
+    for phone, message, units in cleaned:
+        try:
+            ok, msg = send_one([phone], message)
+        except Exception as exc:     # noqa: BLE001
+            logger.exception('SMS gateway error (shop=%s)', shop.pk)
+            ok, msg = False, str(exc)[:150]
+        if ok or ok is None:
+            delivered += 1
+        else:
+            refund += units
+            last_error = msg or 'গেটওয়ে মেসেজ নেয়নি'
+    failed = len(cleaned) - delivered
+    if refund:
+        Shop.objects.filter(pk=shop.pk).update(sms_balance=F('sms_balance') + refund)
+    status = SmsLog.SENT if not failed else (SmsLog.FAILED if not delivered else SmsLog.PARTIAL)
+    SmsLog.objects.filter(pk=log.pk).update(delivered=delivered, failed=failed, sms_used=total - refund,
+                                            status=status, error=(last_error if failed else '')[:255])
+    balance = Shop.objects.filter(pk=shop.pk).values_list('sms_balance', flat=True).first() or 0
+    if not delivered:
+        return SmsResult(False, recipients=len(cleaned), failed=failed, balance=balance, log_id=log.pk,
+                         error=f'SMS পাঠানো যায়নি ({last_error}) — ব্যালেন্স থেকে কিছু কাটা হয়নি।')
+    return SmsResult(True, recipients=len(cleaned), delivered=delivered, failed=failed, charged=total - refund,
+                     balance=balance, log_id=log.pk)
+
+
+def due_reminder_text(shop, name, due):
+    """বাকির তাগাদা, সম্ভব হলে ১টা SMS-এ।"""
+    amount = f'৳{bn_num(f"{due:,.0f}")}'
+    first = _first_name(name)
+    options = []
+    if first:
+        options += [f'{first}, {shop.name}-এ আপনার বাকি আছে {amount}। সুবিধামতো পরিশোধ করে দেবেন। ধন্যবাদ।',
+                    f'{first}, {shop.name}-এ আপনার বাকি {amount}। পরিশোধ করে দেবেন। ধন্যবাদ।']
+    options += [f'{shop.name}-এ আপনার বাকি {amount}। পরিশোধ করে দেবেন। ধন্যবাদ।',
+                f'আপনার বাকি {amount}। - {shop.name}']
+    return _first_fitting(options)
+
+
 def describe(result):
     """প্যানেলে দেখানোর জন্য এক লাইন।"""
     if not result.ok:

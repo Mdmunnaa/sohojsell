@@ -418,9 +418,14 @@
         {% endif %}
         {% endif %}
 
-        {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_products or request.user.staff_profile.can_view_reports %}
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_products or request.user.staff_profile.can_view_reports or request.user.staff_profile.can_use_pos %}
         <div class="sb-sep"></div>
         <div class="sb-label">হিসাব</div>
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_use_pos %}
+        <a href="{% url 'due_list' %}" class="sb-link {% if '/dues/' in request.path %}active{% endif %}">
+          <i class="bi bi-journal-bookmark"></i> <span class="sb-text-hide">বাকির খাতা</span>
+        </a>
+        {% endif %}
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_products %}
         <a href="{% url 'purchase_list' %}" class="sb-link {% if '/purchases/' in request.path %}active{% endif %}">
           <i class="bi bi-bag-plus"></i> <span class="sb-text-hide">মাল কেনা</span>

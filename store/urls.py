@@ -10,6 +10,7 @@ from . import views_sms
 from . import views_ledger
 from . import views_offers
 from . import views_landing
+from . import views_dues
 
 def favicon(request):
     from django.shortcuts import redirect
@@ -77,6 +78,10 @@ urlpatterns = [
     path('reviews/<int:review_id>/', views_offers.review_action, name='review_action'),
     path('orders/risk/', views.order_risk, name='order_risk'),
     path('customers/<int:customer_id>/block/', views.customer_block, name='customer_block'),
+    path('dues/', views_dues.due_list, name='due_list'),
+    path('dues/remind/', views_dues.due_remind_all, name='due_remind_all'),
+    path('dues/auto/', views_dues.due_auto_setting, name='due_auto_setting'),
+    path('dues/<str:phone>/', views_dues.due_detail, name='due_detail'),
     path('purchases/', views_ledger.purchase_list, name='purchase_list'),
     path('purchases/new/', views_ledger.purchase_new, name='purchase_new'),
     path('purchases/<int:purchase_id>/', views_ledger.purchase_detail, name='purchase_detail'),
