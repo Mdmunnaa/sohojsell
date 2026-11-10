@@ -1951,6 +1951,126 @@ class BanglaDigitFontTests(ShopTestMixin, TestCase):
             self.assertGreater((folder / f'bn-digit-one-{weight}.woff2').stat().st_size, 300)
 
 
+class ReportTests(ShopTestMixin, TestCase):
+    """রিপোর্ট পেজ: সময় বাছাই আর তুলনা, বিক্রি-লাভের হিসাব, পেমেন্টের ফেরত, বাংলা পেজ, Excel, স্টাফের অনুমতি।"""
+
+    def setUp(self):
+        from .models import Customer, Product
+        self.user, self.shop = self.make_shop()
+        self.shirt = Product.objects.create(shop=self.shop, name='শার্ট', price=Decimal('450'), cost_price=300,
+                                            stock_quantity=10)
+        self.customer = Customer.objects.create(shop=self.shop, name='রহিম', phone='01812345678', address='Savar')
+
+    def order(self, *, source='storefront', status='Pending', qty=1, delivery=0, discount=0, when=None):
+        order = Order.objects.create(shop=self.shop, customer=self.customer, source=source, status=status,
+                                     delivery_charge=delivery, discount=discount,
+                                     total_amount=Decimal('450') * qty + delivery - discount)
+        OrderItem.objects.create(order=order, product=self.shirt, price=Decimal('450'), quantity=qty, cost_price=300)
+        if when is not None:
+            Order.objects.filter(pk=order.pk).update(created_at=when)
+        return order
+
+    def test_periods_and_what_they_compare_with(self):
+        from datetime import date
+        from . import reports
+        today = date(2026, 11, 10)
+        cases = {
+            'today': (date(2026, 11, 10), date(2026, 11, 10), date(2026, 11, 9), date(2026, 11, 9)),
+            'yesterday': (date(2026, 11, 9), date(2026, 11, 9), date(2026, 11, 8), date(2026, 11, 8)),
+            '7d': (date(2026, 11, 4), date(2026, 11, 10), date(2026, 10, 28), date(2026, 11, 3)),
+            'month': (date(2026, 11, 1), date(2026, 11, 10), date(2026, 10, 1), date(2026, 10, 10)),
+            'last_month': (date(2026, 10, 1), date(2026, 10, 31), date(2026, 9, 1), date(2026, 9, 30)),
+            'year': (date(2026, 1, 1), date(2026, 11, 10), date(2025, 1, 1), date(2025, 11, 10)),
+        }
+        for key, expected in cases.items():
+            period = reports.resolve_period({'period': key}, today)
+            self.assertEqual((period.start, period.end, period.prev_start, period.prev_end), expected, key)
+        self.assertEqual(reports.resolve_period({}, today).key, 'month')
+        self.assertEqual(reports.resolve_period({'period': 'junk'}, today).key, 'month')
+        custom = reports.resolve_period({'start': '2026-11-20', 'end': '2026-12-31'}, today)   # ভবিষ্যৎ কেটে আজ পর্যন্ত
+        self.assertEqual((custom.key, custom.start, custom.end), ('custom', today, today))
+        custom = reports.resolve_period({'start': '2026-11-01', 'end': 'abc'}, today)
+        self.assertEqual((custom.start, custom.end, custom.days), (date(2026, 11, 1), today, 10))
+        self.assertEqual(reports.resolve_period({'period': 'month'}, date(2026, 3, 31)).prev_end, date(2026, 2, 28))
+        self.assertEqual(reports.range_label(date(2026, 11, 1), date(2026, 11, 10)), '১ নভেম্বর – ১০ নভেম্বর ২০২৬')
+
+    def test_summary_counts_sales_profit_and_channels(self):
+        from . import reports
+        self.order(source='pos', status='Delivered', qty=2, discount=50)          # ৮৫০, লাভ ২৫০
+        self.order(delivery=60)                                                   # ৪৫০ (+৬০), লাভ ১৫০
+        self.order(source='dashboard', status='Returned', qty=3)                  # ধরা হবে না, হারানো ১৩৫০
+        self.order(source='pos', status='Delivered', when=timezone.now() - timedelta(days=40))  # সময়ের বাইরে
+        today = timezone.localdate()
+        s = reports.summary(self.shop, today, today)
+        self.assertEqual((s['sales'], s['profit'], s['orders'], s['units']), (Decimal('1300'), Decimal('400'), 2, 3))
+        self.assertEqual((s['delivery'], s['discount'], s['returned'], s['lost_value']),
+                         (Decimal('60'), Decimal('50'), 1, Decimal('1350')))
+        self.assertEqual(s['margin'], 30.8)
+        channels = {c['key']: (c['sales'], c['orders']) for c in s['channels']}
+        self.assertEqual(channels, {'pos': (Decimal('850'), 1), 'storefront': (Decimal('450'), 1),
+                                    'dashboard': (Decimal('0'), 0)})
+        yesterday = today - timedelta(days=1)
+        self.assertIsNone(reports.compare(s, reports.summary(self.shop, yesterday, yesterday))['sales'])  # আগে ০
+        self.order(source='pos', status='Delivered', when=timezone.now() - timedelta(days=1))           # গতকাল ৪৫০
+        change = reports.compare(s, reports.summary(self.shop, yesterday, yesterday))
+        self.assertEqual(change['sales'], {'dir': 'up', 'text': '১৮৯%'})
+        rows = reports.product_rows(self.shop, today, today, limit=5)
+        self.assertEqual((rows[0]['qty'], rows[0]['sales']), (3, Decimal('1350')))
+
+    def test_payments_add_due_and_subtract_refund(self):
+        from .models import SalePayment
+        from . import reports
+        order = self.order(source='pos', status='Delivered', qty=2)
+        SalePayment.objects.create(shop=self.shop, order=order, method='cash', amount=Decimal('500'))
+        SalePayment.objects.create(shop=self.shop, order=order, method='cash', amount=Decimal('400'),
+                                   kind=SalePayment.DUE_COLLECTION)
+        SalePayment.objects.create(shop=self.shop, order=order, method='cash', amount=Decimal('-450'),
+                                   kind=SalePayment.REFUND)
+        SalePayment.objects.create(shop=self.shop, order=order, method='bkash', amount=Decimal('100'))
+        today = timezone.localdate()
+        payments = reports.payment_methods(self.shop, today, today)
+        cash, bkash = payments['rows']
+        self.assertEqual((cash['label'], cash['amount'], cash['refund']), ('নগদ', Decimal('450'), Decimal('450')))
+        self.assertEqual(cash['note'], 'বাকি আদায় ৳৪০০ · ফেরত দেওয়া ৳৪৫০')
+        self.assertEqual((bkash['amount'], payments['total']), (Decimal('100'), Decimal('550')))
+
+    def test_page_is_bangla_and_every_period_opens(self):
+        self.order(source='pos', status='Delivered', qty=2)
+        self.order(delivery=60)
+        response = self.client.get(reverse('reports'))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        for text in ['মোট বিক্রি', 'লাভ', 'বিক্রির ধারা', 'কোথা থেকে বিক্রি', 'সবচেয়ে বেশি বিক্রি হওয়া প্রোডাক্ট',
+                     'সেরা কাস্টমার', 'দিনের কোন সময়ে বেশি বিক্রি', 'Excel ডাউনলোড', '৳১,৩৫০', 'রহিম', 'শার্ট']:
+            self.assertIn(text, html)
+        for english in ['TOTAL REVENUE', 'REAL NET PROFIT', 'Filter Data', 'Export Excel']:
+            self.assertNotIn(english, html)
+        for query in ['?period=today', '?period=year', '?period=last_month', '?start=2020-01-01&end=2026-12-31',
+                      '?start=bad&end=worse']:
+            self.assertEqual(self.client.get(reverse('reports') + query).status_code, 200, query)
+
+    def test_excel_export_has_four_sheets(self):
+        from io import BytesIO
+        from openpyxl import load_workbook
+        self.order(source='pos', status='Delivered', qty=2)
+        response = self.client.get(reverse('reports') + '?period=today&export=xlsx')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('spreadsheetml', response['Content-Type'])
+        self.assertIn('.xlsx', response['Content-Disposition'])
+        book = load_workbook(BytesIO(response.content))
+        self.assertEqual(book.sheetnames, ['সারাংশ', 'অর্ডার', 'প্রোডাক্ট', 'কাস্টমার'])
+        self.assertEqual(book['অর্ডার'].max_row, 2)
+
+    def test_staff_without_report_permission_is_sent_back(self):
+        from .models import StaffProfile
+        staff = User.objects.create_user(phone_number='01922222222', password='Test-pass-123', name='Karim')
+        StaffProfile.objects.create(user=staff, shop=self.shop, can_use_pos=True)
+        self.client.force_login(staff)
+        self.assertRedirects(self.client.get(reverse('reports')), reverse('dashboard'), fetch_redirect_response=False)
+        StaffProfile.objects.filter(user=staff).update(can_view_reports=True)
+        self.assertEqual(self.client.get(reverse('reports')).status_code, 200)
+
+
 class BrandTests(TestCase):
     def test_new_name_logo_and_icons(self):
         import json

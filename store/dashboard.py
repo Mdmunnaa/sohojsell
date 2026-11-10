@@ -118,6 +118,9 @@ def _change(today_value, yesterday_value):
     pct = int(((today_value - yesterday_value) * 100 / yesterday_value).quantize(Decimal('1')))
     if pct == 0:
         return {'dir': 'flat', 'text': '০%'}
+    if pct >= 900:          # ৪৯৭৮৭%-এর চেয়ে "৫০০ গুণ" পড়তে সহজ
+        times = (today_value / yesterday_value).quantize(Decimal('1'))
+        return {'dir': 'up', 'text': f'{bn_num(f"{times:,}")} গুণ'}
     return {'dir': 'up' if pct > 0 else 'down', 'text': f'{bn_num(abs(pct))}%'}
 
 

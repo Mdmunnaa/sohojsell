@@ -1,0 +1,2 @@
+{# আগের সময়ের তুলনায় কত % বাড়ল/কমল: c = {'dir': 'up'|'down'|'flat', 'text': '১২%'} #}
+{% if c %}<span class="rp-delta {{ c.dir }}" title="আগের সময়ের তুলনায়">{% if c.dir == 'up' %}<i class="bi bi-arrow-up-short"></i>{% elif c.dir == 'down' %}<i class="bi bi-arrow-down-short"></i>{% endif %}{{ c.text }}<span class="visually-hidden"> আগের সময়ের তুলনায়</span></span>{% endif %}

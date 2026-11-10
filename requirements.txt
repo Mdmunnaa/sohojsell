@@ -3,6 +3,7 @@ Django==6.0.9
 django-allauth[socialaccount]==65.3.0
 requests==2.34.2
 pillow==12.1.1
+openpyxl==3.1.5
 
 # Render-এ চালানোর জন্য
 gunicorn==26.2.0

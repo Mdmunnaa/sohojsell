@@ -1,174 +1,524 @@
 {% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}রিপোর্ট — {{ shop.name }}{% endblock %}
 {% block page_title %}রিপোর্ট{% endblock %}
-{% block title %}Business Reports — {{ request.user.shop.name }}{% endblock %}
 
 {% block content %}
 <style>
-    /* Ultra Premium Reports UI */
-    .report-wrapper { max-width: 1200px; margin: 0 auto; font-family: 'Plus Jakarta Sans', sans-serif; padding-bottom: 50px; }
+.rp {
+  --ink: #0F172A; --ink2: #334155; --muted: #64748B; --faint: #94A3B8;
+  --line: #E2E8F0; --soft: #F1F5F9; --bg2: #F8FAFC;
+  --pos: #2a78d6; --web: #eb6834; --man: #1baf7a;
+  max-width: 1240px; margin: 0 auto; color: var(--ink);
+  font-family: 'Hind Siliguri', 'DM Sans', sans-serif;
+}
+.rp a { text-decoration: none; }
+.rp [hidden] { display: none !important; }
 
-    .page-title { font-size: 28px; font-weight: 900; color: #0F172A; letter-spacing: -0.5px; margin: 0; }
-    .page-sub { color: #64748B; font-weight: 600; font-size: 14px; margin-top: 4px; }
+/* ── হেডার ── */
+.rp-hero { position: relative; overflow: hidden; border-radius: 22px; color: #F8FAFC; padding: 22px 24px 18px;
+  background: radial-gradient(520px 240px at 100% 0%, rgba(59,130,246,.28), transparent 70%),
+              radial-gradient(420px 200px at 0% 100%, rgba(16,185,129,.16), transparent 70%),
+              linear-gradient(135deg, #0B1220 0%, #0F172A 45%, #1E293B 100%);
+  box-shadow: 0 18px 40px -18px rgba(15,23,42,.55); }
+.rp-hero::after { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.07) 1px, transparent 0); background-size: 22px 22px; }
+.rp-hero > * { position: relative; z-index: 1; }
+.rp-hero-top { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+.rp-kicker { font-size: 13px; font-weight: 600; color: #93C5FD; display: flex; align-items: center; gap: 6px; }
+.rp-hero h1 { font-size: 25px; font-weight: 700; margin: 4px 0 0; color: #fff; line-height: 1.25; }
+.rp-sub { font-size: 13px; color: #94A3B8; margin-top: 3px; }
+.rp-actions { display: flex; gap: 8px; }
+.rp-btn { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 15px; border-radius: 12px; font: 600 14px 'Hind Siliguri', sans-serif;
+  border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.08); color: #E2E8F0; cursor: pointer; white-space: nowrap; }
+.rp-btn:hover { background: rgba(255,255,255,.16); color: #fff; }
+.rp-btn.light { background: #fff; color: var(--ink); border-color: #fff; }
+.rp-btn.light:hover { background: #E2E8F0; color: var(--ink); }
+.rp-btn.light i { color: #16A34A; }
+.rp-range { margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.rp-presets { display: flex; gap: 4px; flex-wrap: wrap; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 4px; }
+.rp-presets a { padding: 6px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 600; color: #CBD5E1; white-space: nowrap; }
+.rp-presets a:hover { color: #fff; background: rgba(255,255,255,.08); }
+.rp-presets a.on { background: #fff; color: var(--ink); }
+.rp-custom { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 4px; border-radius: 14px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.07); }
+.rp-custom.on { border-color: rgba(255,255,255,.5); }
+.rp-custom input { height: 34px; border-radius: 9px; border: 0; padding: 0 8px; font: 600 13px 'DM Sans', sans-serif; color: var(--ink); background: #fff; }
+.rp-custom span { font-size: 13px; color: #CBD5E1; }
+.rp-custom button { height: 34px; border: 0; border-radius: 9px; padding: 0 12px; background: #2563EB; color: #fff; font: 600 13px 'Hind Siliguri', sans-serif; cursor: pointer; }
 
-    /* Filter Bar */
-    .filter-card { background: #fff; border-radius: 20px; border: 1px solid #E2E8F0; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); margin-bottom: 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; }
-    .filter-group { display: flex; flex-direction: column; gap: 6px; }
-    .filter-label { font-size: 11px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 1px; }
-    .date-input { background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; font-weight: 700; color: #0F172A; outline: none; transition: 0.2s; font-family: inherit; }
-    .date-input:focus { border-color: #3B82F6; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); background: #fff; }
+/* ── সংখ্যা ── */
+.rp-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.rp-kpi { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; position: relative; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+.rp-kpi-top { display: flex; align-items: center; gap: 10px; }
+.rp-ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 16px; flex-shrink: 0; }
+.ic-green { background: #DCFCE7; color: #15803D; } .ic-violet { background: #EDE9FE; color: #6D28D9; }
+.ic-blue { background: #DBEAFE; color: #1D4ED8; } .ic-amber { background: #FEF3C7; color: #B45309; }
+.ic-red { background: #FEE2E2; color: #B91C1C; } .ic-slate { background: #F1F5F9; color: #475569; }
+.rp-kpi-label { font-size: 14px; font-weight: 600; color: var(--ink2); }
+.rp-kpi-val { font-size: 28px; font-weight: 700; margin-top: 12px; line-height: 1.15; }
+.rp-kpi-sub { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+.rp-kpi-sub b { color: var(--ink2); font-weight: 600; }
+.rp-delta { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.rp-delta.up { background: #DCFCE7; color: #15803D; } .rp-delta.down { background: #FEE2E2; color: #B91C1C; } .rp-delta.flat { background: var(--soft); color: var(--muted); }
+.rp-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; margin-top: 14px; background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.rp-strip div { padding: 11px 14px; border-right: 1px solid var(--soft); }
+.rp-strip div:last-child { border-right: 0; }
+.rp-strip span { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+.rp-strip b { display: block; font-size: 16px; font-weight: 700; margin-top: 1px; }
+.rp-warn { margin-top: 14px; display: flex; gap: 10px; align-items: flex-start; padding: 12px 15px; border-radius: 14px; background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E; font-size: 13.5px; line-height: 1.55; }
+.rp-warn a { color: #92400E; font-weight: 700; text-decoration: underline; }
 
-    .btn-filter { background: linear-gradient(135deg, #0F172A, #334155); color: #fff; border: none; border-radius: 12px; padding: 12px 24px; font-weight: 800; cursor: pointer; transition: 0.2s; height: 48px; display: flex; align-items: center; gap: 8px;}
-    .btn-filter:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(15,23,42,0.2); }
+/* ── কার্ড ── */
+.rp-card { background: #fff; border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.04); margin-top: 18px; }
+.rp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 20px 0; flex-wrap: wrap; }
+.rp-head h2 { font-size: 17px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px; }
+.rp-head h2 i { color: #4F46E5; font-size: 16px; }
+.rp-head p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.rp-head p b { color: var(--ink); }
+.rp-body { padding: 14px 20px 20px; }
+.rp-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.rp-grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.rp-grid2 > .rp-card, .rp-grid3 > .rp-card { margin-top: 18px; }
+.rp-callout { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink2); background: var(--bg2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+.rp-callout b { color: var(--ink); }
+.rp-empty { text-align: center; padding: 24px 16px 26px; color: var(--muted); font-size: 13.5px; }
+.rp-empty i { display: block; font-size: 26px; color: #CBD5E1; margin-bottom: 6px; }
 
-    .btn-excel { background: linear-gradient(135deg, #10B981, #059669); color: #fff; border: none; border-radius: 12px; padding: 12px 24px; font-weight: 800; cursor: pointer; text-decoration: none; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; height: 48px;}
-    .btn-excel:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16,185,129,0.3); color: #fff; }
+/* ── বিক্রির ধারা ── */
+.rp-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink2); padding: 12px 20px 0; }
+.rp-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.rp-legend b { color: var(--ink); }
+.sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex-shrink: 0; }
+.rp-plot { position: relative; padding: 26px 20px 12px; }
+.rp-bars { position: relative; height: 210px; margin-left: 62px; display: flex; align-items: stretch; border-bottom: 1px solid #CBD5E1; }
+.rp-gl { position: absolute; left: 0; right: 0; border-top: 1px dashed #E2E8F0; pointer-events: none; }
+.rp-gl span { position: absolute; right: calc(100% + 8px); top: 0; transform: translateY(-50%); font-size: 11.5px; color: var(--faint); white-space: nowrap; }
+.rp-bar { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; justify-content: flex-end; outline: none; }
+.rp-bar::before { content: ''; position: absolute; inset: -6px 1px 0; border-radius: 8px; transition: background .12s; }
+.rp-bar:hover::before, .rp-bar:focus-visible::before { background: rgba(15,23,42,.045); }
+.rp-stack { position: relative; height: 100%; width: 58%; max-width: 40px; margin: 0 auto; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
+.dense .rp-stack { width: 66%; max-width: 16px; gap: 1px; }
+.rp-stack i { display: block; width: 100%; flex: none; }
+.rp-stack i:first-child { border-radius: 4px 4px 0 0; }
+.rp-tip { position: absolute; z-index: 5; left: 50%; transform: translateX(-50%) translateY(4px); min-width: 190px; background: #0F172A; color: #E2E8F0;
+  border-radius: 12px; padding: 10px 12px; font-size: 12.5px; line-height: 1.55; box-shadow: 0 12px 28px -10px rgba(15,23,42,.6);
+  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .12s, transform .12s; }
+.rp-tip.l { left: 0; transform: translateY(4px); } .rp-tip.r { left: auto; right: 0; transform: translateY(4px); }
+.rp-bar:hover .rp-tip, .rp-bar:focus .rp-tip { opacity: 1; visibility: visible; transform: translateX(-50%); }
+.rp-bar:hover .rp-tip.l, .rp-bar:focus .rp-tip.l, .rp-bar:hover .rp-tip.r, .rp-bar:focus .rp-tip.r { transform: none; }
+.rp-tip .t { font-weight: 700; color: #fff; margin-bottom: 3px; white-space: nowrap; }
+.rp-tip .r1 { display: flex; justify-content: space-between; gap: 14px; white-space: nowrap; }
+.rp-tip .r1 span { display: inline-flex; align-items: center; gap: 6px; color: #CBD5E1; }
+.rp-tip .r1 b { color: #fff; }
+.rp-tip .tot { border-top: 1px solid rgba(255,255,255,.12); margin-top: 4px; padding-top: 4px; }
+.rp-xl { display: flex; margin-left: 62px; padding-top: 7px; }
+.rp-xl span { flex: 1; min-width: 0; text-align: center; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: visible; }
+.rp-xl span.today { color: var(--ink); font-weight: 700; }
+.dense .rp-xl span { font-size: 11px; }
+.rp-plot-empty { position: absolute; inset: 26px 20px 36px 82px; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--muted); font-size: 14px; }
 
-    /* Big Metric Cards */
-    .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 24px; }
-    .metric-card { background: #fff; border-radius: 24px; border: 1px solid #E2E8F0; padding: 32px; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.03); transition: 0.3s; }
-    .metric-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.06); }
+/* ── তালিকা ও বার ── */
+.rp-split { display: flex; height: 14px; border-radius: 999px; overflow: hidden; gap: 2px; background: var(--soft); }
+.rp-split i { display: block; height: 100%; }
+.rp-rows { margin-top: 12px; }
+.rp-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--soft); font-size: 14px; }
+.rp-row:first-child { border-top: 0; }
+.rp-row .name { flex: 1; min-width: 0; }
+.rp-row .name b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rp-row .name small { display: block; font-size: 12px; color: var(--muted); }
+.rp-row .val { text-align: right; flex-shrink: 0; }
+.rp-row .val b { display: block; font-weight: 700; }
+.rp-row .val small { display: block; font-size: 12px; color: var(--muted); }
+.rp-meter { display: block; height: 6px; border-radius: 999px; background: var(--soft); margin-top: 5px; overflow: hidden; }
+.rp-meter i { display: block; height: 100%; border-radius: 999px; background: #64748B; }
+.rp-av { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; font-weight: 700; flex-shrink: 0; background: #E0E7FF; color: #4338CA; }
+.rp-rank { width: 22px; text-align: center; font-weight: 700; color: var(--faint); flex-shrink: 0; }
+.rp-thumb { width: 40px; height: 40px; border-radius: 11px; object-fit: cover; flex-shrink: 0; background: var(--soft); border: 1px solid var(--line); display: grid; place-items: center; color: var(--faint); }
+.rp-mix { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.rp-chip { font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--soft); color: var(--ink2); }
+.rp-chip.g { background: #DCFCE7; color: #15803D; } .rp-chip.b { background: #DBEAFE; color: #1D4ED8; }
 
-    .mc-title { font-size: 14px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-    .mc-val { font-size: 46px; font-weight: 900; color: #0F172A; letter-spacing: -1px; margin-bottom: 12px; line-height: 1; }
-    .mc-sub { font-size: 13px; font-weight: 700; background: #F8FAFC; padding: 6px 14px; border-radius: 10px; display: inline-flex; align-items: center; gap: 6px; }
-    .mc-icon { position: absolute; right: -15px; bottom: -30px; font-size: 140px; opacity: 0.04; transform: rotate(-10deg); pointer-events: none; }
+/* প্রোডাক্টের সারি */
+.rp-prow { display: grid; grid-template-columns: 22px 40px minmax(0, 1fr) 90px 150px 120px 80px; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--soft); font-size: 14px; }
+.rp-prow.head { border-top: 0; font-size: 12px; color: var(--muted); font-weight: 700; padding-top: 0; }
+.rp-prow .r { text-align: right; }
+.rp-prow .pn b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rp-prow .pn small { color: var(--muted); font-size: 12px; }
+.rp-margin { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #DCFCE7; color: #15803D; }
+.rp-margin.low { background: #FEF3C7; color: #B45309; } .rp-margin.neg { background: #FEE2E2; color: #B91C1C; } .rp-margin.na { background: var(--soft); color: var(--muted); }
 
-    .mc-profit .mc-val { color: #10B981; }
-    .mc-profit .mc-sub { background: #ECFDF5; color: #10B981; }
-    .mc-revenue .mc-val { color: #3B82F6; }
-    .mc-revenue .mc-sub { background: #EFF6FF; color: #3B82F6; }
+/* ঘণ্টা আর দিন */
+.rp-mini { display: flex; align-items: flex-end; gap: 3px; height: 120px; border-bottom: 1px solid #CBD5E1; margin-top: 10px; }
+.rp-mini > div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
+.rp-mini > div i { display: block; background: #2a78d6; border-radius: 3px 3px 0 0; min-height: 0; }
+.rp-mini > div.best i { background: #1D4ED8; }
+.rp-mini > div:hover i { background: #1D4ED8; }
+.rp-mini-x { display: flex; gap: 3px; margin-top: 6px; }
+.rp-mini-x span { flex: 1; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: visible; }
+.rp-week .rp-mini { gap: 10px; }
+.rp-week .rp-mini-x { gap: 10px; }
+.rp-week .rp-mini-x span { text-align: center; font-size: 12.5px; }
+.rp-week .rp-mini > div b { position: absolute; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--ink2); font-weight: 700; }
 
-    /* Small Stats */
-    .small-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 32px; }
-    .ss-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 20px; padding: 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.02); transition: 0.2s;}
-    .ss-card:hover { border-color: #CBD5E1; }
-    .ss-label { font-size: 11px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-    .ss-val { font-size: 22px; font-weight: 900; color: #0F172A; }
-    .ss-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+/* অবস্থা, স্টক, বাকি */
+.rp-big { font-size: 32px; font-weight: 700; line-height: 1.1; }
+.rp-big small { font-size: 14px; color: var(--muted); font-weight: 600; }
+.rp-kv { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--soft); font-size: 13.5px; color: var(--ink2); }
+.rp-kv b { color: var(--ink); }
+.rp-st { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.rp-st.new { background: #DBEAFE; color: #1D4ED8; } .rp-st.confirmed { background: #FEF3C7; color: #B45309; }
+.rp-st.shipped { background: #EDE9FE; color: #6D28D9; } .rp-st.done { background: #DCFCE7; color: #15803D; }
+.rp-st.bad { background: #FEE2E2; color: #B91C1C; } .rp-st.muted { background: var(--soft); color: var(--muted); }
 
-    /* Filtered Orders Table */
-    .table-card { background: #fff; border-radius: 24px; border: 1px solid #E2E8F0; box-shadow: 0 10px 30px rgba(0,0,0,0.03); overflow: hidden; }
-    .tc-header { padding: 24px; border-bottom: 1px solid #F1F5F9; font-size: 18px; font-weight: 900; color: #0F172A; display: flex; align-items: center; justify-content: space-between;}
-    .table-premium th { font-size: 11px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 1px; padding: 16px 24px; background: #F8FAFC; border-bottom: none; }
-    .table-premium td { padding: 18px 24px; border-bottom: 1px solid #F1F5F9; font-weight: 600; vertical-align: middle; }
-    .table-premium tr:hover td { background: #F8FAFC; }
+/* অর্ডারের টেবিল */
+.rp-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.rp-table th { font-size: 12px; color: var(--muted); font-weight: 700; text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.rp-table td { padding: 10px; border-bottom: 1px solid var(--soft); vertical-align: middle; }
+.rp-table .r { text-align: right; white-space: nowrap; }
+.rp-table tr:hover td { background: var(--bg2); }
+.rp-table small { color: var(--muted); }
 
-    @media (max-width: 991px) {
-        .metric-grid { grid-template-columns: 1fr; }
-        .small-stats { grid-template-columns: repeat(2, 1fr); }
-        .filter-card { flex-direction: column; align-items: stretch; }
-        .btn-excel { justify-content: center; }
-    }
+@media (max-width: 1100px) {
+  .rp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rp-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rp-strip div:nth-child(3n) { border-right: 0; }
+  .rp-strip div:nth-child(-n+3) { border-bottom: 1px solid var(--soft); }
+  .rp-grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .rp-hero { padding: 18px 16px 16px; border-radius: 18px; }
+  .rp-hero h1 { font-size: 20px; }
+  .rp-actions { width: 100%; } .rp-actions .rp-btn { flex: 1; justify-content: center; }
+  .rp-presets { width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .rp-presets::-webkit-scrollbar { display: none; }
+  .rp-custom { width: 100%; } .rp-custom input { flex: 1; min-width: 0; }
+  .rp-kpis { gap: 10px; }
+  .rp-kpi { padding: 13px; border-radius: 16px; }
+  .rp-kpi-label { font-size: 13px; }
+  .rp-kpi-val { font-size: 21px; margin-top: 10px; }
+  .rp-delta { position: absolute; top: 11px; right: 10px; font-size: 11px; padding: 2px 6px; }
+  .rp-kpi.d .rp-kpi-label { padding-right: 44px; }
+  .rp-grid2, .rp-grid3 { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .rp-head { padding: 16px 16px 0; }
+  .rp-body { padding: 12px 16px 18px; }
+  .rp-legend { padding: 10px 16px 0; }
+  .rp-plot { padding: 24px 12px 10px 10px; }
+  .rp-bars { height: 180px; margin-left: 56px; } .rp-xl { margin-left: 56px; }
+  .rp-plot-empty { inset: 24px 12px 30px 66px; }
+  .rp-prow { grid-template-columns: 22px 40px minmax(0, 1fr) auto; row-gap: 2px; }
+  .rp-prow.head { display: none; }
+  .rp-prow .c-qty, .rp-prow .c-profit { display: none; }
+  .rp-prow .c-sales { grid-column: 4; }
+  .rp-prow .c-margin { grid-column: 3 / 5; grid-row: 2; text-align: left; }
+  .rp-mini-x span { font-size: 10px; }
+  .rp-table .hide-sm { display: none; }
+}
+@media print {
+  @page { size: A4; margin: 10mm; }
+  html, body { overflow: visible !important; height: auto !important; background: #fff !important; }
+  .app-shell, .main-area { display: block !important; min-height: 0 !important; }
+  .sidebar, .topbar, .rp-actions, .rp-range, .mobile-nav, .sb-overlay { display: none !important; }
+  .main-area { margin: 0 !important; }
+  .page-content { padding: 0 !important; }
+  .rp-hero { box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rp-card, .rp-kpi { break-inside: avoid; box-shadow: none; }
+  .rp-stack i, .rp-split i, .rp-mini i, .sw { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 </style>
 
-<div class="report-wrapper">
-    <div class="mb-4">
-        <h2 class="page-title">📈 Business Analytics</h2>
-        <p class="page-sub">Track revenue, monitor real profit, and export your sales data.</p>
+<div class="rp">
+  {# ── হেডার আর সময় বাছাই ── #}
+  <section class="rp-hero">
+    <div class="rp-hero-top">
+      <div>
+        <div class="rp-kicker"><i class="bi bi-graph-up-arrow"></i> ব্যবসার রিপোর্ট · {{ shop.name }}</div>
+        <h1>{{ period.label }}</h1>
+        <div class="rp-sub">তুলনা করা হয়েছে আগের সময়ের সাথে: {{ period.prev_label }}</div>
+      </div>
+      <div class="rp-actions">
+        <a class="rp-btn light" href="{{ export_url }}"><i class="bi bi-file-earmark-excel-fill"></i> Excel ডাউনলোড</a>
+        <button type="button" class="rp-btn" onclick="window.print()"><i class="bi bi-printer"></i> প্রিন্ট</button>
+      </div>
     </div>
+    <form class="rp-range" method="get">
+      <nav class="rp-presets" aria-label="সময়">
+        {% for key, label in presets %}<a href="?period={{ key }}" class="{% if period.key == key %}on{% endif %}">{{ label }}</a>{% endfor %}
+      </nav>
+      <div class="rp-custom {% if period.key == 'custom' %}on{% endif %}">
+        <input type="date" name="start" value="{{ period.start|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" aria-label="শুরুর তারিখ">
+        <span>থেকে</span>
+        <input type="date" name="end" value="{{ period.end|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" aria-label="শেষের তারিখ">
+        <button type="submit">দেখুন</button>
+      </div>
+    </form>
+  </section>
 
-    <div class="filter-card">
-        <form method="GET" class="d-flex flex-wrap gap-3 w-100 align-items-end m-0">
-            <div class="filter-group flex-grow-1" style="max-width: 200px;">
-                <label class="filter-label">From Date</label>
-                <input type="date" name="start_date" class="date-input" value="{{ start_date|default:'' }}">
+  {# ── মূল সংখ্যা ── #}
+  <section class="rp-kpis" aria-label="মূল হিসাব">
+    <div class="rp-kpi {% if change.sales %}d{% endif %}">
+      <div class="rp-kpi-top"><span class="rp-ic ic-green"><i class="bi bi-cash-coin"></i></span><span class="rp-kpi-label">মোট বিক্রি</span>{% include 'store/partials/report_delta.html' with c=change.sales %}</div>
+      <div class="rp-kpi-val">৳{{ s.sales|floatformat:"0g"|bn }}</div>
+      <div class="rp-kpi-sub">{% if prev.sales %}আগে ছিল <b>৳{{ prev.sales|floatformat:"0g"|bn }}</b>{% else %}আগের সময়ে বিক্রি ছিল না{% endif %} · ডেলিভারি চার্জ বাদে</div>
+    </div>
+    <div class="rp-kpi {% if change.profit %}d{% endif %}">
+      <div class="rp-kpi-top"><span class="rp-ic ic-violet"><i class="bi bi-piggy-bank"></i></span><span class="rp-kpi-label">লাভ</span>{% include 'store/partials/report_delta.html' with c=change.profit %}</div>
+      <div class="rp-kpi-val">{% if s.profit_negative %}−{% endif %}৳{{ s.profit_abs|floatformat:"0g"|bn }}</div>
+      <div class="rp-kpi-sub">লাভের হার <b>{{ s.margin|floatformat:"-1"|bn }}%</b> · কেনা দাম, ছাড় আর VAT বাদে</div>
+    </div>
+    <div class="rp-kpi {% if change.orders %}d{% endif %}">
+      <div class="rp-kpi-top"><span class="rp-ic ic-blue"><i class="bi bi-receipt"></i></span><span class="rp-kpi-label">অর্ডার ও বিল</span>{% include 'store/partials/report_delta.html' with c=change.orders %}</div>
+      <div class="rp-kpi-val">{{ s.orders|floatformat:"0g"|bn }}<small style="font-size:15px;color:var(--muted);font-weight:600;">টা</small></div>
+      <div class="rp-kpi-sub">গড় বিল <b>৳{{ s.aov|floatformat:"0g"|bn }}</b>{% if change.aov %} ({% if change.aov.dir == 'up' %}↑{% elif change.aov.dir == 'down' %}↓{% endif %}{{ change.aov.text }}){% endif %}</div>
+    </div>
+    <div class="rp-kpi {% if change.units %}d{% endif %}">
+      <div class="rp-kpi-top"><span class="rp-ic ic-amber"><i class="bi bi-box-seam"></i></span><span class="rp-kpi-label">বিক্রি হওয়া পণ্য</span>{% include 'store/partials/report_delta.html' with c=change.units %}</div>
+      <div class="rp-kpi-val">{{ s.units|floatformat:"0g"|bn }}<small style="font-size:15px;color:var(--muted);font-weight:600;">পিস</small></div>
+      <div class="rp-kpi-sub">কেনা দাম ছিল <b>৳{{ s.cost|floatformat:"0g"|bn }}</b></div>
+    </div>
+  </section>
+  <section class="rp-strip" aria-label="অন্যান্য হিসাব">
+    <div><span>ছাড় দেওয়া</span><b>৳{{ s.discount|floatformat:"0g"|bn }}</b></div>
+    <div><span>VAT</span><b>৳{{ s.vat|floatformat:"0g"|bn }}</b></div>
+    <div><span>ডেলিভারি চার্জ নেওয়া</span><b>৳{{ s.delivery|floatformat:"0g"|bn }}</b></div>
+    <div><span>ফেরত অর্ডার</span><b>{{ s.returned|bn }}টা</b></div>
+    <div><span>বাতিল অর্ডার</span><b>{{ s.cancelled|bn }}টা</b></div>
+    <div><span>ফেরত/বাতিলে হারানো</span><b>৳{{ s.lost_value|floatformat:"0g"|bn }}</b></div>
+  </section>
+  {% if s.missing_cost %}
+  <div class="rp-warn"><i class="bi bi-exclamation-triangle-fill"></i><span>{{ s.missing_cost|bn }}টা প্রোডাক্টের কেনা দাম দেওয়া নেই, তাই লাভ আসলের চেয়ে বেশি দেখাচ্ছে। <a href="{% url 'product_list' %}">প্রোডাক্টে কেনা দাম দিন</a>।</span></div>
+  {% endif %}
+
+  {# ── বিক্রির ধারা ── #}
+  <section class="rp-card" aria-labelledby="rpTrend">
+    <header class="rp-head">
+      <div>
+        <h2 id="rpTrend"><i class="bi bi-bar-chart-fill"></i> বিক্রির ধারা</h2>
+        <p>{% if trend.monthly %}প্রতি মাসে{% else %}প্রতিদিন{% endif %} কত বিক্রি — বারের উপর রাখলে বা ট্যাপ করলে বিস্তারিত</p>
+      </div>
+      {% if trend.best %}<span class="rp-callout"><i class="bi bi-trophy-fill" style="color:#D97706;"></i> সেরা {% if trend.monthly %}মাস{% else %}দিন{% endif %}: <b>{{ trend.best.title }}</b> · ৳{{ trend.best.total|floatformat:"0g"|bn }}</span>{% endif %}
+    </header>
+    <div class="rp-legend">
+      {% for c in s.channels %}<span><i class="sw" style="background:{{ c.color }};"></i> {{ c.label }} <b>৳{{ c.sales|floatformat:"0g"|bn }}</b></span>{% endfor %}
+    </div>
+    <div class="rp-plot {% if trend.dense %}dense{% endif %}">
+      <div class="rp-bars">
+        {% for line in trend.grid %}<div class="rp-gl" style="top: {% cycle '0%' '50%' '100%' %};"><span>{% if forloop.last %}০{% else %}৳{{ line|bn }}{% endif %}</span></div>{% endfor %}
+        {% for bar in trend.bars %}
+        <div class="rp-bar" tabindex="0" aria-label="{{ bar.title }}: ৳{{ bar.total|floatformat:'0g'|bn }}">
+          <div class="rp-stack">{% for seg in bar.segments %}{% if seg.pct %}<i style="height: {{ seg.pct }}%; background: {{ seg.color }};"></i>{% endif %}{% endfor %}</div>
+          <div class="rp-tip {{ bar.align }}" style="bottom: calc({{ bar.top_pct }}% + 10px);">
+            <div class="t">{{ bar.title }}</div>
+            {% for seg in bar.segments reversed %}<div class="r1"><span><i class="sw" style="background:{{ seg.color }};"></i>{{ seg.label }}</span><b>৳{{ seg.value|floatformat:"0g"|bn }}</b></div>{% endfor %}
+            <div class="r1 tot"><span>মোট · {{ bar.count|bn }}টা</span><b>৳{{ bar.total|floatformat:"0g"|bn }}</b></div>
+            <div class="r1"><span>লাভ</span><b>৳{{ bar.profit|floatformat:"0g"|bn }}</b></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="rp-xl" aria-hidden="true">{% for bar in trend.bars %}<span class="{% if bar.is_today %}today{% endif %}">{{ bar.label }}</span>{% endfor %}</div>
+      {% if trend.empty %}<div class="rp-plot-empty">এই সময়ে কোনো বিক্রি নেই</div>{% endif %}
+    </div>
+  </section>
+
+  <div class="rp-grid2">
+    {# ── কোথা থেকে বিক্রি ── #}
+    <section class="rp-card">
+      <header class="rp-head"><div><h2><i class="bi bi-diagram-3-fill"></i> কোথা থেকে বিক্রি</h2><p>দোকান, ওয়েবসাইট আর ফোন/ইনবক্সের অর্ডার</p></div></header>
+      <div class="rp-body">
+        {% if s.sales %}
+        <div class="rp-split" role="img" aria-label="বিক্রির ভাগ">{% for c in s.channels %}{% if c.share %}<i style="width: {{ c.share }}%; background: {{ c.color }};" title="{{ c.label }} {{ c.share }}%"></i>{% endif %}{% endfor %}</div>
+        <div class="rp-rows">
+          {% for c in s.channels %}
+          <div class="rp-row">
+            <i class="sw" style="background:{{ c.color }};width:12px;height:12px;"></i>
+            <div class="name"><b>{{ c.label }}</b><small>{{ c.orders|bn }}টা অর্ডার/বিল</small></div>
+            <div class="val"><b>৳{{ c.sales|floatformat:"0g"|bn }}</b><small>{{ c.share|floatformat:"-1"|bn }}%</small></div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<div class="rp-empty"><i class="bi bi-inbox"></i>এই সময়ে কোনো বিক্রি নেই</div>{% endif %}
+      </div>
+    </section>
+
+    {# ── টাকা কীভাবে এসেছে ── #}
+    <section class="rp-card">
+      <header class="rp-head"><div><h2><i class="bi bi-wallet2"></i> টাকা কীভাবে এসেছে</h2><p>দোকানের বিলের পেমেন্ট আর ওয়েবসাইটের অনলাইন পেমেন্ট{% if payments.total %} · মোট <b>৳{{ payments.total|floatformat:"0g"|bn }}</b>{% endif %}</p></div></header>
+      <div class="rp-body">
+        {% if payments.rows %}
+        <div class="rp-rows" style="margin-top:0;">
+          {% for p in payments.rows %}
+          <div class="rp-row">
+            <div class="name"><b>{{ p.label }}</b>
+              <div class="rp-meter"><i style="width: {{ p.bar }}%;"></i></div>
+              {% if p.note %}<small>{{ p.note }}</small>{% endif %}
             </div>
-            <div class="filter-group flex-grow-1" style="max-width: 200px;">
-                <label class="filter-label">To Date</label>
-                <input type="date" name="end_date" class="date-input" value="{{ end_date|default:'' }}">
-            </div>
-            <div class="d-flex gap-2 flex-wrap flex-grow-1">
-                <button type="submit" class="btn-filter flex-grow-1 justify-content-center"><i class="bi bi-funnel-fill"></i> Filter Data</button>
-                <a href="?start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}&export=excel" class="btn-excel flex-grow-1 justify-content-center">
-                    <i class="bi bi-file-earmark-excel-fill fs-5"></i> Export Excel
-                </a>
-            </div>
-        </form>
+            <div class="val"><b>৳{{ p.amount|floatformat:"0g"|bn }}</b><small>{{ p.share|floatformat:"-1"|bn }}%</small></div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<div class="rp-empty"><i class="bi bi-wallet"></i>এই সময়ে POS বা অনলাইনে কোনো পেমেন্ট আসেনি<br><small>ক্যাশ অন ডেলিভারির টাকা কুরিয়ার থেকে আসে, সেটা এখানে ধরা হয় না</small></div>{% endif %}
+      </div>
+    </section>
+  </div>
+
+  {# ── সেরা প্রোডাক্ট ── #}
+  <section class="rp-card">
+    <header class="rp-head">
+      <div><h2><i class="bi bi-trophy-fill"></i> সবচেয়ে বেশি বিক্রি হওয়া প্রোডাক্ট</h2><p>টাকার হিসাবে প্রথম ১০টা · সব প্রোডাক্ট Excel-এ</p></div>
+    </header>
+    <div class="rp-body">
+      {% if products %}
+      <div class="rp-prow head"><span>#</span><span></span><span>প্রোডাক্ট</span><span class="r c-qty">পিস</span><span class="r c-sales">বিক্রি</span><span class="r c-profit">লাভ</span><span class="r c-margin">হার</span></div>
+      {% for r in products %}
+      <div class="rp-prow">
+        <span class="rp-rank">{{ forloop.counter|bn }}</span>
+        {% if r.product.thumb_url %}<img class="rp-thumb" src="{{ r.product.thumb_url }}" alt="" loading="lazy">{% else %}<span class="rp-thumb"><i class="bi bi-image"></i></span>{% endif %}
+        <span class="pn"><b>{{ r.product__name }}</b><small>{{ r.product__category__name|default:"ক্যাটাগরি ছাড়া" }} · {{ r.qty|bn }} পিস</small></span>
+        <span class="r c-qty">{{ r.qty|floatformat:"0g"|bn }}</span>
+        <span class="r c-sales"><b>৳{{ r.sales|floatformat:"0g"|bn }}</b><span class="rp-meter"><i style="width: {{ r.bar }}%; background:#2a78d6;"></i></span></span>
+        <span class="r c-profit">{% if r.no_cost %}—{% else %}৳{{ r.profit|floatformat:"0g"|bn }}{% endif %}</span>
+        <span class="r c-margin">{% if r.no_cost %}<span class="rp-margin na">কেনা দাম নেই</span>{% elif r.margin < 0 %}<span class="rp-margin neg">লোকসান {{ r.margin|floatformat:"-1"|bn }}%</span>{% elif r.margin < 15 %}<span class="rp-margin low">লাভ {{ r.margin|floatformat:"-1"|bn }}%</span>{% else %}<span class="rp-margin">লাভ {{ r.margin|floatformat:"-1"|bn }}%</span>{% endif %}</span>
+      </div>
+      {% endfor %}
+      {% else %}<div class="rp-empty"><i class="bi bi-box"></i>এই সময়ে কোনো প্রোডাক্ট বিক্রি হয়নি</div>{% endif %}
     </div>
+  </section>
 
-    <div class="metric-grid">
-        <div class="metric-card mc-revenue" style="border-left: 6px solid #3B82F6;">
-            <div class="mc-title"><i class="bi bi-wallet2 text-primary"></i> Total Revenue (Filtered)</div>
-            <div class="mc-val">৳ {{ total_revenue|floatformat:0 }}</div>
-            <div class="mc-sub"><i class="bi bi-cart-check-fill"></i> Total {{ total_orders }} orders found</div>
-            <i class="bi bi-wallet2 mc-icon text-primary"></i>
+  <div class="rp-grid2">
+    {# ── ক্যাটাগরি ── #}
+    <section class="rp-card">
+      <header class="rp-head"><div><h2><i class="bi bi-tags-fill"></i> ক্যাটাগরি অনুযায়ী</h2><p>কোন ধরনের পণ্য বেশি চলছে</p></div></header>
+      <div class="rp-body">
+        {% if categories %}
+        <div class="rp-rows" style="margin-top:0;">
+          {% for c in categories %}
+          <div class="rp-row">
+            <div class="name"><b>{{ c.name }}</b><div class="rp-meter"><i style="width: {{ c.share }}%; background:#6366F1;"></i></div><small>{{ c.qty|bn }} পিস · লাভ ৳{{ c.profit|floatformat:"0g"|bn }}</small></div>
+            <div class="val"><b>৳{{ c.sales|floatformat:"0g"|bn }}</b><small>{{ c.share|floatformat:"-1"|bn }}%</small></div>
+          </div>
+          {% endfor %}
         </div>
+        {% else %}<div class="rp-empty"><i class="bi bi-tags"></i>এই সময়ে কোনো বিক্রি নেই</div>{% endif %}
+      </div>
+    </section>
 
-        <div class="metric-card mc-profit" style="border-left: 6px solid #10B981;">
-            <div class="mc-title"><i class="bi bi-graph-up-arrow text-success"></i> Real Net Profit (Filtered)</div>
-            <div class="mc-val">৳ {{ net_profit|floatformat:0 }}</div>
-            <div class="mc-sub"><i class="bi bi-info-circle-fill"></i> After deducting product cost</div>
-            <i class="bi bi-piggy-bank mc-icon text-success"></i>
+    {# ── সেরা কাস্টমার ── #}
+    <section class="rp-card">
+      <header class="rp-head"><div><h2><i class="bi bi-people-fill"></i> সেরা কাস্টমার</h2><p>যারা সবচেয়ে বেশি কিনেছেন</p></div></header>
+      <div class="rp-body">
+        <div class="rp-mix">
+          <span class="rp-chip g">নতুন {{ mix.new|bn }} জন</span>
+          <span class="rp-chip b">আবার কিনেছেন {{ mix.returning|bn }} জন</span>
+          {% if mix.walk_in %}<span class="rp-chip">নাম ছাড়া দোকানের বিল {{ mix.walk_in|bn }}টা</span>{% endif %}
         </div>
+        {% if customers %}
+        <div class="rp-rows">
+          {% for c in customers %}
+          <div class="rp-row">
+            <span class="rp-av">{{ c.customer__name|slice:":1"|upper }}</span>
+            <div class="name"><b>{{ c.customer__name }}</b><small>{{ c.customer__phone }} · {{ c.orders|bn }}টা অর্ডার</small></div>
+            <div class="val"><b>৳{{ c.spent|floatformat:"0g"|bn }}</b></div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<div class="rp-empty"><i class="bi bi-person"></i>এই সময়ে নাম-নম্বরসহ কোনো কাস্টমার কেনেননি</div>{% endif %}
+      </div>
+    </section>
+  </div>
+
+  <div class="rp-grid2">
+    {# ── দিনের কোন সময় ── #}
+    <section class="rp-card">
+      <header class="rp-head"><div><h2><i class="bi bi-clock-fill"></i> দিনের কোন সময়ে বেশি বিক্রি</h2><p>{% if hours.best %}সবচেয়ে বেশি: <b>{{ hours.best_label }}</b>{% else %}বিক্রি হলে এখানে দেখাবে{% endif %}</p></div></header>
+      <div class="rp-body">
+        <div class="rp-mini" role="img" aria-label="ঘণ্টা অনুযায়ী বিক্রি">
+          {% for h in hours.hours %}<div class="{% if hours.best and h.hour == hours.best.hour %}best{% endif %}" title="{{ h.label }}: ৳{{ h.sales|floatformat:'0g'|bn }} · {{ h.count|bn }}টা"><i style="height: {{ h.pct }}%;"></i></div>{% endfor %}
+        </div>
+        <div class="rp-mini-x" aria-hidden="true">{% for h in hours.hours %}<span>{{ h.tick }}</span>{% endfor %}</div>
+      </div>
+    </section>
+
+    {# ── সপ্তাহের কোন দিন ── #}
+    <section class="rp-card rp-week">
+      <header class="rp-head"><div><h2><i class="bi bi-calendar-week-fill"></i> সপ্তাহের কোন দিনে বেশি বিক্রি</h2><p>{% if weekdays.best %}সবচেয়ে বেশি: <b>{{ weekdays.best.label }}বার</b> · ৳{{ weekdays.best.sales|floatformat:"0g"|bn }}{% else %}বিক্রি হলে এখানে দেখাবে{% endif %}</p></div></header>
+      <div class="rp-body">
+        <div class="rp-mini" role="img" aria-label="সপ্তাহের দিন অনুযায়ী বিক্রি">
+          {% for d in weekdays.days %}<div class="{% if weekdays.best and d.label == weekdays.best.label %}best{% endif %}" title="{{ d.label }}: ৳{{ d.sales|floatformat:'0g'|bn }} · {{ d.count|bn }}টা"><i style="height: {{ d.pct }}%;"></i></div>{% endfor %}
+        </div>
+        <div class="rp-mini-x" aria-hidden="true">{% for d in weekdays.days %}<span>{{ d.label }}</span>{% endfor %}</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="rp-grid3">
+    {# ── অনলাইন অর্ডারের ডেলিভারি ── #}
+    <section class="rp-card">
+      <header class="rp-head"><div><h2><i class="bi bi-truck"></i> অনলাইন অর্ডারের অবস্থা</h2><p>ওয়েবসাইট আর ফোন/ইনবক্সের {{ delivery.total|bn }}টা অর্ডার</p></div></header>
+      <div class="rp-body">
+        {% if delivery.success is not None %}
+        <div class="rp-big">{{ delivery.success|floatformat:"-1"|bn }}%<small> ডেলিভারি সফল</small></div>
+        <div class="rp-kpi-sub" style="margin-bottom:6px;">{{ delivery.delivered|bn }}টা পৌঁছেছে, {{ delivery.returned|bn }}টা ফেরত এসেছে</div>
+        {% endif %}
+        {% for st in delivery.steps %}{% if st.count %}
+        <div class="rp-kv"><span><span class="rp-st {{ st.tone }}">{{ st.label }}</span></span><b>{{ st.count|bn }}টা <small style="color:var(--muted);font-weight:500;">({{ st.pct|floatformat:"0"|bn }}%)</small></b></div>
+        {% endif %}{% endfor %}
+        {% if not delivery.total %}<div class="rp-empty"><i class="bi bi-truck"></i>এই সময়ে কোনো অনলাইন অর্ডার আসেনি</div>{% endif %}
+      </div>
+    </section>
+
+    {# ── স্টক ── #}
+    <section class="rp-card">
+      <header class="rp-head"><div><h2><i class="bi bi-boxes"></i> স্টকে থাকা মাল</h2><p>এখন দোকানে যা আছে (সময় বাছাই এখানে লাগে না)</p></div></header>
+      <div class="rp-body">
+        <div class="rp-big">৳{{ stock.cost|floatformat:"0g"|bn }}<small> কেনা দামে</small></div>
+        <div class="rp-kpi-sub" style="margin-bottom:6px;">{{ stock.units|floatformat:"0g"|bn }} পিস · {{ stock.products|bn }}টা প্রোডাক্ট</div>
+        <div class="rp-kv"><span>বিক্রি দামে</span><b>৳{{ stock.value|floatformat:"0g"|bn }}</b></div>
+        <div class="rp-kv"><span>সব বিক্রি হলে লাভ</span><b>৳{{ stock.margin|floatformat:"0g"|bn }}</b></div>
+        <div class="rp-kv"><span>শেষের পথে (৫টার কম)</span><b>{{ stock.low|bn }}টা</b></div>
+        <div class="rp-kv"><span>স্টকে নেই</span><b>{{ stock.out|bn }}টা</b></div>
+        {% if stock.missing_cost %}<div class="rp-kpi-sub" style="color:#B45309;">{{ stock.missing_cost|bn }}টা প্রোডাক্টের কেনা দাম নেই, সেগুলো কেনা দামের হিসাবে ধরা হয়নি</div>{% endif %}
+      </div>
+    </section>
+
+    {# ── বাকি ── #}
+    <section class="rp-card">
+      <header class="rp-head"><div><h2><i class="bi bi-journal-text"></i> বাকির হিসাব</h2><p>দোকানের (POS) বাকিতে বিক্রি</p></div></header>
+      <div class="rp-body">
+        <div class="rp-big">৳{{ dues.outstanding|floatformat:"0g"|bn }}<small> এখন পাওনা</small></div>
+        <div class="rp-kpi-sub" style="margin-bottom:6px;">{{ dues.people|bn }} জন কাস্টমারের কাছে</div>
+        <div class="rp-kv"><span>এই সময়ে বাকিতে বিক্রি</span><b>৳{{ dues.given|floatformat:"0g"|bn }}</b></div>
+        <div class="rp-kv"><span>এই সময়ে বাকি আদায়</span><b>৳{{ dues.collected|floatformat:"0g"|bn }}</b></div>
+        {% if dues.outstanding %}<a class="rp-callout" style="margin-top:10px;" href="{% url 'pos' %}"><i class="bi bi-display"></i> POS থেকে বাকি আদায় করুন</a>{% endif %}
+      </div>
+    </section>
+  </div>
+
+  {# ── অর্ডারের তালিকা ── #}
+  <section class="rp-card">
+    <header class="rp-head">
+      <div><h2><i class="bi bi-list-ul"></i> এই সময়ের অর্ডার ও বিল</h2><p>সর্বশেষ {{ orders|length|bn }}টা · সব অর্ডার আর প্রতিটার লাভ Excel ফাইলে</p></div>
+      <a class="rp-callout" href="{{ export_url }}"><i class="bi bi-file-earmark-excel-fill" style="color:#16A34A;"></i> Excel ডাউনলোড</a>
+    </header>
+    <div class="rp-body" style="overflow-x:auto;">
+      {% if orders %}
+      <table class="rp-table">
+        <thead><tr><th>তারিখ</th><th>অর্ডার</th><th>কাস্টমার</th><th class="hide-sm">কোথা থেকে</th><th>অবস্থা</th><th class="r">বিক্রি</th><th class="r hide-sm">লাভ</th></tr></thead>
+        <tbody>
+          {% for o in orders %}
+          <tr>
+            <td style="white-space:nowrap;"><small>{{ o.when }}</small></td>
+            <td><a href="{% if o.source == 'pos' %}{% url 'pos_receipt' o.id %}{% else %}{% url 'invoice' o.id %}{% endif %}" target="_blank" rel="noopener">#ORD-{{ o.id }}</a></td>
+            <td>{% if o.walk_in %}<small>দোকানের কাস্টমার</small>{% else %}{{ o.customer.name }}{% endif %}</td>
+            <td class="hide-sm"><small>{{ o.channel }}</small></td>
+            <td><span class="rp-st {{ o.status_tone }}">{{ o.status_label }}</span></td>
+            <td class="r"><b>৳{{ o.sale_value|floatformat:"0g"|bn }}</b></td>
+            <td class="r hide-sm">{% if o.profit is None %}<small>—</small>{% else %}৳{{ o.profit|floatformat:"0g"|bn }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="rp-empty"><i class="bi bi-receipt"></i>এই সময়ে কোনো অর্ডার বা বিল নেই</div>{% endif %}
     </div>
-
-    <div class="small-stats">
-        <div class="ss-card">
-            <div><div class="ss-label">Today's Sales</div><div class="ss-val">৳ {{ today_sales|default:"0"|floatformat:0 }}</div></div>
-            <div class="ss-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-calendar-day"></i></div>
-        </div>
-        <div class="ss-card">
-            <div><div class="ss-label">This Week</div><div class="ss-val">৳ {{ weekly_sales|default:"0"|floatformat:0 }}</div></div>
-            <div class="ss-icon bg-success bg-opacity-10 text-success"><i class="bi bi-calendar-week"></i></div>
-        </div>
-        <div class="ss-card">
-            <div><div class="ss-label">This Month</div><div class="ss-val">৳ {{ monthly_sales|default:"0"|floatformat:0 }}</div></div>
-            <div class="ss-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-calendar-month"></i></div>
-        </div>
-        <div class="ss-card">
-            <div><div class="ss-label">This Year</div><div class="ss-val">৳ {{ yearly_sales|default:"0"|floatformat:0 }}</div></div>
-            <div class="ss-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-graph-up"></i></div>
-        </div>
-    </div>
-
-    <div class="table-card">
-        <div class="tc-header">
-            <div><i class="bi bi-table text-primary me-2"></i> Filtered Order Breakdown</div>
-            <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fs-6">{{ total_orders }} Orders</span>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-borderless table-premium mb-0">
-                <thead>
-                    <tr>
-                        <th>Order Details</th>
-                        <th>Date & Time</th>
-                        <th>Amount</th>
-                        <th>Net Profit</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in order_details %}
-                    <tr>
-                        <td>
-                            <div class="fw-bolder text-dark" style="font-size: 14px;">{{ item.customer }}</div>
-                            <div class="small text-muted fw-bold mt-1">#ORD-{{ item.id }}</div>
-                        </td>
-                        <td class="text-muted fw-bold" style="font-size: 13px;">{{ item.date }}</td>
-                        <td class="fw-black text-primary" style="font-size: 15px;">৳{{ item.amount|floatformat:0 }}</td>
-                        <td class="fw-black text-success" style="font-size: 15px;">৳{{ item.profit|floatformat:0 }}</td>
-                        <td>
-                            <span class="badge rounded-pill px-3 py-2
-                                {% if item.status == 'Delivered' %}bg-success bg-opacity-10 text-success
-                                {% elif item.status == 'Pending' %}bg-warning bg-opacity-10 text-warning
-                                {% else %}bg-secondary bg-opacity-10 text-secondary{% endif %}">
-                                {{ item.status }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center py-5">
-                            <i class="bi bi-inbox text-muted fs-1 d-block mb-3 opacity-50"></i>
-                            <h5 class="fw-bold text-dark">No orders found!</h5>
-                            <p class="text-muted small">Try changing the date filter above.</p>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
+  </section>
 </div>
 {% endblock %}

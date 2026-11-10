@@ -408,83 +408,45 @@ from django.http import HttpResponse
 
 @login_required(login_url='/accounts/login/')
 def business_reports(request):
+    """ব্যবসার রিপোর্ট: সময় বেছে বিক্রি, লাভ, কোথা থেকে বিক্রি, সেরা প্রোডাক্ট-কাস্টমার, কখন বেশি বিক্রি। হিসাব store/reports.py-তে।"""
+    from . import reports
     shop = request.user.shop
-    today = timezone.now().date()
-    valid_orders = Order.objects.filter(shop=shop).exclude(status__in=['Returned', 'Cancelled']).order_by('-created_at')
+    period = reports.resolve_period(request.GET)
 
-    # Date Filtering Logic
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
-
-    if start_date:
-        valid_orders = valid_orders.filter(created_at__date__gte=start_date)
-    if end_date:
-        valid_orders = valid_orders.filter(created_at__date__lte=end_date)
-
-    # ✅ Optimized: aggregate for revenue & profit (1 query instead of N+1)
-    from django.db.models import F as Fexp
-    agg = OrderItem.objects.filter(order__in=valid_orders).aggregate(
-        profit=Sum((Fexp('price') - Fexp('cost_price')) * Fexp('quantity'))
-    )
-    net_profit = agg['profit'] or 0
-    total_revenue = valid_orders.aggregate(total=Sum('total_amount'))['total'] or 0
-
-    # ✅ Optimized: select_related to avoid per-order customer query
-    order_details = []
-    for order in valid_orders.select_related('customer').prefetch_related('items'):
-        order_profit = sum(
-            (item.price - item.cost_price) * item.quantity
-            for item in order.items.all()
-        )
-        order_details.append({
-            'id': order.id,
-            'date': order.created_at.strftime('%Y-%m-%d %I:%M %p'),
-            'customer': order.customer.name,
-            'amount': order.total_amount,
-            'profit': order_profit,
-            'status': order.status
-        })
-
-    # Export to Excel (CSV format)
-    if request.GET.get('export') == 'excel':
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="Business_Report.csv"'
-        writer = csv.writer(response)
-
-        # Excel Header
-        writer.writerow(['Order ID', 'Date', 'Customer Name', 'Total Amount (Tk)', 'Net Profit (Tk)', 'Status'])
-        # Excel Data Rows
-        for o in order_details:
-            writer.writerow([f"#ORD-{o['id']}", o['date'], o['customer'], o['amount'], o['profit'], o['status']])
-
-        # Summary Row at the bottom of Excel
-        writer.writerow([])
-        writer.writerow(['', '', 'TOTAL:', f"{total_revenue} Tk", f"{net_profit} Tk", ''])
-
+    if request.GET.get('export') in ('excel', 'xlsx'):
+        workbook = reports.build_workbook(shop, period)
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = (f'attachment; filename="{shop.slug}-report-{period.start:%Y%m%d}-'
+                                           f'{period.end:%Y%m%d}.xlsx"')
+        workbook.save(response)
         return response
 
-    # Default Overall Stats (Unaffected by filter)
-    all_valid = Order.objects.filter(shop=shop).exclude(status__in=['Returned', 'Cancelled'])
-    start_of_week = today - timedelta(days=7)
-    today_sales = all_valid.filter(created_at__date=today).aggregate(total=Sum('total_amount'))['total'] or 0
-    weekly_sales = all_valid.filter(created_at__date__gte=start_of_week).aggregate(total=Sum('total_amount'))[
-                       'total'] or 0
-    monthly_sales = \
-    all_valid.filter(created_at__month=today.month, created_at__year=today.year).aggregate(total=Sum('total_amount'))[
-        'total'] or 0
-    yearly_sales = all_valid.filter(created_at__year=today.year).aggregate(total=Sum('total_amount'))['total'] or 0
-
+    current = reports.summary(shop, period.start, period.end)
+    previous = reports.summary(shop, period.prev_start, period.prev_end)
+    query = request.GET.copy()
+    query['export'] = 'xlsx'
     return render(request, 'store/reports.html', {
-        'total_revenue': total_revenue,
-        'net_profit': net_profit,
-        'total_orders': valid_orders.count(),
-        'today_sales': today_sales,
-        'weekly_sales': weekly_sales,
-        'monthly_sales': monthly_sales,
-        'yearly_sales': yearly_sales,
-        'order_details': order_details,
-        'start_date': start_date,
-        'end_date': end_date,
+        'shop': shop,
+        'period': period,
+        'presets': reports.PRESETS,
+        'today': timezone.localdate(),
+        's': current,
+        'prev': previous,
+        'change': reports.compare(current, previous),
+        'trend': reports.trend(shop, period.start, period.end),
+        'payments': reports.payment_methods(shop, period.start, period.end),
+        'products': reports.product_rows(shop, period.start, period.end, limit=10),
+        'categories': reports.categories(shop, period.start, period.end),
+        'customers': reports.customer_rows(shop, period.start, period.end, limit=8),
+        'mix': reports.customer_mix(shop, period.start, period.end),
+        'hours': reports.by_hour(shop, period.start, period.end),
+        'weekdays': reports.by_weekday(shop, period.start, period.end),
+        'delivery': reports.online_delivery(shop, period.start, period.end),
+        'stock': reports.stock_value(shop),
+        'dues': reports.dues(shop, period.start, period.end),
+        'orders': reports.order_rows(shop, period.start, period.end, limit=30),
+        'channels': reports.CHANNELS,
+        'export_url': f"{reverse('reports')}?{query.urlencode()}",
     })
 
 
