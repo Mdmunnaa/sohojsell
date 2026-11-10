@@ -7,6 +7,7 @@ from . import views
 from . import payment_views
 from . import views_pos
 from . import views_sms
+from . import views_ledger
 
 def favicon(request):
     from django.shortcuts import redirect
@@ -61,6 +62,14 @@ urlpatterns = [
     path('sms/buy/', views_sms.sms_buy, name='sms_buy'),
     path('sms/auto/', views_sms.sms_auto, name='sms_auto'),
     path('sms/customers/', views_sms.sms_customer_search, name='sms_customer_search'),
+    path('purchases/', views_ledger.purchase_list, name='purchase_list'),
+    path('purchases/new/', views_ledger.purchase_new, name='purchase_new'),
+    path('purchases/<int:purchase_id>/', views_ledger.purchase_detail, name='purchase_detail'),
+    path('purchases/<int:purchase_id>/delete/', views_ledger.purchase_delete, name='purchase_delete'),
+    path('suppliers/', views_ledger.supplier_list, name='supplier_list'),
+    path('suppliers/<int:supplier_id>/', views_ledger.supplier_detail, name='supplier_detail'),
+    path('expenses/', views_ledger.expense_list, name='expense_list'),
+    path('expenses/<int:expense_id>/delete/', views_ledger.expense_delete, name='expense_delete'),
     path('pos/', views_pos.pos_screen, name='pos'),
     path('pos/checkout/', views_pos.pos_checkout, name='pos_checkout'),
     path('pos/receipt/<int:order_id>/', views_pos.pos_receipt, name='pos_receipt'),

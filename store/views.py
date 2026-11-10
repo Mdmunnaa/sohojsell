@@ -460,8 +460,12 @@ def business_reports(request):
         workbook.save(response)
         return response
 
+    from . import ledger
+    from .dashboard import _change
     current = reports.summary(shop, period.start, period.end)
     previous = reports.summary(shop, period.prev_start, period.prev_end)
+    pl = reports.profit_and_loss(shop, period.start, period.end, current)
+    prev_pl = reports.profit_and_loss(shop, period.prev_start, period.prev_end, previous)
     query = request.GET.copy()
     query['export'] = 'xlsx'
     return render(request, 'store/reports.html', {
@@ -472,6 +476,10 @@ def business_reports(request):
         's': current,
         'prev': previous,
         'change': reports.compare(current, previous),
+        'pl': pl,
+        'prev_pl': prev_pl,
+        'net_change': _change(pl['net'], prev_pl['net']) if prev_pl['net'] > 0 else None,
+        'buying': ledger.purchase_summary(shop, period.start, period.end),
         'trend': reports.trend(shop, period.start, period.end),
         'payments': reports.payment_methods(shop, period.start, period.end),
         'products': reports.product_rows(shop, period.start, period.end, limit=10),

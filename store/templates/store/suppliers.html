@@ -1,0 +1,75 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}সাপ্লায়ার — {{ shop.name }}{% endblock %}
+{% block page_title %}সাপ্লায়ার{% endblock %}
+
+{% block content %}
+{% include 'store/partials/ledger_styles.html' %}
+<div class="lg">
+  <section class="lg-hero">
+    <div class="lg-hero-top">
+      <div>
+        <div class="lg-kicker"><i class="bi bi-people"></i> সাপ্লায়ারের খাতা</div>
+        <h1>সাপ্লায়ার</h1>
+        <p>কার কাছ থেকে কত মাল এনেছেন, কত দিয়েছেন, কত বাকি</p>
+      </div>
+      <div class="lg-actions">
+        <a class="lg-btn white" href="#add-supplier"><i class="bi bi-person-plus"></i> নতুন সাপ্লায়ার</a>
+        <a class="lg-btn ghost" href="{% url 'purchase_new' %}"><i class="bi bi-bag-plus"></i> মাল কেনা লিখুন</a>
+      </div>
+    </div>
+    <div class="lg-stats">
+      <div class="lg-stat"><small>মোট সাপ্লায়ার</small><b class="num">{{ suppliers|length|bn }} জন</b></div>
+      <div class="lg-stat{% if total_due > 0 %} warn{% endif %}"><small>মোট বাকি</small><b class="num">{{ total_due|taka }}</b><em>{{ due_count|bn }} জনের কাছে</em></div>
+    </div>
+  </section>
+
+  <div class="lg-grid2">
+    <section class="lg-card">
+      <div class="lg-head">
+        <div><h2><i class="bi bi-journal-text"></i> সবার হিসাব</h2><p>যার কাছে বাকি বেশি, সে আগে</p></div>
+        <form class="lg-search" method="get">
+          <input class="lg-input" type="search" name="q" value="{{ q }}" placeholder="নাম বা নম্বর" aria-label="খুঁজুন">
+          <button class="lg-btn dark" type="submit"><i class="bi bi-search"></i></button>
+        </form>
+      </div>
+      {% if suppliers %}
+      <div class="lg-table-wrap" style="margin-top: 8px;">
+        <table class="lg-table stack">
+          <thead><tr><th>সাপ্লায়ার</th><th class="r">মোট কেনা</th><th class="r">দেওয়া হয়েছে</th><th class="r">বাকি</th></tr></thead>
+          <tbody>
+            {% for s in suppliers %}
+            <tr>
+              <td class="a"><a class="row-link" href="{% url 'supplier_detail' s.id %}">{{ s.name }}</a><small class="num">{% if s.phone %}{{ s.phone }} · {% endif %}{{ s.purchase_count|bn }} বার কেনা</small></td>
+              <td class="r num hide-sm">{{ s.bought|taka }}</td>
+              <td class="r num hide-sm">{{ s.paid|taka }}</td>
+              <td class="r b">{% if s.due > 0 %}<span class="lg-chip due num">{{ s.due|taka }}</span>{% elif s.due < 0 %}<span class="lg-chip blue num">অগ্রিম {{ s.due|taka|slice:"1:" }}</span>{% else %}<span class="lg-chip ok">বাকি নেই</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% elif q %}
+      <div class="lg-empty"><i class="bi bi-search"></i>"{{ q }}" দিয়ে কাউকে পাওয়া যায়নি</div>
+      {% else %}
+      <div class="lg-empty"><i class="bi bi-people"></i><b>এখনো কোনো সাপ্লায়ার নেই</b>পাশের ফর্ম থেকে যোগ করুন, অথবা মাল কেনা লেখার সময়ই নতুন সাপ্লায়ার দিতে পারবেন</div>
+      {% endif %}
+    </section>
+
+    <section class="lg-card" id="add-supplier">
+      <div class="lg-head"><div><h2><i class="bi bi-person-plus"></i> নতুন সাপ্লায়ার</h2></div></div>
+      <form class="lg-body" method="post" autocomplete="off">
+        {% csrf_token %}
+        <div style="display: grid; gap: 12px;">
+          <div><label for="s-name">নাম</label><input class="lg-input" type="text" name="name" id="s-name" maxlength="120" required placeholder="যেমন: করিম ট্রেডার্স"></div>
+          <div><label for="s-phone">মোবাইল নম্বর <span style="font-weight: 500; color: var(--muted);">(ঐচ্ছিক)</span></label><input class="lg-input num" type="tel" name="phone" id="s-phone" maxlength="20"></div>
+          <div><label for="s-address">ঠিকানা <span style="font-weight: 500; color: var(--muted);">(ঐচ্ছিক)</span></label><input class="lg-input" type="text" name="address" id="s-address" maxlength="200"></div>
+          <div><label for="s-due">আগে থেকে কত বাকি আছে <span style="font-weight: 500; color: var(--muted);">(ঐচ্ছিক)</span></label><input class="lg-input num" type="text" inputmode="decimal" name="opening_due" id="s-due" placeholder="৳০">
+            <div class="lg-help">এই সফটওয়্যারে হিসাব শুরুর আগে যদি তার কাছে বাকি থেকে থাকে</div></div>
+          <button class="lg-btn dark" type="submit" style="justify-content: center;"><i class="bi bi-check-lg"></i> সাপ্লায়ার যোগ করুন</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+{% endblock %}

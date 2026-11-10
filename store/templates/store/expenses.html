@@ -1,0 +1,107 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}খরচের খাতা — {{ shop.name }}{% endblock %}
+{% block page_title %}খরচের খাতা{% endblock %}
+
+{% block content %}
+{% include 'store/partials/ledger_styles.html' %}
+<style>
+  .ex-month { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 4px; }
+  .ex-month a, .ex-month span.off { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px; color: #F1F5F9; }
+  .ex-month a:hover { background: rgba(255,255,255,.12); }
+  .ex-month span.off { opacity: .3; }
+  .ex-month b { padding: 0 10px; font-size: 15px; font-weight: 700; color: #fff; white-space: nowrap; }
+  .ex-cats { display: flex; flex-wrap: wrap; gap: 7px; }
+  .ex-cats label { margin: 0; }
+  .ex-cats input { position: absolute; opacity: 0; pointer-events: none; }
+  .ex-cats span { display: inline-block; border: 1.5px solid var(--line); border-radius: 999px; padding: 7px 13px; font-size: 13.5px; font-weight: 600; color: var(--ink2); cursor: pointer; background: #fff; }
+  .ex-cats input:checked + span { background: #0F172A; border-color: #0F172A; color: #fff; }
+  .ex-cats input:focus-visible + span { box-shadow: 0 0 0 4px rgba(99,102,241,.2); }
+</style>
+<div class="lg">
+  <section class="lg-hero">
+    <div class="lg-hero-top">
+      <div>
+        <div class="lg-kicker"><i class="bi bi-wallet2"></i> খরচের খাতা</div>
+        <h1>দোকানের খরচ</h1>
+        <p>ভাড়া, বেতন, বিজ্ঞাপন — যা খরচ হয় লিখে রাখুন। রিপোর্টে এগুলো বাদ দিয়ে আসল নিট লাভ দেখাবে</p>
+      </div>
+      <div class="ex-month" aria-label="মাস বাছাই">
+        <a href="?m={{ prev_month }}" aria-label="আগের মাস"><i class="bi bi-chevron-left"></i></a>
+        <b>{{ month_label }}</b>
+        {% if next_month %}<a href="?m={{ next_month }}" aria-label="পরের মাস"><i class="bi bi-chevron-right"></i></a>{% else %}<span class="off"><i class="bi bi-chevron-right"></i></span>{% endif %}
+      </div>
+    </div>
+    <div class="lg-stats">
+      <div class="lg-stat"><small>{{ month_label }}-এ মোট খরচ</small><b class="num">{{ summary.total|taka }}</b><em>{{ expenses|length|bn }}টা এন্ট্রি</em></div>
+      <div class="lg-stat"><small>আগের মাসে ছিল</small><b class="num">{{ previous_total|taka }}</b></div>
+      <div class="lg-stat"><small>সবচেয়ে বেশি খরচ</small><b style="font-size: 18px;">{% if summary.rows %}{{ summary.rows.0.label }}{% else %}—{% endif %}</b>{% if summary.rows %}<em class="num">{{ summary.rows.0.total|taka }}</em>{% endif %}</div>
+    </div>
+  </section>
+
+  <div class="lg-grid2">
+    <div>
+      <section class="lg-card">
+        <div class="lg-head"><div><h2><i class="bi bi-plus-circle"></i> নতুন খরচ লিখুন</h2></div></div>
+        <form class="lg-body" method="post" autocomplete="off">
+          {% csrf_token %}
+          <label>কোন খাতে</label>
+          <div class="ex-cats">
+            {% for key, label in categories %}<label><input type="radio" name="category" value="{{ key }}"{% if forloop.first %} checked{% endif %}><span>{{ label }}</span></label>{% endfor %}
+          </div>
+          <div class="lg-fields" style="margin-top: 14px;">
+            <div><label for="ex-amount">কত টাকা</label><input class="lg-input num" type="text" inputmode="decimal" name="amount" id="ex-amount" required placeholder="৳"></div>
+            <div><label for="ex-date">তারিখ</label><input class="lg-input num" type="date" name="spent_on" id="ex-date" value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}"></div>
+            <div><label for="ex-method">কীভাবে দিলেন</label><select class="lg-input" name="method" id="ex-method">{% for key, label in methods %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></div>
+          </div>
+          <div style="margin-top: 12px;"><label for="ex-title">বিবরণ <span style="font-weight: 500; color: var(--muted);">(ঐচ্ছিক)</span></label><input class="lg-input" type="text" name="title" id="ex-title" maxlength="120" placeholder="যেমন: নভেম্বর মাসের ভাড়া"></div>
+          <button class="lg-btn dark" type="submit" style="margin-top: 14px;"><i class="bi bi-check-lg"></i> খরচ লিখুন</button>
+        </form>
+      </section>
+
+      <section class="lg-card">
+        <div class="lg-head"><div><h2><i class="bi bi-list-ul"></i> {{ month_label }}-এর খরচ</h2></div></div>
+        {% if expenses %}
+        <div class="lg-table-wrap" style="margin-top: 8px;">
+          <table class="lg-table stack">
+            <thead><tr><th>খাত ও বিবরণ</th><th>তারিখ</th><th class="r">টাকা</th><th></th></tr></thead>
+            <tbody>
+              {% for e in expenses %}
+              <tr>
+                <td class="a2"><b style="font-weight: 600;">{{ e.get_category_display }}</b><small>{% if e.title %}{{ e.title }} · {% endif %}{{ e.get_method_display }}<span class="d-sm-none"> · {{ e.spent_on|bn_day }}</span></small></td>
+                <td class="hide-sm">{{ e.spent_on|bn_day }}</td>
+                <td class="r num b">{{ e.amount|taka }}</td>
+                <td class="r e"><form method="post" action="{% url 'expense_delete' e.id %}" onsubmit="return confirm('এই খরচের এন্ট্রিটা মুছবেন?');">{% csrf_token %}<button class="lg-btn red sm" type="submit" aria-label="মুছুন"><i class="bi bi-trash3"></i></button></form></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="lg-empty"><i class="bi bi-wallet2"></i><b>{{ month_label }}-এ কোনো খরচ লেখা নেই</b>{% if is_current %}উপরের ফর্ম থেকে প্রথম খরচটা লিখুন{% endif %}</div>
+        {% endif %}
+      </section>
+    </div>
+
+    <section class="lg-card">
+      <div class="lg-head"><div><h2><i class="bi bi-pie-chart"></i> কোন খাতে কত</h2><p>{{ month_label }}</p></div></div>
+      <div class="lg-body">
+        {% if summary.rows %}
+        <div class="lg-bars">
+          {% for r in summary.rows %}
+          <div class="lg-bar-row">
+            <span class="nm">{{ r.label }} <small>· {{ r.count|bn }} বার</small></span>
+            <span class="am num">{{ r.total|taka }}<small>{{ r.share|floatformat:"-1"|bn }}%</small></span>
+            <span class="lg-meter"><i style="width: {{ r.bar }}%;"></i></span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="lg-empty" style="padding: 18px 0;"><i class="bi bi-pie-chart"></i>খরচ লিখলে এখানে খাত অনুযায়ী ভাগ দেখাবে</div>
+        {% endif %}
+        <a class="lg-btn line" href="{% url 'reports' %}" style="margin-top: 16px; width: 100%; justify-content: center;"><i class="bi bi-graph-up"></i> রিপোর্টে নিট লাভ দেখুন</a>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

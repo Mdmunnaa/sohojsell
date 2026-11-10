@@ -127,11 +127,12 @@ class StaffAccessMiddleware:
                 # কোন লিংকে কোন পারমিশন লাগবে তার লিস্ট
                 restrictions = [
                     (('/pos/',), staff.can_use_pos, "POS System"),
-                    (('/products/', '/categories/', '/barcode/'), staff.can_manage_products, "Product Management"),
+                    (('/products/', '/categories/', '/barcode/', '/purchases/', '/suppliers/'),
+                     staff.can_manage_products, "Product Management"),
                     (('/orders/', '/storefront-orders/', '/courier/'), staff.can_manage_orders, "Order Management"),
                     (('/customers/',), staff.can_manage_customers, "Customer Database"),
                     (('/sms/',), staff.can_send_sms, "SMS Panel"),
-                    (('/reports/',), staff.can_view_reports, "Business Reports"),
+                    (('/reports/', '/expenses/'), staff.can_view_reports, "Business Reports"),
                     (('/settings/', '/staff/', '/banners/', '/billing/', '/website/'), staff.can_manage_settings, "Shop Settings"),
                 ]
 

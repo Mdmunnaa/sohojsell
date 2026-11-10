@@ -2058,7 +2058,7 @@ class ReportTests(ShopTestMixin, TestCase):
         self.assertIn('spreadsheetml', response['Content-Type'])
         self.assertIn('.xlsx', response['Content-Disposition'])
         book = load_workbook(BytesIO(response.content))
-        self.assertEqual(book.sheetnames, ['সারাংশ', 'অর্ডার', 'প্রোডাক্ট', 'কাস্টমার'])
+        self.assertEqual(book.sheetnames, ['সারাংশ', 'অর্ডার', 'প্রোডাক্ট', 'কাস্টমার', 'খরচ', 'মাল কেনা'])
         self.assertEqual(book['অর্ডার'].max_row, 2)
 
     def test_staff_without_report_permission_is_sent_back(self):
@@ -2183,6 +2183,160 @@ class VariantTests(ShopTestMixin, TestCase):
         variants.save_rows(theirs, [{'id': None, 'name': 'A', 'price': None, 'stock': 5}])
         self.client.force_login(self.user)
         self.assertFalse(self.sell(items=[{'id': -theirs.variants.get().id, 'qty': 1}]).json()['success'])
+
+
+class LedgerTests(ShopTestMixin, TestCase):
+    """কেনা, সাপ্লায়ার, খরচ: স্টক আর গড় কেনা দাম, সাপ্লায়ারের বাকি, মোছা, নিট লাভ, অনুমতি।"""
+
+    def setUp(self):
+        from .models import Product, Supplier
+        from . import variants
+        self.user, self.shop = self.make_shop()
+        self.shirt = Product.objects.create(shop=self.shop, name='শার্ট', price=Decimal('450'), cost_price=300,
+                                            stock_quantity=10)
+        self.cap = Product.objects.create(shop=self.shop, name='Cap', price=Decimal('200'), cost_price=0,
+                                          stock_quantity=4)
+        self.kurti = Product.objects.create(shop=self.shop, name='কুর্তি', price=Decimal('900'), cost_price=500)
+        variants.save_rows(self.kurti, [{'id': None, 'name': 'M', 'price': None, 'stock': 2},
+                                        {'id': None, 'name': 'L', 'price': None, 'stock': 0}])
+        self.m, self.l = self.kurti.variants.all()
+        self.karim = Supplier.objects.create(shop=self.shop, name='করিম ট্রেডার্স', opening_due=Decimal('1000'))
+
+    def buy(self, items, **extra):
+        data = {'item_key[]': [str(k) for k, _q, _c in items], 'item_qty[]': [str(q) for _k, q, _c in items],
+                'item_cost[]': [str(c) for _k, _q, c in items], 'supplier': '', 'purchased_on': '', **extra}
+        return self.client.post(reverse('purchase_new'), data)
+
+    def test_purchase_adds_stock_and_averages_cost(self):
+        from .models import Purchase
+        response = self.buy([(self.shirt.id, 10, 400), (self.cap.id, 6, 120), (-self.l.id, 3, 600)],
+                            supplier=str(self.karim.id), paid='৩০০০', invoice_no='INV-7')
+        purchase = Purchase.objects.get()
+        self.assertRedirects(response, reverse('purchase_detail', args=[purchase.id]))
+        self.assertEqual((purchase.total_amount, purchase.paid_amount, purchase.due_amount),
+                         (Decimal('6520'), Decimal('3000'), Decimal('3520')))
+        for product in (self.shirt, self.cap, self.kurti):
+            product.refresh_from_db()
+        self.l.refresh_from_db()
+        self.assertEqual((self.shirt.stock_quantity, self.shirt.cost_price), (20, Decimal('350')))   # (১০×৩০০+১০×৪০০)÷২০
+        self.assertEqual((self.cap.stock_quantity, self.cap.cost_price), (10, Decimal('120')))      # আগের দাম জানা ছিল না
+        self.assertEqual((self.l.stock_quantity, self.kurti.stock_quantity, self.kurti.cost_price),
+                         (3, 5, Decimal('560')))                                                    # (২×৫০০+৩×৬০০)÷৫
+        from . import ledger
+        self.assertEqual(ledger.supplier_due(self.karim), Decimal('4520'))                          # ১০০০ আগের + ৩৫২০
+        detail = self.client.get(reverse('purchase_detail', args=[purchase.id])).content.decode()
+        for text in ['কুর্তি (L)', 'করিম ট্রেডার্স', '৳৬,৫২০', 'INV-7']:
+            self.assertIn(text, detail)
+        self.assertIn('করিম ট্রেডার্স', self.client.get(reverse('purchase_list')).content.decode())
+
+    def test_purchase_rules(self):
+        from .models import Purchase, Supplier
+        page = self.buy([(self.shirt.id, 5, 400)], paid='500').content.decode()        # বাকি অথচ সাপ্লায়ার নেই
+        self.assertIn('সাপ্লায়ার বেছে নিন', page)
+        self.assertIn('কোন সাইজ/রং', self.buy([(self.kurti.id, 1, 500)]).content.decode())
+        self.assertIn('এর বেশি দেওয়া টাকা', self.buy([(self.shirt.id, 1, 400)], paid='900').content.decode())
+        self.assertIn('অন্তত একটা প্রোডাক্ট', self.buy([]).content.decode())
+        self.assertFalse(Purchase.objects.exists())
+        self.shirt.refresh_from_db()
+        self.assertEqual(self.shirt.stock_quantity, 10)
+        # নগদে কেনা (সাপ্লায়ার ছাড়া) আর ফর্ম থেকেই নতুন সাপ্লায়ার
+        self.buy([(self.shirt.id, 2, 300)])
+        self.buy([(self.shirt.id, 1, 300)], supplier='new', new_supplier='রহিম স্টোর', new_phone='01700000000', paid='0')
+        cash, credit = Purchase.objects.order_by('id')
+        self.assertEqual((cash.supplier, cash.paid_amount), (None, Decimal('600')))
+        self.assertEqual((credit.supplier.name, credit.due_amount), ('রহিম স্টোর', Decimal('300')))
+        self.assertEqual(Supplier.objects.filter(shop=self.shop).count(), 2)
+
+    def test_delete_purchase_restores_stock_and_cost(self):
+        from .models import Purchase, SupplierPayment
+        self.buy([(self.shirt.id, 10, 400), (-self.l.id, 3, 600)], supplier=str(self.karim.id), paid='1000')
+        purchase = Purchase.objects.get()
+        self.client.post(reverse('purchase_delete', args=[purchase.id]))
+        self.shirt.refresh_from_db(); self.l.refresh_from_db(); self.kurti.refresh_from_db()
+        self.assertEqual((self.shirt.stock_quantity, self.shirt.cost_price), (10, Decimal('300')))
+        self.assertEqual((self.l.stock_quantity, self.kurti.stock_quantity, self.kurti.cost_price), (0, 2, Decimal('500')))
+        self.assertFalse(SupplierPayment.objects.exists())
+        # কিছু বিক্রি হয়ে গেলে মোছা যায় না
+        self.buy([(self.cap.id, 2, 100)])
+        self.cap.refresh_from_db()
+        self.cap.stock_quantity = 1
+        self.cap.save()
+        purchase = Purchase.objects.get()
+        response = self.client.post(reverse('purchase_delete', args=[purchase.id]), follow=True)
+        self.assertIn('বিক্রি হয়ে গেছে', response.content.decode())
+        self.assertTrue(Purchase.objects.filter(pk=purchase.pk).exists())
+
+    def test_supplier_ledger_and_payment(self):
+        from . import ledger
+        self.buy([(self.shirt.id, 10, 400)], supplier=str(self.karim.id), paid='1500')
+        url = reverse('supplier_detail', args=[self.karim.id])
+        self.assertEqual(ledger.supplier_due(self.karim), Decimal('3500'))
+        too_much = self.client.post(url, {'action': 'pay', 'amount': '4000'}, follow=True)
+        self.assertIn('এর বেশি দেওয়া যাবে না', too_much.content.decode())
+        self.client.post(url, {'action': 'pay', 'amount': '২,০০০', 'method': 'bkash', 'note': 'TX1'})
+        self.assertEqual(ledger.supplier_due(self.karim), Decimal('1500'))
+        page = self.client.get(url).content.decode()
+        for text in ['৳১,৫০০', 'বাকি পরিশোধ · bKash · TX1', 'কেনার সময় দেওয়া', 'আগের বাকি']:
+            self.assertIn(text, page)
+        listing = self.client.get(reverse('supplier_list'))
+        self.assertEqual(listing.context['total_due'], Decimal('1500'))
+        self.assertIn('মোছা যাবে না', self.client.post(url, {'action': 'delete'}, follow=True).content.decode())
+        again = self.client.post(reverse('supplier_list'), {'name': 'করিম ট্রেডার্স'}, follow=True)
+        self.assertIn('আগে থেকেই আছে', again.content.decode())
+
+    def test_expenses_and_net_profit_in_report(self):
+        from .models import Customer, Expense
+        from . import reports
+        self.client.post(reverse('expense_list'), {'category': 'rent', 'amount': '৫০০', 'title': 'ভাড়া'})
+        self.client.post(reverse('expense_list'), {'category': 'ads', 'amount': '120.50'})
+        self.client.post(reverse('expense_list'), {'category': 'rent', 'amount': '0'})            # বাদ পড়বে
+        self.assertEqual(Expense.objects.count(), 2)
+        customer = Customer.objects.create(shop=self.shop, name='রহিম', phone='01812345678', address='Savar')
+        order = Order.objects.create(shop=self.shop, customer=customer, source='pos', status='Delivered',
+                                     delivery_charge=0, total_amount=Decimal('900'))
+        OrderItem.objects.create(order=order, product=self.shirt, price=Decimal('450'), quantity=2, cost_price=300)
+        today = timezone.localdate()
+        pl = reports.profit_and_loss(self.shop, today, today, reports.summary(self.shop, today, today))
+        self.assertEqual((pl['gross'], pl['expenses']['total'], pl['net']),
+                         (Decimal('300'), Decimal('620.50'), Decimal('-320.50')))
+        self.assertTrue(pl['net_negative'])
+        self.assertEqual([r['key'] for r in pl['expenses']['rows']], ['rent', 'ads'])
+        report = self.client.get(reverse('reports') + '?period=today').content.decode()
+        for text in ['লাভ-ক্ষতির হিসাব', 'নিট লোকসান', 'দোকান ভাড়া']:
+            self.assertIn(text, report)
+        page = self.client.get(reverse('expense_list')).content.decode()
+        for text in ['৳৬২০.৫০', 'দোকান ভাড়া', 'বিজ্ঞাপন / বুস্ট']:
+            self.assertIn(text, page)
+        self.client.post(reverse('expense_delete', args=[Expense.objects.filter(category='ads').get().id]))
+        self.assertEqual(Expense.objects.count(), 1)
+        self.assertEqual(self.client.get(reverse('expense_list') + '?m=2020-01').status_code, 200)
+        self.assertEqual(self.client.get(reverse('expense_list') + '?m=junk').status_code, 200)
+        from io import BytesIO
+        from openpyxl import load_workbook
+        book = load_workbook(BytesIO(self.client.get(reverse('reports') + '?period=today&export=xlsx').content))
+        self.assertEqual(book.sheetnames, ['সারাংশ', 'অর্ডার', 'প্রোডাক্ট', 'কাস্টমার', 'খরচ', 'মাল কেনা'])
+
+    def test_staff_permissions_and_other_shops(self):
+        from .models import Expense, Purchase, StaffProfile, Supplier
+        staff = User.objects.create_user(phone_number='01922222222', password='Test-pass-123', name='Karim')
+        profile = StaffProfile.objects.create(user=staff, shop=self.shop, can_use_pos=True)
+        self.client.force_login(staff)
+        for name in ['purchase_list', 'purchase_new', 'supplier_list', 'expense_list']:
+            self.assertRedirects(self.client.get(reverse(name)), reverse('dashboard'), fetch_redirect_response=False)
+        profile.can_manage_products = True
+        profile.save()
+        self.assertEqual(self.client.get(reverse('purchase_list')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('expense_list')).status_code, 302)       # রিপোর্টের অনুমতি লাগে
+        # অন্য দোকানের জিনিস দেখা বা মোছা যায় না
+        _other_user, other = self.make_shop(phone='01722222222')
+        theirs = Supplier.objects.create(shop=other, name='Their')
+        their_buy = Purchase.objects.create(shop=other, purchased_on=timezone.localdate())
+        their_cost = Expense.objects.create(shop=other, amount=5, spent_on=timezone.localdate())
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(reverse('supplier_detail', args=[theirs.id])).status_code, 404)
+        self.assertEqual(self.client.get(reverse('purchase_detail', args=[their_buy.id])).status_code, 404)
+        self.assertEqual(self.client.post(reverse('expense_delete', args=[their_cost.id])).status_code, 404)
+        self.assertIn('সাপ্লায়ার পাওয়া যায়নি', self.buy([(self.shirt.id, 1, 300)], supplier=str(theirs.id)).content.decode())
 
 
 class BrandTests(TestCase):

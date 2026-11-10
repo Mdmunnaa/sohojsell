@@ -1,0 +1,70 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}মাল কেনা — {{ shop.name }}{% endblock %}
+{% block page_title %}মাল কেনা{% endblock %}
+
+{% block content %}
+{% include 'store/partials/ledger_styles.html' %}
+<div class="lg">
+  <section class="lg-hero">
+    <div class="lg-hero-top">
+      <div>
+        <div class="lg-kicker"><i class="bi bi-bag-plus"></i> কেনার খাতা</div>
+        <h1>মাল কেনা</h1>
+        <p>মাল কিনে এখানে লিখলে স্টক নিজে বাড়ে আর কেনা দাম নিজে বসে</p>
+      </div>
+      <div class="lg-actions">
+        <a class="lg-btn white" href="{% url 'purchase_new' %}"><i class="bi bi-plus-lg"></i> নতুন কেনা লিখুন</a>
+        <a class="lg-btn ghost" href="{% url 'supplier_list' %}"><i class="bi bi-people"></i> সাপ্লায়ার</a>
+      </div>
+    </div>
+    <div class="lg-stats">
+      <div class="lg-stat"><small>{{ month_name }} মাসে কেনা</small><b class="num">{{ month.total|taka }}</b><em>{{ month.count|bn }}টা চালান</em></div>
+      <div class="lg-stat"><small>{{ month_name }} মাসে সাপ্লায়ারকে দেওয়া</small><b class="num">{{ month.paid|taka }}</b></div>
+      <div class="lg-stat{% if month.supplier_due > 0 %} warn{% endif %}"><small>সাপ্লায়ারদের কাছে মোট বাকি</small><b class="num">{{ month.supplier_due|taka }}</b></div>
+    </div>
+  </section>
+
+  <section class="lg-card">
+    <div class="lg-head">
+      <div><h2><i class="bi bi-receipt"></i> সব কেনা</h2></div>
+      {% if has_any %}
+      <form class="lg-search" method="get">
+        <input class="lg-input" type="search" name="q" value="{{ q }}" placeholder="সাপ্লায়ার, চালান বা প্রোডাক্ট" aria-label="খুঁজুন">
+        <button class="lg-btn dark" type="submit"><i class="bi bi-search"></i></button>
+      </form>
+      {% endif %}
+    </div>
+    {% if page_obj.object_list %}
+    <div class="lg-table-wrap" style="margin-top: 8px;">
+      <table class="lg-table stack">
+        <thead><tr><th>তারিখ</th><th>সাপ্লায়ার</th><th>কী কী কেনা</th><th class="r">মোট</th><th class="r">অবস্থা</th></tr></thead>
+        <tbody>
+          {% for p in page_obj %}
+          <tr>
+            <td class="a"><a class="row-link" href="{% url 'purchase_detail' p.id %}">{{ p.purchased_on|bn_day }}</a><small class="num">#{{ p.id|bn }}{% if p.invoice_no %} · চালান {{ p.invoice_no }}{% endif %}</small></td>
+            <td class="hide-sm">{% if p.supplier %}<a class="row-link" href="{% url 'supplier_detail' p.supplier_id %}">{{ p.supplier.name }}</a>{% else %}<span style="color: var(--muted);">সাপ্লায়ার ছাড়া (নগদে)</span>{% endif %}</td>
+            <td class="c">{% for item in p.items.all|slice:":2" %}{{ item.name }} ×{{ item.quantity|bn }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if p.items.all|length > 2 %} <span style="color: var(--muted);">+ আরও {{ p.items.all|length|add:"-2"|bn }}টা</span>{% endif %}<small class="d-sm-none">{% if p.supplier %}{{ p.supplier.name }}{% else %}সাপ্লায়ার ছাড়া{% endif %}</small></td>
+            <td class="r num b">{{ p.total_amount|taka }}</td>
+            <td class="r d">{% if p.due_amount > 0 %}<span class="lg-chip due">বাকি {{ p.due_amount|taka }}</span>{% else %}<span class="lg-chip ok"><i class="bi bi-check2"></i> পুরো দেওয়া</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page_obj.has_other_pages %}
+    <div class="lg-pager">
+      {% if page_obj.has_previous %}<a class="lg-btn line sm" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}"><i class="bi bi-chevron-left"></i> আগের</a>{% endif %}
+      <span>পাতা {{ page_obj.number|bn }} / {{ page_obj.paginator.num_pages|bn }}</span>
+      {% if page_obj.has_next %}<a class="lg-btn line sm" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}">পরের <i class="bi bi-chevron-right"></i></a>{% endif %}
+    </div>
+    {% endif %}
+    {% elif q %}
+    <div class="lg-empty"><i class="bi bi-search"></i>"{{ q }}" দিয়ে কিছু পাওয়া যায়নি</div>
+    {% else %}
+    <div class="lg-empty"><i class="bi bi-bag-plus"></i><b>এখনো কোনো কেনা লেখা হয়নি</b>মাল কিনে এখানে লিখলে স্টক আর কেনা দাম নিজে ঠিক হয়ে যাবে
+      <div style="margin-top: 14px;"><a class="lg-btn dark" href="{% url 'purchase_new' %}"><i class="bi bi-plus-lg"></i> প্রথম কেনা লিখুন</a></div></div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

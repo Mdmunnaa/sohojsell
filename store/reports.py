@@ -213,6 +213,16 @@ def summary(shop, start, end):
     }
 
 
+def profit_and_loss(shop, start, end, s):
+    """পণ্যের লাভ থেকে দোকানের খরচ (store/ledger.py) বাদ দিয়ে নিট লাভ। s = summary()-এর ফল।"""
+    from . import ledger
+    spent = ledger.expense_summary(shop, start, end)
+    net = s['profit'] - spent['total']
+    return {'net_sales': s['profit'] + s['cost'], 'cost': s['cost'], 'gross': s['profit'],
+            'gross_negative': s['profit'] < 0, 'expenses': spent, 'net': net, 'net_negative': net < 0,
+            'net_abs': abs(net), 'net_margin': _pct(net, s['sales'])}
+
+
 def compare(current, previous):
     return {key: _change(current[key], previous[key]) for key in ('sales', 'profit', 'orders', 'aov', 'units')}
 
@@ -505,7 +515,12 @@ def build_workbook(shop, period):
             ('লাভের হার %', s['margin']), ('অর্ডার ও বিল', s['orders']), ('গড় বিল', s['aov']),
             ('বিক্রি হওয়া প্রোডাক্ট (পিস)', s['units']), ('ছাড় দেওয়া', s['discount']), ('VAT', s['vat']),
             ('ডেলিভারি চার্জ নেওয়া', s['delivery']), ('ফেরত অর্ডার', s['returned']), ('বাতিল অর্ডার', s['cancelled'])]
+    from . import ledger
+    from .models import Expense, Purchase
+    pl = profit_and_loss(shop, period.start, period.end, s)
+    rows[2:2] = [('দোকানের খরচ', pl['expenses']['total']), ('নিট লাভ (লাভ − খরচ)', pl['net'])]
     rows += [(f"{c['label']} — বিক্রি", c['sales']) for c in s['channels']]
+    rows += [(f"খরচ — {r['label']}", r['total']) for r in pl['expenses']['rows']]
     for label, value in rows:
         ws.append([label, float(value) if isinstance(value, Decimal) else value])
     ws.column_dimensions['A'].width = 40
@@ -534,4 +549,17 @@ def build_workbook(shop, period):
           [[r['customer__name'], r['customer__phone'], r['orders'], float(r['spent'] or 0)]
            for r in customer_rows(shop, period.start, period.end)],
           [28, 16, 10, 16], money_cols=(4,))
+    sheet(wb.create_sheet('খরচ'),
+          ['তারিখ', 'খাত', 'বিবরণ', 'কীভাবে', 'টাকা'],
+          [[e.spent_on.isoformat(), e.get_category_display(), e.title, e.get_method_display(), float(e.amount)]
+           for e in Expense.objects.filter(shop=shop, spent_on__gte=period.start, spent_on__lte=period.end)
+           .order_by('spent_on', 'id')],
+          [14, 24, 34, 12, 14], money_cols=(5,))
+    sheet(wb.create_sheet('মাল কেনা'),
+          ['তারিখ', 'কেনা নং', 'সাপ্লায়ার', 'চালান', 'মোট', 'কেনার সময় দেওয়া', 'বাকি'],
+          [[p.purchased_on.isoformat(), p.id, p.supplier.name if p.supplier else 'সাপ্লায়ার ছাড়া', p.invoice_no,
+            float(p.total_amount), float(p.paid_amount), float(p.due_amount)]
+           for p in Purchase.objects.filter(shop=shop, purchased_on__gte=period.start, purchased_on__lte=period.end)
+           .select_related('supplier').order_by('purchased_on', 'id')],
+          [14, 10, 28, 16, 14, 18, 14], money_cols=(5, 6, 7))
     return wb

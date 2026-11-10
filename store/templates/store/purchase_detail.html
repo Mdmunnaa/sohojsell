@@ -1,0 +1,67 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}কেনা #{{ purchase.id }} — {{ shop.name }}{% endblock %}
+{% block page_title %}মাল কেনা{% endblock %}
+
+{% block content %}
+{% include 'store/partials/ledger_styles.html' %}
+<div class="lg" style="max-width: 880px;">
+  <section class="lg-hero">
+    <div class="lg-hero-top">
+      <div>
+        <div class="lg-kicker"><a href="{% url 'purchase_list' %}"><i class="bi bi-arrow-left"></i> সব কেনা</a></div>
+        <h1>কেনা <span class="num">#{{ purchase.id|bn }}</span></h1>
+        <p>{{ purchase.purchased_on|bn_day }}{% if purchase.invoice_no %} · চালান {{ purchase.invoice_no }}{% endif %}{% if purchase.created_by %} · লিখেছেন {{ purchase.created_by.name|default:purchase.created_by.phone_number }}{% endif %}</p>
+      </div>
+      <div class="lg-actions">
+        <a class="lg-btn white" href="{% url 'purchase_new' %}"><i class="bi bi-plus-lg"></i> নতুন কেনা</a>
+      </div>
+    </div>
+    <div class="lg-stats">
+      <div class="lg-stat"><small>মোট দাম</small><b class="num">{{ purchase.total_amount|taka }}</b></div>
+      <div class="lg-stat"><small>কেনার সময় দেওয়া</small><b class="num">{{ purchase.paid_amount|taka }}</b>{% if payment %}<em>{{ payment.get_method_display }}</em>{% endif %}</div>
+      <div class="lg-stat{% if purchase.due_amount > 0 %} warn{% endif %}"><small>এই চালানে বাকি ছিল</small><b class="num">{{ purchase.due_amount|taka }}</b></div>
+    </div>
+  </section>
+
+  <section class="lg-card">
+    <div class="lg-head">
+      <div><h2><i class="bi bi-person-lines-fill"></i> সাপ্লায়ার</h2></div>
+    </div>
+    <div class="lg-body">
+      {% if purchase.supplier %}
+      <a class="row-link" style="font-weight: 700; font-size: 16px; color: var(--ink);" href="{% url 'supplier_detail' purchase.supplier_id %}">{{ purchase.supplier.name }} <i class="bi bi-arrow-right-short"></i></a>
+      {% if purchase.supplier.phone %}<div class="num" style="color: var(--muted);">{{ purchase.supplier.phone }}</div>{% endif %}
+      {% else %}
+      <span style="color: var(--muted);">সাপ্লায়ার ছাড়া, নগদে কেনা</span>
+      {% endif %}
+      {% if purchase.note %}<div class="lg-help" style="margin-top: 10px;"><i class="bi bi-chat-left-text"></i> {{ purchase.note }}</div>{% endif %}
+    </div>
+  </section>
+
+  <section class="lg-card">
+    <div class="lg-head"><div><h2><i class="bi bi-box-seam"></i> যা যা কেনা হয়েছে</h2></div></div>
+    <div class="lg-table-wrap" style="margin-top: 8px;">
+      <table class="lg-table">
+        <thead><tr><th>প্রোডাক্ট</th><th class="r">পরিমাণ</th><th class="r">প্রতিটার দাম</th><th class="r">মোট</th></tr></thead>
+        <tbody>
+          {% for item in items %}
+          <tr><td>{{ item.name }}{% if not item.product_id %}<small>প্রোডাক্টটা পরে মুছে ফেলা হয়েছে</small>{% endif %}</td>
+            <td class="r num">{{ item.quantity|bn }}টা</td><td class="r num">{{ item.unit_cost|taka }}</td><td class="r num">{{ item.get_total|taka }}</td></tr>
+          {% endfor %}
+          <tr><td colspan="3" class="r">মোট</td><td class="r num" style="font-size: 16px;">{{ purchase.total_amount|taka }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="lg-card">
+    <div class="lg-body" style="display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap;">
+      <div class="lg-help" style="margin: 0; max-width: 520px;">ভুল করে লিখে থাকলে মুছে আবার লিখুন। মুছলে এই মালের স্টক কমে যাবে। এর কিছু বিক্রি হয়ে গেলে আর মোছা যায় না।</div>
+      <form method="post" action="{% url 'purchase_delete' purchase.id %}" onsubmit="return confirm('এই কেনাটা মুছে ফেলবেন? স্টক কমে যাবে।');">
+        {% csrf_token %}<button class="lg-btn red" type="submit"><i class="bi bi-trash3"></i> কেনাটা মুছুন</button>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}

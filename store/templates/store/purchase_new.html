@@ -1,0 +1,243 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}নতুন কেনা — {{ shop.name }}{% endblock %}
+{% block page_title %}মাল কেনা{% endblock %}
+
+{% block content %}
+{% include 'store/partials/ledger_styles.html' %}
+<style>
+  .pn-row { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1fr) 38px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .pn-labels { font-size: 12.5px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+  .pn-row .line-total { text-align: right; font-weight: 700; font-size: 14.5px; white-space: nowrap; }
+  .pn-del { border: 0; background: #FEE2E2; color: #DC2626; border-radius: 10px; width: 38px; height: 44px; }
+  .pn-add { width: 100%; border: 1.5px dashed #94A3B8; background: #fff; border-radius: 12px; padding: 11px; font-weight: 700; color: var(--ink); }
+  .pn-pick { position: relative; }
+  .pn-list { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 16px 34px -12px rgba(15,23,42,.3); max-height: 260px; overflow-y: auto; display: none; }
+  .pn-list.show { display: block; }
+  .pn-opt { display: flex; justify-content: space-between; gap: 10px; padding: 9px 12px; cursor: pointer; font-size: 14px; font-weight: 600; border-bottom: 1px solid var(--soft); }
+  .pn-opt:last-child { border-bottom: 0; }
+  .pn-opt:hover, .pn-opt.hi { background: #EEF2FF; }
+  .pn-opt small { color: var(--muted); font-weight: 500; white-space: nowrap; }
+  .pn-none { padding: 12px; color: var(--muted); font-size: 13.5px; }
+  .pn-sum { display: grid; gap: 8px; }
+  .pn-sum .row2 { display: flex; justify-content: space-between; align-items: center; font-size: 14.5px; color: var(--ink2); }
+  .pn-sum .row2 b { font-size: 16px; color: var(--ink); }
+  .pn-sum .grand { border-top: 2px dashed var(--line); padding-top: 10px; }
+  .pn-sum .grand b { font-size: 24px; }
+  .pn-due { border-radius: 12px; padding: 10px 12px; font-size: 13.5px; font-weight: 700; }
+  .pn-due.ok { background: #DCFCE7; color: #166534; }
+  .pn-due.due { background: #FEF3C7; color: #92400E; }
+  .pn-due.bad { background: #FEE2E2; color: #991B1B; }
+  @media (max-width: 640px) {
+    .pn-labels { display: none; }
+    .pn-row { grid-template-columns: 1fr 1fr 38px; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 10px; }
+    .pn-row .pn-pick { grid-column: 1 / -1; }
+    .pn-row .line-total { grid-column: 1 / 3; text-align: left; }
+  }
+</style>
+<div class="lg">
+  <section class="lg-hero">
+    <div class="lg-kicker"><a href="{% url 'purchase_list' %}"><i class="bi bi-arrow-left"></i> সব কেনা</a></div>
+    <h1>নতুন কেনা লিখুন</h1>
+    <p>জমা দিলে স্টক বাড়বে, আর প্রোডাক্টের কেনা দাম আগের মালের সাথে গড় হয়ে বসবে</p>
+  </section>
+
+  <form method="post" id="pn-form" autocomplete="off">
+    {% csrf_token %}
+    <div class="lg-grid2">
+      <div>
+        <section class="lg-card">
+          <div class="lg-head"><div><h2><i class="bi bi-person-lines-fill"></i> কার কাছ থেকে</h2></div></div>
+          <div class="lg-body">
+            <div class="lg-fields">
+              <div>
+                <label for="pn-supplier">সাপ্লায়ার</label>
+                <select class="lg-input" name="supplier" id="pn-supplier">
+                  <option value="">সাপ্লায়ার ছাড়া (নগদে কেনা)</option>
+                  {% for s in suppliers %}<option value="{{ s.id }}"{% if form.supplier == s.id|stringformat:"s" %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
+                  <option value="new"{% if form.supplier == 'new' %} selected{% endif %}>+ নতুন সাপ্লায়ার</option>
+                </select>
+              </div>
+              <div>
+                <label for="pn-date">কেনার তারিখ</label>
+                <input class="lg-input num" type="date" name="purchased_on" id="pn-date" value="{{ form.purchased_on }}" max="{{ today|date:'Y-m-d' }}">
+              </div>
+              <div>
+                <label for="pn-invoice">চালান / মেমো নম্বর <span style="font-weight: 500; color: var(--muted);">(থাকলে)</span></label>
+                <input class="lg-input" type="text" name="invoice_no" id="pn-invoice" maxlength="40" value="{{ form.invoice_no }}">
+              </div>
+            </div>
+            <div class="lg-fields" id="pn-new-supplier" style="margin-top: 12px;" hidden>
+              <div><label for="pn-new-name">নতুন সাপ্লায়ারের নাম</label><input class="lg-input" type="text" name="new_supplier" id="pn-new-name" maxlength="120" value="{{ form.new_supplier }}"></div>
+              <div><label for="pn-new-phone">মোবাইল নম্বর <span style="font-weight: 500; color: var(--muted);">(থাকলে)</span></label><input class="lg-input num" type="tel" name="new_phone" id="pn-new-phone" maxlength="20" value="{{ form.new_phone }}"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="lg-card">
+          <div class="lg-head"><div><h2><i class="bi bi-box-seam"></i> কী কী কিনলেন</h2><p>নাম বা বারকোড লিখে প্রোডাক্ট বাছুন, তারপর পরিমাণ আর প্রতিটার কেনা দাম দিন</p></div></div>
+          <div class="lg-body">
+            <div class="pn-row pn-labels"><span>প্রোডাক্ট</span><span>পরিমাণ</span><span>প্রতিটার কেনা দাম</span><span style="text-align: right;">মোট</span><span></span></div>
+            <div id="pn-rows"></div>
+            <button type="button" class="pn-add" id="pn-add"><i class="bi bi-plus-lg"></i> আরেকটা প্রোডাক্ট</button>
+            <div class="lg-help">নতুন প্রোডাক্ট হলে আগে <a href="{% url 'add_product' %}" target="_blank">প্রোডাক্ট যোগ করুন</a> (স্টক ০ রেখে), তারপর এখানে কেনা লিখুন।</div>
+          </div>
+        </section>
+      </div>
+
+      <section class="lg-card" style="position: sticky; top: 76px;">
+        <div class="lg-head"><div><h2><i class="bi bi-cash-coin"></i> টাকার হিসাব</h2></div></div>
+        <div class="lg-body">
+          <div class="pn-sum">
+            <div class="row2"><span>মোট পরিমাণ</span><b class="num" id="pn-qty">০টা</b></div>
+            <div class="row2 grand"><span>মোট দাম</span><b class="num" id="pn-total">৳০</b></div>
+          </div>
+          <div style="margin-top: 14px;">
+            <label for="pn-paid">এখন কত দিলেন</label>
+            <input class="lg-input num" type="text" inputmode="decimal" name="paid" id="pn-paid" value="{{ form.paid }}" placeholder="ফাঁকা রাখলে পুরো টাকা দেওয়া ধরা হবে">
+          </div>
+          <div style="margin-top: 12px;">
+            <label for="pn-method">কীভাবে দিলেন</label>
+            <select class="lg-input" name="method" id="pn-method">
+              {% for key, label in methods %}<option value="{{ key }}"{% if form.method == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="pn-due ok" id="pn-due" style="margin-top: 12px;" hidden></div>
+          <div style="margin-top: 12px;">
+            <label for="pn-note">নোট <span style="font-weight: 500; color: var(--muted);">(ঐচ্ছিক)</span></label>
+            <input class="lg-input" type="text" name="note" id="pn-note" maxlength="300" value="{{ form.note }}">
+          </div>
+          <button class="lg-btn green" type="submit" style="width: 100%; justify-content: center; margin-top: 16px; padding: 14px; font-size: 16px;"><i class="bi bi-check-circle-fill"></i> কেনা জমা দিন</button>
+        </div>
+      </section>
+    </div>
+  </form>
+</div>
+
+{{ purchase_data|json_script:"purchase-data" }}
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById('purchase-data').textContent);
+  const BY_KEY = new Map(DATA.products.map(p => [String(p.key), p]));
+  const $ = id => document.getElementById(id);
+  const rows = $('pn-rows');
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const toEn = s => String(s ?? '').replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)).replace(/,/g, '');
+  const toBn = s => String(s).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+  const taka = n => '৳' + toBn((Math.round(n * 100) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 }));
+  const num = v => { const n = parseFloat(toEn(v)); return isFinite(n) && n > 0 ? n : 0; };
+
+  function addRow(row) {
+    row = row || {};
+    const picked = BY_KEY.get(String(row.key ?? ''));
+    const div = document.createElement('div'); div.className = 'pn-row';
+    div.innerHTML = `
+      <div class="pn-pick">
+        <input type="hidden" name="item_key[]" value="${picked ? esc(picked.key) : ''}">
+        <input class="lg-input pn-search" type="text" placeholder="প্রোডাক্টের নাম বা বারকোড" value="${picked ? esc(picked.name) : ''}" aria-label="প্রোডাক্ট">
+        <div class="pn-list"></div>
+      </div>
+      <input class="lg-input num" type="text" inputmode="numeric" name="item_qty[]" placeholder="কয়টা" value="${esc(row.qty ?? '')}" aria-label="পরিমাণ">
+      <input class="lg-input num" type="text" inputmode="decimal" name="item_cost[]" placeholder="৳" value="${esc(row.cost ?? '')}" aria-label="প্রতিটার কেনা দাম">
+      <div class="line-total num">৳০</div>
+      <button type="button" class="pn-del" aria-label="সারি মুছুন"><i class="bi bi-trash3"></i></button>`;
+    rows.appendChild(div);
+    return div;
+  }
+
+  function showList(row) {
+    const input = row.querySelector('.pn-search'), list = row.querySelector('.pn-list');
+    const q = toEn(input.value.trim().toLowerCase());
+    const hits = DATA.products.filter(p => !q || p.name.toLowerCase().includes(q) || String(p.barcode).toLowerCase().includes(q)).slice(0, 40);
+    list.innerHTML = hits.length
+      ? hits.map(p => `<div class="pn-opt" data-key="${esc(p.key)}"><span>${esc(p.name)}</span><small>স্টক ${toBn(p.stock)}${p.cost ? ' · কেনা ' + taka(p.cost) : ''}</small></div>`).join('')
+      : `<div class="pn-none">${DATA.products.length ? 'এই নামে কোনো প্রোডাক্ট নেই' : 'আগে প্রোডাক্ট যোগ করুন'}</div>`;
+    list.classList.add('show');
+  }
+  function pick(row, key) {
+    const p = BY_KEY.get(String(key)); if (!p) return;
+    row.querySelector('[name="item_key[]"]').value = p.key;
+    row.querySelector('.pn-search').value = p.name;
+    row.querySelector('.pn-list').classList.remove('show');
+    const cost = row.querySelector('[name="item_cost[]"]');
+    if (!cost.value && p.cost) cost.value = p.cost;
+    const qty = row.querySelector('[name="item_qty[]"]');
+    if (!qty.value) qty.focus(); else cost.focus();
+    refresh();
+  }
+
+  function refresh() {
+    let total = 0, qty = 0;
+    rows.querySelectorAll('.pn-row').forEach(row => {
+      const q = Math.floor(num(row.querySelector('[name="item_qty[]"]').value));
+      const line = q * num(row.querySelector('[name="item_cost[]"]').value);
+      row.querySelector('.line-total').textContent = taka(line);
+      if (row.querySelector('[name="item_key[]"]').value) { total += line; qty += q; }
+    });
+    $('pn-qty').textContent = toBn(qty) + 'টা';
+    $('pn-total').textContent = taka(total);
+    const paidText = $('pn-paid').value.trim(), paid = paidText === '' ? total : num(paidText), due = total - paid;
+    const box = $('pn-due'), supplier = $('pn-supplier').value;
+    box.hidden = total <= 0;
+    if (due > 0.004) {
+      box.className = 'pn-due ' + (supplier ? 'due' : 'bad');
+      box.textContent = supplier ? `বাকি থাকবে ${taka(due)} — সাপ্লায়ারের খাতায় উঠবে` : `বাকি ${taka(due)} রাখতে হলে উপরে সাপ্লায়ার বেছে নিন`;
+    } else if (due < -0.004) {
+      box.className = 'pn-due bad'; box.textContent = 'দেওয়া টাকা মোট দামের চেয়ে বেশি';
+    } else { box.className = 'pn-due ok'; box.textContent = 'পুরো টাকা দেওয়া হচ্ছে, কোনো বাকি থাকবে না'; }
+    $('pn-new-supplier').hidden = supplier !== 'new';
+  }
+
+  rows.addEventListener('focusin', e => {
+    if (e.target.classList.contains('pn-search')) showList(e.target.closest('.pn-row'));
+    else if (e.target.tagName === 'INPUT') e.target.select();      // আগের দাম বসানো থাকলে নতুন লিখলে বদলে যায়
+  });
+  rows.addEventListener('input', e => {
+    const row = e.target.closest('.pn-row');
+    if (e.target.classList.contains('pn-search')) {
+      row.querySelector('[name="item_key[]"]').value = '';
+      showList(row);
+      // বারকোড স্ক্যান করলে হুবহু মিললে সাথে সাথে বসে যায়
+      const code = toEn(e.target.value.trim().toLowerCase());
+      const exact = code && DATA.products.find(p => String(p.barcode).toLowerCase() === code);
+      if (exact) pick(row, exact.key);
+    }
+    refresh();
+  });
+  rows.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (e.target.classList.contains('pn-search')) {
+      const first = e.target.closest('.pn-row').querySelector('.pn-opt');
+      if (first) pick(e.target.closest('.pn-row'), first.dataset.key);
+    } else if (e.target.name === 'item_qty[]') { e.target.closest('.pn-row').querySelector('[name="item_cost[]"]').focus(); }
+    else if (e.target.name === 'item_cost[]') { addRow().querySelector('.pn-search').focus(); }
+  });
+  rows.addEventListener('mousedown', e => {
+    const opt = e.target.closest('.pn-opt');
+    if (opt) { e.preventDefault(); pick(opt.closest('.pn-row'), opt.dataset.key); }
+  });
+  rows.addEventListener('focusout', e => {
+    if (!e.target.classList.contains('pn-search')) return;
+    const row = e.target.closest('.pn-row');
+    setTimeout(() => {
+      row.querySelector('.pn-list').classList.remove('show');
+      if (!row.querySelector('[name="item_key[]"]').value) e.target.value = '';   // তালিকা থেকে না বাছলে ফাঁকা
+    }, 120);
+  });
+  rows.addEventListener('click', e => {
+    const del = e.target.closest('.pn-del'); if (!del) return;
+    del.closest('.pn-row').remove();
+    if (!rows.children.length) addRow();
+    refresh();
+  });
+  $('pn-add').addEventListener('click', () => addRow().querySelector('.pn-search').focus());
+  ['pn-paid', 'pn-supplier'].forEach(id => { $(id).addEventListener('input', refresh); $(id).addEventListener('change', refresh); });
+  $('pn-form').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && !e.target.closest('#pn-rows')) e.preventDefault(); });
+
+  (DATA.rows.length ? DATA.rows : [{}]).forEach(addRow);
+  refresh();
+})();
+</script>
+{% endblock %}

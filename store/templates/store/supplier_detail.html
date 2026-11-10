@@ -1,0 +1,109 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}{{ supplier.name }} — {{ shop.name }}{% endblock %}
+{% block page_title %}সাপ্লায়ার{% endblock %}
+
+{% block content %}
+{% include 'store/partials/ledger_styles.html' %}
+<div class="lg">
+  <section class="lg-hero">
+    <div class="lg-hero-top">
+      <div>
+        <div class="lg-kicker"><a href="{% url 'supplier_list' %}"><i class="bi bi-arrow-left"></i> সব সাপ্লায়ার</a></div>
+        <h1>{{ supplier.name }}</h1>
+        <p class="num">{% if supplier.phone %}<i class="bi bi-telephone"></i> {{ supplier.phone }}{% endif %}{% if supplier.address %} · {{ supplier.address }}{% endif %}{% if not supplier.phone and not supplier.address %}নম্বর বা ঠিকানা দেওয়া নেই{% endif %}</p>
+      </div>
+      <div class="lg-actions">
+        <a class="lg-btn white" href="{% url 'purchase_new' %}?supplier={{ supplier.id }}"><i class="bi bi-bag-plus"></i> এর কাছ থেকে মাল কেনা</a>
+        {% if supplier.phone %}<a class="lg-btn ghost" href="tel:{{ supplier.phone }}"><i class="bi bi-telephone"></i> কল</a>{% endif %}
+      </div>
+    </div>
+    <div class="lg-stats">
+      <div class="lg-stat"><small>মোট কেনা</small><b class="num">{{ bought|taka }}</b>{% if supplier.opening_due %}<em>+ আগের বাকি {{ supplier.opening_due|taka }}</em>{% endif %}</div>
+      <div class="lg-stat"><small>মোট দেওয়া হয়েছে</small><b class="num">{{ paid|taka }}</b></div>
+      <div class="lg-stat{% if due > 0 %} warn{% endif %}"><small>{% if due < 0 %}অগ্রিম দেওয়া আছে{% else %}এখন বাকি{% endif %}</small><b class="num">{% if due < 0 %}{{ due|taka|slice:"1:" }}{% else %}{{ due|taka }}{% endif %}</b></div>
+    </div>
+  </section>
+
+  <div class="lg-grid2">
+    <section class="lg-card">
+      <div class="lg-head"><div><h2><i class="bi bi-journal-text"></i> খাতা</h2><p>নতুনটা উপরে · প্রতিটার পরে বাকি কত দাঁড়াল</p></div></div>
+      {% if entries %}
+      <div class="lg-table-wrap" style="margin-top: 8px;">
+        <table class="lg-table stack">
+          <thead><tr><th>তারিখ ও বিবরণ</th><th class="r">কেনা</th><th class="r">দেওয়া</th><th class="r">বাকি দাঁড়াল</th><th></th></tr></thead>
+          <tbody>
+            {% for e in entries %}
+            <tr>
+              <td class="a">{% if e.kind == 'purchase' %}<a class="row-link" href="{% url 'purchase_detail' e.purchase.id %}">{{ e.text }}</a>{% else %}<b style="font-weight: 600;">{{ e.text }}</b>{% endif %}<small>{{ e.day|bn_day }}</small></td>
+              <td class="r num hide-sm">{% if e.plus %}{{ e.plus|taka }}{% endif %}</td>
+              <td class="r num hide-sm" style="color: var(--green);">{% if e.minus %}{{ e.minus|taka }}{% endif %}</td>
+              <td class="r num b">{% if e.plus %}<span class="d-sm-none" style="color: var(--ink);">+{{ e.plus|taka }}</span>{% else %}<span class="d-sm-none" style="color: var(--green);">−{{ e.minus|taka }}</span>{% endif %}<small>বাকি {{ e.balance|taka }}</small></td>
+              <td class="r hide-sm">{% if e.kind == 'payment' and not e.payment.purchase_id %}
+                <form method="post" onsubmit="return confirm('এই পরিশোধের এন্ট্রিটা মুছবেন?');">{% csrf_token %}<input type="hidden" name="action" value="delete_payment"><input type="hidden" name="payment_id" value="{{ e.payment.id }}">
+                  <button class="lg-btn red sm" type="submit" aria-label="মুছুন"><i class="bi bi-trash3"></i></button></form>{% endif %}</td>
+            </tr>
+            {% endfor %}
+            {% if supplier.opening_due %}
+            <tr><td class="a"><b style="font-weight: 600;">আগের বাকি</b><small>হিসাব শুরুর আগে থেকে</small></td><td class="r num hide-sm">{{ supplier.opening_due|taka }}</td><td class="hide-sm"></td><td class="r num b"><small>বাকি {{ supplier.opening_due|taka }}</small></td><td class="hide-sm"></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="lg-empty"><i class="bi bi-journal"></i>{% if supplier.opening_due %}আগের বাকি {{ supplier.opening_due|taka }} ছাড়া আর কোনো লেনদেন নেই{% else %}এখনো কোনো কেনা বা পরিশোধ লেখা হয়নি{% endif %}</div>
+      {% endif %}
+    </section>
+
+    <div>
+      <section class="lg-card">
+        <div class="lg-head"><div><h2><i class="bi bi-cash-coin"></i> বাকি পরিশোধ</h2></div></div>
+        {% if due > 0 %}
+        <form class="lg-body" method="post" autocomplete="off">
+          {% csrf_token %}<input type="hidden" name="action" value="pay">
+          <div style="display: grid; gap: 12px;">
+            <div><label for="pay-amount">কত টাকা দিলেন</label><input class="lg-input num" type="text" inputmode="decimal" name="amount" id="pay-amount" required placeholder="সর্বোচ্চ {{ due|taka }}">
+              <div class="lg-help"><a href="#" id="pay-all" data-due="{{ due }}">পুরো {{ due|taka }} বসান</a></div></div>
+            <div class="lg-fields" style="grid-template-columns: 1fr 1fr;">
+              <div><label for="pay-method">কীভাবে</label><select class="lg-input" name="method" id="pay-method">{% for key, label in methods %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></div>
+              <div><label for="pay-date">তারিখ</label><input class="lg-input num" type="date" name="paid_on" id="pay-date" value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}"></div>
+            </div>
+            <div><label for="pay-note">নোট <span style="font-weight: 500; color: var(--muted);">(ঐচ্ছিক)</span></label><input class="lg-input" type="text" name="note" id="pay-note" maxlength="200" placeholder="যেমন: TrxID বা চেক নম্বর"></div>
+            <button class="lg-btn green" type="submit" style="justify-content: center;"><i class="bi bi-check-circle-fill"></i> পরিশোধ লিখুন</button>
+          </div>
+        </form>
+        {% else %}
+        <div class="lg-empty"><i class="bi bi-check-circle" style="color: #22C55E;"></i>এই সাপ্লায়ারের কাছে কোনো বাকি নেই</div>
+        {% endif %}
+      </section>
+
+      <section class="lg-card">
+        <div class="lg-head"><div><h2><i class="bi bi-pencil-square"></i> তথ্য বদলান</h2></div></div>
+        <form class="lg-body" method="post" autocomplete="off">
+          {% csrf_token %}<input type="hidden" name="action" value="edit">
+          <div style="display: grid; gap: 12px;">
+            <div><label for="e-name">নাম</label><input class="lg-input" type="text" name="name" id="e-name" maxlength="120" required value="{{ supplier.name }}"></div>
+            <div><label for="e-phone">মোবাইল নম্বর</label><input class="lg-input num" type="tel" name="phone" id="e-phone" maxlength="20" value="{{ supplier.phone }}"></div>
+            <div><label for="e-address">ঠিকানা</label><input class="lg-input" type="text" name="address" id="e-address" maxlength="200" value="{{ supplier.address }}"></div>
+            <div><label for="e-note">নোট</label><input class="lg-input" type="text" name="note" id="e-note" maxlength="300" value="{{ supplier.note }}"></div>
+            <div><label for="e-due">আগের বাকি (হিসাব শুরুর আগে)</label><input class="lg-input num" type="text" inputmode="decimal" name="opening_due" id="e-due" value="{{ supplier.opening_due|floatformat:'-2' }}"></div>
+            <button class="lg-btn dark" type="submit" style="justify-content: center;"><i class="bi bi-check-lg"></i> সেভ করুন</button>
+          </div>
+        </form>
+        {% if not entries %}
+        <form class="lg-body" method="post" style="padding-top: 0;" onsubmit="return confirm('এই সাপ্লায়ারকে মুছে ফেলবেন?');">
+          {% csrf_token %}<input type="hidden" name="action" value="delete">
+          <button class="lg-btn red" type="submit" style="width: 100%; justify-content: center;"><i class="bi bi-trash3"></i> সাপ্লায়ার মুছুন</button>
+        </form>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  const all = document.getElementById('pay-all');
+  if (all) all.addEventListener('click', e => { e.preventDefault(); document.getElementById('pay-amount').value = Number(all.dataset.due); });
+})();
+</script>
+{% endblock %}

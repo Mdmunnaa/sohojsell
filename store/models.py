@@ -813,3 +813,102 @@ class SmsLog(models.Model):
 
     def __str__(self):
         return f'{self.shop.name} — {self.audience} — {self.sms_used} SMS'
+
+
+# ============================================================
+# কেনা, সাপ্লায়ার আর খরচের খাতা (store/ledger.py)
+# ============================================================
+PAY_METHOD_CHOICES = [('cash', 'নগদ'), ('bkash', 'bKash'), ('nagad', 'Nagad'), ('bank', 'ব্যাংক'), ('card', 'কার্ড')]
+
+
+class Supplier(models.Model):
+    """যার কাছ থেকে মাল কেনা হয়। বাকি = আগের বাকি + সব কেনা − সব পরিশোধ।"""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='suppliers')
+    name = models.CharField(max_length=120)
+    phone = models.CharField(max_length=20, blank=True, default='')
+    address = models.CharField(max_length=200, blank=True, default='')
+    note = models.CharField(max_length=300, blank=True, default='')
+    opening_due = models.DecimalField(max_digits=12, decimal_places=2, default=0,
+                                      help_text='সফটওয়্যারে ওঠানোর আগে থেকে যত বাকি ছিল')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class Purchase(models.Model):
+    """একবারের মাল কেনা: স্টক বাড়ে, প্রোডাক্টের কেনা দাম গড় করে বসে।"""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='purchases')
+    supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchases')
+    purchased_on = models.DateField(db_index=True)
+    invoice_no = models.CharField(max_length=40, blank=True, default='')
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    paid_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text='কেনার সময় যা দেওয়া হয়েছে')
+    note = models.CharField(max_length=300, blank=True, default='')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                   related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-purchased_on', '-id']
+
+    @property
+    def due_amount(self):
+        return max(self.total_amount - self.paid_amount, 0)
+
+    def __str__(self):
+        return f'Purchase #{self.id}'
+
+
+class PurchaseItem(models.Model):
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    name = models.CharField(max_length=290, help_text='কেনার সময়ের নাম; প্রোডাক্ট মুছে গেলেও থাকে')
+    quantity = models.PositiveIntegerField()
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def get_total(self):
+        return self.unit_cost * self.quantity
+
+
+class SupplierPayment(models.Model):
+    """সাপ্লায়ারকে দেওয়া টাকা: কেনার সময় (purchase সহ) বা পরে বাকি শোধ।"""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='supplier_payments')
+    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='payments')
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, null=True, blank=True, related_name='payments')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    method = models.CharField(max_length=10, choices=PAY_METHOD_CHOICES, default='cash')
+    paid_on = models.DateField(db_index=True)
+    note = models.CharField(max_length=200, blank=True, default='')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                   related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-paid_on', '-id']
+
+
+class Expense(models.Model):
+    """দোকানের খরচ (ভাড়া, বেতন, বিজ্ঞাপন...) — রিপোর্টে পণ্যের লাভ থেকে বাদ গিয়ে নিট লাভ হয়।"""
+    CATEGORY_CHOICES = [
+        ('rent', 'দোকান ভাড়া'), ('salary', 'বেতন'), ('utility', 'বিদ্যুৎ / পানি / গ্যাস'),
+        ('internet', 'ইন্টারনেট / মোবাইল'), ('ads', 'বিজ্ঞাপন / বুস্ট'), ('transport', 'যাতায়াত / পরিবহন'),
+        ('packaging', 'প্যাকেজিং'), ('courier', 'কুরিয়ার / ডেলিভারি'), ('repair', 'মেরামত'),
+        ('food', 'চা-নাস্তা / আপ্যায়ন'), ('other', 'অন্যান্য'),
+    ]
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='expenses')
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='other')
+    title = models.CharField(max_length=120, blank=True, default='')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    spent_on = models.DateField(db_index=True)
+    method = models.CharField(max_length=10, choices=PAY_METHOD_CHOICES, default='cash')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                   related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-spent_on', '-id']
