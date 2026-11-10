@@ -100,6 +100,8 @@ urlpatterns = [
     # Banner Management
     # ওয়েবসাইট সেটিংস (Edumi-র মতো এক পেইজে ট্যাব)
     path('website/', website_views.website_settings, name='website_settings'),
+    path('website/settlement/request/', website_views.settlement_request, name='settlement_request'),
+    path('website/settlement/<int:pk>/cancel/', website_views.settlement_cancel, name='settlement_cancel'),
     path('website/banner/<int:pk>/delete/', website_views.banner_delete, name='website_banner_delete'),
     path('website/banner/<int:pk>/toggle/', website_views.banner_toggle, name='website_banner_toggle'),
     path('website/category/<int:pk>/rename/', website_views.category_rename, name='website_category_rename'),

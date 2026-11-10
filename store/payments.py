@@ -30,6 +30,13 @@ PLAN_PRICES = {
     'Premium': Decimal('1999'),
 }
 PLAN_DAYS = 30
+# এক বছরের দাম (প্রায় ২ মাস ফ্রি) — কোড 'Basic-YEAR'
+PLAN_YEAR_PRICES = {
+    'Basic': Decimal('5000'),
+    'Standard': Decimal('10000'),
+    'Premium': Decimal('20000'),
+}
+YEAR_DAYS = 365
 
 # পুরনো billing বাটনের কোড → কত টাকার SMS। নতুন SMS প্যানেল যেকোনো টাকার কোড পাঠায়: 'SMS-TK-350'
 SMS_PACKS = {
@@ -52,6 +59,12 @@ def resolve_item(code):
         return {
             'kind': OnlinePayment.KIND_PLAN, 'plan_name': code, 'amount': PLAN_PRICES[code],
             'days': PLAN_DAYS, 'sms_count': 0, 'label': f'{settings.SITE_NAME} {code} Plan (30 days)',
+        }
+    if code.endswith('-YEAR') and code[:-5] in PLAN_YEAR_PRICES:
+        plan = code[:-5]
+        return {
+            'kind': OnlinePayment.KIND_PLAN, 'plan_name': plan, 'amount': PLAN_YEAR_PRICES[plan],
+            'days': YEAR_DAYS, 'sms_count': 0, 'label': f'{settings.SITE_NAME} {plan} Plan (1 year)',
         }
     match = SMS_AMOUNT_RE.match(code)
     if code in SMS_PACKS or match:

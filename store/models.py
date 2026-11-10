@@ -656,6 +656,37 @@ class ShopPayout(models.Model):
         return f'{self.shop.name} ← ৳{self.amount}'
 
 
+class SettlementRequest(models.Model):
+    """
+    সেলারের টাকা তোলার অনুরোধ (Edumi-র Quick Pay সেটেলমেন্টের মতো)। পেমেন্টের ৭ দিন পর টাকা তোলা যায়,
+    কমপক্ষে ৳৫,০০০ (store/shop_payments.py)। মাস্টার টাকা পাঠিয়ে লেনদেন নম্বর দিলে ShopPayout হয়।
+    """
+    PENDING, PAID, CANCELLED, REJECTED = 'pending', 'paid', 'cancelled', 'rejected'
+    STATUS_CHOICES = ((PENDING, 'যাচাই হচ্ছে'), (PAID, 'পাঠানো হয়েছে'), (CANCELLED, 'বাতিল করেছেন'),
+                      (REJECTED, 'ফেরত এসেছে'))
+
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='settlement_requests')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    method = models.CharField(max_length=20, blank=True, default='')
+    account = models.CharField(max_length=150, blank=True, default='')
+    account_name = models.CharField(max_length=120, blank=True, default='')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING, db_index=True)
+    note = models.CharField(max_length=200, blank=True, default='', help_text='ফেরত দিলে কারণ')
+    payout = models.OneToOneField(ShopPayout, on_delete=models.SET_NULL, null=True, blank=True, related_name='request')
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [models.UniqueConstraint(fields=['shop'], condition=models.Q(status='pending'),
+                                               name='one_open_settlement_per_shop')]
+
+    def __str__(self):
+        return f'{self.shop.name} ৳{self.amount} ({self.status})'
+
+
 # ============================================================
 # অনলাইন পেমেন্ট (PayStation) — প্ল্যান কেনা বা SMS কেনা
 # ============================================================

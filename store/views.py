@@ -1612,50 +1612,13 @@ def billing_page(request):
         'storefront_closes_on': storefront_closes_on(shop),
         'paystation_sandbox': paystation.current_environment() == 'sandbox',
         'online_payments': shop.online_payments.all()[:10],
-        'manual_number': django_settings.MANUAL_PAYMENT_NUMBER,
     })
 
 
 @login_required(login_url='/accounts/login/')
 def submit_payment_request(request):
-    if request.method != 'POST':
-        return redirect('billing')
-
-    shop = request.user.shop
-
-    # Already pending request?
-    if shop.payment_requests.filter(status='Pending').exists():
-        messages.warning(request, "আপনার একটি payment request review-এ আছে। অপেক্ষা করুন।")
-        return redirect('billing')
-
-    plan_name = request.POST.get('plan_name')
-    payment_method = request.POST.get('payment_method')
-    sender_number = request.POST.get('sender_number')
-    transaction_id = request.POST.get('transaction_id')
-    amount = request.POST.get('amount')
-    note = request.POST.get('note', '')
-
-    if not all([plan_name, payment_method, sender_number, transaction_id, amount]):
-        messages.error(request, "সব field পূরণ করুন!")
-        return redirect('billing')
-
-    # Duplicate transaction check
-    from .models import PaymentRequest
-    if PaymentRequest.objects.filter(transaction_id=transaction_id).exists():
-        messages.error(request, "এই Transaction ID আগে ব্যবহার হয়েছে!")
-        return redirect('billing')
-
-    PaymentRequest.objects.create(
-        shop=shop,
-        plan_name=plan_name,
-        payment_method=payment_method,
-        sender_number=sender_number,
-        transaction_id=transaction_id,
-        amount=amount,
-        status='Pending',
-    )
-
-    messages.success(request, "✅ Payment request submitted! আমরা শীঘ্রই verify করব।")
+    """আগে bKash/Nagad-এ হাতে টাকা পাঠিয়ে লেনদেন নম্বর জমা দেওয়া যেতো — এখন সব পেমেন্ট PayStation-এ।"""
+    messages.info(request, 'এখন সব পেমেন্ট অনলাইনে (PayStation) নেওয়া হয় — প্যাকেজ বেছে "কিনুন" চাপুন, সাথে সাথে চালু হবে।')
     return redirect('billing')
 
 

@@ -35,7 +35,7 @@
     <div class="col-md-5">
       {% if shop.is_locked %}
       <div style="color:#f87171;font-weight:800;font-size:15px;"><i class="bi bi-lock-fill me-2"></i>Account Locked</div>
-      <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:4px;">Payment করুন এবং নিচে request submit করুন</div>
+      <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:4px;">নিচে প্যাকেজ বেছে অনলাইনে পেমেন্ট করুন — টাকা দিলেই সাথে সাথে চালু হবে</div>
       {% if storefront_closes_on %}
       <div style="color:#fbbf24;font-size:13px;margin-top:6px;">
         {% if storefront_open %}আপনার ওয়েবসাইট কাস্টমারদের জন্য <b>{{ storefront_closes_on|date:"d M Y" }}</b> পর্যন্ত চালু থাকবে, এর মধ্যে বিল দিলে বন্ধ হবে না।
@@ -59,7 +59,7 @@
     <div class="col-md-4 text-md-end">
       {% if pending_request %}
       <div class="badge rounded-pill py-2 px-3" style="background:rgba(251,191,36,.2);color:#fbbf24;font-size:13px;">
-        <i class="bi bi-clock-fill me-1"></i>Payment Review-এ আছে
+        <i class="bi bi-clock-fill me-1"></i>আগের পেমেন্ট যাচাই হচ্ছে
       </div>
       {% endif %}
     </div>
@@ -67,6 +67,14 @@
 </div>
 
 <!-- PRICING PLANS -->
+{% if online_payment_available %}
+<div class="d-flex align-items-center gap-2 flex-wrap mb-3" style="font-size:13.5px;color:#475569;">
+  <i class="bi bi-lightning-charge-fill text-primary"></i> bKash, Nagad, Rocket বা কার্ডে পেমেন্ট — টাকা দিলেই সাথে সাথে প্যাকেজ চালু হয়, অপেক্ষা করতে হয় না।
+  {% if paystation_sandbox %}<span class="badge bg-warning text-dark">টেস্ট মোড (sandbox)</span>{% endif %}
+</div>
+{% else %}
+<div class="alert alert-warning border-0 rounded-4 small mb-3"><i class="bi bi-info-circle me-1"></i> অনলাইন পেমেন্ট এখনো চালু হয়নি, শীঘ্রই চালু হবে। জরুরি হলে সাপোর্টে যোগাযোগ করুন।</div>
+{% endif %}
 <div class="row g-4 mb-4">
 
   <!-- Basic -->
@@ -90,10 +98,7 @@
           <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>১ জন স্টাফ</li>
           <li class="mb-2" style="color:#94a3b8;"><i class="bi bi-x-circle me-2"></i>Facebook কানেক্ট ও অটোমেশন নেই</li>
         </ul>
-        <button class="btn btn-outline-primary w-100 rounded-pill fw-bold mt-2"
-          onclick="showPaymentForm('Basic', 499)">
-          {% if shop.subscription_plan == 'Basic' and not shop.is_locked %}মেয়াদ বাড়ান{% else %}Get Basic{% endif %}
-        </button>
+        {% if shop.subscription_plan == 'Basic' and not shop.is_locked %}{% include 'store/partials/plan_buy.html' with plan='Basic' btn='btn-outline-primary' current=True %}{% else %}{% include 'store/partials/plan_buy.html' with plan='Basic' btn='btn-outline-primary' %}{% endif %}
       </div>
     </div>
   </div>
@@ -119,10 +124,7 @@
           <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Facebook পেইজ কানেক্ট</li>
           <li class="mb-2"><i class="bi bi-hourglass-split text-warning me-2"></i>কমেন্ট বট ও লাইভ মোড (শিগগিরই)</li>
         </ul>
-        <button class="btn btn-primary w-100 rounded-pill fw-bold mt-2"
-          onclick="showPaymentForm('Standard', 999)">
-          {% if shop.subscription_plan == 'Standard' and not shop.is_locked %}মেয়াদ বাড়ান{% else %}Get Standard{% endif %}
-        </button>
+        {% if shop.subscription_plan == 'Standard' and not shop.is_locked %}{% include 'store/partials/plan_buy.html' with plan='Standard' btn='btn-primary' current=True %}{% else %}{% include 'store/partials/plan_buy.html' with plan='Standard' btn='btn-primary' %}{% endif %}
       </div>
     </div>
   </div>
@@ -148,10 +150,7 @@
           <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>নিজের ডোমেইন (যেমন yourshop.com)</li>
           <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>প্রায়োরিটি সাপোর্ট</li>
         </ul>
-        <button class="btn w-100 rounded-pill fw-bold mt-2" style="background:#f59e0b;color:#fff;"
-          onclick="showPaymentForm('Premium', 1999)">
-          {% if shop.subscription_plan == 'Premium' and not shop.is_locked %}মেয়াদ বাড়ান{% else %}Get Premium{% endif %}
-        </button>
+        {% if shop.subscription_plan == 'Premium' and not shop.is_locked %}{% include 'store/partials/plan_buy.html' with plan='Premium' btn='btn-warning text-white' current=True %}{% else %}{% include 'store/partials/plan_buy.html' with plan='Premium' btn='btn-warning text-white' %}{% endif %}
       </div>
     </div>
   </div>
@@ -168,112 +167,6 @@
         </div>
         <a href="{% url 'sms_panel' %}#buy" class="btn btn-success fw-bold rounded-pill px-4"><i class="bi bi-arrow-right-circle me-1"></i> SMS প্যানেলে যান</a>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- PAYMENT REQUEST FORM (hidden by default) -->
-<div id="paymentFormCard" style="display:none;">
-  <div class="card border-0 shadow-lg rounded-4 mb-4" style="border:2px solid #3b82f6 !important;">
-    <div class="card-body p-4">
-      {% if online_payment_available %}
-      <!-- অনলাইন পেমেন্ট (PayStation) — সাথে সাথে প্ল্যান/SMS চালু হয় -->
-      <div class="rounded-4 p-4 mb-4" style="background:linear-gradient(135deg,#eef6ff,#f5f3ff);border:1px solid #c7d2fe;">
-        <div class="d-flex align-items-center gap-2 mb-1">
-          <h5 class="fw-bold mb-0"><i class="bi bi-lightning-charge-fill me-2 text-primary"></i>অনলাইনে পেমেন্ট করুন</h5>
-          {% if paystation_sandbox %}<span class="badge bg-warning text-dark">টেস্ট মোড (sandbox)</span>{% endif %}
-        </div>
-        <p class="text-muted mb-3" style="font-size:13px;">bKash, Nagad, Rocket বা কার্ড দিয়ে দিন। পেমেন্ট হলেই সাথে সাথে চালু হয়ে যাবে, অপেক্ষা করতে হবে না।</p>
-        <form method="POST" action="{% url 'paystation_start' %}">
-          {% csrf_token %}
-          <input type="hidden" name="item" id="online_item">
-          <button type="submit" class="btn btn-primary rounded-pill fw-bold px-4">
-            <i class="bi bi-credit-card-2-front me-2"></i><span id="online_btn_text">অনলাইনে পেমেন্ট করুন</span>
-          </button>
-        </form>
-        <div class="small text-muted mt-2">পেমেন্ট নেয় PayStation। কার্ড নম্বর বা PIN আমরা কখনো দেখি না।</div>
-      </div>
-      <div class="d-flex align-items-center gap-2 mb-3">
-        <hr class="flex-grow-1"><span class="text-muted small">অথবা নিজে পাঠিয়ে লেনদেন নম্বর দিন</span><hr class="flex-grow-1">
-      </div>
-      {% endif %}
-
-      <h5 class="fw-bold mb-1"><i class="bi bi-cash-coin me-2 text-primary"></i>Payment Submit করুন</h5>
-      <p class="text-muted mb-4" style="font-size:13px;">নিচের নম্বরে payment করুন, তারপর transaction ID দিয়ে submit করুন।</p>
-
-      <!-- Payment Numbers -->
-      <div class="row g-3 mb-4">
-        <div class="col-sm-4">
-          <div class="rounded-3 p-3 text-center" style="background:#e8f5e9;border:1px solid #a5d6a7;">
-            <div style="font-size:22px;">📱</div>
-            <div class="fw-bold" style="color:#2e7d32;font-size:14px;">bKash</div>
-            <div class="fw-bold" style="font-size:16px;letter-spacing:1px;">{{ manual_number }}</div>
-            <div style="font-size:11px;color:#66bb6a;">Personal</div>
-          </div>
-        </div>
-        <div class="col-sm-4">
-          <div class="rounded-3 p-3 text-center" style="background:#fff3e0;border:1px solid #ffcc80;">
-            <div style="font-size:22px;">💰</div>
-            <div class="fw-bold" style="color:#e65100;font-size:14px;">Nagad</div>
-            <div class="fw-bold" style="font-size:16px;letter-spacing:1px;">{{ manual_number }}</div>
-            <div style="font-size:11px;color:#ffa726;">Personal</div>
-          </div>
-        </div>
-        <div class="col-sm-4">
-          <div class="rounded-3 p-3 text-center" style="background:#e3f2fd;border:1px solid #90caf9;">
-            <div style="font-size:22px;">🏦</div>
-            <div class="fw-bold" style="color:#1565c0;font-size:14px;">Bank Transfer</div>
-            <div class="fw-bold" style="font-size:13px;">Contact Admin</div>
-            <div style="font-size:11px;color:#42a5f5;">বিস্তারিত জানতে</div>
-          </div>
-        </div>
-      </div>
-
-      <form method="POST" action="{% url 'submit_payment_request' %}">
-        {% csrf_token %}
-        <input type="hidden" name="plan_name" id="form_plan_name">
-        <input type="hidden" name="amount" id="form_amount">
-
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label fw-bold" style="font-size:13px;">Package <span class="text-danger">*</span></label>
-            <input type="text" id="form_plan_display" class="form-control rounded-pill bg-light" readonly>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-bold" style="font-size:13px;">Amount <span class="text-danger">*</span></label>
-            <input type="text" id="form_amount_display" class="form-control rounded-pill bg-light" readonly>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-bold" style="font-size:13px;">Payment Method <span class="text-danger">*</span></label>
-            <select name="payment_method" class="form-select rounded-pill" required>
-              <option value="">-- Select --</option>
-              <option value="bKash">bKash</option>
-              <option value="Nagad">Nagad</option>
-              <option value="Bank">Bank Transfer</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-bold" style="font-size:13px;">Sender Number <span class="text-danger">*</span></label>
-            <input type="text" name="sender_number" class="form-control rounded-pill" placeholder="01XXXXXXXXX" required>
-          </div>
-          <div class="col-12">
-            <label class="form-label fw-bold" style="font-size:13px;">Transaction ID <span class="text-danger">*</span></label>
-            <input type="text" name="transaction_id" class="form-control rounded-pill" placeholder="e.g. 8KJ9TY2Q1X" required>
-            <div class="form-text">bKash/Nagad থেকে payment করার পর Transaction ID টা দিন।</div>
-          </div>
-          <div class="col-12">
-            <label class="form-label fw-bold" style="font-size:13px;">Note (optional)</label>
-            <input type="text" name="note" class="form-control rounded-pill" placeholder="কোনো বিশেষ তথ্য থাকলে লিখুন...">
-          </div>
-        </div>
-
-        <div class="d-flex gap-2 mt-4">
-          <button type="submit" class="btn btn-primary rounded-pill fw-bold px-5">
-            <i class="bi bi-send-fill me-2"></i>Submit Payment Request
-          </button>
-          <button type="button" class="btn btn-outline-secondary rounded-pill" onclick="hidePaymentForm()">Cancel</button>
-        </div>
-      </form>
     </div>
   </div>
 </div>
@@ -302,7 +195,7 @@
           <tr>
             <td class="px-4" style="font-size:13px;color:#64748b;">{{ p.created_at|date:"d M Y, h:i A" }}</td>
             <td>
-              <span class="badge rounded-pill" style="background:#e8f0fe;color:#1a73e8;font-weight:700;">{{ p.plan_name }}</span>
+              <span class="badge rounded-pill" style="background:#e8f0fe;color:#1a73e8;font-weight:700;">{{ p.plan_name }}{% if p.days >= 365 %} · ১ বছর{% elif p.days %} · {{ p.days }} দিন{% endif %}</span>
               {% if p.environment == 'sandbox' %}<span class="badge bg-warning text-dark ms-1">test</span>{% endif %}
             </td>
             <td class="fw-bold">৳{{ p.amount|floatformat:0 }}</td>
@@ -322,12 +215,12 @@
 </div>
 {% endif %}
 
-<!-- PENDING REQUESTS -->
+<!-- আগের হাতে জমা দেওয়া পেমেন্ট (এখন সব অনলাইনে) -->
 {% if payment_history %}
 <div class="card border-0 shadow-sm rounded-4">
   <div class="card-body p-0">
     <div class="px-4 py-3 border-bottom">
-      <h6 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Payment History</h6>
+      <h6 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>আগের পেমেন্ট (bKash/Nagad-এ জমা দেওয়া)</h6>
     </div>
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
@@ -363,32 +256,4 @@
 </div>
 {% endif %}
 
-<script>
-function showPaymentForm(plan, amount) {
-  document.getElementById('form_plan_name').value = plan;
-  document.getElementById('form_amount').value = amount;
-
-  // অনলাইন পেমেন্টে শুধু প্যাকেজের কোড যায়; দাম সার্ভার নিজে ঠিক করে
-  const onlineItem = document.getElementById('online_item');
-  if (onlineItem) {
-    onlineItem.value = (plan === 'SMS Recharge') ? (amount >= 400 ? 'SMS-1000' : 'SMS-500') : plan;
-    document.getElementById('online_btn_text').textContent = 'অনলাইনে ৳' + amount.toLocaleString() + ' পেমেন্ট করুন';
-  }
-
-  if (plan === 'SMS Recharge') {
-      document.getElementById('form_plan_display').value = plan;
-      document.getElementById('form_amount_display').value = '৳' + amount.toLocaleString();
-  } else {
-      document.getElementById('form_plan_display').value = plan + ' Plan';
-      document.getElementById('form_amount_display').value = '৳' + amount.toLocaleString() + '/মাস';
-  }
-
-  const card = document.getElementById('paymentFormCard');
-  card.style.display = 'block';
-  card.scrollIntoView({behavior:'smooth', block:'start'});
-}
-function hidePaymentForm() {
-  document.getElementById('paymentFormCard').style.display = 'none';
-}
-</script>
 {% endblock %}

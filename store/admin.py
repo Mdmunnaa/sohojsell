@@ -142,3 +142,14 @@ class SmsLogAdmin(admin.ModelAdmin):
     list_filter = ['status', 'kind']
     search_fields = ['shop__name', 'audience', 'message']
     raw_id_fields = ['shop', 'sent_by']
+
+
+from .models import SettlementRequest  # noqa: E402
+
+
+@admin.register(SettlementRequest)
+class SettlementRequestAdmin(admin.ModelAdmin):
+    list_display = ['created_at', 'shop', 'amount', 'method', 'account', 'status']
+    list_filter = ['status', 'method']
+    search_fields = ['shop__name', 'account']
+    raw_id_fields = ['shop', 'payout', 'requested_by']

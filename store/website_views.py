@@ -64,6 +64,10 @@ def website_settings(request):
             form = form_class(request.POST, request.FILES, instance=shop)
             if form.is_valid():
                 form.save()
+                if section == 'payment':
+                    ok_message = ('অনলাইন পেমেন্ট চালু — কাস্টমার এখন অনলাইনে টাকা দিতে পারবে।'
+                                  if shop.payment_rule != shop.PAYMENT_COD
+                                  else 'অনলাইন পেমেন্ট বন্ধ — কাস্টমার শুধু ক্যাশ অন ডেলিভারিতে অর্ডার দেবে।')
                 messages.success(request, ok_message)
                 return _back(section)
             forms[key] = form
@@ -129,7 +133,8 @@ def website_settings(request):
         'fee_percent': shop_payments.fee_percent(),
         'balance': shop_payments.balance_summary(shop),
         'recent_payments': StorefrontPayment.objects.filter(shop=shop).select_related('order')[:10],
-        'payouts': ShopPayout.objects.filter(shop=shop)[:10],
+        'payouts': ShopPayout.objects.filter(shop=shop).select_related('request')[:10],
+        'settlement_requests': shop.settlement_requests.select_related('payout')[:10],
         'product_count': Product.objects.filter(shop=shop).count(),
     }
     return render(request, 'store/website_settings.html', context)
@@ -203,6 +208,35 @@ def zone_delete(request, pk):
     return _back('delivery')
 
 
+# ---------------------------------------------------------------- সেলারের টাকা তোলা
+@login_required(login_url='/accounts/login/')
+@require_POST
+def settlement_request(request):
+    shop = request.user.shop
+    try:
+        req = shop_payments.request_settlement(shop, request.POST.get('amount') or '0', user=request.user)
+    except shop_payments.SettlementError as exc:
+        messages.error(request, str(exc))
+        return redirect(reverse('website_settings') + '?tab=payment#settlement')
+    from . import sms
+    from django.conf import settings as dj_settings
+    admin_phone = sms.normalize(getattr(dj_settings, 'ADMIN_ALERT_PHONE', ''))
+    if admin_phone:
+        sms.notify(admin_phone, f'{dj_settings.SITE_NAME}: টাকা তোলার অনুরোধ — {shop.name}, '
+                                f'৳{sms.bn_num(f"{req.amount:,.0f}")} ({req.method})')
+    messages.success(request, f'৳{req.amount:,.0f} তোলার অনুরোধ জমা হয়েছে। {req.method} {req.account}-এ পাঠানো হলে '
+                              'SMS পাবেন আর এখানে লেনদেন নম্বর দেখাবে।')
+    return redirect(reverse('website_settings') + '?tab=payment#settlement')
+
+
+@login_required(login_url='/accounts/login/')
+@require_POST
+def settlement_cancel(request, pk):
+    if shop_payments.cancel_settlement(request.user.shop, pk):
+        messages.info(request, 'টাকা তোলার অনুরোধ বাতিল করা হয়েছে।')
+    return redirect(reverse('website_settings') + '?tab=payment#settlement')
+
+
 # ---------------------------------------------------------------- মাস্টার: সেলারদের টাকা পাঠানো
 @login_required(login_url='/accounts/login/')
 def master_settlements(request):
@@ -212,6 +246,19 @@ def master_settlements(request):
     from decimal import Decimal, InvalidOperation
     from django.db import transaction
     from .models import Shop
+
+    action = request.POST.get('action', '') if request.method == 'POST' else ''
+    if action in ('request_paid', 'request_reject'):
+        try:
+            if action == 'request_paid':
+                req = shop_payments.pay_settlement(request.POST.get('request_id'), request.POST.get('reference'),
+                                                   user=request.user)
+                messages.success(request, f'{req.shop.name}-কে ৳{req.amount:.0f} পাঠানো লেখা হয়েছে, সেলারকে SMS গেছে।')
+            elif shop_payments.reject_settlement(request.POST.get('request_id'), request.POST.get('reason')):
+                messages.success(request, 'অনুরোধ ফেরত দেওয়া হয়েছে।')
+        except shop_payments.SettlementError as exc:
+            messages.error(request, str(exc))
+        return redirect('master_settlements')
 
     if request.method == 'POST':
         shop = get_object_or_404(Shop, pk=request.POST.get('shop_id'))
@@ -239,7 +286,11 @@ def master_settlements(request):
         summary = shop_payments.balance_summary(shop)
         rows.append({'shop': shop, **summary})
     rows.sort(key=lambda r: r['due'], reverse=True)
+    from .models import SettlementRequest
+    open_requests = list(SettlementRequest.objects.filter(status=SettlementRequest.PENDING).select_related('shop')
+                         .order_by('created_at'))
     return render(request, 'store/master_settlements.html', {
+        'open_requests': open_requests,
         'rows': rows,
         'total_due': sum((r['due'] for r in rows), Decimal('0')),
         'recent_payouts': ShopPayout.objects.select_related('shop')[:20],

@@ -1,0 +1,9 @@
+{# প্যাকেজ কেনা: সরাসরি PayStation-এ, টাকা দিলেই সাথে সাথে চালু। plan, btn (বাটনের রং), current (এটাই এখনকার প্যাকেজ) #}
+{% if online_payment_available %}
+<form method="post" action="{% url 'paystation_start' %}" class="d-grid gap-2 mt-2">{% csrf_token %}
+  <button type="submit" name="item" value="{{ plan }}" class="btn {{ btn }} rounded-pill fw-bold">{% if current %}১ মাস বাড়ান{% else %}১ মাসের জন্য কিনুন{% endif %}</button>
+  <button type="submit" name="item" value="{{ plan }}-YEAR" class="btn btn-light border rounded-pill fw-bold" style="font-size:14px;">{% if current %}১ বছর বাড়ান{% else %}১ বছরের জন্য কিনুন{% endif %} <span class="text-success">· প্রায় ২ মাস ফ্রি</span></button>
+</form>
+{% else %}
+<button type="button" class="btn btn-light border w-100 rounded-pill fw-bold mt-2" disabled>অনলাইন পেমেন্ট শীঘ্রই চালু হবে</button>
+{% endif %}

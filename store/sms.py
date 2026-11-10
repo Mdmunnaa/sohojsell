@@ -403,6 +403,23 @@ def used_this_month(shop):
     return SmsLog.objects.filter(shop=shop, created_at__gte=start).aggregate(n=Sum('sms_used'))['n'] or 0
 
 
+def notify(phone, message):
+    """প্ল্যাটফর্মের নিজের SMS (সেলারকে খবর, আপনাকে খবর) — কোনো দোকানের ব্যালেন্স কাটে না, পেছনে যায়।"""
+    def run():
+        try:
+            gateway_send([phone], message)
+        except Exception:
+            logger.exception('Platform SMS failed')
+        finally:
+            if threaded:
+                connection.close()
+    threaded = _background_allowed()
+    if threaded:
+        threading.Thread(target=run, daemon=True).start()
+    else:
+        run()
+
+
 # ---------------------------------------------------------------- অটো SMS (অর্ডার, পেমেন্ট)
 def _first_fitting(options):
     """যে লেখাটা ১টা SMS-এ ধরে সেটা; কোনোটাই না ধরলে শেষেরটা (খরচ ঠিকঠাক কাটা হয়)।"""

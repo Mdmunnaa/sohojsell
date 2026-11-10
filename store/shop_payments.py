@@ -192,19 +192,137 @@ def _notify_customer(payment):
                   f'অর্ডার নং {sms.bn_num(order.id)} (পেমেন্ট)')
 
 
-# ---------------------------------------------------------------- সেলারের হিসাব
-def balance_summary(shop):
-    received = (StorefrontPayment.objects.filter(shop=shop, status=StorefrontPayment.STATUS_COMPLETED)
-                .aggregate(gross=Sum('amount'), fee=Sum('fee_amount'), net=Sum('net_amount')))
-    paid_out = ShopPayout.objects.filter(shop=shop).aggregate(total=Sum('amount'))['total'] or Decimal('0')
-    net = received['net'] or Decimal('0')
+# ---------------------------------------------------------------- সেলারের হিসাব ও টাকা তোলা
+# কাস্টমারের প্রতিটা পেমেন্টের ৭ দিন পর সেই টাকা তোলা যায় (ফেরত/ঝামেলা মেটানোর সময়), কমপক্ষে ৳৫,০০০ জমলে অনুরোধ।
+SETTLEMENT_MIN = Decimal('5000')
+SETTLEMENT_HOLD_DAYS = 7
+ZERO = Decimal('0')
+
+
+def _completed(shop):
+    return StorefrontPayment.objects.filter(shop=shop, status=StorefrontPayment.STATUS_COMPLETED)
+
+
+def _released_filter(cutoff):
+    from django.db.models import Q
+    return Q(completed_at__lte=cutoff) | Q(completed_at__isnull=True, created_at__lte=cutoff)
+
+
+def balance_summary(shop, now=None):
+    """
+    gross/fee/net: কাস্টমার যা দিয়েছে, ফি, সেলারের অংশ। paid_out: পাঠানো। due: মোট পাওনা।
+    available: এখন তোলা যাবে (৭ দিন পার হওয়া টাকা − পাঠানো − যাচাইয়ে থাকা অনুরোধ)। holding: ৭ দিনের অপেক্ষায়।
+    """
+    from .models import SettlementRequest
+    now = now or timezone.now()
+    cutoff = now - timedelta(days=SETTLEMENT_HOLD_DAYS)
+    completed = _completed(shop)
+    received = completed.aggregate(gross=Sum('amount'), fee=Sum('fee_amount'), net=Sum('net_amount'))
+    released = completed.filter(_released_filter(cutoff)).aggregate(net=Sum('net_amount'))['net'] or ZERO
+    paid_out = ShopPayout.objects.filter(shop=shop).aggregate(total=Sum('amount'))['total'] or ZERO
+    open_request = SettlementRequest.objects.filter(shop=shop, status=SettlementRequest.PENDING).first()
+    requested = open_request.amount if open_request else ZERO
+    net = received['net'] or ZERO
+    available = max(released - paid_out - requested, ZERO)
+    holding = max(net - max(released, paid_out), ZERO)
+    upcoming = completed.exclude(_released_filter(cutoff)).order_by('completed_at').first()
+    next_release = (timezone.localtime(upcoming.completed_at or upcoming.created_at)
+                    + timedelta(days=SETTLEMENT_HOLD_DAYS)).date() if upcoming else None
     return {
-        'gross': received['gross'] or Decimal('0'),
-        'fee': received['fee'] or Decimal('0'),
+        'gross': received['gross'] or ZERO,
+        'fee': received['fee'] or ZERO,
         'net': net,
         'paid_out': paid_out,
         'due': net - paid_out,
+        'available': available,
+        'holding': holding,
+        'requested': requested,
+        'open_request': open_request,
+        'next_release': next_release,
+        'next_release_label': _bn_date(next_release) if next_release else '',
+        'min': SETTLEMENT_MIN,
+        'hold_days': SETTLEMENT_HOLD_DAYS,
+        'short': max(SETTLEMENT_MIN - available, ZERO),
+        'progress': min(int(available * 100 / SETTLEMENT_MIN), 100) if SETTLEMENT_MIN else 100,
+        'can_request': available >= SETTLEMENT_MIN and open_request is None and bool(shop.payout_account),
     }
+
+
+class SettlementError(Exception):
+    pass
+
+
+def request_settlement(shop, amount, user=None):
+    """সেলারের টাকা তোলার অনুরোধ। একবারে একটাই খোলা অনুরোধ; টাকা ৳৫,০০০ থেকে "এখন তোলা যাবে"-এর মধ্যে।"""
+    from .models import SettlementRequest
+    with transaction.atomic():
+        shop = Shop.objects.select_for_update().get(pk=shop.pk)
+        if not (shop.payout_method and shop.payout_account):
+            raise SettlementError('আগে উপরে টাকা নেওয়ার মাধ্যম আর নম্বর/অ্যাকাউন্ট দিয়ে সেভ করুন।')
+        summary = balance_summary(shop)
+        if summary['open_request']:
+            raise SettlementError('আগের অনুরোধটা এখনো যাচাই হচ্ছে। সেটা হয়ে গেলে আবার অনুরোধ দিন।')
+        try:
+            amount = Decimal(str(amount).replace(',', '')).quantize(Decimal('1'))
+        except (ArithmeticError, ValueError):
+            raise SettlementError('কত টাকা তুলবেন লিখুন।')
+        if summary['available'] < SETTLEMENT_MIN:
+            raise SettlementError(f'কমপক্ষে ৳{SETTLEMENT_MIN:,.0f} জমলে টাকা তোলা যায়। এখন তোলা যাবে ৳{summary["available"]:,.0f}।')
+        if amount < SETTLEMENT_MIN or amount > summary['available']:
+            raise SettlementError(f'৳{SETTLEMENT_MIN:,.0f} থেকে ৳{summary["available"]:,.0f}-এর মধ্যে লিখুন।')
+        return SettlementRequest.objects.create(
+            shop=shop, amount=amount, method=shop.payout_method, account=shop.payout_account,
+            account_name=shop.payout_account_name, requested_by=user if getattr(user, 'pk', None) else None)
+
+
+def cancel_settlement(shop, request_id):
+    from .models import SettlementRequest
+    return SettlementRequest.objects.filter(pk=request_id, shop=shop, status=SettlementRequest.PENDING).update(
+        status=SettlementRequest.CANCELLED, decided_at=timezone.now())
+
+
+def pay_settlement(request_id, reference, user=None):
+    """মাস্টার টাকা পাঠিয়েছেন: ShopPayout লেখা, অনুরোধ "পাঠানো হয়েছে"। ফেরত: অনুরোধ।"""
+    from .models import SettlementRequest
+    reference = (reference or '').strip()[:100]
+    if not reference:
+        raise SettlementError('লেনদেন নম্বর (TrxID) দিন।')
+    with transaction.atomic():
+        req = SettlementRequest.objects.select_for_update().select_related('shop').filter(pk=request_id).first()
+        if req is None or req.status != SettlementRequest.PENDING:
+            raise SettlementError('অনুরোধটা আর খোলা নেই।')
+        payout = ShopPayout.objects.create(shop=req.shop, amount=req.amount, method=req.method, account=req.account,
+                                           reference=reference, note='টাকা তোলার অনুরোধ থেকে',
+                                           created_by=user if getattr(user, 'pk', None) else None)
+        req.status, req.payout, req.decided_at = SettlementRequest.PAID, payout, timezone.now()
+        req.save(update_fields=['status', 'payout', 'decided_at'])
+    _notify_seller(req.shop, f'{settings.SITE_NAME}: ৳{_bn(f"{req.amount:,.0f}")} পাঠানো হয়েছে ({req.method}), '
+                             f'TrxID {reference}')
+    return req
+
+
+def reject_settlement(request_id, reason):
+    from .models import SettlementRequest
+    reason = (reason or '').strip()[:200] or 'অ্যাকাউন্টের তথ্য মেলেনি'
+    return SettlementRequest.objects.filter(pk=request_id, status=SettlementRequest.PENDING).update(
+        status=SettlementRequest.REJECTED, note=reason, decided_at=timezone.now())
+
+
+def _bn_date(day):
+    from .dashboard import bn_date
+    return bn_date(day, weekday=False)
+
+
+def _bn(text):
+    return str(text).translate(str.maketrans('0123456789', '০১২৩৪৫৬৭৮৯'))
+
+
+def _notify_seller(shop, text):
+    """প্ল্যাটফর্মের খরচে সেলারকে SMS (দোকানের ব্যালেন্স থেকে না)। কোনো সমস্যায় কাজ আটকায় না।"""
+    from . import sms
+    phone = sms.normalize(shop.phone) or sms.normalize(getattr(shop.user, 'phone_number', ''))
+    if phone:
+        sms.notify(phone, text)
 
 
 def recheck_pending(shop, limit=3):

@@ -239,8 +239,8 @@ SMS_GATEWAY_CLIENT_ID = os.environ.get('SMS_GATEWAY_CLIENT_ID', '').strip()
 SMS_GATEWAY_API_KEY = os.environ.get('SMS_GATEWAY_API_KEY', '').strip()
 # SMS: ১০০-র বেশি নম্বর বা অর্ডারের অটো SMS পেছনে (thread) যায়, যাতে পেইজ আটকে না থাকে। টেস্টে সরাসরি।
 SMS_BACKGROUND = env_bool('SMS_BACKGROUND', default=sys.argv[1:2] != ['test'])
-# bKash/Nagad-এ হাতে টাকা পাঠানোর নম্বর (প্যাকেজ বা SMS কেনা)
-MANUAL_PAYMENT_NUMBER = os.environ.get('MANUAL_PAYMENT_NUMBER', '01923513404')
+# সেলার টাকা তোলার অনুরোধ দিলে এই নম্বরে SMS যায় (non-masking)
+ADMIN_ALERT_PHONE = os.environ.get('ADMIN_ALERT_PHONE', '01923513404')
 # কাস্টমার দোকানের ওয়েবসাইটে অনলাইনে টাকা দিলে প্ল্যাটফর্ম কত % রাখবে (বাকিটা সেলারের পাওনা)।
 # PayStation-এর নিজের চার্জ এর মধ্যেই ধরা।
 STOREFRONT_PAYMENT_FEE_PERCENT = os.environ.get('STOREFRONT_PAYMENT_FEE_PERCENT', '2')

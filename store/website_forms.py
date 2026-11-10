@@ -151,20 +151,39 @@ class DeliveryZoneForm(forms.ModelForm):
 
 
 class PaymentSettingsForm(forms.ModelForm):
+    """
+    Edumi-র Quick Pay-এর মতো একটা সুইচ: বন্ধ = শুধু ক্যাশ অন ডেলিভারি; চালু = কাস্টমার অনলাইনে টাকা দিতে পারবে
+    (কীভাবে, সেটা নিচের তিনটা নিয়মের একটা)। সুইচের অবস্থা payment_rule-এই থাকে: 'cod' মানে বন্ধ।
+    """
+    ONLINE_RULES = [(value, label) for value, label in Shop.PAYMENT_RULE_CHOICES if value != Shop.PAYMENT_COD]
+
+    online_enabled = forms.BooleanField(required=False, widget=forms.CheckboxInput(
+        attrs={'class': 'form-check-input', 'role': 'switch'}))
+    payment_rule = forms.ChoiceField(choices=ONLINE_RULES, required=False, widget=forms.RadioSelect)
+
     class Meta:
         model = Shop
         fields = ['payment_rule', 'payout_method', 'payout_account', 'payout_account_name']
         widgets = {
-            'payment_rule': forms.RadioSelect,
             'payout_method': forms.Select(attrs={'class': 'form-select'}),
             'payout_account': forms.TextInput(attrs={**TEXT, 'placeholder': 'bKash/Nagad নম্বর, বা ব্যাংকের নাম, শাখা আর অ্যাকাউন্ট নম্বর'}),
             'payout_account_name': forms.TextInput(attrs={**TEXT, 'placeholder': 'যার নামে অ্যাকাউন্ট'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        online = self.instance.payment_rule != Shop.PAYMENT_COD
+        self.fields['online_enabled'].initial = online
+        self.initial['payment_rule'] = self.instance.payment_rule if online else Shop.PAYMENT_COD_OR_ONLINE
+
     def clean(self):
         data = super().clean()
-        online = data.get('payment_rule') and data['payment_rule'] != Shop.PAYMENT_COD
-        if online and not (data.get('payout_method') and (data.get('payout_account') or '').strip()):
+        if not data.get('online_enabled'):
+            data['payment_rule'] = Shop.PAYMENT_COD
+            return data
+        if data.get('payment_rule') not in dict(self.ONLINE_RULES):
+            data['payment_rule'] = Shop.PAYMENT_COD_OR_ONLINE
+        if not (data.get('payout_method') and (data.get('payout_account') or '').strip()):
             self.add_error('payout_account', 'অনলাইনে টাকা নিতে চাইলে টাকা পাঠানোর নম্বর বা অ্যাকাউন্ট দিন।')
         return data
 

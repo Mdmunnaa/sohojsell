@@ -11,10 +11,43 @@
     </div>
     <div class="fs-5 fw-bold">মোট পাওনা: ৳{{ total_due|floatformat:0 }}</div>
   </div>
+  {% if open_requests %}
+  <div class="card border-0 shadow-sm rounded-4 mb-4" style="border:2px solid #F59E0B !important;">
+    <div class="card-body">
+      <h5 class="fw-bold mb-1"><i class="bi bi-bell-fill text-warning me-1"></i> টাকা তোলার অনুরোধ ({{ open_requests|length }})</h5>
+      <div class="text-muted small mb-3">টাকা পাঠিয়ে লেনদেন নম্বর দিন — সেলার SMS পাবে আর তার পেইজে দেখাবে। ভুল নম্বর হলে কারণ লিখে ফেরত দিন।</div>
+      {% for req in open_requests %}
+      <div class="border rounded-4 p-3 mb-2">
+        <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
+          <div>
+            <div class="fw-bold">{{ req.shop.name }} <span class="text-muted small fw-normal">· {{ req.created_at|date:"j M, g:i A" }}</span></div>
+            <div class="small mt-1">পাঠাবেন: <b>{{ req.method }}</b> <code class="fs-6">{{ req.account }}</code>{% if req.account_name %} · {{ req.account_name }}{% endif %}
+              <button type="button" class="btn btn-sm btn-light border py-0 ms-1" onclick="navigator.clipboard && navigator.clipboard.writeText('{{ req.account|escapejs }}'); this.textContent='কপি হয়েছে';">কপি</button></div>
+          </div>
+          <div class="fs-4 fw-bold text-success">৳{{ req.amount|floatformat:0 }}</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-2">
+          <form method="post" class="d-flex gap-1 flex-wrap">{% csrf_token %}
+            <input type="hidden" name="action" value="request_paid"><input type="hidden" name="request_id" value="{{ req.pk }}">
+            <input type="text" name="reference" class="form-control form-control-sm" style="width:160px;" placeholder="TrxID" required aria-label="লেনদেন নম্বর">
+            <button class="btn btn-sm btn-success fw-bold" onclick="return confirm('৳{{ req.amount|floatformat:0 }} পাঠানো হয়েছে?')">পাঠিয়েছি</button>
+          </form>
+          <form method="post" class="d-flex gap-1 flex-wrap">{% csrf_token %}
+            <input type="hidden" name="action" value="request_reject"><input type="hidden" name="request_id" value="{{ req.pk }}">
+            <input type="text" name="reason" class="form-control form-control-sm" style="width:200px;" placeholder="ফেরতের কারণ" aria-label="কারণ">
+            <button class="btn btn-sm btn-outline-danger">ফেরত দিন</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <div class="card border-0 shadow-sm rounded-4 mb-4">
     <div class="table-responsive">
       <table class="table align-middle mb-0">
-        <thead class="small text-muted"><tr><th>দোকান</th><th>কোথায় পাঠাবেন</th><th class="text-end">মোট নেওয়া</th><th class="text-end">পাঠানো</th><th class="text-end">পাওনা</th><th style="min-width:300px;">টাকা পাঠানো লিখুন</th></tr></thead>
+        <thead class="small text-muted"><tr><th>দোকান</th><th>কোথায় পাঠাবেন</th><th class="text-end">মোট নেওয়া</th><th class="text-end">পাঠানো</th><th class="text-end">পাওনা</th><th class="text-end">তোলা যাবে</th><th style="min-width:300px;">টাকা পাঠানো লিখুন</th></tr></thead>
         <tbody>
         {% for r in rows %}
           <tr>
@@ -23,6 +56,7 @@
             <td class="text-end">৳{{ r.net|floatformat:0 }}</td>
             <td class="text-end">৳{{ r.paid_out|floatformat:0 }}</td>
             <td class="text-end fw-bold {% if r.due > 0 %}text-success{% endif %}">৳{{ r.due|floatformat:0 }}</td>
+            <td class="text-end small">৳{{ r.available|floatformat:0 }}{% if r.holding %}<div class="text-muted">অপেক্ষায় ৳{{ r.holding|floatformat:0 }}</div>{% endif %}</td>
             <td>
               {% if r.due > 0 %}
               <form method="post" class="d-flex gap-1 flex-wrap">{% csrf_token %}
@@ -35,7 +69,7 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="6" class="text-center text-muted py-4">এখনো কোনো অনলাইন পেমেন্ট আসেনি।</td></tr>
+          <tr><td colspan="7" class="text-center text-muted py-4">এখনো কোনো অনলাইন পেমেন্ট আসেনি।</td></tr>
         {% endfor %}
         </tbody>
       </table>

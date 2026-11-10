@@ -179,6 +179,15 @@ class PayStationFlowTests(ShopTestMixin, TestCase):
         self.shop.refresh_from_db()
         self.assertEqual(self.shop.valid_until, timezone.localdate() + timedelta(days=40))
 
+    def test_yearly_plan_adds_365_days(self):
+        payment = self.make_payment('Basic-YEAR')
+        self.assertEqual((payment.amount, payment.days), (Decimal('5000'), 365))
+        self.fake.v1 = {'status': 'Success', 'amount': '5000'}
+        self.callback(payment)
+        self.shop.refresh_from_db()
+        self.assertEqual((self.shop.subscription_plan, self.shop.valid_until),
+                         ('Basic', timezone.localdate() + timedelta(days=365)))
+
     def test_sms_pack_adds_sms(self):
         payment = self.make_payment('SMS-500')
         self.assertEqual(payment.amount, Decimal('200'))
@@ -1408,7 +1417,7 @@ class StorefrontOnlinePaymentTests(ShopTestMixin, TestCase):
         self.client.force_login(self.user)
         self.assertEqual(self.client.get(reverse('master_settlements')).status_code, 302)
         seller_page = self.client.get(reverse('website_settings') + '?tab=payment').content.decode()
-        self.assertIn('৳39', seller_page)
+        self.assertIn('৳৩৯', seller_page)                              # বাকি ৩৯ টাকা ৭ দিনের অপেক্ষায়
 
 
 class WebsiteSettingsTests(ShopTestMixin, TestCase):
@@ -1484,13 +1493,29 @@ class WebsiteSettingsTests(ShopTestMixin, TestCase):
         self.assertEqual(self.shop.free_delivery_min, Decimal('2000'))
 
     def test_online_payment_rule_needs_payout_account(self):
-        self._post({'section': 'payment', 'payment_rule': 'online_only'})
+        self._post({'section': 'payment', 'online_enabled': 'on', 'payment_rule': 'online_only'})
         self.shop.refresh_from_db()
         self.assertEqual(self.shop.payment_rule, 'cod')
-        self._post({'section': 'payment', 'payment_rule': 'online_only', 'payout_method': 'bKash',
+        self._post({'section': 'payment', 'online_enabled': 'on', 'payment_rule': 'online_only', 'payout_method': 'bKash',
                     'payout_account': '01712345678', 'payout_account_name': 'Munna'})
         self.shop.refresh_from_db()
         self.assertEqual(self.shop.payment_rule, 'online_only')
+
+    def test_online_switch_off_means_cash_on_delivery_only(self):
+        from . import shop_payments
+        Shop.objects.filter(pk=self.shop.pk).update(payment_rule='advance_delivery', payout_method='bKash',
+                                                    payout_account='01712345678')
+        self.assertIn('অনলাইনে পেমেন্ট নিন', self.client.get(reverse('website_settings') + '?tab=payment').content.decode())
+        self._post({'section': 'payment', 'payment_rule': 'advance_delivery', 'payout_method': 'bKash',
+                    'payout_account': '01712345678'})                     # সুইচ বন্ধ
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.payment_rule, 'cod')
+        with override_settings(PAYSTATION_TEST_SHOPS=[self.shop.slug]):
+            self.assertEqual(shop_payments.checkout_choices(self.shop), ['cod'])
+            self._post({'section': 'payment', 'online_enabled': 'on', 'payout_method': 'bKash',
+                        'payout_account': '01712345678'})                 # চালু, নিয়ম না বাছলে কাস্টমার বেছে নেবে
+            self.shop.refresh_from_db()
+            self.assertEqual(shop_payments.checkout_choices(self.shop), ['cod', 'full'])
 
     def test_staff_without_settings_permission_blocked(self):
         from .models import StaffProfile
@@ -1815,6 +1840,85 @@ class SmsPanelTests(ShopTestMixin, TestCase):
         self.assertEqual(SmsLog.objects.get().kind, SmsLog.KIND_AUTO)
         self.shop.is_sms_active = False
         self.assertIsNone(sms.send_auto(self.shop, self.rahim.phone, 'hello', 'অর্ডার'))
+
+
+class SettlementAndBillingTests(ShopTestMixin, TestCase):
+    """সেলারের টাকা তোলা: পেমেন্টের ৭ দিন পর, কমপক্ষে ৳৫,০০০; বিলিং শুধু PayStation (মাসিক/বছর)।"""
+
+    def setUp(self):
+        self.user, self.shop = self.make_shop(payout_method='bKash', payout_account='01712345678',
+                                              payout_account_name='Munna')
+        self.count = 0
+
+    def paid(self, net, days_ago):
+        from .models import StorefrontPayment
+        self.count += 1
+        when = timezone.now() - timedelta(days=days_ago)
+        return StorefrontPayment.objects.create(
+            shop=self.shop, kind='full', amount=net, fee_percent=0, fee_amount=0, net_amount=net,
+            invoice_number=f'SF-{self.shop.id}-{self.count:012d}', status='Completed', completed_at=when)
+
+    def test_hold_minimum_request_cancel_and_pay(self):
+        from . import shop_payments as sp
+        from .models import SettlementRequest, ShopPayout
+        self.paid(Decimal('4000'), days_ago=8)
+        self.paid(Decimal('3000'), days_ago=2)
+        summary = sp.balance_summary(self.shop)
+        self.assertEqual((summary['available'], summary['holding'], summary['short']),
+                         (Decimal('4000'), Decimal('3000'), Decimal('1000')))
+        self.assertFalse(summary['can_request'])
+        self.assertEqual(summary['next_release'], timezone.localdate() + timedelta(days=5))
+        with self.assertRaises(sp.SettlementError):
+            sp.request_settlement(self.shop, 4000)                       # ৳৫,০০০-এর কম
+        self.paid(Decimal('1500'), days_ago=10)
+        self.assertTrue(sp.balance_summary(self.shop)['can_request'])
+        with self.assertRaises(sp.SettlementError):
+            sp.request_settlement(self.shop, 6000)                       # তোলা যাবে ৫,৫০০
+        req = sp.request_settlement(self.shop, 5200, user=self.user)
+        self.assertEqual((req.method, req.account), ('bKash', '01712345678'))
+        summary = sp.balance_summary(self.shop)
+        self.assertEqual((summary['available'], summary['requested']), (Decimal('300'), Decimal('5200')))
+        with self.assertRaises(sp.SettlementError):
+            sp.request_settlement(self.shop, 5000)                       # একটাই খোলা অনুরোধ
+        self.assertEqual(sp.cancel_settlement(self.shop, req.pk), 1)
+        req = sp.request_settlement(self.shop, 5500)
+        sp.pay_settlement(req.pk, 'TRX777', user=self.user)
+        req.refresh_from_db()
+        self.assertEqual((req.status, req.payout.amount, req.payout.reference), (SettlementRequest.PAID, Decimal('5500'), 'TRX777'))
+        summary = sp.balance_summary(self.shop)
+        self.assertEqual((summary['available'], summary['due'], summary['holding']), (0, Decimal('3000'), Decimal('3000')))
+        with self.assertRaises(sp.SettlementError):
+            sp.pay_settlement(req.pk, 'TRX777')                          # দুইবার না
+        self.assertEqual(ShopPayout.objects.count(), 1)
+
+    def test_seller_page_and_master_flow(self):
+        from .models import SettlementRequest
+        self.paid(Decimal('6000'), days_ago=9)
+        page = self.client.get(reverse('website_settings') + '?tab=payment').content.decode()
+        self.assertIn('টাকা তুলুন', page)
+        self.assertIn('৳৬,০০০', page)
+        self.client.post(reverse('settlement_request'), {'amount': '6000'})
+        req = SettlementRequest.objects.get()
+        self.assertIn('তোলার অনুরোধ যাচাই হচ্ছে', self.client.get(reverse('website_settings') + '?tab=payment').content.decode())
+        admin = User.objects.create_superuser(phone_number='01900000000', password='Admin-pass-1')
+        self.client.force_login(admin)
+        self.assertIn('টাকা তোলার অনুরোধ (1)', self.client.get(reverse('master_settlements')).content.decode())
+        self.client.post(reverse('master_settlements'), {'action': 'request_paid', 'request_id': req.pk, 'reference': 'BK123'})
+        req.refresh_from_db()
+        self.assertEqual(req.status, SettlementRequest.PAID)
+
+    def test_billing_is_paystation_only_with_yearly_plans(self):
+        from .payments import resolve_item
+        item = resolve_item('Standard-YEAR')
+        self.assertEqual((item['plan_name'], item['amount'], item['days']), ('Standard', Decimal('10000'), 365))
+        self.assertIsNone(resolve_item('Gold-YEAR'))
+        with override_settings(PAYSTATION_TEST_SHOPS=[self.shop.slug]):
+            html = self.client.get(reverse('billing')).content.decode()
+        self.assertIn('value="Basic-YEAR"', html)
+        self.assertNotIn('transaction_id', html)
+        self.client.post(reverse('submit_payment_request'), {'plan_name': 'Basic', 'payment_method': 'bKash',
+                                                             'sender_number': '017', 'transaction_id': 'X1', 'amount': '499'})
+        self.assertFalse(PaymentRequest.objects.exists())
 
 
 class BrandTests(TestCase):
