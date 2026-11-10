@@ -1,0 +1,2 @@
+{# গতকালের তুলনায় কত % বাড়ল/কমল: change = {'dir': 'up'|'down'|'flat', 'text': '১২%'} #}
+{% if change %}<span class="dh-delta {{ change.dir }}" title="গতকালের তুলনায়">{% if change.dir == 'up' %}<i class="bi bi-arrow-up-short"></i>{% elif change.dir == 'down' %}<i class="bi bi-arrow-down-short"></i>{% endif %}{{ change.text }}<span class="visually-hidden"> গতকালের তুলনায়</span></span>{% endif %}

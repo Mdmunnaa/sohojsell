@@ -43,59 +43,62 @@ def landing_page(request):
 # ============================================================
 # SELLER DASHBOARD
 # ============================================================
-# ফাইলের একদম উপরে এই দুইটা ইম্পোর্ট আছে কি না শিওর হয়ে নিন (না থাকলে বসিয়ে দিন):
-# from django.db.models import Count
-# from .models import Order, OrderItem, Product, PageView
-
 @login_required(login_url='/accounts/login/')
 def seller_dashboard(request):
+    """দোকানের মূল পাতা: আজকের হিসাব, ৭/৩০ দিনের চার্ট, এখন যা করতে হবে। হিসাবগুলো store/dashboard.py-তে।"""
+    from . import dashboard as dash
+    from .plans import limits_for
+
     if not hasattr(request.user, 'shop'):
         return redirect('setup_shop')
 
     shop = request.user.shop
-    today = timezone.now().date()
+    is_owner = not getattr(request.user, 'is_shop_staff', False)
+    profile = None if is_owner else getattr(request.user, 'staff_profile', None)
 
-    # =======================================================
-    # 💰 Sales & Revenue Logic
-    # =======================================================
-    today_orders = Order.objects.filter(
-        shop=shop, created_at__date=today
-    ).exclude(status__in=['Returned', 'Cancelled'])
+    def allowed(permission):
+        return is_owner or bool(profile and getattr(profile, permission, False))
 
-    # ✅ Optimized: N+1 → 1 query using aggregate + F expressions
-    from django.db.models import F as Fexp
-    stats = OrderItem.objects.filter(
-        order__in=today_orders
-    ).aggregate(
-        revenue=Sum(Fexp('price') * Fexp('quantity')),
-        profit=Sum((Fexp('price') - Fexp('cost_price')) * Fexp('quantity'))
-    )
-    today_revenue = stats['revenue'] or 0
-    today_profit = stats['profit'] or 0
+    can = {
+        'money': allowed('can_view_reports'),
+        'pos': allowed('can_use_pos'),
+        'orders': allowed('can_manage_orders'),
+        'products': allowed('can_manage_products'),
+        'settings': allowed('can_manage_settings'),
+    }
+    now = timezone.now()
+    today = timezone.localdate()
+    try:
+        chart_days = int(request.GET.get('days', 7))
+    except (TypeError, ValueError):
+        chart_days = 7
+    if chart_days not in dash.CHART_RANGES:
+        chart_days = 7
 
-    low_stock_products = Product.objects.filter(shop=shop, stock_quantity__lt=5, is_active=True)
-    recent_orders = Order.objects.filter(shop=shop).select_related('customer').order_by('-created_at')[:5]
-
-    # =======================================================
-    # 📊 Analytics: View Tracking (New Addition)
-    # =======================================================
-    # ১. আজকের মোট ভিজিটর (স্টোরফ্রন্ট + প্রোডাক্ট ভিউ)
-    today_views = PageView.objects.filter(shop=shop, created_at__date=today).count()
-
-    # ২. সবচেয়ে জনপ্রিয় (Most Viewed) ৩টি প্রোডাক্ট
-    top_products = Product.objects.filter(shop=shop).annotate(
-        view_count=Count('views')
-    ).filter(view_count__gt=0).order_by('-view_count')[:3]
-
+    full_name = (getattr(request.user, 'name', '') or '').strip()
+    store_url = request.build_absolute_uri(shop.storefront_url)
+    pipeline = dash.order_pipeline(shop, today)
+    dues = dash.pos_dues(shop) if can['pos'] else None
+    stock = dash.stock_alerts(shop)
     context = {
         'shop': shop,
-        'today_orders_count': today_orders.count(),
-        'today_revenue': today_revenue,
-        'today_profit': today_profit,
-        'low_stock_products': low_stock_products,
-        'recent_orders': recent_orders,
-        'today_views': today_views,  # নতুন অ্যাড হলো
-        'top_products': top_products,  # নতুন অ্যাড হলো
+        'can': can,
+        'is_owner': is_owner,
+        'greeting': dash.greeting(now),
+        'today_label': dash.bn_date(today),
+        'person_name': full_name.split()[0] if full_name else '',
+        'store_url': store_url,
+        'share_text': f'{shop.name} — অনলাইনে অর্ডার করুন: {store_url}',
+        'numbers': dash.today_numbers(shop, today),
+        'pipeline': pipeline,
+        'stock': stock,
+        'todo': dash.todo_items(can, pipeline, dues, stock),
+        'recent_orders': dash.recent_orders(shop) if can['orders'] or can['money'] else [],
+        'chart': dash.sales_chart(shop, today, chart_days) if can['money'] else None,
+        'top_sellers': dash.top_sellers(shop, today) if can['money'] else [],
+        'setup': dash.setup_steps(shop, limits_for(shop)['facebook']) if is_owner else None,
+        'trial_days': shop.days_remaining(),
+        'fb_page': getattr(shop, 'fb_page', None),
     }
     return render(request, 'store/dashboard.html', context)
 

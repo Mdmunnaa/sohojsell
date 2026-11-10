@@ -1,489 +1,719 @@
 {% extends 'store/base.html' %}
-{% block title %}Dashboard — {{ shop.name }}{% endblock %}
+{% load bangla %}
+{% block title %}ড্যাশবোর্ড — {{ shop.name }}{% endblock %}
 {% block page_title %}ড্যাশবোর্ড{% endblock %}
 
 {% block content %}
-
-    <!-- Facebook Connection Status -->
-    {% if shop.fb_page %}
-    <div class="alert d-flex align-items-center justify-content-between mb-4" 
-         style="background:#e7f3ff;border:1px solid #b3d4ff;border-radius:14px;">
-        <div class="d-flex align-items-center gap-3">
-            {% if shop.fb_page.page_picture %}
-            <img src="{{ shop.fb_page.page_picture }}" width="44" height="44" 
-                 style="border-radius:50%;border:2px solid #1877F2;" alt="page">
-            {% else %}
-            <div style="width:44px;height:44px;background:#1877F2;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                <i class="bi bi-facebook text-white fs-5"></i>
-            </div>
-            {% endif %}
-            <div>
-                <div class="fw-bold text-dark small">{{ shop.fb_page.page_name }}</div>
-                <div class="text-muted" style="font-size:0.78rem;">
-                    <span class="badge" style="background:#e7f3ff;color:#1877F2;border:1px solid #b3d4ff;">
-                        <i class="bi bi-circle-fill text-success me-1" style="font-size:0.5rem;"></i>Facebook কানেক্টেড
-                    </span>
-                    {% if shop.fb_page.fan_count %}
-                    <span class="ms-2"><i class="bi bi-people-fill"></i> {{ shop.fb_page.fan_count }}</span>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        <a href="{% url 'fb_page_select' %}" class="btn btn-sm" 
-           style="background:#1877F2;color:white;border-radius:8px;font-size:0.8rem;">
-            <i class="bi bi-arrow-repeat me-1"></i> পেইজ পরিবর্তন
-        </a>
-    </div>
-    {% else %}
-    <div class="alert d-flex align-items-center justify-content-between mb-4"
-         style="background:#fff8e7;border:1px solid #ffd77a;border-radius:14px;">
-        <div class="d-flex align-items-center gap-3">
-            <div style="width:44px;height:44px;background:#fff3cd;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                <i class="bi bi-facebook" style="color:#e09400;font-size:1.4rem;"></i>
-            </div>
-            <div>
-                <div class="fw-bold text-dark small">Facebook পেইজ কানেক্ট করুন</div>
-                <div class="text-muted" style="font-size:0.78rem;">{% if plan.facebook %}কমেন্ট থেকে অর্ডার নেওয়ার ফিচার পেতে পেইজ কানেক্ট করুন{% else %}Facebook কানেক্ট আর অটোমেশন Standard ও Premium প্যাকেজে আছে{% endif %}</div>
-            </div>
-        </div>
-        {% if plan.facebook %}
-        <a href="{% url 'fb_connect' %}" class="btn btn-sm btn-warning text-dark fw-bold" style="border-radius:8px;font-size:0.8rem;">
-            <i class="bi bi-plug-fill me-1"></i> এখনই কানেক্ট করুন
-        </a>
-        {% else %}
-        <a href="{% url 'billing' %}" class="btn btn-sm btn-outline-warning text-dark fw-bold" style="border-radius:8px;font-size:0.8rem;">
-            <i class="bi bi-arrow-up-circle me-1"></i> আপগ্রেড করুন
-        </a>
-        {% endif %}
-    </div>
-    {% endif %}
-
-
 <style>
-/* ═══════════════════════════════════════
-   DASHBOARD — ULTRA PREMIUM (Typography Fixed)
-═══════════════════════════════════════ */
-.db {
-  --blue:#2563eb; --blue2:#1d4ed8; --green:#16a34a; --green2:#15803d;
-  --amber:#d97706; --amber2:#b45309; --red:#dc2626; --ink:#0f172a;
-  --ink2:#334155; --muted:#64748b; --border:#e2e8f0; --surface:#f8fafc; --card:#fff;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+/* ড্যাশবোর্ড: কালো হেডার, সাদা কার্ড, এক রঙের ভাষা (সেটিংস/ওয়েবসাইট পেইজের সাথে মিলিয়ে) */
+.dh {
+  --ink: #0F172A; --ink2: #334155; --muted: #64748B; --faint: #94A3B8;
+  --line: #E2E8F0; --soft: #F1F5F9; --bg2: #F8FAFC;
+  --blue: #2563EB; --green: #16A34A; --amber: #D97706; --red: #DC2626; --violet: #7C3AED;
+  --pos: #2a78d6; --online: #eb6834;
+  max-width: 1240px; margin: 0 auto;
+  font-family: 'Hind Siliguri', 'DM Sans', sans-serif;
+  color: var(--ink);
 }
+.dh .num { font-family: 'DM Sans', 'Hind Siliguri', sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.dh a { text-decoration: none; }
 
-/* ── Banner ── */
-.db-banner {
-  display:flex; align-items:center; justify-content:space-between;
-  gap:16px; padding:18px 24px; border-radius:20px; margin-bottom:28px;
-  flex-wrap:wrap; position:relative; overflow:hidden;
+/* ── হেডার ── */
+.dh-hero {
+  position: relative; overflow: hidden; border-radius: 22px; color: #F8FAFC;
+  padding: 24px 26px 22px;
+  background:
+    radial-gradient(520px 220px at 100% 0%, rgba(59,130,246,.28), transparent 70%),
+    radial-gradient(420px 200px at 0% 100%, rgba(34,197,94,.16), transparent 70%),
+    linear-gradient(135deg, #0B1220 0%, #0F172A 45%, #1E293B 100%);
+  box-shadow: 0 18px 40px -18px rgba(15,23,42,.55);
 }
-.db-banner::before {
-  content:''; position:absolute; inset:0; opacity:.06;
-  background: repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 1px,transparent 12px);
-  pointer-events:none;
+.dh-hero::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.07) 1px, transparent 0);
+  background-size: 22px 22px;
 }
-.db-banner.green { background:linear-gradient(135deg,#10B981 0%,#047857 100%); }
-.db-banner.blue  { background:linear-gradient(135deg,#3B82F6 0%,#1D4ED8 100%); }
-.db-banner.amber { background:linear-gradient(135deg,#F59E0B 0%,#B45309 100%); }
-.db-banner-left { display:flex; align-items:center; gap:16px; z-index: 1; }
-.db-banner-icon {
-  width:48px; height:48px; border-radius:14px;
-  background:rgba(255,255,255,.25); display:flex; align-items:center;
-  justify-content:center; font-size:22px; color:#fff; flex-shrink:0;
-  backdrop-filter:blur(8px); border: 1px solid rgba(255,255,255,0.3);
+.dh-hero > * { position: relative; z-index: 1; }
+.dh-hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.dh-date { font-size: 13px; color: #94A3B8; font-weight: 600; }
+.dh-hello { font-size: 26px; font-weight: 700; line-height: 1.25; margin: 2px 0 0; color: #fff; }
+.dh-shopname { font-size: 14px; color: #CBD5E1; font-weight: 500; margin-top: 2px; }
+.dh-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.dh-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; color: #E2E8F0; white-space: nowrap;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+  transition: background .15s;
 }
-.db-banner-title { font-size:16px; font-weight:800; color:#fff; letter-spacing: -0.3px; }
-.db-banner-sub { font-size:13px; color:rgba(255,255,255,.85); margin-top:2px; font-weight: 500; }
-.db-banner-right { display:flex; align-items:center; gap:12px; flex-wrap:wrap; z-index: 1; }
-.db-banner-code {
-  background:rgba(255,255,255,.2); border:1px dashed rgba(255,255,255,.5);
-  backdrop-filter:blur(4px); padding:8px 16px; border-radius:12px;
-  font-family:monospace; font-size:13px; font-weight:800; color:#fff;
-}
-.db-banner-btn {
-  display:inline-flex; align-items:center; gap:8px;
-  padding:10px 22px; border-radius:12px;
-  background:#fff; font-size:14px; font-weight:800;
-  text-decoration:none; transition:all .2s; border:none; cursor:pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-.db-banner-btn.green { color:var(--green2); }
-.db-banner-btn.blue  { color:var(--blue2); }
-.db-banner-btn.amber { color:var(--amber2); }
-.db-banner-btn:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,.15); }
+.dh-chip:hover { background: rgba(255,255,255,.14); color: #fff; }
+.dh-chip i { font-size: 13px; }
+.dh-chip.gold i { color: #FBBF24; }
+.dh-chip.warn { background: rgba(245,158,11,.18); border-color: rgba(251,191,36,.4); color: #FDE68A; }
+.dh-chip.danger { background: rgba(239,68,68,.2); border-color: rgba(248,113,113,.45); color: #FECACA; }
 
-/* ── Page header ── */
-.db-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:30px; flex-wrap:wrap; }
-.db-welcome { font-size:28px; font-weight:900; color:var(--ink); letter-spacing:-0.8px; line-height:1.2; }
-.db-plan {
-  display:inline-flex; align-items:center; gap:6px; margin-top:8px;
-  background:#fff; border:1px solid var(--border); border-radius:20px;
-  padding:6px 16px; font-size:13px; font-weight:800; color:var(--ink2);
-  box-shadow:0 2px 6px rgba(0,0,0,.04);
+.dh-site {
+  margin-top: 18px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px; padding: 10px 10px 10px 14px;
 }
-.db-plan i { color:#f59e0b; }
-.db-header-right { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-.db-sms {
-  display:flex; align-items:center; gap:8px;
-  background:#fff; border:1px solid var(--border); border-radius:14px;
-  padding:12px 20px; font-size:14px; font-weight:800; color:var(--ink);
-  box-shadow:0 4px 10px rgba(0,0,0,.03);
+.dh-live { width: 9px; height: 9px; border-radius: 50%; background: #22C55E; flex-shrink: 0;
+  box-shadow: 0 0 0 4px rgba(34,197,94,.18); animation: dhPulse 2.4s ease infinite; }
+@keyframes dhPulse { 50% { box-shadow: 0 0 0 7px rgba(34,197,94,.05); } }
+.dh-site-text { flex: 1; min-width: 0; }
+.dh-site-label { font-size: 12px; color: #94A3B8; font-weight: 600; }
+.dh-site-url { display: block; color: #BFDBFE; font-weight: 600; font-size: 14.5px; font-family: 'DM Sans', sans-serif;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dh-site-url:hover { color: #fff; }
+.dh-site-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.dh-sbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 38px; min-width: 38px;
+  padding: 0 12px; border-radius: 11px; border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.08); color: #E2E8F0; font: 600 13px 'Hind Siliguri', sans-serif; cursor: pointer;
+  transition: background .15s, color .15s;
 }
-.db-sms i { color:var(--blue); font-size:18px; }
-.db-new-order {
-  display:inline-flex; align-items:center; gap:8px;
-  padding:12px 24px; background:linear-gradient(135deg, var(--blue), var(--blue2)); color:#fff;
-  border-radius:14px; font-size:15px; font-weight:800;
-  text-decoration:none; transition:all .2s;
-  box-shadow:0 6px 15px rgba(37,99,235,.3);
-}
-.db-new-order:hover { color:#fff; transform:translateY(-2px); box-shadow:0 10px 25px rgba(37,99,235,.4); }
+.dh-sbtn:hover { background: rgba(255,255,255,.16); color: #fff; }
+.dh-sbtn.wa:hover { background: #16A34A; border-color: #16A34A; }
+.dh-sbtn.fb:hover { background: #1877F2; border-color: #1877F2; }
+.dh-sbtn.primary { background: #fff; color: var(--ink); border-color: #fff; }
+.dh-sbtn.primary:hover { background: #E2E8F0; color: var(--ink); }
+.dh-sbtn.copied { background: #16A34A; border-color: #16A34A; color: #fff; }
+.dh-fb { margin-top: 10px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #CBD5E1; }
+.dh-fb img, .dh-fb .ph { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: #1877F2;
+  display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; }
+.dh-fb a { color: #93C5FD; font-weight: 600; }
 
-/* ── Stat cards ── */
-.db-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; margin-bottom:24px; }
-@media(max-width:1100px){ .db-stats{grid-template-columns:repeat(2,1fr);} }
-@media(max-width:580px){ .db-stats{grid-template-columns:1fr;} }
+/* ── দ্রুত কাজ ── */
+.dh-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 12px; margin: 14px 0 22px; }
+.dh-q {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 16px;
+  background: #fff; border: 1px solid var(--line); color: var(--ink);
+  box-shadow: 0 1px 2px rgba(15,23,42,.04); transition: transform .15s, box-shadow .15s, border-color .15s;
+}
+.dh-q:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -12px rgba(15,23,42,.25); border-color: #CBD5E1; color: var(--ink); }
+.dh-q .ic { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+  font-size: 19px; flex-shrink: 0; background: var(--soft); color: var(--ink2); }
+.dh-q b { display: block; font-size: 15px; font-weight: 700; line-height: 1.2; }
+.dh-q small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.dh-q.pos { background: linear-gradient(135deg, #16A34A, #15803D); border-color: #15803D; color: #fff; }
+.dh-q.pos:hover { color: #fff; box-shadow: 0 12px 26px -12px rgba(22,163,74,.7); }
+.dh-q.pos .ic { background: rgba(255,255,255,.18); color: #fff; }
+.dh-q.pos small { color: rgba(255,255,255,.8); }
+.dh-q.blue .ic { background: #EFF6FF; color: var(--blue); }
+.dh-q.amber .ic { background: #FFF7ED; color: #EA580C; }
+.dh-q.violet .ic { background: #F5F3FF; color: var(--violet); }
 
-.sc {
-  border-radius:24px; padding:28px 26px;
-  position:relative; overflow:hidden; color:#fff;
-  transition:transform .25s ease, box-shadow .25s ease;
-  cursor:default;
-}
-.sc:hover { transform:translateY(-6px); }
-.sc.blue   { background:linear-gradient(135deg,#3B82F6 0%,#1E40AF 100%); box-shadow:0 10px 25px rgba(59,130,246,.25); }
-.sc.green  { background:linear-gradient(135deg,#10B981 0%,#047857 100%); box-shadow:0 10px 25px rgba(16,185,129,.25); }
-.sc.amber  { background:linear-gradient(135deg,#F59E0B 0%,#B45309 100%); box-shadow:0 10px 25px rgba(245,158,11,.25); }
-.sc.purple { background:linear-gradient(135deg,#8B5CF6 0%,#6D28D9 100%); box-shadow:0 10px 25px rgba(139,92,246,.25); }
-.sc:hover.blue   { box-shadow:0 20px 40px rgba(59,130,246,.35); }
-.sc:hover.green  { box-shadow:0 20px 40px rgba(16,185,129,.35); }
-.sc:hover.amber  { box-shadow:0 20px 40px rgba(245,158,11,.35); }
-.sc:hover.purple { box-shadow:0 20px 40px rgba(139,92,246,.35); }
+/* ── কার্ড ── */
+.dh-card { background: #fff; border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+.dh-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px 0; }
+.dh-card-title { font-size: 17px; font-weight: 700; margin: 0; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+.dh-card-title .count { font: 700 12px 'DM Sans', sans-serif; padding: 2px 9px; border-radius: 999px; background: var(--soft); color: var(--ink2); }
+.dh-card-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.dh-card-sub b { color: var(--ink); font-weight: 700; }
+.dh-more { font-size: 13px; font-weight: 600; color: var(--blue); white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; padding-top: 2px; }
+.dh-more:hover { color: #1D4ED8; }
+.dh-card-body { padding: 14px 20px 18px; }
 
-/* card inner shine */
-.sc::before {
-  content:''; position:absolute; top:-40%; left:-10%; width:60%; height:90%;
-  background:rgba(255,255,255,.1); border-radius:50%;
-  transform:rotate(-20deg); pointer-events:none;
-}
-.sc-label { font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:rgba(255,255,255,.8); margin-bottom:12px; }
-.sc-val { font-size:40px; font-weight:900; line-height:1; margin-bottom:12px; letter-spacing: -1px; }
-.sc-sub { font-size:13px; color:rgba(255,255,255,.8); display:flex; align-items:center; gap:6px; font-weight:600; }
-.sc-icon {
-  position:absolute; right:-16px; bottom:-20px;
-  font-size:100px; opacity:.15; line-height:1;
-  transition:transform .3s, opacity .3s;
-  pointer-events:none;
-}
-.sc:hover .sc-icon { transform:rotate(-8deg) scale(1.1); opacity:.25; }
+/* ── সেটআপ ── */
+.dh-setup { padding: 18px 20px 20px; margin-bottom: 22px; border-color: #C7D2FE;
+  background: linear-gradient(180deg, #F5F7FF 0%, #fff 70%); }
+.dh-setup-head { display: flex; align-items: center; gap: 14px; }
+.dh-ring { --p: 0; width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center;
+  background: conic-gradient(#4F46E5 calc(var(--p) * 1%), #E0E7FF 0); }
+.dh-ring span { width: 40px; height: 40px; border-radius: 50%; background: #fff; display: grid; place-items: center;
+  font: 700 12.5px 'DM Sans', sans-serif; color: #3730A3; }
+.dh-setup h2 { font-size: 17px; font-weight: 700; margin: 0; }
+.dh-setup p { margin: 1px 0 0; font-size: 13px; color: var(--muted); }
+.dh-x { margin-left: auto; align-self: flex-start; border: 0; background: transparent; color: var(--faint); font-size: 13px;
+  font-weight: 600; padding: 4px 8px; border-radius: 8px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.dh-x:hover { background: var(--soft); color: var(--ink2); }
+.dh-steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 16px; }
+.dh-step { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #fff;
+  border: 1px solid var(--line); color: var(--ink); transition: border-color .15s, box-shadow .15s; }
+.dh-step:hover { border-color: #A5B4FC; box-shadow: 0 6px 18px -10px rgba(79,70,229,.45); color: var(--ink); }
+.dh-step-ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; flex-shrink: 0;
+  background: #EEF2FF; color: #4F46E5; font-size: 16px; }
+.dh-step b { display: block; font-size: 14px; font-weight: 700; line-height: 1.3; }
+.dh-step small { display: block; font-size: 12px; color: var(--muted); line-height: 1.35; }
+.dh-step .go { margin-left: auto; color: var(--faint); }
+.dh-done-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 14px; font-size: 12.5px; }
+.dh-done-row .lbl { color: var(--muted); font-weight: 600; }
+.dh-done { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px 3px 8px; border-radius: 999px;
+  background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; font-weight: 600; }
+.dh-done i { color: var(--green); font-size: 12px; }
 
-/* ── Bottom grid ── */
-.db-grid { display:grid; grid-template-columns:1fr 380px; gap:20px; margin-bottom: 24px; }
-@media(max-width:1050px){ .db-grid{grid-template-columns:1fr;} }
+/* ── আজকের সংখ্যা ── */
+.dh-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.dh-kpi { position: relative; padding: 16px 18px; background: #fff; border: 1px solid var(--line); border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(15,23,42,.04); color: var(--ink); display: block; transition: border-color .15s, box-shadow .15s; }
+a.dh-kpi:hover { border-color: #CBD5E1; box-shadow: 0 10px 24px -14px rgba(15,23,42,.3); color: var(--ink); }
+.dh-kpi-top { display: flex; align-items: center; gap: 10px; }
+.dh-kpi-ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 16px; flex-shrink: 0; }
+.dh-kpi-ic.green { background: #DCFCE7; color: #15803D; }
+.dh-kpi-ic.blue { background: #DBEAFE; color: #1D4ED8; }
+.dh-kpi-ic.amber { background: #FEF3C7; color: #B45309; }
+.dh-kpi-ic.violet { background: #EDE9FE; color: #6D28D9; }
+.dh-kpi-ic.red { background: #FEE2E2; color: #B91C1C; }
+.dh-kpi-label { font-size: 14px; font-weight: 600; color: var(--ink2); }
+.dh-kpi-val { font-size: 30px; font-weight: 700; margin-top: 12px; line-height: 1.1; color: var(--ink); }
+.dh-kpi-val .unit { font-size: 15px; font-weight: 600; color: var(--muted); margin-left: 2px; }
+.dh-kpi-sub { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+.dh-kpi-sub b { color: var(--ink2); font-weight: 600; }
+.dh-kpi-sub.warn { color: #B45309; }
+.dh-kpi-sub.warn a { color: #B45309; text-decoration: underline; }
+.dh-delta { margin-left: auto; display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 700;
+  padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.dh-delta.up { background: #DCFCE7; color: #15803D; }
+.dh-delta.down { background: #FEE2E2; color: #B91C1C; }
+.dh-delta.flat { background: var(--soft); color: var(--muted); }
+.dh-kpi .pulse { position: absolute; top: 16px; right: 16px; width: 9px; height: 9px; border-radius: 50%; background: var(--blue);
+  box-shadow: 0 0 0 4px rgba(37,99,235,.15); }
 
-/* ── Card ── */
-.db-card {
-  background:#fff; border:1px solid var(--border);
-  border-radius:24px; overflow:hidden;
-  box-shadow:0 4px 15px rgba(0,0,0,.03);
-  display:flex; flex-direction:column;
-}
-.db-card-head {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:24px; border-bottom:1px solid #f1f5f9; flex-shrink:0;
-}
-.db-card-title { font-size:16px; font-weight:900; color:var(--ink); display:flex; align-items:center; gap:8px; letter-spacing: -0.3px; }
-.db-card-title i { font-size:20px; }
-.db-view-all {
-  display:inline-flex; align-items:center; gap:5px;
-  padding:8px 16px; border-radius:20px;
-  background:var(--surface); border:1px solid var(--border);
-  color:var(--blue); font-size:13px; font-weight:800;
-  text-decoration:none; transition:all .2s;
-}
-.db-view-all:hover { background:var(--blue); color:#fff; border-color:var(--blue); box-shadow: 0 4px 10px rgba(37,99,235,.2);}
+/* ── দুই কলাম ── */
+.dh-grid { display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 22px; align-items: start; }
+.dh-col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
 
-/* ── Orders table ── */
-.db-table { width:100%; border-collapse:collapse; }
-.db-table thead tr { background:#F8FAFC; }
-.db-table th { font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--muted); padding:16px 24px; white-space:nowrap; border-bottom:1px solid #e2e8f0; }
-.db-table td { padding:18px 24px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
-.db-table tbody tr:last-child td { border:none; }
-.db-table tbody tr { transition:background .2s; }
-.db-table tbody tr:hover td { background:#F8FAFC; }
-.ord-name { font-size:14px; font-weight:800; color:var(--ink); }
-.ord-id { font-size:12px; font-weight:600; color:var(--muted); margin-top:2px; }
-.ord-amt { font-size:16px; font-weight:900; color:var(--blue); }
-.status-pill { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:800; }
-.status-pill::before { content:''; width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-.sp-delivered { background:#ecfdf5; color:#059669; } .sp-delivered::before { background:#10B981; }
-.sp-pending   { background:#fffbeb; color:#d97706; } .sp-pending::before { background:#f59e0b; }
-.sp-cancelled, .sp-returned { background:#fef2f2; color:#dc2626; } .sp-cancelled::before, .sp-returned::before { background:#ef4444; }
-.sp-default   { background:#f1f5f9; color:#64748b; } .sp-default::before { background:#94a3b8; }
-.ord-action {
-  width:38px; height:38px; border-radius:10px;
-  display:inline-flex; align-items:center; justify-content:center;
-  background:#f1f5f9; color:#475569; text-decoration:none;
-  border:1px solid transparent; transition:all .2s;
-}
-.ord-action:hover { background:var(--blue); color:#fff; transform:translateY(-2px); box-shadow:0 6px 15px rgba(37,99,235,.25); }
-.ord-action i { font-size:16px; }
+/* ── চার্ট ── */
+.dh-seg { display: inline-flex; background: var(--soft); border-radius: 11px; padding: 3px; flex-shrink: 0; }
+.dh-seg a { padding: 5px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.dh-seg a.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+.dh-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink2); padding: 12px 20px 0; }
+.dh-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.dh-legend b { font-weight: 700; color: var(--ink); }
+.sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex-shrink: 0; }
+.sw.pos { background: var(--pos); }
+.sw.online { background: var(--online); }
+.dh-plot { position: relative; padding: 26px 20px 12px 20px; }
+.dh-bars { position: relative; height: 190px; margin-left: 62px; display: flex; align-items: stretch;
+  border-bottom: 1px solid #CBD5E1; }
+.dh-gl { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed #E2E8F0; pointer-events: none; }
+.dh-gl span { position: absolute; right: calc(100% + 8px); top: 0; transform: translateY(-50%); font-size: 11.5px;
+  color: var(--faint); white-space: nowrap; font-family: 'DM Sans', 'Hind Siliguri', sans-serif; }
+.dh-bar { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; justify-content: flex-end;
+  outline: none; cursor: default; }
+.dh-bar::before { content: ''; position: absolute; inset: -6px 2px 0; border-radius: 8px; background: transparent; transition: background .12s; }
+.dh-bar:hover::before, .dh-bar:focus-visible::before { background: rgba(15,23,42,.045); }
+.dh-stack { position: relative; height: 100%; width: 56%; max-width: 38px; margin: 0 auto; display: flex;
+  flex-direction: column; justify-content: flex-end; gap: 2px; }
+.dense .dh-stack { width: 64%; max-width: 16px; gap: 1px; }
+.seg { display: block; width: 100%; flex: none; }
+.seg.pos { background: var(--pos); }
+.seg.online { background: var(--online); }
+.dh-stack .seg:first-child { border-radius: 4px 4px 0 0; }
+.dense .dh-stack .seg:first-child { border-radius: 3px 3px 0 0; }
+.dh-bar-val { position: absolute; left: 50%; transform: translate(-50%, 0); font: 700 12px 'DM Sans', sans-serif; color: var(--ink);
+  white-space: nowrap; pointer-events: none; }
+.dh-tip { position: absolute; z-index: 5; left: 50%; transform: translateX(-50%) translateY(4px); min-width: 172px;
+  background: #0F172A; color: #E2E8F0; border-radius: 12px; padding: 10px 12px; font-size: 12.5px; line-height: 1.5;
+  box-shadow: 0 12px 28px -10px rgba(15,23,42,.6); opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .12s, transform .12s; }
+.dh-tip.l { left: 0; transform: translateY(4px); }
+.dh-tip.r { left: auto; right: 0; transform: translateY(4px); }
+.dh-bar:hover .dh-tip, .dh-bar:focus .dh-tip { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+.dh-bar:hover .dh-tip.l, .dh-bar:focus .dh-tip.l, .dh-bar:hover .dh-tip.r, .dh-bar:focus .dh-tip.r { transform: translateY(0); }
+.dh-tip .t { font-weight: 700; color: #fff; margin-bottom: 4px; white-space: nowrap; }
+.dh-tip .r1 { display: flex; justify-content: space-between; gap: 14px; white-space: nowrap; }
+.dh-tip .r1 span { display: inline-flex; align-items: center; gap: 6px; color: #CBD5E1; }
+.dh-tip .r1 b { font-family: 'DM Sans', sans-serif; font-weight: 700; color: #fff; }
+.dh-tip .tot { border-top: 1px solid rgba(255,255,255,.12); margin-top: 4px; padding-top: 4px; }
+.dh-x-labels { display: flex; margin-left: 62px; padding-top: 7px; }
+.dh-x-labels span { flex: 1; min-width: 0; text-align: center; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: visible; }
+.dh-x-labels span.today { color: var(--ink); font-weight: 700; }
+.dense .dh-x-labels span { font-size: 11px; }
+.dh-chart-empty { position: absolute; inset: 26px 20px 34px 82px; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; text-align: center; gap: 6px; }
+.dh-chart-empty b { font-size: 15px; }
+.dh-chart-empty p { margin: 0; font-size: 13px; color: var(--muted); }
 
-/* ── Restock ── */
-.rs-row {
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
-  padding:16px 24px; border-bottom:1px solid #f1f5f9;
-  transition:background .2s;
-}
-.rs-row:last-child { border:none; }
-.rs-row:hover { background:#F8FAFC; }
-.rs-icon {
-  width:46px; height:46px; border-radius:12px; flex-shrink:0;
-  background:linear-gradient(135deg,#fef3c7,#fde68a); color: #d97706;
-  display:flex; align-items:center; justify-content:center; font-size:20px;
-}
-.rs-name { font-size:14px; font-weight:800; color:var(--ink); }
-.rs-sub { font-size:12px; font-weight:600; color:var(--muted); margin-top:2px; }
-.rs-badge { padding:6px 14px; border-radius:20px; font-size:12px; font-weight:800; background:#fef2f2; color:#dc2626; white-space:nowrap; }
+/* ── যা করতে হবে ── */
+.dh-todo { list-style: none; margin: 0; padding: 8px 10px 10px; }
+.dh-todo a { display: flex; align-items: center; gap: 12px; padding: 11px 10px; border-radius: 13px; color: var(--ink); transition: background .12s; }
+.dh-todo a:hover { background: var(--bg2); color: var(--ink); }
+.dh-todo .ic { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font-size: 16px; flex-shrink: 0; }
+.dh-todo b { display: block; font-size: 14px; font-weight: 700; line-height: 1.3; }
+.dh-todo small { display: block; font-size: 12px; color: var(--muted); line-height: 1.35; }
+.dh-todo .go { margin-left: auto; color: var(--faint); font-size: 14px; }
+.tone-blue { background: #DBEAFE; color: #1D4ED8; }
+.tone-amber { background: #FEF3C7; color: #B45309; }
+.tone-red { background: #FEE2E2; color: #B91C1C; }
+.tone-violet { background: #EDE9FE; color: #6D28D9; }
+.tone-slate { background: #F1F5F9; color: #475569; }
+.tone-green { background: #DCFCE7; color: #15803D; }
+.dh-allgood { display: flex; align-items: center; gap: 12px; padding: 14px 20px 20px; }
+.dh-allgood b { display: block; font-size: 14.5px; }
+.dh-ok-ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
+.dh-allgood small { color: var(--muted); font-size: 12.5px; }
 
-/* ── Empty states ── */
-.db-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; text-align:center; flex:1; }
-.db-empty-icon { width:80px; height:80px; border-radius:24px; display:flex; align-items:center; justify-content:center; font-size:36px; margin-bottom:20px; }
-.db-empty-title { font-size:16px; font-weight:800; color:var(--ink); margin-bottom:6px; }
-.db-empty-sub { font-size:13px; font-weight:500; color:var(--muted); }
+/* ── অর্ডার তালিকা ── */
+.dh-orders { padding: 6px 10px 10px; }
+.dh-order { display: flex; align-items: center; gap: 12px; padding: 11px 10px; border-radius: 13px; color: var(--ink); }
+a.dh-order:hover { background: var(--bg2); color: var(--ink); }
+.dh-av { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 17px; flex-shrink: 0; }
+.dh-av.pos { background: #DBEAFE; color: #1D4ED8; }
+.dh-av.storefront { background: #FFEDD5; color: #C2410C; }
+.dh-av.dashboard { background: #F1F5F9; color: #475569; }
+.dh-order-main { flex: 1; min-width: 0; }
+.dh-order-main b { display: block; font-size: 14.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dh-order-main small { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dh-order-end { text-align: right; flex-shrink: 0; }
+.dh-order-end b { display: block; font-size: 15px; font-weight: 700; }
+.dh-st { display: inline-block; margin-top: 3px; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+.dh-st.new { background: #DBEAFE; color: #1D4ED8; }
+.dh-st.confirmed { background: #FEF3C7; color: #B45309; }
+.dh-st.shipped { background: #EDE9FE; color: #6D28D9; }
+.dh-st.done { background: #DCFCE7; color: #15803D; }
+.dh-st.bad { background: #FEE2E2; color: #B91C1C; }
+.dh-st.muted { background: var(--soft); color: var(--muted); }
 
-/* ── Scrollbar ── */
-.db-scroll { overflow-y:auto; flex:1; }
-.db-scroll::-webkit-scrollbar { width:6px; }
-.db-scroll::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:6px; }
+/* ── স্টক / বেশি বিক্রি ── */
+.dh-plist { padding: 6px 10px 10px; }
+.dh-prow { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 13px; color: var(--ink); }
+a.dh-prow:hover { background: var(--bg2); color: var(--ink); }
+.dh-thumb { width: 42px; height: 42px; border-radius: 11px; object-fit: cover; flex-shrink: 0; background: var(--soft);
+  display: grid; place-items: center; color: var(--faint); font-size: 17px; border: 1px solid var(--line); }
+.dh-pmain { flex: 1; min-width: 0; }
+.dh-pmain b { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dh-pmain small { display: block; font-size: 12px; color: var(--muted); }
+.dh-stock { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
+.dh-stock.out { background: #FEE2E2; color: #B91C1C; }
+.dh-stock.low { background: #FEF3C7; color: #B45309; }
+.dh-rank { width: 22px; font: 700 13px 'DM Sans', sans-serif; color: var(--faint); text-align: center; flex-shrink: 0; }
+.dh-meter { display: block; height: 5px; border-radius: 999px; background: var(--soft); margin-top: 5px; overflow: hidden; }
+.dh-meter span { display: block; height: 100%; border-radius: 999px; background: #94A3B8; }
+.dh-sold { text-align: right; flex-shrink: 0; }
+.dh-sold b { display: block; font-size: 14px; font-weight: 700; }
+.dh-sold small { font-size: 12px; color: var(--muted); }
+
+.dh-empty { text-align: center; padding: 26px 20px 28px; }
+.dh-empty .ic { width: 56px; height: 56px; margin: 0 auto 10px; border-radius: 16px; display: grid; place-items: center; font-size: 24px; }
+.dh-empty b { display: block; font-size: 15px; }
+.dh-empty p { margin: 4px auto 0; font-size: 13px; color: var(--muted); max-width: 320px; }
+.dh-empty .acts { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+.dh-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 11px; font-size: 13.5px; font-weight: 600;
+  border: 1px solid var(--line); background: #fff; color: var(--ink); }
+.dh-btn:hover { background: var(--bg2); color: var(--ink); }
+.dh-btn.dark { background: var(--ink); border-color: var(--ink); color: #fff; }
+.dh-btn.dark:hover { background: #1E293B; color: #fff; }
+
+/* ── ফোন ── */
+@media (max-width: 1100px) {
+  .dh-grid { grid-template-columns: minmax(0, 1fr); }
+  .dh-col { display: contents; }
+  .dh-grid { display: flex; flex-direction: column; align-items: stretch; gap: 18px; }
+  .o-todo { order: 1; } .o-chart { order: 2; } .o-orders { order: 3; } .o-stock { order: 4; } .o-top { order: 5; }
+}
+@media (max-width: 760px) {
+  .dh-hero { padding: 18px 16px 16px; border-radius: 18px; }
+  .dh-hello { font-size: 21px; }
+  .dh-chips { width: 100%; }
+  .dh-site { padding: 10px; gap: 10px; }
+  .dh-site-text { flex-basis: calc(100% - 30px); }
+  .dh-site-actions { width: 100%; }
+  .dh-site-actions .dh-sbtn { flex: 1; }
+  .dh-quick { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0 18px; }
+  .dh-q { flex-direction: column; text-align: center; gap: 7px; padding: 12px 4px 10px; border-radius: 14px; }
+  .dh-q .ic { width: 40px; height: 40px; font-size: 18px; }
+  .dh-q b { font-size: 12.5px; font-weight: 600; }
+  .dh-q small { display: none; }
+  .dh-setup { padding: 16px; margin-bottom: 18px; }
+  .dh-steps { grid-template-columns: 1fr; gap: 8px; margin-top: 14px; }
+  .dh-kpis { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+  .dh-kpi { padding: 13px 13px 14px; border-radius: 16px; }
+  .dh-kpi-top { gap: 8px; }
+  .dh-kpi-ic { width: 30px; height: 30px; font-size: 14px; border-radius: 9px; }
+  .dh-kpi-label { font-size: 13px; line-height: 1.25; }
+  .dh-kpi-val { font-size: 23px; margin-top: 10px; }
+  .dh-kpi-sub { font-size: 12px; }
+  .dh-delta { position: absolute; top: 12px; right: 10px; font-size: 11px; padding: 2px 7px; }
+  .dh-kpi.has-delta .dh-kpi-label { padding-right: 44px; }
+  .dh-card { border-radius: 18px; }
+  .dh-card-head { padding: 16px 16px 0; }
+  .dh-legend { padding: 10px 16px 0; }
+  .dh-plot { padding: 24px 12px 10px 10px; }
+  .dh-bars { height: 170px; margin-left: 58px; }
+  .dh-x-labels { margin-left: 58px; }
+  .dh-chart-empty { inset: 24px 12px 30px 68px; }
+  .dense .dh-x-labels span { font-size: 10.5px; }
+}
+@media (max-width: 380px) {
+  .dh-kpi-val { font-size: 20px; }
+  .dh-q b { font-size: 11.5px; }
+}
 </style>
 
-<div class="db">
+<div class="dh">
 
-<div class="db-banner green">
-  <div class="db-banner-left">
-    <div class="db-banner-icon"><i class="bi bi-globe2"></i></div>
-    <div>
-      <div class="db-banner-title">আপনার ওয়েবসাইট চালু আছে 🎉</div>
-      <div class="db-banner-sub">
-        {% if plan.is_trial and shop.trial_ends_at %}ফ্রি ট্রায়াল: {{ shop.trial_ends_at|date:"j M Y" }} পর্যন্ত সব ফিচার ফ্রি। লিংকটা Facebook-এ শেয়ার করুন।
-        {% else %}লিংকটা Facebook পেইজ আর কাস্টমারদের সাথে শেয়ার করে অর্ডার নিন।{% endif %}
+  {# ── হেডার: শুভেচ্ছা, প্যাকেজ, ওয়েবসাইটের লিংক ── #}
+  <section class="dh-hero">
+    <div class="dh-hero-top">
+      <div>
+        <div class="dh-date">{{ today_label }}</div>
+        <h1 class="dh-hello">{{ greeting }}{% if person_name %}, {{ person_name }}{% endif %} 👋</h1>
+        <div class="dh-shopname">{{ shop.name }}</div>
       </div>
-    </div>
-  </div>
-  <div class="db-banner-right">
-    <span class="db-banner-code">{{ shop.storefront_host_preview }}</span>
-    <a href="{{ shop.storefront_url }}" target="_blank" rel="noopener" class="db-banner-btn green">
-      <i class="bi bi-box-arrow-up-right"></i> ওয়েবসাইট দেখুন
-    </a>
-  </div>
-</div>
-
-<div class="db-header">
-  <div>
-    <div class="db-welcome">Welcome back,<br>{{ shop.name }}! 👋</div>
-    <div class="db-plan"><i class="bi bi-star-fill"></i> {{ plan.label|default:shop.subscription_plan }}{% if not plan.is_trial %} প্যাকেজ{% endif %}</div>
-  </div>
-  <div class="db-header-right">
-    <div class="db-sms"><i class="bi bi-chat-left-dots-fill"></i> {{ shop.sms_balance }} SMS</div>
-    <a href="{% url 'order_create' %}" class="db-new-order"><i class="bi bi-plus-lg"></i> New Order</a>
-  </div>
-</div>
-
-<div class="db-stats">
-
-  <!-- Card 1 -->
-  <div class="sc blue">
-    <div class="sc-label">Today's Sales</div>
-    <div class="sc-val">৳<span class="sc-num">{{ today_revenue|floatformat:0 }}</span></div>
-    <div class="sc-sub"><i class="bi bi-graph-up-arrow"></i> {{ today_orders_count }} orders today</div>
-    <div class="sc-icon"><i class="bi bi-wallet2"></i></div>
-  </div>
-
-  <!-- Card 2 -->
-  <div class="sc green">
-    <div class="sc-label">Net Profit</div>
-    <div class="sc-val">৳<span class="sc-num">{{ today_profit|floatformat:0 }}</span></div>
-    <div class="sc-sub"><i class="bi bi-cash-stack"></i> After product cost</div>
-    <div class="sc-icon"><i class="bi bi-bar-chart-line"></i></div>
-  </div>
-
-  <!-- Card 3 -->
-  <div class="sc amber">
-    <div class="sc-label">Low Stock Alert</div>
-    <div class="sc-val"><span class="sc-num" data-val="{{ low_stock_products.count }}">{{ low_stock_products.count }}</span> <span style="font-size:20px; opacity:0.9;">items</span></div>
-    <div class="sc-sub"><i class="bi bi-exclamation-triangle"></i> Under 5 units left</div>
-    <div class="sc-icon"><i class="bi bi-box-seam"></i></div>
-  </div>
-
-  <!-- Card 4: NEW - Today's Views -->
-  <div class="sc purple">
-    <div class="sc-label">Today's Store Views</div>
-    <div class="sc-val"><span class="sc-num">{{ today_views }}</span> <span style="font-size:20px; opacity:0.9;">views</span></div>
-    <div class="sc-sub"><i class="bi bi-eye-fill"></i> Storefront & Products</div>
-    <div class="sc-icon"><i class="bi bi-bar-chart-fill"></i></div>
-  </div>
-
-</div>
-
-<div class="db-grid">
-
-  <!-- Recent Orders -->
-  <div class="db-card">
-    <div class="db-card-head">
-      <div class="db-card-title">
-        <i class="bi bi-bag-check-fill" style="color:var(--blue);"></i> Recent Orders
+      {% if is_owner %}
+      <div class="dh-chips">
+        {% if shop.is_locked %}
+          <a class="dh-chip danger" href="{% url 'billing' %}"><i class="bi bi-lock-fill"></i> প্যাকেজের মেয়াদ শেষ — রিনিউ করুন</a>
+        {% elif plan.is_trial %}
+          <a class="dh-chip {% if trial_days <= 7 %}warn{% else %}gold{% endif %}" href="{% url 'billing' %}"><i class="bi bi-stars"></i> ফ্রি ট্রায়াল · আর {{ trial_days|bn }} দিন</a>
+        {% else %}
+          <a class="dh-chip {% if trial_days <= 7 %}warn{% else %}gold{% endif %}" href="{% url 'billing' %}"><i class="bi bi-gem"></i> {{ plan.label }} প্যাকেজ{% if trial_days <= 7 %} · আর {{ trial_days|bn }} দিন{% endif %}</a>
+        {% endif %}
+        <a class="dh-chip" href="{% url 'settings' %}?tab=sms" title="SMS ব্যালেন্স"><i class="bi bi-chat-dots"></i> <span class="num">{{ shop.sms_balance }}</span> SMS</a>
       </div>
-      <a href="{% url 'order_list' %}" class="db-view-all">View All <i class="bi bi-arrow-right"></i></a>
-    </div>
-    {% if recent_orders %}
-    <div style="overflow-x:auto; flex:1;">
-      <table class="db-table">
-        <thead>
-          <tr>
-            <th>Customer</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th style="text-align:right;">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for order in recent_orders %}
-          <tr>
-            <td>
-              <div class="ord-name">{{ order.customer.name }}</div>
-              <div class="ord-id">#ORD-{{ order.id }}</div>
-            </td>
-            <td><div class="ord-amt">৳{{ order.total_amount|floatformat:0 }}</div></td>
-            <td>
-              <span class="status-pill
-                {% if order.status == 'Delivered' %}sp-delivered
-                {% elif order.status == 'Pending' %}sp-pending
-                {% elif order.status == 'Cancelled' %}sp-cancelled
-                {% elif order.status == 'Returned' %}sp-returned
-                {% else %}sp-default{% endif %}">
-                {{ order.status }}
-              </span>
-            </td>
-            <td style="text-align:right;">
-              <a href="{% url 'invoice' order.id %}" target="_blank" class="ord-action" title="Print Invoice">
-                <i class="bi bi-printer-fill"></i>
-              </a>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <div class="db-empty">
-      <div class="db-empty-icon" style="background:#eff6ff;"><i class="bi bi-inbox" style="color:var(--blue);"></i></div>
-      <div class="db-empty-title">No orders yet</div>
-      <div class="db-empty-sub">Share your store link to start getting sales 🚀</div>
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- Low Stock Alert -->
-  <div class="db-card">
-    <div class="db-card-head">
-      <div class="db-card-title">
-        <i class="bi bi-exclamation-circle-fill" style="color:#f59e0b;"></i> Restock Needed
-      </div>
-      {% if low_stock_products %}
-      <span style="background:#fef3c7;color:#92400e;font-size:12px;font-weight:800;padding:6px 14px;border-radius:20px;">
-        {{ low_stock_products.count }} items
-      </span>
       {% endif %}
     </div>
-    {% if low_stock_products %}
-    <div class="db-scroll">
-      {% for item in low_stock_products %}
-      <div class="rs-row">
-        <div style="display:flex;align-items:center;gap:14px;">
-          <div class="rs-icon"><i class="bi bi-box-seam-fill"></i></div>
-          <div>
-            <div class="rs-name">{{ item.name|truncatechars:22 }}</div>
-            <div class="rs-sub">Below minimum stock</div>
-          </div>
-        </div>
-        <span class="rs-badge">{{ item.stock_quantity }} left</span>
+
+    <div class="dh-site">
+      <span class="dh-live" aria-hidden="true"></span>
+      <div class="dh-site-text">
+        <div class="dh-site-label">আপনার ওয়েবসাইট চালু আছে</div>
+        <a class="dh-site-url" href="{{ store_url }}" target="_blank" rel="noopener">{{ shop.storefront_host_preview }}</a>
       </div>
-      {% endfor %}
+      <div class="dh-site-actions">
+        <button type="button" class="dh-sbtn" data-copy="{{ store_url }}" aria-label="লিংক কপি করুন"><i class="bi bi-copy"></i> <span>কপি</span></button>
+        <a class="dh-sbtn wa" href="https://wa.me/?text={{ share_text|urlencode }}" target="_blank" rel="noopener" aria-label="WhatsApp-এ শেয়ার" title="WhatsApp-এ শেয়ার"><i class="bi bi-whatsapp"></i></a>
+        <a class="dh-sbtn fb" href="https://www.facebook.com/sharer/sharer.php?u={{ store_url|urlencode }}" target="_blank" rel="noopener" aria-label="Facebook-এ শেয়ার" title="Facebook-এ শেয়ার"><i class="bi bi-facebook"></i></a>
+        <a class="dh-sbtn primary" href="{{ store_url }}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> <span>দেখুন</span></a>
+      </div>
     </div>
-    {% else %}
-    <div class="db-empty">
-      <div class="db-empty-icon" style="background:#ecfdf5;"><i class="bi bi-check2-circle" style="color:#10b981;font-size:40px;"></i></div>
-      <div class="db-empty-title">All stocked up! ✅</div>
-      <div class="db-empty-sub">No immediate restock needed.</div>
+    {% if fb_page %}
+    <div class="dh-fb">
+      {% if fb_page.page_picture %}<img src="{{ fb_page.page_picture }}" alt="">{% else %}<span class="ph"><i class="bi bi-facebook"></i></span>{% endif %}
+      <span><b style="color:#fff;font-weight:600;">{{ fb_page.page_name }}</b> · Facebook কানেক্টেড</span>
+      {% if is_owner %}<a href="{% url 'fb_page_select' %}">পরিবর্তন</a>{% endif %}
     </div>
     {% endif %}
-  </div>
+  </section>
 
-</div>
+  {# ── দ্রুত কাজ ── #}
+  <nav class="dh-quick" aria-label="দ্রুত কাজ">
+    {% if can.pos %}
+    <a class="dh-q pos" href="{% url 'pos' %}"><span class="ic"><i class="bi bi-display"></i></span><span><b>দোকানে বিক্রি</b><small>POS খুলুন, স্ক্যান করে বিল</small></span></a>
+    {% endif %}
+    {% if can.orders %}
+    <a class="dh-q blue" href="{% url 'order_create' %}"><span class="ic"><i class="bi bi-plus-lg"></i></span><span><b>নতুন অর্ডার</b><small>ফোন বা ইনবক্সের অর্ডার</small></span></a>
+    {% endif %}
+    {% if can.products %}
+    <a class="dh-q amber" href="{% url 'add_product' %}"><span class="ic"><i class="bi bi-box-seam"></i></span><span><b>প্রোডাক্ট যোগ</b><small>ছবি, দাম, স্টক</small></span></a>
+    {% endif %}
+    {% if can.money %}
+    <a class="dh-q violet" href="{% url 'reports' %}"><span class="ic"><i class="bi bi-graph-up-arrow"></i></span><span><b>রিপোর্ট</b><small>বিক্রি আর লাভের হিসাব</small></span></a>
+    {% elif can.pos %}
+    <a class="dh-q violet" href="{% url 'pos_day_close' %}"><span class="ic"><i class="bi bi-receipt"></i></span><span><b>দিনশেষের হিসাব</b><small>আজকের ক্যাশ মেলান</small></span></a>
+    {% endif %}
+  </nav>
 
-<!-- NEW: Trending Products Widget (Full Width Bottom) -->
-<div class="db-card">
-    <div class="db-card-head border-bottom-0 pb-0">
-        <div class="db-card-title">
-            <i class="bi bi-fire text-danger"></i> Trending Products
+  {# ── নতুন দোকানের ধাপ ── #}
+  {% if setup and not setup.complete %}
+  <section class="dh-card dh-setup" id="dhSetup" data-shop="{{ shop.id }}">
+    <div class="dh-setup-head">
+      <div class="dh-ring" style="--p: {{ setup.pct }};"><span>{{ setup.pct|bn }}%</span></div>
+      <div>
+        <h2>দোকান পুরোপুরি চালু করুন</h2>
+        <p>{{ setup.total|bn }}টা ধাপের {{ setup.done|bn }}টা হয়ে গেছে{% if setup.next %} · এরপর: {{ setup.next.title }}{% endif %}</p>
+      </div>
+      <button type="button" class="dh-x" id="dhSetupHide" title="৩ দিনের জন্য লুকান">পরে করব</button>
+    </div>
+    <div class="dh-steps">
+      {% for step in setup.items %}{% if not step.done %}
+      <a class="dh-step" href="{{ step.url }}">
+        <span class="dh-step-ic"><i class="bi {{ step.icon }}"></i></span>
+        <span><b>{{ step.title }}</b><small>{{ step.hint }}</small></span>
+        <i class="bi bi-chevron-right go"></i>
+      </a>
+      {% endif %}{% endfor %}
+    </div>
+    {% if setup.done %}
+    <div class="dh-done-row">
+      <span class="lbl">হয়ে গেছে:</span>
+      {% for step in setup.items %}{% if step.done %}<span class="dh-done"><i class="bi bi-check-circle-fill"></i> {{ step.title }}</span>{% endif %}{% endfor %}
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {# ── আজকের সংখ্যা ── #}
+  <section class="dh-kpis" aria-label="আজকের হিসাব">
+    {% if can.money %}
+    <div class="dh-kpi {% if numbers.sales_change %}has-delta{% endif %}">
+      <div class="dh-kpi-top">
+        <span class="dh-kpi-ic green"><i class="bi bi-cash-coin"></i></span>
+        <span class="dh-kpi-label">আজকের বিক্রি</span>
+        {% include 'store/partials/dash_delta.html' with change=numbers.sales_change %}
+      </div>
+      <div class="dh-kpi-val num">৳{{ numbers.sales|floatformat:"0g" }}</div>
+      <div class="dh-kpi-sub">
+        {% if numbers.sales %}দোকানে <b class="num">৳{{ numbers.sales_pos|floatformat:"0g" }}</b> · অনলাইনে <b class="num">৳{{ numbers.sales_online|floatformat:"0g" }}</b>
+        {% else %}গতকাল <b class="num">৳{{ numbers.yesterday_sales|floatformat:"0g" }}</b>{% endif %}
+      </div>
+    </div>
+    <div class="dh-kpi">
+      <div class="dh-kpi-top">
+        <span class="dh-kpi-ic violet"><i class="bi bi-piggy-bank"></i></span>
+        <span class="dh-kpi-label">আজকের লাভ</span>
+      </div>
+      <div class="dh-kpi-val num">{% if numbers.profit_negative %}−{% endif %}৳{{ numbers.profit_abs|floatformat:"0g" }}</div>
+      {% if numbers.profit_missing_cost %}
+      <div class="dh-kpi-sub warn"><i class="bi bi-info-circle"></i> কিছু প্রোডাক্টের কেনা দাম দেওয়া নেই{% if can.products %}, <a href="{% url 'product_list' %}">দিন</a>{% endif %}</div>
+      {% else %}
+      <div class="dh-kpi-sub">কেনা দাম, ছাড় আর VAT বাদে</div>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if can.orders %}
+    <a class="dh-kpi" href="{% url 'order_list' %}?status=Pending">
+      {% if pipeline.pending %}<span class="pulse" aria-hidden="true"></span>{% endif %}
+      <div class="dh-kpi-top">
+        <span class="dh-kpi-ic blue"><i class="bi bi-bag-check"></i></span>
+        <span class="dh-kpi-label">নতুন অর্ডার</span>
+      </div>
+      <div class="dh-kpi-val num">{{ pipeline.pending }}<span class="unit">টা</span></div>
+      <div class="dh-kpi-sub">{% if pipeline.pending %}কনফার্ম করার অপেক্ষায়{% else %}এখন কোনো অর্ডার বাকি নেই{% endif %} · আজ এসেছে <b class="num">{{ pipeline.new_today }}</b></div>
+    </a>
+    {% endif %}
+    <div class="dh-kpi {% if numbers.views_change %}has-delta{% endif %}">
+      <div class="dh-kpi-top">
+        <span class="dh-kpi-ic amber"><i class="bi bi-eye"></i></span>
+        <span class="dh-kpi-label">ওয়েবসাইটে ভিজিট</span>
+        {% include 'store/partials/dash_delta.html' with change=numbers.views_change %}
+      </div>
+      <div class="dh-kpi-val num">{{ numbers.views|floatformat:"0g" }}<span class="unit">বার</span></div>
+      <div class="dh-kpi-sub">আজ দোকান আর প্রোডাক্ট দেখা · গতকাল <b class="num">{{ numbers.views_yesterday }}</b></div>
+    </div>
+    {% if not can.money %}
+    <{% if can.products %}a href="{% url 'product_list' %}?status=low"{% else %}div{% endif %} class="dh-kpi">
+      <div class="dh-kpi-top">
+        <span class="dh-kpi-ic red"><i class="bi bi-box-seam"></i></span>
+        <span class="dh-kpi-label">স্টক কম</span>
+      </div>
+      <div class="dh-kpi-val num">{{ stock.count }}<span class="unit">টা</span></div>
+      <div class="dh-kpi-sub">{% if stock.out %}এর মধ্যে <b class="num">{{ stock.out }}</b>টা একদম শেষ{% else %}৫টার কম বাকি আছে{% endif %}</div>
+    </{% if can.products %}a{% else %}div{% endif %}>
+    {% endif %}
+  </section>
+
+  <div class="dh-grid">
+    <div class="dh-col">
+
+      {% if chart %}
+      {# ── বিক্রির চার্ট ── #}
+      <section class="dh-card o-chart" aria-labelledby="dhChartTitle">
+        <header class="dh-card-head">
+          <div>
+            <h2 class="dh-card-title" id="dhChartTitle">বিক্রির হিসাব</h2>
+            <div class="dh-card-sub">গত {{ chart.days|bn }} দিনে <b class="num">৳{{ chart.total|floatformat:"0g" }}</b> · <span class="num">{{ chart.orders }}</span>টা অর্ডার ও বিল</div>
+          </div>
+          <nav class="dh-seg" aria-label="সময়">
+            <a href="?days=7" class="{% if chart.days == 7 %}on{% endif %}">৭ দিন</a>
+            <a href="?days=30" class="{% if chart.days == 30 %}on{% endif %}">৩০ দিন</a>
+          </nav>
+        </header>
+        <div class="dh-legend">
+          <span><i class="sw pos"></i> দোকানে (POS) <b class="num">৳{{ chart.pos_total|floatformat:"0g" }}</b></span>
+          <span><i class="sw online"></i> অনলাইনে <b class="num">৳{{ chart.online_total|floatformat:"0g" }}</b></span>
         </div>
-        <div style="font-size: 13px; font-weight: 600; color: var(--muted);">Most viewed by customers</div>
-    </div>
-    <div class="p-4 pt-3">
-        {% if top_products %}
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
-                {% for p in top_products %}
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border-radius: 16px; background: #F8FAFC; border: 1px solid #E2E8F0; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        {% if p.image %}
-                            <img src="{{ p.image.url }}" alt="{{ p.name }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
-                        {% else %}
-                            <div style="width: 50px; height: 50px; background: #E2E8F0; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #94A3B8;">
-                                <i class="bi bi-image fs-5"></i>
-                            </div>
-                        {% endif %}
-                        <div>
-                            <div style="font-size: 14px; font-weight: 800; color: var(--ink);">{{ p.name|truncatechars:25 }}</div>
-                            <div style="font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 2px;">Stock: {{ p.stock_quantity }} units</div>
-                        </div>
-                    </div>
-                    <div style="background: rgba(139, 92, 246, 0.1); color: #6D28D9; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 6px;">
-                        <i class="bi bi-eye-fill"></i> {{ p.view_count }}
-                    </div>
-                </div>
-                {% endfor %}
+        <div class="dh-plot {% if chart.dense %}dense{% endif %}">
+          <div class="dh-bars">
+            {% for line in chart.grid %}
+            <div class="dh-gl" style="top: {% cycle '0%' '50%' '100%' %};"><span>{% if forloop.last %}0{% else %}৳{{ line }}{% endif %}</span></div>
+            {% endfor %}
+            {% for bar in chart.bars %}
+            <div class="dh-bar" tabindex="0" aria-label="{{ bar.full_date }}: মোট ৳{{ bar.total|floatformat:'0g' }}, দোকানে ৳{{ bar.pos|floatformat:'0g' }}, অনলাইনে ৳{{ bar.online|floatformat:'0g' }}">
+              <div class="dh-stack">
+                {% if bar.online_pct %}<span class="seg online" style="height: {{ bar.online_pct }}%;"></span>{% endif %}
+                {% if bar.pos_pct %}<span class="seg pos" style="height: {{ bar.pos_pct }}%;"></span>{% endif %}
+              </div>
+              {% if bar.is_today and bar.total %}<span class="dh-bar-val" style="bottom: calc({{ bar.top_pct }}% + 5px);">৳{{ bar.total|floatformat:"0g" }}</span>{% endif %}
+              <div class="dh-tip {{ bar.align }}" style="bottom: calc({{ bar.top_pct }}% + {% if bar.is_today and bar.total %}26px{% else %}10px{% endif %});">
+                <div class="t">{% if bar.is_today %}আজ · {% endif %}{{ bar.full_date }}</div>
+                <div class="r1"><span><i class="sw pos"></i>দোকানে</span><b>৳{{ bar.pos|floatformat:"0g" }}</b></div>
+                <div class="r1"><span><i class="sw online"></i>অনলাইনে</span><b>৳{{ bar.online|floatformat:"0g" }}</b></div>
+                <div class="r1 tot"><span>মোট · {{ bar.count|bn }}টা</span><b>৳{{ bar.total|floatformat:"0g" }}</b></div>
+              </div>
             </div>
-        {% else %}
-            <div class="db-empty" style="padding: 30px 20px; background: #F8FAFC; border-radius: 16px;">
-                <div class="db-empty-icon" style="background: #e2e8f0; width: 60px; height: 60px; font-size: 24px; margin-bottom: 12px;"><i class="bi bi-bar-chart-fill" style="color: var(--muted);"></i></div>
-                <div class="db-empty-title" style="font-size: 15px;">No views recorded yet</div>
-                <div class="db-empty-sub">Visitor data will appear here soon.</div>
-            </div>
-        {% endif %}
-    </div>
-</div>
-<!-- End Trending Products -->
+            {% endfor %}
+          </div>
+          <div class="dh-x-labels" aria-hidden="true">
+            {% for bar in chart.bars %}<span class="{% if bar.is_today %}today{% endif %}">{{ bar.label }}</span>{% endfor %}
+          </div>
+          {% if chart.empty %}
+          <div class="dh-chart-empty">
+            <b>এই {{ chart.days|bn }} দিনে কোনো বিক্রি নেই</b>
+            <p>POS-এ বিক্রি করলে বা ওয়েবসাইটে অর্ডার এলে এখানে দিন অনুযায়ী দেখাবে।</p>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+      {% endif %}
 
+      {% if can.orders or can.money %}
+      {# ── সাম্প্রতিক অর্ডার ── #}
+      <section class="dh-card o-orders">
+        <header class="dh-card-head">
+          <div>
+            <h2 class="dh-card-title">সাম্প্রতিক অর্ডার ও বিক্রি</h2>
+            <div class="dh-card-sub">দোকানের বিক্রি, ওয়েবসাইট আর ম্যানুয়াল অর্ডার একসাথে</div>
+          </div>
+          {% if can.orders %}<a class="dh-more" href="{% url 'order_list' %}">সব দেখুন <i class="bi bi-arrow-right"></i></a>{% endif %}
+        </header>
+        {% if recent_orders %}
+        <div class="dh-orders">
+          {% for order in recent_orders %}
+          <a class="dh-order" href="{{ order.link }}" target="_blank" rel="noopener">
+            <span class="dh-av {{ order.source }}"><i class="bi {% if order.source == 'pos' %}bi-shop{% elif order.source == 'storefront' %}bi-globe2{% else %}bi-telephone{% endif %}"></i></span>
+            <span class="dh-order-main">
+              <b>{{ order.display_name }}</b>
+              <small><span class="num">#ORD-{{ order.id }}</span> · {{ order.source_label }} · {{ order.ago }}</small>
+            </span>
+            <span class="dh-order-end">
+              <b class="num">৳{{ order.total_amount|floatformat:"-2g" }}</b>
+              <span class="dh-st {{ order.status_tone }}">{{ order.status_label }}</span>
+            </span>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="dh-empty">
+          <div class="ic tone-blue"><i class="bi bi-bag"></i></div>
+          <b>এখনো কোনো অর্ডার নেই</b>
+          <p>ওয়েবসাইটের লিংকটা Facebook পেইজে শেয়ার করুন, অথবা দোকানে POS দিয়ে প্রথম বিক্রি করুন।</p>
+          <div class="acts">
+            {% if can.pos %}<a class="dh-btn dark" href="{% url 'pos' %}"><i class="bi bi-display"></i> POS খুলুন</a>{% endif %}
+            <button type="button" class="dh-btn" data-copy="{{ store_url }}"><i class="bi bi-copy"></i> <span>লিংক কপি</span></button>
+          </div>
+        </div>
+        {% endif %}
+      </section>
+      {% endif %}
+    </div>
+
+    <div class="dh-col">
+      {# ── এখন যা করতে হবে ── #}
+      <section class="dh-card o-todo">
+        <header class="dh-card-head">
+          <div>
+            <h2 class="dh-card-title">এখন যা করতে হবে {% if todo %}<span class="count">{{ todo|length }}</span>{% endif %}</h2>
+          </div>
+        </header>
+        {% if todo %}
+        <ul class="dh-todo">
+          {% for item in todo %}
+          <li><a href="{{ item.url }}">
+            <span class="ic tone-{{ item.tone }}"><i class="bi {{ item.icon }}"></i></span>
+            <span><b>{{ item.title }}</b><small>{{ item.sub }}</small></span>
+            <i class="bi bi-chevron-right go"></i>
+          </a></li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="dh-allgood">
+          <span class="dh-ok-ic tone-green"><i class="bi bi-check2-all"></i></span>
+          <div><b>এখন কোনো জরুরি কাজ নেই</b><small>নতুন অর্ডার এলে, স্টক কমলে বা বাকি থাকলে এখানে দেখাবে।</small></div>
+        </div>
+        {% endif %}
+      </section>
+
+      {# ── স্টক কম ── #}
+      <section class="dh-card o-stock">
+        <header class="dh-card-head">
+          <div>
+            <h2 class="dh-card-title">স্টক কম {% if stock.count %}<span class="count">{{ stock.count }}</span>{% endif %}</h2>
+            <div class="dh-card-sub">যেগুলোর ৫টার কম বাকি</div>
+          </div>
+          {% if stock.count and can.products %}<a class="dh-more" href="{% url 'product_list' %}?status=low">সব দেখুন <i class="bi bi-arrow-right"></i></a>{% endif %}
+        </header>
+        {% if stock.items %}
+        <div class="dh-plist">
+          {% for product in stock.items %}
+          <{% if can.products %}a href="{% url 'edit_product' product.pk %}"{% else %}div{% endif %} class="dh-prow">
+            {% if product.thumb_url %}<img class="dh-thumb" src="{{ product.thumb_url }}" alt="" loading="lazy">{% else %}<span class="dh-thumb"><i class="bi bi-image"></i></span>{% endif %}
+            <span class="dh-pmain"><b>{{ product.name }}</b><small class="num">৳{{ product.price|floatformat:"-2g" }}</small></span>
+            {% if product.stock_quantity == 0 %}<span class="dh-stock out">শেষ</span>{% else %}<span class="dh-stock low">আর {{ product.stock_quantity|bn }}টা</span>{% endif %}
+          </{% if can.products %}a{% else %}div{% endif %}>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="dh-empty">
+          <div class="ic tone-green"><i class="bi bi-check2-circle"></i></div>
+          <b>সব প্রোডাক্টের স্টক ঠিক আছে</b>
+          <p>কোনো প্রোডাক্ট ৫টার নিচে নামলে এখানে দেখাবে।</p>
+        </div>
+        {% endif %}
+      </section>
+
+      {% if can.money %}
+      {# ── বেশি বিক্রি ── #}
+      <section class="dh-card o-top">
+        <header class="dh-card-head">
+          <div>
+            <h2 class="dh-card-title">সবচেয়ে বেশি বিক্রি</h2>
+            <div class="dh-card-sub">গত ৩০ দিন</div>
+          </div>
+        </header>
+        {% if top_sellers %}
+        <div class="dh-plist">
+          {% for row in top_sellers %}
+          <div class="dh-prow">
+            <span class="dh-rank">{{ forloop.counter }}</span>
+            {% if row.product.thumb_url %}<img class="dh-thumb" src="{{ row.product.thumb_url }}" alt="" loading="lazy">{% else %}<span class="dh-thumb"><i class="bi bi-image"></i></span>{% endif %}
+            <span class="dh-pmain"><b>{{ row.product.name }}</b><span class="dh-meter"><span style="width: {{ row.pct }}%;"></span></span></span>
+            <span class="dh-sold"><b><span class="num">{{ row.qty }}</span>টা</b><small class="num">৳{{ row.amount|floatformat:"0g" }}</small></span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="dh-empty">
+          <div class="ic tone-amber"><i class="bi bi-trophy"></i></div>
+          <b>বিক্রি শুরু হলে এখানে দেখাবে</b>
+          <p>কোন প্রোডাক্ট সবচেয়ে বেশি চলছে, সেটা দেখে স্টক ঠিক রাখতে পারবেন।</p>
+        </div>
+        {% endif %}
+      </section>
+      {% endif %}
+    </div>
+  </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded',function(){
-  document.querySelectorAll('[title]').forEach(el => new bootstrap.Tooltip(el,{placement:'top'}));
-
-  /* Stat card number count-up animation */
-  document.querySelectorAll('.sc-num').forEach(el => {
-    const text = el.textContent.trim();
-    const raw = text.replace(/,/g,'');
-    const num = parseInt(raw, 10);
-    if (isNaN(num) || num === 0) return;
-    const dur = 900, fps = 60, step = num / (dur / (1000/fps));
-    let cur = 0;
-    const tick = setInterval(() => {
-      cur = Math.min(cur + step, num);
-      el.textContent = Math.floor(cur).toLocaleString('en-IN');
-      if (cur >= num) clearInterval(tick);
-    }, 1000/fps);
+(function () {
+  // লিংক কপি
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var area = document.createElement('textarea');
+      area.value = text; area.setAttribute('readonly', ''); area.style.position = 'fixed'; area.style.opacity = '0';
+      document.body.appendChild(area); area.select();
+      try { document.execCommand('copy') ? resolve() : reject(); } catch (e) { reject(e); }
+      document.body.removeChild(area);
+    });
+  }
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var label = btn.querySelector('span');
+      var before = label ? label.textContent : '';
+      copyText(btn.getAttribute('data-copy')).then(function () {
+        btn.classList.add('copied');
+        if (label) label.textContent = 'কপি হয়েছে';
+        setTimeout(function () { btn.classList.remove('copied'); if (label) label.textContent = before; }, 1600);
+      }).catch(function () { window.prompt('লিংকটা কপি করুন:', btn.getAttribute('data-copy')); });
+    });
   });
-});
+
+  // সেটআপের কার্ড "পরে করব" দিলে ৩ দিন লুকানো থাকে (শুধু এই ব্রাউজারে)
+  var setup = document.getElementById('dhSetup');
+  if (setup) {
+    var key = 'sp_dash_setup_hidden_' + setup.getAttribute('data-shop');
+    try {
+      var until = parseInt(localStorage.getItem(key) || '0', 10);
+      if (until && Date.now() < until) setup.style.display = 'none';
+    } catch (e) {}
+    var hide = document.getElementById('dhSetupHide');
+    if (hide) hide.addEventListener('click', function () {
+      setup.style.display = 'none';
+      try { localStorage.setItem(key, String(Date.now() + 3 * 24 * 60 * 60 * 1000)); } catch (e) {}
+    });
+  }
+})();
 </script>
 {% endblock %}

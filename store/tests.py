@@ -1526,6 +1526,108 @@ class PaymentReturnByPostTests(ShopTestMixin, TestCase):
         self.assertEqual(payment.status, 'Completed')
 
 
+class DashboardTests(ShopTestMixin, TestCase):
+    """ড্যাশবোর্ড: আজকের বিক্রি-লাভ (ডেলিভারি চার্জ বাদে), ঢাকার দিন ধরে চার্ট, স্টাফের অনুমতি, সেটআপের ধাপ।"""
+
+    def setUp(self):
+        from .models import Customer, Product
+        self.user, self.shop = self.make_shop()
+        self.shirt = Product.objects.create(shop=self.shop, name='শার্ট', price=Decimal('450'), cost_price=300,
+                                            stock_quantity=10)
+        self.customer = Customer.objects.create(shop=self.shop, name='রহিম', phone='01812345678', address='Savar')
+
+    def order(self, *, source='storefront', status='Pending', qty=1, delivery=0, discount=0, when=None, cost=300):
+        order = Order.objects.create(shop=self.shop, customer=self.customer, source=source, status=status,
+                                     delivery_charge=delivery, discount=discount,
+                                     total_amount=Decimal('450') * qty + delivery - discount)
+        OrderItem.objects.create(order=order, product=self.shirt, price=Decimal('450'), quantity=qty, cost_price=cost)
+        if when is not None:
+            Order.objects.filter(pk=order.pk).update(created_at=when)
+        return order
+
+    def test_today_sales_profit_and_change(self):
+        from . import dashboard
+        now = timezone.now()
+        self.order(source='pos', status='Delivered', qty=2, discount=50)          # ৮৫০, লাভ ২৫০
+        self.order(delivery=60)                                                   # ৪৫০ (+৬০ ডেলিভারি), লাভ ১৫০
+        self.order(status='Cancelled', qty=5)                                     # ধরা হবে না
+        self.order(source='pos', status='Delivered', when=now - timedelta(days=1), qty=2, discount=250)  # গতকাল ৬৫০
+        numbers = dashboard.today_numbers(self.shop, timezone.localdate())
+        self.assertEqual((numbers['sales'], numbers['sales_pos'], numbers['sales_online']),
+                         (Decimal('1300'), Decimal('850'), Decimal('450')))
+        self.assertEqual(numbers['profit'], Decimal('400'))
+        self.assertEqual(numbers['sales_change'], {'dir': 'up', 'text': '১০০%'})
+        self.assertFalse(numbers['profit_missing_cost'])
+        self.order(source='pos', status='Delivered', cost=0)
+        self.assertTrue(dashboard.today_numbers(self.shop, timezone.localdate())['profit_missing_cost'])
+
+    def test_chart_uses_dhaka_day(self):
+        from datetime import date, datetime, timezone as dt_timezone
+        from . import dashboard
+        # ঢাকায় ১০ নভেম্বর রাত ১:৩০ = UTC-তে ৯ নভেম্বর সন্ধ্যা ৭:৩০
+        self.order(source='pos', status='Delivered', when=datetime(2026, 11, 9, 19, 30, tzinfo=dt_timezone.utc))
+        self.order(when=datetime(2026, 11, 4, 8, 0, tzinfo=dt_timezone.utc))
+        chart = dashboard.sales_chart(self.shop, date(2026, 11, 10), 7)
+        self.assertEqual(len(chart['bars']), 7)
+        self.assertEqual(chart['bars'][-1]['pos'], Decimal('450'))
+        self.assertTrue(chart['bars'][-1]['is_today'])
+        self.assertEqual(chart['bars'][0]['online'], Decimal('450'))
+        self.assertEqual(chart['total'], Decimal('900'))
+        self.assertEqual(chart['bars'][-1]['top_pct'], 90.0)        # সবচেয়ে উঁচু দাগ ৫০০
+        self.assertEqual(len(dashboard.sales_chart(self.shop, date(2026, 11, 10), 30)['bars']), 30)
+
+    def test_page_is_bangla_and_lists_work_to_do(self):
+        self.order(delivery=60)
+        self.order(source='pos', status='Delivered', qty=2)
+        self.shirt.stock_quantity = 0
+        self.shirt.save()
+        html = self.client.get(reverse('dashboard')).content.decode()
+        for text in ['আজকের বিক্রি', 'আজকের লাভ', 'এখন যা করতে হবে', '১টা নতুন অর্ডার কনফার্ম করুন',
+                     '১টা প্রোডাক্ট স্টকে নেই', 'বিক্রির হিসাব', 'সাম্প্রতিক অর্ডার ও বিক্রি', '৳1,350', 'রহিম']:
+            self.assertIn(text, html)
+        for english in ['Welcome back', 'Recent Orders', 'No orders yet', "Today's Sales"]:
+            self.assertNotIn(english, html)
+        self.assertEqual(self.client.get(reverse('dashboard') + '?days=30').status_code, 200)
+        self.assertEqual(self.client.get(reverse('dashboard') + '?days=abc').status_code, 200)
+
+    def test_staff_without_report_permission_sees_no_money(self):
+        from .models import StaffProfile
+        self.order(source='pos', status='Delivered')
+        staff = User.objects.create_user(phone_number='01922222222', password='Test-pass-123', name='Karim')
+        StaffProfile.objects.create(user=staff, shop=self.shop, can_use_pos=True)
+        self.client.force_login(staff)
+        response = self.client.get(reverse('dashboard'))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('দোকানে বিক্রি', html)
+        for hidden in ['আজকের লাভ', 'আজকের বিক্রি', 'বিক্রির হিসাব', 'দোকান পুরোপুরি চালু করুন', reverse('billing')]:
+            self.assertNotIn(hidden, html)
+
+    def test_setup_steps_disappear_when_done(self):
+        from .models import Banner
+        from . import dashboard
+        Order.objects.all().delete()
+        self.assertIn('দোকান পুরোপুরি চালু করুন', self.client.get(reverse('dashboard')).content.decode())
+        Shop.objects.filter(pk=self.shop.pk).update(logo='shop_logos/logo.png', steadfast_api_key='k',
+                                                    steadfast_secret_key='s')
+        Banner.objects.create(shop=self.shop, image='banners/b.jpg')
+        self.order(source='pos', status='Delivered')
+        self.shop.refresh_from_db()
+        steps = dashboard.setup_steps(self.shop, plan_has_facebook=False)
+        self.assertTrue(steps['complete'], steps)
+        self.assertEqual(dashboard.setup_steps(self.shop, plan_has_facebook=True)['next']['key'], 'facebook')
+
+    def test_small_helpers(self):
+        from . import dashboard
+        now = timezone.now()
+        self.assertEqual(dashboard.bn_ago(now - timedelta(seconds=20), now), 'এইমাত্র')
+        self.assertEqual(dashboard.bn_ago(now - timedelta(minutes=12), now), '১২ মিনিট আগে')
+        self.assertEqual(dashboard.short_taka(1500), '1.5 হাজার')
+        self.assertEqual(dashboard.short_taka(250000), '2.5 লাখ')
+        self.assertEqual(dashboard.nice_ceiling(3740), 4000)
+        self.assertEqual(dashboard.nice_ceiling(12300), 15000)
+
+
 class BrandTests(TestCase):
     def test_new_name_logo_and_icons(self):
         import json
