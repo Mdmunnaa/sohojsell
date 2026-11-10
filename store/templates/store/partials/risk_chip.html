@@ -1,0 +1,2 @@
+{# ভুয়া অর্ডার ধরা: r = store/risk.py-এর Risk। মাউস রাখলে বা ট্যাপ করলে পুরো হিসাব (title)। #}
+{% if r %}<span class="risk-chip risk-{{ r.level }}" title="{{ r.detail }}" tabindex="0"><i class="bi {% if r.level == 'good' %}bi-shield-check{% elif r.level == 'new' %}bi-person-plus{% elif r.level == 'watch' %}bi-exclamation-triangle{% elif r.level == 'blocked' %}bi-slash-circle{% else %}bi-shield-exclamation{% endif %}" aria-hidden="true"></i> {{ r.label }}</span>{% endif %}

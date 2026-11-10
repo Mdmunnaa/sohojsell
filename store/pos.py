@@ -379,6 +379,7 @@ def return_items(shop, user, order_id, items=None, method=None, reason=''):
             refund = max(order.advance_paid, ZERO)
             order.advance_paid -= refund
             order.status = 'Returned'
+            order.stock_returned = True          # পরে অর্ডার মুছলে স্টক আবার না বাড়ে
         else:
             remaining_sub = subtotal - returned_sub
             ratio = remaining_sub / subtotal if subtotal else Decimal('1')
@@ -427,7 +428,8 @@ def return_items(shop, user, order_id, items=None, method=None, reason=''):
         if reason:
             note += f' ({reason})'
         order.note = f'{order.note}\n{note}' if order.note else note
-        order.save(update_fields=['status', 'note', 'total_amount', 'discount', 'vat_amount', 'advance_paid'])
+        order.save(update_fields=['status', 'note', 'total_amount', 'discount', 'vat_amount', 'advance_paid',
+                                  'stock_returned'])
     restocked = [{'id': -order_items[i].variant_id if order_items[i].variant_id else order_items[i].product_id, 'qty': q}
                  for i, q in wanted.items()]
     return order, sale_return, restocked

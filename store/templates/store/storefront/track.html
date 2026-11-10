@@ -1,0 +1,133 @@
+{% load store_links bangla %}
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+{% include 'store/storefront/_head.html' %}
+<style>
+:root { --orange: #F57224; --orange-dark: #d85c14; --orange-light: #FFF3EB; --orange-2: #FF8C42; --orange-rgb: 245,114,36;
+  --ink: #0F172A; --ink2: #334155; --muted: #64748B; --line: #E2E8F0; --bg: #F2F4F8; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink2); min-height: 100vh; }
+.tk-top { background: #fff; border-bottom: 1px solid var(--line); }
+.tk-top-in { max-width: 620px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+.tk-logo { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; overflow: hidden; flex-shrink: 0; }
+.tk-logo img { width: 100%; height: 100%; object-fit: cover; }
+.tk-shop { font-weight: 800; color: var(--ink); font-size: 16px; line-height: 1.2; text-decoration: none; }
+.tk-shop small { display: block; font-size: 12px; color: var(--muted); font-weight: 500; }
+.tk-home { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--orange); text-decoration: none; white-space: nowrap; }
+.tk-wrap { max-width: 620px; margin: 0 auto; padding: 18px 16px 48px; }
+.tk-card { background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+.tk-card h1 { font-size: 21px; font-weight: 800; color: var(--ink); margin: 0 0 4px; }
+.tk-card h2 { font-size: 16px; font-weight: 800; color: var(--ink); margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+.tk-card h2 i { color: var(--orange); }
+.tk-sub { font-size: 13.5px; color: var(--muted); margin: 0 0 14px; }
+.tk-label { display: block; font-size: 13px; font-weight: 700; color: var(--ink2); margin: 12px 0 5px; }
+.tk-input { width: 100%; border: 1.5px solid var(--line); background: #F8FAFC; border-radius: 12px; padding: 12px 14px; font-size: 16px; font-weight: 600; color: var(--ink); min-height: 48px; }
+.tk-input:focus { outline: 0; border-color: var(--orange); background: #fff; box-shadow: 0 0 0 4px rgba(var(--orange-rgb), .12); }
+.tk-btn { width: 100%; margin-top: 16px; border: 0; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--orange), var(--orange-2)); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+.tk-btn.line { background: #fff; color: var(--ink); border: 1.5px solid var(--line); }
+.tk-err { background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B; border-radius: 12px; padding: 11px 13px; font-size: 13.5px; font-weight: 600; margin-bottom: 6px; }
+.tk-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.tk-no { font-size: 13px; color: var(--muted); font-weight: 600; }
+.tk-no b { display: block; font-size: 24px; color: var(--ink); font-weight: 800; line-height: 1.2; }
+.tk-status { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 14px; font-size: 13.5px; font-weight: 800; background: var(--orange-light); color: var(--orange-dark); }
+.tk-status.done { background: #DCFCE7; color: #166534; }
+.tk-status.bad { background: #FEE2E2; color: #991B1B; }
+.tk-steps { list-style: none; margin: 18px 0 0; padding: 0; }
+.tk-step { position: relative; display: flex; gap: 14px; padding-bottom: 22px; }
+.tk-step:last-child { padding-bottom: 0; }
+.tk-step::before { content: ''; position: absolute; left: 19px; top: 40px; bottom: 0; width: 2px; background: var(--line); }
+.tk-step:last-child::before { display: none; }
+.tk-step.done::before { background: #22C55E; }
+.tk-dot { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; background: #F1F5F9; color: #94A3B8; }
+.tk-step.done .tk-dot { background: #22C55E; color: #fff; }
+.tk-step.now .tk-dot { background: var(--orange); color: #fff; box-shadow: 0 0 0 6px rgba(var(--orange-rgb), .16); }
+.tk-step b { display: block; font-size: 15px; color: var(--ink); font-weight: 700; padding-top: 2px; }
+.tk-step.wait b { color: #94A3B8; font-weight: 600; }
+.tk-step small { font-size: 12.5px; color: var(--muted); }
+.tk-row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid #F1F5F9; font-size: 14px; }
+.tk-row:first-of-type { border-top: 0; }
+.tk-row b { color: var(--ink); text-align: right; }
+.tk-total { border-top: 2px dashed var(--line) !important; margin-top: 4px; padding-top: 12px; font-size: 16px; }
+.tk-total b { font-size: 20px; color: var(--orange); }
+.tk-courier { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.tk-code { font-family: ui-monospace, monospace; font-weight: 700; color: var(--ink); background: #F1F5F9; border-radius: 8px; padding: 4px 10px; }
+.tk-foot { text-align: center; font-size: 12.5px; color: #94A3B8; margin-top: 18px; }
+</style>
+{% include 'store/storefront/_theme.html' %}
+</head>
+<body>
+<header class="tk-top">
+  <div class="tk-top-in">
+    <div class="tk-logo">{% if shop.logo %}<img src="{{ shop.logo.url }}" alt="">{% else %}{{ shop.name|slice:":1"|upper }}{% endif %}</div>
+    <a class="tk-shop" href="{% shop_url 'storefront_home' shop %}">{{ shop.name }}<small>অর্ডার ট্র্যাক করুন</small></a>
+    <a class="tk-home" href="{% shop_url 'storefront_home' shop %}"><i class="bi bi-shop"></i> দোকানে যান</a>
+  </div>
+</header>
+
+<main class="tk-wrap">
+{% if order %}
+  <section class="tk-card">
+    <div class="tk-head">
+      <div class="tk-no">অর্ডার নম্বর<b>{{ order.id|bn }}</b>{{ order_day|bn_day }}{% if masked_phone %} · {{ masked_phone }}{% endif %}</div>
+      <span class="tk-status {% if cancelled %}bad{% elif order.status == 'Delivered' %}done{% endif %}"><i class="bi {% if cancelled %}bi-x-circle-fill{% elif order.status == 'Delivered' %}bi-check-circle-fill{% else %}bi-clock-history{% endif %}"></i> {{ status_label }}</span>
+    </div>
+    {% if cancelled %}
+    <div class="tk-err" style="margin-top: 16px;">{% if order.status == 'Returned' %}এই অর্ডারটা ফেরত এসেছে।{% else %}এই অর্ডারটা বাতিল করা হয়েছে।{% endif %} কোনো প্রশ্ন থাকলে দোকানে যোগাযোগ করুন।</div>
+    {% else %}
+    <ol class="tk-steps">
+      {% for step in steps %}
+      <li class="tk-step {{ step.state }}"><span class="tk-dot"><i class="bi {% if step.state == 'done' %}bi-check-lg{% else %}{{ step.icon }}{% endif %}"></i></span>
+        <span><b>{{ step.label }}</b>{% if step.state == 'now' %}<small>এখন এই অবস্থায় আছে</small>{% endif %}</span></li>
+      {% endfor %}
+    </ol>
+    {% endif %}
+  </section>
+
+  {% if tracking_code and not cancelled %}
+  <section class="tk-card">
+    <h2><i class="bi bi-truck"></i> কুরিয়ার</h2>
+    <div class="tk-courier">
+      <span>{{ courier|default:"কুরিয়ার" }}</span><span class="tk-code">{{ tracking_code }}</span>
+    </div>
+    {% if courier_url %}<a class="tk-btn line" href="{{ courier_url }}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> কুরিয়ারের সাইটে পার্সেল দেখুন</a>{% endif %}
+  </section>
+  {% endif %}
+
+  <section class="tk-card">
+    <h2><i class="bi bi-bag"></i> যা অর্ডার করেছেন</h2>
+    {% for item in items %}
+    <div class="tk-row"><span>{{ item.display_name }} × {{ item.quantity|bn }}</span><b>{{ item.get_total|taka }}</b></div>
+    {% endfor %}
+    <div class="tk-row"><span>ডেলিভারি চার্জ</span><b>{% if order.delivery_charge %}{{ order.delivery_charge|taka }}{% else %}ফ্রি{% endif %}</b></div>
+    {% if order.discount %}<div class="tk-row"><span>ছাড়</span><b>− {{ order.discount|taka }}</b></div>{% endif %}
+    <div class="tk-row tk-total"><span>মোট</span><b>{{ order.total_amount|taka }}</b></div>
+    {% if order.advance_paid %}<div class="tk-row"><span>আগে দেওয়া হয়েছে</span><b>{{ order.advance_paid|taka }}</b></div>{% endif %}
+    {% if not cancelled and order.status != 'Delivered' %}<div class="tk-row"><span>পণ্য হাতে পেয়ে দিতে হবে</span><b>{{ order.due_amount|taka }}</b></div>{% endif %}
+  </section>
+
+  {% if shop.phone or shop.whatsapp_number %}
+  <section class="tk-card">
+    <h2><i class="bi bi-headset"></i> দোকানে যোগাযোগ</h2>
+    {% if shop.phone %}<a class="tk-btn line" style="margin-top: 0;" href="tel:{{ shop.phone }}"><i class="bi bi-telephone-fill"></i> কল করুন {{ shop.phone }}</a>{% endif %}
+    {% if shop.whatsapp_number %}<a class="tk-btn line" style="margin-top: 10px;" href="https://wa.me/88{{ shop.whatsapp_number }}?text={{ wa_text|urlencode }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp" style="color:#25D366;"></i> WhatsApp-এ লিখুন</a>{% endif %}
+  </section>
+  {% endif %}
+{% else %}
+  <section class="tk-card">
+    <h1>আপনার অর্ডার কোথায়?</h1>
+    <p class="tk-sub">অর্ডার নম্বর আর যে মোবাইল নম্বর দিয়ে অর্ডার করেছেন সেটা দিন।</p>
+    {% if error %}<div class="tk-err" role="alert">{{ error }}</div>{% endif %}
+    <form method="get" autocomplete="off">
+      <label class="tk-label" for="tk-order">অর্ডার নম্বর</label>
+      <input class="tk-input" type="text" inputmode="numeric" id="tk-order" name="order" value="{{ number }}" placeholder="যেমন: 1024" required>
+      <label class="tk-label" for="tk-phone">মোবাইল নম্বর</label>
+      <input class="tk-input" type="tel" id="tk-phone" name="phone" value="{{ phone }}" placeholder="01XXXXXXXXX" required>
+      <button class="tk-btn" type="submit"><i class="bi bi-search"></i> অর্ডার খুঁজুন</button>
+    </form>
+  </section>
+{% endif %}
+  <div class="tk-foot">© {% now "Y" %} {{ shop.name }} · {{ site.name }} দিয়ে তৈরি</div>
+</main>
+</body>
+</html>

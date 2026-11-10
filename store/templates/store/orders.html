@@ -4,6 +4,7 @@
 {% block title %}Orders - {{ request.user.shop.name }}{% endblock %}
 
 {% block content %}
+{% include 'store/partials/risk_styles.html' %}
 <div class="container-fluid px-0">
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <div>
@@ -67,6 +68,7 @@
                             <td class="py-3">
                                 <span class="fw-bold d-block text-dark">{{ order.customer.name }}</span>
                                 <small class="text-muted"><i class="bi bi-telephone-fill me-1" style="font-size: 0.7rem;"></i>{{ order.customer.phone }}</small>
+                                {% if order.source != 'pos' %}<div class="mt-1">{% include 'store/partials/risk_chip.html' with r=order.risk %}</div>{% endif %}
                             </td>
                             <td class="py-3">
                                 <div class="d-flex flex-wrap gap-1">
@@ -285,9 +287,11 @@
         });
 
         dropdowns.forEach(dropdown => {
+            dropdown.dataset.prev = dropdown.value;
             dropdown.addEventListener('change', function() {
                 const orderId = this.getAttribute('data-order-id');
                 const newStatus = this.value;
+                const select = this;
 
                 fetch("{% url 'update_order_status' %}", {
                     method: "POST",
@@ -303,13 +307,16 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
+                        select.dataset.prev = newStatus;
                         Toast.fire({ icon: 'success', title: data.message });
                     } else {
+                        select.value = select.dataset.prev;      // বদলানো যায়নি, আগের অবস্থায় ফেরত
                         Toast.fire({ icon: 'error', title: data.error });
                     }
                 })
                 .catch(error => {
-                    Toast.fire({ icon: 'error', title: "Something went wrong!" });
+                    select.value = select.dataset.prev;
+                    Toast.fire({ icon: 'error', title: "ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন" });
                 });
             });
         });

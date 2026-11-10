@@ -18,6 +18,41 @@
   .theme-swatch { height: 28px; border-radius: 8px; }
   .theme-name { font-weight: 800; font-size: 13px; color: #0F172A; }
   .theme-hint { font-size: 11px; color: #64748B; line-height: 1.3; }
+  .design-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 640px) { .design-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .design-opt { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 1.5px solid #E2E8F0; border-radius: 14px; cursor: pointer; background: #fff; }
+  .design-opt input { position: absolute; opacity: 0; pointer-events: none; }
+  .design-opt:has(input:checked) { border-color: #0F172A; box-shadow: 0 0 0 3px rgba(15,23,42,.08); }
+  .design-opt:has(input:focus-visible) { outline: 2px solid #3B82F6; outline-offset: 2px; }
+  /* ছোট ছবি: চারটা ডিজাইন দেখতে কেমন */
+  .design-preview { --c: #F57224; --p: #fff; display: block; border-radius: 10px; overflow: hidden; background: #F2F4F8; aspect-ratio: 4 / 3; padding: 6px; border: 1px solid #EEF1F5; margin-bottom: 4px; }
+  .design-preview span { display: block; }
+  .dp-bar { display: flex !important; align-items: center; gap: 3px; background: var(--p); border-radius: 4px; padding: 4px; margin-bottom: 5px; }
+  .dp-bar i { display: block; width: 10px; height: 10px; border-radius: 3px; background: var(--c); flex-shrink: 0; }
+  .dp-bar i.dp-search { flex: 1; height: 7px; background: #E2E8F0; border-radius: 99px; }
+  .dp-bar i.dp-btn { width: 16px; height: 8px; border-radius: 99px; }
+  .dp-banner { height: 26%; border-radius: 6px; background: linear-gradient(135deg, var(--c), #0F172A); margin-bottom: 5px; }
+  .dp-grid { display: grid !important; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .dp-grid i { display: block; height: 22px; border-radius: 5px; background: var(--p); border-bottom: 5px solid var(--c); }
+  .dp-minimal { background: #fff; }
+  .dp-minimal .dp-bar { border-bottom: 1px solid #EAECF0; border-radius: 0; }
+  .dp-minimal .dp-bar i, .dp-minimal .dp-grid i { border-radius: 1px; }
+  .dp-minimal .dp-bar i.dp-btn, .dp-minimal .dp-bar i:first-child { background: #0F172A; }
+  .dp-minimal .dp-banner { border-radius: 0; background: #F6F6F7; }
+  .dp-minimal .dp-grid i { background: #F6F6F7; border-bottom-color: #0F172A; border-bottom-width: 3px; }
+  .dp-bold .dp-bar { background: var(--c); }
+  .dp-bold .dp-bar i { background: #fff; }
+  .dp-bold .dp-bar i.dp-search { background: rgba(255,255,255,.35); }
+  .dp-bold .dp-grid i { border-radius: 8px; border-bottom-width: 6px; }
+  .dp-bold .dp-banner { border-radius: 8px; }
+  .dp-soft { background: #FFF3EB; }
+  .dp-soft .dp-bar { border-radius: 99px; }
+  .dp-soft .dp-bar i { border-radius: 50%; }
+  .dp-soft .dp-banner, .dp-soft .dp-grid i { border-radius: 10px; }
+  .theme-custom .theme-swatch { background: conic-gradient(#F57224, #DB2777, #7C3AED, #2563EB, #16A34A, #F57224); }
+  .theme-custom:has(input:checked) .theme-swatch { background: var(--custom, #1E88E5) !important; }
+  .custom-color { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 14px; padding: 12px 14px; }
+  .custom-color input[type=color] { width: 48px; height: 40px; border: 1px solid #E2E8F0; border-radius: 10px; padding: 2px; background: #fff; cursor: pointer; }
   .rule-opt { display: flex; gap: 12px; align-items: flex-start; padding: 13px 14px; border: 1.5px solid #E2E8F0; border-radius: 14px; cursor: pointer; margin-bottom: 8px; background: #fff; }
   .rule-opt input { margin-top: 3px; width: 18px; height: 18px; accent-color: #0F172A; flex-shrink: 0; }
   .rule-opt:has(input:checked) { border-color: #0F172A; background: #F8FAFC; }
@@ -160,19 +195,48 @@
 
   {% elif active_tab == 'design' %}
     <h5 class="ws-section-title">ডিজাইন</h5>
-    <p class="ws-section-sub">রঙ, উপরের ঘোষণা আর ছোট পরিচিতি লাইন।</p>
+    <p class="ws-section-sub">ওয়েবসাইটের চেহারা, রঙ, উপরের ঘোষণা আর ছোট পরিচিতি লাইন। সেভ করে ওয়েবসাইট খুলে দেখুন।</p>
     <form method="post">{% csrf_token %}
       <input type="hidden" name="section" value="design">
+      <label class="form-label">ডিজাইন (লেআউট)</label>
+      <div class="design-grid mb-4">
+        {% for value, dsn in design_options %}
+        <label class="design-opt">
+          <input type="radio" name="{{ design_form.storefront_design.html_name }}" value="{{ value }}" {% if design_form.storefront_design.value == value %}checked{% endif %}>
+          <span class="design-preview dp-{{ value }}" aria-hidden="true">
+            <span class="dp-bar"><i></i><i class="dp-search"></i><i class="dp-btn"></i></span>
+            <span class="dp-banner"></span>
+            <span class="dp-grid"><i></i><i></i><i></i><i></i></span>
+          </span>
+          <span class="theme-name">{{ dsn.label }}</span>
+          <span class="theme-hint">{{ dsn.hint }}</span>
+        </label>
+        {% endfor %}
+      </div>
+
       <label class="form-label">ওয়েবসাইটের রঙ</label>
-      <div class="theme-grid mb-4">
+      <div class="theme-grid mb-3">
         {% for value, t in theme_options %}
         <label class="theme-opt">
-          <input type="radio" name="{{ design_form.storefront_theme.html_name }}" value="{{ value }}" {% if design_form.storefront_theme.value == value %}checked{% endif %}>
+          <input type="radio" name="color_mode" value="theme" data-theme="{{ value }}" {% if not design_form.storefront_color.value and design_form.storefront_theme.value == value %}checked{% endif %}>
           <span class="theme-swatch" style="background:linear-gradient(135deg,{{ t.primary }},{{ t.second }});"></span>
           <span class="theme-name">{{ t.label }}</span>
           <span class="theme-hint">{{ t.hint }}</span>
         </label>
         {% endfor %}
+        <label class="theme-opt theme-custom">
+          <input type="radio" name="color_mode" value="custom" {% if design_form.storefront_color.value %}checked{% endif %}>
+          <span class="theme-swatch" id="customSwatch" style="background:{{ design_form.storefront_color.value|default:'#1E88E5' }};"></span>
+          <span class="theme-name">নিজের রঙ</span>
+          <span class="theme-hint">লোগো বা ব্র্যান্ডের রঙ</span>
+        </label>
+      </div>
+      <input type="hidden" name="{{ design_form.storefront_theme.html_name }}" id="themeKey" value="{{ design_form.storefront_theme.value|default:'orange' }}">
+      <div class="custom-color mb-4" id="customColorBox" {% if not design_form.storefront_color.value %}hidden{% endif %}>
+        <input type="color" id="colorPick" value="{{ design_form.storefront_color.value|default:'#1E88E5' }}" aria-label="রঙ বাছুন">
+        <input type="text" class="form-control" style="max-width:150px;" name="{{ design_form.storefront_color.html_name }}" id="colorHex" value="{{ design_form.storefront_color.value|default:'#1E88E5' }}" maxlength="7" placeholder="#1E88E5" autocomplete="off">
+        <span class="ws-help m-0">রঙের ঘরে চেপে বাছুন, বা কোড লিখুন। বেশি হালকা রঙ হলে বাটনের লেখা পড়ার মতো করে একটু গাঢ় করা হবে।</span>
+        {% if design_form.storefront_color.errors %}<div class="ws-err">{{ design_form.storefront_color.errors.0 }}</div>{% endif %}
       </div>
       <div class="row g-3">
         <div class="col-12">
@@ -488,4 +552,29 @@
 {% include 'store/partials/subdomain_check_js.html' %}
 <script>ssSubdomainCheck('id_subdomain', 'subdomain-result', null);</script>
 {% endif %}
+<script>
+(function () {
+  const modes = document.querySelectorAll('input[name="color_mode"]');
+  if (!modes.length) return;
+  const key = document.getElementById('themeKey'), box = document.getElementById('customColorBox');
+  const pick = document.getElementById('colorPick'), hex = document.getElementById('colorHex'), swatch = document.getElementById('customSwatch');
+  const previews = document.querySelectorAll('.design-preview');
+  const THEME_COLORS = { {% for value, t in theme_options %}'{{ value }}': '{{ t.primary }}'{% if not forloop.last %}, {% endif %}{% endfor %} };
+  function paint(color) { previews.forEach(p => p.style.setProperty('--c', color)); }
+  function sync() {
+    const on = document.querySelector('input[name="color_mode"]:checked');
+    if (!on) return;
+    box.hidden = on.value !== 'custom';
+    if (on.value === 'theme') { key.value = on.dataset.theme; paint(THEME_COLORS[on.dataset.theme]); }
+    else paint(hex.value);
+  }
+  modes.forEach(m => m.addEventListener('change', sync));
+  pick.addEventListener('input', () => { hex.value = pick.value.toUpperCase(); swatch.style.background = pick.value; paint(pick.value); });
+  hex.addEventListener('input', () => {
+    let v = hex.value.trim(); if (v && !v.startsWith('#')) v = '#' + v;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) { pick.value = v; swatch.style.background = v; paint(v); }
+  });
+  sync();
+})();
+</script>
 {% endblock %}

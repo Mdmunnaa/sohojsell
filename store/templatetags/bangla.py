@@ -35,3 +35,13 @@ def bn_day(day):
         return ''
     from store.dashboard import BN_MONTHS
     return f'{day.day} {BN_MONTHS[day.month - 1]} {day.year}'.translate(BN_DIGITS)
+
+
+@register.filter
+def bn_month(number):
+    """{{ date|date:"n"|bn_month }} → নভেম্বর"""
+    from store.dashboard import BN_MONTHS
+    try:
+        return BN_MONTHS[int(str(number).translate(str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789'))) - 1]
+    except (ValueError, IndexError):
+        return ''

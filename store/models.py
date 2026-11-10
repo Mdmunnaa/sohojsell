@@ -1,5 +1,5 @@
 from django.db import models
-from .themes import DEFAULT_THEME, THEME_CHOICES
+from .themes import DEFAULT_DESIGN, DEFAULT_THEME, DESIGN_CHOICES, THEME_CHOICES
 from django.conf import settings
 from decimal import Decimal
 from datetime import timedelta
@@ -46,10 +46,18 @@ class Shop(models.Model):
     sms_api_key = models.CharField(max_length=255, blank=True, null=True)
     sms_balance = models.IntegerField(default=0)
     is_sms_active = models.BooleanField(default=True, help_text="Turn on/off SMS sending")
+    # অটো SMS: উপরেরটা মূল সুইচ; নিচেরগুলো কোন কোন সময়ে কাস্টমারকে SMS যাবে (store/order_flow.py)
+    sms_on_received = models.BooleanField(default=True)
+    sms_on_confirmed = models.BooleanField(default=False)
+    sms_on_shipped = models.BooleanField(default=False)
+    sms_on_delivered = models.BooleanField(default=False)
     # ওয়েবসাইটে প্রোডাক্টের নিচে আসল বিক্রির সংখ্যা (Shipped/Delivered অর্ডার থেকে) দেখানো হবে কিনা
     show_sold_count = models.BooleanField(default=True, help_text="ওয়েবসাইটে কয়টা বিক্রি হয়েছে দেখান")
     storefront_theme = models.CharField(max_length=20, default=DEFAULT_THEME, choices=THEME_CHOICES,
                                         help_text='ওয়েবসাইটের রঙ')
+    # ওয়েবসাইটের ডিজাইন (লেআউট) আর নিজের বেছে নেওয়া রঙ (#RRGGBB; ফাঁকা হলে উপরের থিমের রঙ)
+    storefront_design = models.CharField(max_length=20, default=DEFAULT_DESIGN, choices=DESIGN_CHOICES)
+    storefront_color = models.CharField(max_length=7, blank=True, default='')
     storefront_tagline = models.CharField(max_length=150, blank=True, default='',
                                           help_text='ব্যানার না থাকলে দোকানের নামের নিচে ছোট লাইন')
     announcement_text = models.CharField(max_length=160, blank=True, default='',
@@ -143,7 +151,12 @@ class Shop(models.Model):
     @property
     def theme(self):
         from .themes import theme_for
-        return theme_for(self.storefront_theme)
+        return theme_for(self.storefront_theme, self.storefront_color)
+
+    @property
+    def design(self):
+        from .themes import DEFAULT_DESIGN, DESIGNS
+        return self.storefront_design if self.storefront_design in DESIGNS else DEFAULT_DESIGN
 
     def ensure_webhook_token(self):
         """কুরিয়ারের webhook-এর গোপন টোকেন (না থাকলে বানিয়ে সেভ)।"""
@@ -276,6 +289,8 @@ class Customer(models.Model):
     name = models.CharField(max_length=150)
     phone = models.CharField(max_length=15)
     address = models.TextField()
+    # সেলার ব্লক করলে এই নম্বর থেকে ওয়েবসাইটে আর অর্ডার নেওয়া হয় না (ভুয়া অর্ডার ঠেকাতে)
+    is_blocked = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -325,6 +340,8 @@ class Order(models.Model):
                                   related_name='pos_sales')
     # একই বিক্রি দুবার জমা হওয়া ঠেকাতে POS স্ক্রিনের দেওয়া আইডি (নেট কেটে আবার পাঠালে)
     pos_ref = models.CharField(max_length=40, blank=True, default='', db_index=True)
+    # বাতিল/ফেরত হয়ে মাল স্টকে ফিরে গেছে কিনা (store/order_flow.py) — দুবার ফেরত না যায়
+    stock_returned = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property

@@ -3,6 +3,7 @@
 {% block title %}Create New Order - {{ request.user.shop.name }}{% endblock %}
 
 {% block content %}
+{% include 'store/partials/risk_styles.html' %}
 <div class="container-fluid px-0">
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <div>
@@ -32,7 +33,8 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold text-muted small">Phone Number <span class="text-danger">*</span></label>
-                                <input type="text" name="customer_phone" class="form-control bg-light border-0 py-2" placeholder="e.g. 01712345678" required>
+                                <input type="text" name="customer_phone" id="oc-phone" class="form-control bg-light border-0 py-2" placeholder="e.g. 01712345678" required>
+                                <div id="oc-risk" class="mt-2" aria-live="polite"></div>
                             </div>
                             <div class="col-12">
                                 <label class="form-label fw-bold text-muted small">Delivery Address <span class="text-danger">*</span></label>
@@ -253,5 +255,31 @@
       document.body.appendChild(bulkModal);
     }
   });
+</script>
+<script>
+/* মোবাইল নম্বর লিখলে এই কাস্টমারের আগের ডেলিভারি-ফেরতের হিসাব (ভুয়া অর্ডার ধরতে) */
+(function () {
+  const phone = document.getElementById('oc-phone'), box = document.getElementById('oc-risk');
+  if (!phone || !box) return;
+  const ICON = { good: 'bi-shield-check', new: 'bi-person-plus', watch: 'bi-exclamation-triangle', risk: 'bi-shield-exclamation', blocked: 'bi-slash-circle' };
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let last = '';
+  async function check() {
+    const value = phone.value.trim();
+    if (value === last) return; last = value;
+    if (value.replace(/\D/g, '').length < 11) { box.innerHTML = ''; return; }
+    try {
+      const data = await (await fetch("{% url 'order_risk' %}?phone=" + encodeURIComponent(value))).json();
+      if (!data.ok) { box.innerHTML = ''; return; }
+      box.innerHTML = `<span class="risk-chip risk-${esc(data.level)}"><i class="bi ${ICON[data.level] || ''}"></i> ${esc(data.label)}</span>
+        <div class="small text-muted mt-1">${esc(data.detail)}</div>`;
+      const name = document.querySelector('[name=customer_name]'), address = document.querySelector('[name=customer_address]');
+      if (name && !name.value && data.name) name.value = data.name;
+      if (address && !address.value && data.address) address.value = data.address;
+    } catch (e) { box.innerHTML = ''; }
+  }
+  phone.addEventListener('blur', check);
+  phone.addEventListener('input', () => { if (phone.value.replace(/\D/g, '').length >= 11) check(); });
+})();
 </script>
 {% endblock %}

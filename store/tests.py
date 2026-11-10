@@ -1103,14 +1103,46 @@ class StorefrontThemeTests(ShopTestMixin, TestCase):
         html = self.client.get('/shop/themeshop/', HTTP_HOST='localhost').content.decode()
         self.assertIn('--orange: #F57224', html)                     # ডিফল্ট কমলা
         page = self.client.get(reverse('website_settings') + '?tab=design').content.decode()
-        self.assertIn('value="pink"', page)
+        self.assertIn('data-theme="pink"', page)
         self.client.post(reverse('website_settings'), {'section': 'design', 'storefront_theme': 'pink',
-                                                       'show_sold_count': 'on'})
+                                                       'color_mode': 'theme', 'show_sold_count': 'on'})
         shop.refresh_from_db()
         self.assertEqual(shop.storefront_theme, 'pink')
         html = self.client.get('/shop/themeshop/', HTTP_HOST='localhost').content.decode()
         self.assertIn('--orange: #DB2777', html)
         self.assertNotIn('#FF8C42', html)
+
+    def test_designs_and_custom_color(self):
+        from .themes import palette_from_hex
+        _user, shop = self.make_shop(slug='dshop')
+        page = self.client.get(reverse('website_settings') + '?tab=design').content.decode()
+        for design in ('classic', 'minimal', 'bold', 'soft'):
+            self.assertIn(f'value="{design}"', page)
+        self.client.post(reverse('website_settings'), {'section': 'design', 'storefront_design': 'bold',
+                                                       'storefront_theme': 'blue', 'color_mode': 'custom',
+                                                       'storefront_color': '1e88e5', 'show_sold_count': 'on'})
+        shop.refresh_from_db()
+        self.assertEqual((shop.storefront_design, shop.storefront_color), ('bold', '#1E88E5'))
+        html = self.client.get('/shop/dshop/', HTTP_HOST='localhost').content.decode()
+        self.assertIn('--orange: #1E88E5', html)
+        self.assertIn('বোল্ড', page)
+        self.assertIn('.app-top-bar { background: var(--orange)', html)          # বোল্ড ডিজাইনের CSS
+        # থিমের রঙে ফিরলে নিজের রঙ মুছে যায়; ভুল কোড নেওয়া হয় না; অজানা ডিজাইন বাদ
+        self.client.post(reverse('website_settings'), {'section': 'design', 'storefront_design': 'minimal',
+                                                       'storefront_theme': 'green', 'color_mode': 'theme'})
+        shop.refresh_from_db()
+        self.assertEqual((shop.storefront_design, shop.storefront_color, shop.storefront_theme), ('minimal', '', 'green'))
+        response = self.client.post(reverse('website_settings'), {'section': 'design', 'storefront_design': 'fancy',
+                                                                  'color_mode': 'custom', 'storefront_color': 'red'})
+        shop.refresh_from_db()
+        self.assertEqual((shop.storefront_design, shop.storefront_color), ('minimal', ''))
+        # খুব হালকা রঙ দিলে বাটনের সাদা লেখা পড়ার মতো গাঢ় হয়
+        pale = palette_from_hex('#FFF59D')
+        self.assertNotEqual(pale['primary'], '#FFF59D')
+        self.assertEqual(len(pale['rgb'].split(',')), 3)
+        html = self.client.get('/shop/dshop/', HTTP_HOST='localhost').content.decode()
+        self.assertIn('--orange: #16A34A', html)
+        self.assertIn('/* ── মিনিমাল', html)
 
     def test_unknown_theme_rejected(self):
         _user, shop = self.make_shop(slug='themeshop2')
@@ -1744,7 +1776,7 @@ class SmsPanelTests(ShopTestMixin, TestCase):
         page = self.client.get(reverse('sms_panel'))
         self.assertEqual(page.status_code, 200)
         html = page.content.decode()
-        for text in ['SMS প্যানেল', 'কাকে পাঠাবেন?', 'সব কাস্টমার', 'SMS কিনুন', 'ওয়েবসাইটের অর্ডারে অটো SMS']:
+        for text in ['SMS প্যানেল', 'কাকে পাঠাবেন?', 'সব কাস্টমার', 'SMS কিনুন', 'কাস্টমারকে অটো SMS']:
             self.assertIn(text, html)
         data = {'audience': 'all', 'message': 'নতুন কালেকশন এসেছে!', 'sign': 'on', 'send_id': 'abc123'}
         with mock.patch('store.sms.gateway_send', return_value=(True, 'ok')) as gateway:
@@ -2337,6 +2369,164 @@ class LedgerTests(ShopTestMixin, TestCase):
         self.assertEqual(self.client.get(reverse('purchase_detail', args=[their_buy.id])).status_code, 404)
         self.assertEqual(self.client.post(reverse('expense_delete', args=[their_cost.id])).status_code, 404)
         self.assertIn('সাপ্লায়ার পাওয়া যায়নি', self.buy([(self.shirt.id, 1, 300)], supplier=str(theirs.id)).content.decode())
+
+
+class OrderFlowTests(ShopTestMixin, TestCase):
+    """অর্ডারের অবস্থা বদল: স্টক ফেরত/কাটা, ওয়েবসাইট অর্ডার মিলিয়ে, অটো SMS-এর সুইচ, ট্র্যাকিং পেজ, ভুয়া অর্ডারের হিসাব, ব্লক।"""
+
+    def setUp(self):
+        from .models import Customer, Product
+        self.user, self.shop = self.make_shop()
+        Shop.objects.filter(pk=self.shop.pk).update(slug='flowshop', sms_balance=50)
+        self.shop.refresh_from_db()
+        self.shirt = Product.objects.create(shop=self.shop, name='শার্ট', price=Decimal('450'), cost_price=300,
+                                            stock_quantity=10)
+        self.customer = Customer.objects.create(shop=self.shop, name='রহিম', phone='01812345678', address='Savar')
+
+    def order(self, status='Pending', source='storefront', qty=2, shop=None, customer=None):
+        shop = shop or self.shop
+        order = Order.objects.create(shop=shop, customer=customer or self.customer, source=source, status=status,
+                                     delivery_charge=60, total_amount=Decimal('450') * qty + 60)
+        OrderItem.objects.create(order=order, product=self.shirt, price=Decimal('450'), quantity=qty, cost_price=300)
+        return order
+
+    def test_cancel_returns_stock_once_and_reopen_takes_it_again(self):
+        from . import order_flow
+        from .models import StorefrontOrder
+        order = self.order()
+        sf = StorefrontOrder.objects.create(shop=self.shop, customer_name='রহিম', customer_phone='01812345678',
+                                            customer_address='Savar', total_amount=960, order=order)
+        self.shirt.stock_quantity = 8
+        self.shirt.save()
+        self.assertTrue(order_flow.set_status(order, 'Cancelled'))
+        self.shirt.refresh_from_db(); sf.refresh_from_db()
+        self.assertEqual((self.shirt.stock_quantity, order.stock_returned, sf.status), (10, True, 'Cancelled'))
+        self.assertFalse(order_flow.set_status(order, 'Cancelled'))                 # দুবার ফেরত না
+        order_flow.set_status(order, 'Returned')
+        self.shirt.refresh_from_db()
+        self.assertEqual(self.shirt.stock_quantity, 10)
+        order_flow.set_status(order, 'Confirmed')
+        self.shirt.refresh_from_db(); sf.refresh_from_db()
+        self.assertEqual((self.shirt.stock_quantity, order.stock_returned, sf.status), (8, False, 'Confirmed'))
+        # স্টক না থাকলে আবার চালু করা যায় না
+        order_flow.set_status(order, 'Cancelled')
+        self.shirt.stock_quantity = 1
+        self.shirt.save()
+        with self.assertRaises(order_flow.FlowError):
+            order_flow.set_status(order, 'Pending')
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'Cancelled')
+        # অর্ডার মুছলে স্টক আর বাড়ে না (আগেই ফেরত গেছে)
+        self.client.post(reverse('order_delete', args=[order.id]))
+        self.shirt.refresh_from_db()
+        self.assertEqual(self.shirt.stock_quantity, 1)
+
+    def test_status_endpoint_and_pos_untouched(self):
+        from . import order_flow
+        order = self.order()
+        response = self.client.post(reverse('update_order_status'), json.dumps({'order_id': order.id, 'status': 'Confirmed'}),
+                                    content_type='application/json').json()
+        self.assertTrue(response['success'])
+        self.assertIn('কনফার্ম', response['message'])
+        bad = self.client.post(reverse('update_order_status'), json.dumps({'order_id': order.id, 'status': 'Lost'}),
+                               content_type='application/json').json()
+        self.assertFalse(bad['success'])
+        pos_sale = self.order(status='Delivered', source='pos')
+        self.shirt.stock_quantity = 5
+        self.shirt.save()
+        order_flow.set_status(pos_sale, 'Cancelled')
+        self.shirt.refresh_from_db()
+        self.assertEqual(self.shirt.stock_quantity, 5)                                # POS-এর স্টক এখান থেকে বদলায় না
+
+    @mock.patch('store.sms.gateway_send', return_value=(True, 'ok'))
+    def test_auto_sms_follows_switches(self, gateway):
+        from . import order_flow
+        from .models import SmsLog
+        order = self.order()
+        order_flow.set_status(order, 'Confirmed')                                     # সুইচ বন্ধ → কিছু যায় না
+        self.assertEqual(SmsLog.objects.count(), 0)
+        self.client.post(reverse('sms_auto'), {'is_sms_active': 'on', 'sms_on_confirmed': 'on', 'sms_on_shipped': 'on'})
+        self.shop.refresh_from_db()
+        self.assertEqual((self.shop.sms_on_received, self.shop.sms_on_confirmed, self.shop.sms_on_shipped,
+                          self.shop.sms_on_delivered), (False, True, True, False))
+        order = self.order()
+        order_flow.set_status(order, 'Confirmed')
+        order_flow.set_status(order, 'Shipped')
+        order_flow.set_status(order, 'Delivered')
+        texts = [log.message for log in SmsLog.objects.order_by('id')]
+        self.assertEqual(len(texts), 2)
+        self.assertIn('কনফার্ম হয়েছে', texts[0])
+        self.assertIn(f'/t/{order_flow.track_code(order)}', texts[1])              # কুরিয়ারের SMS-এ ট্র্যাকিং লিংক
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.sms_balance, 48)
+        self.client.post(reverse('sms_auto'), {'sms_on_confirmed': 'on'})           # মূল সুইচ বন্ধ
+        self.shop.refresh_from_db()
+        order_flow.set_status(self.order(), 'Confirmed')
+        self.assertEqual(SmsLog.objects.count(), 2)
+        panel = self.client.get(reverse('sms_panel')).content.decode()
+        for text in ['অর্ডার পেলে', 'কনফার্ম করলে', 'কুরিয়ারে দিলে', 'ডেলিভারি হলে']:
+            self.assertIn(text, panel)
+
+    def test_tracking_page(self):
+        from . import order_flow
+        order = self.order(status='Shipped')
+        Order.objects.filter(pk=order.pk).update(courier_partner='Steadfast', steadfast_tracking_code='SF123')
+        self.client.logout()
+        code = order_flow.track_code(order)
+        page = self.client.get(f'/shop/flowshop/t/{code}/', HTTP_HOST='localhost')
+        self.assertEqual(page.status_code, 200)
+        html = page.content.decode()
+        for text in ['কুরিয়ারে দেওয়া হয়েছে', 'শার্ট × ২', 'SF123', 'steadfast.com.bd/t/SF123', '018*****678', '৳৯৬০']:
+            self.assertIn(text, html)
+        self.assertNotIn('Savar', html)                                               # ঠিকানা দেখানো হয় না
+        wrong = self.client.get(f'/shop/flowshop/t/{order.id}-000000/', HTTP_HOST='localhost')
+        self.assertEqual(wrong.status_code, 302)                                      # ভুল কোড → খোঁজার পেজ
+        found = self.client.get(f'/shop/flowshop/track/?order=ORD-{order.id}&phone=০১৮১২-৩৪৫৬৭৮', HTTP_HOST='localhost')
+        self.assertRedirects(found, f'/shop/flowshop/t/{code}/', fetch_redirect_response=False)
+        missed = self.client.get(f'/shop/flowshop/track/?order={order.id}&phone=01700000000', HTTP_HOST='localhost')
+        self.assertIn('পাওয়া যায়নি', missed.content.decode())
+        pos_sale = self.order(source='pos')
+        self.assertEqual(self.client.get(f'/shop/flowshop/t/{order_flow.track_code(pos_sale)}/',
+                                         HTTP_HOST='localhost').status_code, 302)
+        home = self.client.get('/shop/flowshop/', HTTP_HOST='localhost').content.decode()
+        self.assertIn('অর্ডার ট্র্যাক করুন', home)
+
+    def test_risk_counts_own_and_other_shops_and_block(self):
+        from . import risk
+        from .models import Customer
+        _u2, other = self.make_shop(phone='01722222222')
+        theirs = Customer.objects.create(shop=other, name='X', phone='01812345678', address='Dhaka')
+        for status in ('Delivered', 'Returned', 'Cancelled'):
+            self.order(status=status)
+        self.order(status='Returned', shop=other, customer=theirs)
+        self.order(status='Delivered', source='pos')                                  # POS ধরা হয় না
+        self.client.force_login(self.user)
+        r = risk.for_phone(self.shop, '01812345678')
+        self.assertEqual((r.own_delivered, r.own_failed, r.other_delivered, r.other_failed), (1, 2, 0, 1))
+        self.assertEqual((r.level, r.success_rate), ('risk', 25))
+        self.assertIn('ঝুঁকি বেশি', r.label)
+        self.assertIn('অন্য দোকানে', r.detail)
+        self.assertEqual(risk.for_phone(self.shop, '01999999999').level, 'new')
+        data = self.client.get(reverse('order_risk') + '?phone=01812345678').json()
+        self.assertEqual((data['level'], data['name']), ('risk', 'রহিম'))
+        for name in ('order_list', 'customer_list'):
+            self.assertIn('ঝুঁকি বেশি', self.client.get(reverse(name)).content.decode())
+        # ব্লক করলে ওয়েবসাইট থেকে অর্ডার নেওয়া হয় না
+        self.client.post(reverse('customer_block', args=[self.customer.id]), {'block': '1'})
+        self.customer.refresh_from_db()
+        self.assertTrue(self.customer.is_blocked)
+        self.assertEqual(risk.for_phone(self.shop, '01812345678').level, 'blocked')
+        self.client.logout()
+        from .delivery import zones_for
+        response = self.client.post('/shop/flowshop/place-order/', json.dumps({
+            'cart': [{'id': self.shirt.id, 'qty': 1}], 'name': 'রহিম', 'phone': '01812345678', 'address': 'Savar',
+            'payment': 'cod', 'zone': zones_for(self.shop)[0].id}), content_type='application/json').json()
+        self.assertFalse(response['success'])
+        self.assertIn('অর্ডার নেওয়া যাচ্ছে না', response['error'])
+        self.client.force_login(self.user)
+        self.client.post(reverse('customer_block', args=[self.customer.id]), {'block': '0'})
+        self.customer.refresh_from_db()
+        self.assertFalse(self.customer.is_blocked)
 
 
 class BrandTests(TestCase):

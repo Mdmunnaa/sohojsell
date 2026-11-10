@@ -172,6 +172,15 @@
 .sp-switch .form-switch { margin-left: auto; padding-left: 2.9em; flex-shrink: 0; }
 .sp-switch .form-check-input { width: 2.9em; height: 1.55em; cursor: pointer; margin-top: 2px; }
 .sp-switch .form-check-input:checked { background-color: var(--green); border-color: var(--green); }
+.sp-auto-list { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 4px; transition: opacity .2s; }
+.sp-auto-row { display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid var(--soft); cursor: pointer; margin: 0; }
+.sp-auto-row:last-child { border-bottom: 0; }
+.sp-auto-row .form-switch { padding-left: 2.6em; flex-shrink: 0; margin-top: 2px; }
+.sp-auto-row .form-check-input { width: 2.6em; height: 1.4em; cursor: pointer; margin-left: -2.6em; }
+.sp-auto-row .form-check-input:checked { background-color: var(--green); border-color: var(--green); }
+.sp-auto-row b { display: block; font-size: 14px; }
+.sp-auto-row small { display: block; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.sp-auto-row em { display: block; font-style: normal; font-size: 12px; color: var(--ink2); background: var(--bg2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; margin-top: 6px; line-height: 1.5; }
 .sp-auto-sample { margin-top: 12px; font-size: 13px; background: var(--bg2); border-radius: 13px 13px 13px 4px; padding: 9px 12px; color: var(--ink2); line-height: 1.55; }
 
 .sp-tips { list-style: none; margin: 0; padding: 0; }
@@ -365,18 +374,25 @@
         </div>
       </section>
 
-      {# ── অর্ডারের অটো SMS ── #}
+      {# ── অর্ডারের অটো SMS: মূল সুইচ আর কোন কোন সময়ে যাবে ── #}
       <section class="sp-card">
         <div class="sp-body" style="padding-top:18px;">
-          <form method="post" action="{% url 'sms_auto' %}">
+          <form method="post" action="{% url 'sms_auto' %}" id="spAutoForm">
             {% csrf_token %}
             <label class="sp-switch" for="spAuto">
-              <span><b>ওয়েবসাইটের অর্ডারে অটো SMS</b><small>কেউ অর্ডার করলেই নিজে থেকে SMS যাবে — প্রতি অর্ডারে ১টা।{% if not can_manage %} বদলাতে মালিককে বলুন।{% endif %}</small></span>
-              <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="spAuto" name="is_sms_active" {% if shop.is_sms_active %}checked{% endif %} {% if not can_manage %}disabled{% endif %} onchange="this.form.submit()"></span>
+              <span><b>কাস্টমারকে অটো SMS</b><small>ওয়েবসাইট আর ফোন/ইনবক্সের অর্ডারে নিজে থেকে SMS যাবে। প্রতিটা SMS-এ ব্যালেন্স থেকে ১টা কাটে।{% if not can_manage %} বদলাতে মালিককে বলুন।{% endif %}</small></span>
+              <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="spAuto" name="is_sms_active" {% if shop.is_sms_active %}checked{% endif %} {% if not can_manage %}disabled{% endif %}></span>
             </label>
-            <noscript><button type="submit" class="sp-pay dark">সেভ করুন</button></noscript>
+            <div class="sp-auto-list" id="spAutoList"{% if not shop.is_sms_active %} style="opacity:.45;"{% endif %}>
+              {% for key, label, hint, sample in auto_events %}
+              <label class="sp-auto-row" for="spAuto_{{ key }}">
+                <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="spAuto_{{ key }}" name="{{ key }}" {% if sample.on %}checked{% endif %} {% if not can_manage %}disabled{% endif %}></span>
+                <span><b>{{ label }}</b><small>{{ hint }}</small><em>{{ sample.text }}</em></span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if can_manage %}<button type="submit" class="sp-pay dark" style="margin-top:12px;">সেভ করুন</button>{% endif %}
           </form>
-          <div class="sp-auto-sample">{{ auto_sample }}</div>
         </div>
       </section>
 
@@ -683,6 +699,12 @@
   if (root.dataset.sending) {
     setTimeout(function () { if (!msg.value.trim() && !numbers.value.trim()) location.reload(); }, 8000);
   }
+})();
+</script>
+<script>
+(function () {
+  const main = document.getElementById('spAuto'), list = document.getElementById('spAutoList');
+  if (main && list) main.addEventListener('change', () => { list.style.opacity = main.checked ? '' : '.45'; });
 })();
 </script>
 {% endblock %}

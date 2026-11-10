@@ -74,9 +74,12 @@ class StoreProfileForm(forms.ModelForm):
 class StoreDesignForm(forms.ModelForm):
     class Meta:
         model = Shop
-        fields = ['storefront_theme', 'storefront_tagline', 'announcement_text', 'show_sold_count']
+        fields = ['storefront_design', 'storefront_theme', 'storefront_color', 'storefront_tagline',
+                  'announcement_text', 'show_sold_count']
         widgets = {
+            'storefront_design': forms.RadioSelect,
             'storefront_theme': forms.RadioSelect,
+            'storefront_color': forms.TextInput,
             'storefront_tagline': forms.TextInput(attrs={**TEXT, 'placeholder': 'যেমন: খাঁটি সুতির শাড়ি, সারা দেশে ডেলিভারি'}),
             'announcement_text': forms.TextInput(attrs={**TEXT, 'placeholder': 'যেমন: ঈদ উপলক্ষে ১০০০ টাকার বেশি অর্ডারে ডেলিভারি ফ্রি'}),
             'show_sold_count': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -85,10 +88,32 @@ class StoreDesignForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['storefront_theme'].required = False
+        self.fields['storefront_design'].required = False
+        self.fields['storefront_color'].required = False
 
     def clean_storefront_theme(self):
         from .themes import DEFAULT_THEME
         return self.cleaned_data.get('storefront_theme') or self.instance.storefront_theme or DEFAULT_THEME
+
+    def clean_storefront_design(self):
+        from .themes import DEFAULT_DESIGN, DESIGNS
+        value = self.cleaned_data.get('storefront_design')
+        return value if value in DESIGNS else (self.instance.storefront_design or DEFAULT_DESIGN)
+
+    def clean_storefront_color(self):
+        """'custom' রঙ বাছলে তবেই নিজের রঙ থাকে; নাহলে ফাঁকা (থিমের রঙ)।"""
+        from .themes import clean_hex
+        if self.data.get('color_mode') != 'custom':
+            return ''
+        value = clean_hex(self.cleaned_data.get('storefront_color'))
+        if not value:
+            raise forms.ValidationError('রঙটা ঠিকমতো দিন, যেমন #1E88E5')
+        return value
+
+    def save(self, commit=True):
+        # ফর্মে রঙের ঘর না এলেও (থিমের রঙে ফেরা) নিজের রঙটা মুছতে হবে; ModelForm ডিফল্টওয়ালা ফিল্ড বাদ দেয়
+        self.instance.storefront_color = self.cleaned_data.get('storefront_color', '')
+        return super().save(commit=commit)
 
 
 class StoreContactForm(forms.ModelForm):

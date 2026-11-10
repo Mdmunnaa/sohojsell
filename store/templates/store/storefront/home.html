@@ -395,12 +395,11 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
     {% endif %}
   </div>
 
-  {% if shop.return_policy or shop.privacy_policy %}
   <div class="policy-links">
+    <a href="{% shop_url 'storefront_track' shop %}"><i class="bi bi-geo-alt"></i> অর্ডার ট্র্যাক করুন</a>
     {% if shop.return_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#returnModal">রিটার্ন পলিসি</a>{% endif %}
     {% if shop.privacy_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">প্রাইভেসি পলিসি</a>{% endif %}
   </div>
-  {% endif %}
 
   <div class="copyright">© {% now "Y" %} {{ shop.name }} · {{ site.name }} দিয়ে তৈরি</div>
 </footer>

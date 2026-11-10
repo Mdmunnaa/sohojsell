@@ -451,6 +451,24 @@ def payment_received_text(shop, order, amount):
                            f'৳{taka} পেমেন্ট ও অর্ডার {number} পেয়েছি - {shop.name}'])
 
 
+def status_text(shop, order, status, link=None):
+    """অর্ডারের অবস্থা বদলালে কাস্টমারকে যা যায় (কনফার্ম / কুরিয়ারে / ডেলিভারি)। সম্ভব হলে ১টা SMS-এ।"""
+    number = bn_num(order.id)
+    if status == 'Confirmed':
+        return _first_fitting([f'আপনার অর্ডার নং {number} কনফার্ম হয়েছে, শীঘ্রই পাঠানো হবে। - {shop.name}',
+                               f'অর্ডার নং {number} কনফার্ম হয়েছে। - {shop.name}'])
+    if status == 'Shipped':
+        options = [f'অর্ডার নং {number} কুরিয়ারে দেওয়া হয়েছে। - {shop.name}']
+        if link:
+            options = [f'অর্ডার {number} কুরিয়ারে দেওয়া হয়েছে। দেখুন: {link}',
+                       f'অর্ডার {number} কুরিয়ারে গেছে: {link}'] + options
+        return _first_fitting(options)
+    if status == 'Delivered':
+        return _first_fitting([f'অর্ডার নং {number} ডেলিভারি হয়েছে। আমাদের সাথে থাকার জন্য ধন্যবাদ! - {shop.name}',
+                               f'অর্ডার নং {number} ডেলিভারি হয়েছে। ধন্যবাদ! - {shop.name}'])
+    return ''
+
+
 def send_auto(shop, phone, message, audience):
     """অর্ডারের অটো SMS: চালু থাকলে আর ব্যালেন্স থাকলে যায়; কোনো সমস্যায় অর্ডার আটকায় না।"""
     if not shop.is_sms_active:

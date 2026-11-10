@@ -252,7 +252,10 @@ body { background: var(--bg); font-family: 'Poppins', 'Hind Siliguri', sans-seri
     <button class="btn-out green-out" onclick="downloadPDF()">
       <i class="bi bi-file-earmark-pdf-fill"></i> ইনভয়েস ডাউনলোড (PDF)
     </button>
-    <a href="{% shop_url 'storefront_home' shop %}" class="btn-main">
+    {% if track_url %}<a href="{{ track_url }}" class="btn-main">
+      <i class="bi bi-geo-alt-fill"></i> অর্ডার কোথায় আছে দেখুন
+    </a>{% endif %}
+    <a href="{% shop_url 'storefront_home' shop %}" class="{% if track_url %}btn-out{% else %}btn-main{% endif %}" style="text-decoration:none;">
       <i class="bi bi-arrow-left-circle-fill"></i> কেনাকাটা চালিয়ে যান
     </a>
     <button class="btn-out" onclick="shareOrder()">

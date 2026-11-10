@@ -127,6 +127,7 @@ def sms_panel(request):
         'max_chars': sms.MAX_MESSAGE_CHARS,
         'max_numbers': sms.MAX_MANUAL_NUMBERS,
         'auto_sample': sms.order_received_text(shop, sample_order),
+        'auto_events': _auto_events(shop),
     })
 
 
@@ -226,11 +227,33 @@ def sms_auto(request):
     if not _can_manage(request):
         messages.error(request, 'এটা বদলাতে দোকানের মালিককে বলুন।')
         return redirect('sms_panel')
-    shop.is_sms_active = request.POST.get('is_sms_active') == 'on'
-    shop.save(update_fields=['is_sms_active'])
-    messages.success(request, 'ওয়েবসাইটের অর্ডারে কাস্টমারকে SMS যাবে ✓' if shop.is_sms_active
-                     else 'অর্ডারের অটো SMS বন্ধ করা হয়েছে।')
+    fields = ['is_sms_active', 'sms_on_received', 'sms_on_confirmed', 'sms_on_shipped', 'sms_on_delivered']
+    for field in fields:
+        setattr(shop, field, request.POST.get(field) == 'on')
+    shop.save(update_fields=fields)
+    if not shop.is_sms_active:
+        messages.success(request, 'কাস্টমারকে অটো SMS বন্ধ করা হয়েছে।')
+    else:
+        on = [label for key, label, _h, _s in _auto_events(shop) if getattr(shop, key)]
+        messages.success(request, ('অটো SMS যাবে: ' + ', '.join(on) + ' ✓') if on
+                         else 'অটো SMS চালু, কিন্তু কোনো সময় বাছা নেই — নিচের সুইচগুলো থেকে বেছে নিন।')
     return redirect('sms_panel')
+
+
+def _auto_events(shop):
+    """অটো SMS-এর সুইচগুলো: (ফিল্ড, নাম, কখন যায়, নমুনা)।"""
+    from types import SimpleNamespace
+    sample = SimpleNamespace(id=1024, customer=SimpleNamespace(name=''), shop=shop)
+    return [
+        ('sms_on_received', 'অর্ডার পেলে', 'ওয়েবসাইটে কেউ অর্ডার করলেই',
+         {'on': shop.sms_on_received, 'text': sms.order_received_text(shop, sample)}),
+        ('sms_on_confirmed', 'কনফার্ম করলে', 'অর্ডারের অবস্থা "কনফার্ম" করলে',
+         {'on': shop.sms_on_confirmed, 'text': sms.status_text(shop, sample, 'Confirmed')}),
+        ('sms_on_shipped', 'কুরিয়ারে দিলে', 'কুরিয়ারে পাঠালে, সাথে অর্ডার ট্র্যাক করার লিংক',
+         {'on': shop.sms_on_shipped, 'text': sms.status_text(shop, sample, 'Shipped', f'{shop.slug}.sellpunch.com/t/1024-a1b2c3')}),
+        ('sms_on_delivered', 'ডেলিভারি হলে', 'অবস্থা "ডেলিভারি হয়েছে" করলে, ধন্যবাদ জানিয়ে',
+         {'on': shop.sms_on_delivered, 'text': sms.status_text(shop, sample, 'Delivered')}),
+    ]
 
 
 @login_required(login_url=LOGIN)

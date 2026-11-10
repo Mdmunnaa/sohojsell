@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 from . import delivery, shop_payments
 from .models import Banner, Category, DeliveryZone, Product, ShopPayout, StorefrontPayment
 from .plans import has_custom_domain
-from .themes import THEMES
+from .themes import DESIGNS, THEMES
 from .website_forms import (BannerUploadForm, CategoryForm, DeliverySettingsForm, DeliveryZoneForm,
                             PaymentSettingsForm, StoreContactForm, StoreDesignForm, StoreProfileForm)
 
@@ -124,6 +124,7 @@ def website_settings(request):
         'tabs': TABS,
         'active_tab': tab,
         'theme_options': list(THEMES.items()),
+        'design_options': list(DESIGNS.items()),
         'custom_domain_allowed': has_custom_domain(shop),
         'banners': Banner.objects.filter(shop=shop).order_by('-id'),
         'max_banners': MAX_BANNERS,

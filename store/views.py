@@ -26,7 +26,7 @@ from .plans import (
 from .forms import (ShopSetupForm, ProductForm, OrderCreateForm, SteadfastSettingsForm, PathaoSettingsForm,
                     RedxSettingsForm, PosSettingsForm)
 from .links import storefront_link
-from . import couriers, sms, variants
+from . import couriers, order_flow, risk, sms, variants
 from .themes import THEMES
 from django.urls import reverse
 
@@ -342,6 +342,7 @@ def order_list(request):
         page_obj = paginator.page(page)
     except (EmptyPage, PageNotAnInteger):
         page_obj = paginator.page(1)
+    risk.attach(shop, page_obj.object_list, lambda o: o.customer.phone)
     return render(request, 'store/orders.html', {
         'courier_connected': couriers.connected(request.user.shop),
         'prepaid_methods': sorted(couriers.PREPAID_METHODS),
@@ -374,8 +375,9 @@ def order_delete(request, order_id):
     shop = request.user.shop
     order = get_object_or_404(Order, id=order_id, shop=shop)
     try:
-        for item in order.items.all():
-            variants.give_back(item.product_id, item.variant_id, item.quantity)
+        if not order.stock_returned:        # বাতিল/ফেরত হয়ে মাল আগেই স্টকে ফিরে থাকলে আবার না
+            for item in order.items.all():
+                variants.give_back(item.product_id, item.variant_id, item.quantity)
         order.delete()
         messages.success(request, f'Order #ORD-{order_id} deleted & stock restored!')
     except Exception as e:
@@ -392,12 +394,17 @@ def update_order_status(request):
         try:
             data = json.loads(request.body)
             shop = request.user.shop
-            order = Order.objects.get(id=data.get('order_id'), shop=shop)
-            order.status = data.get('status')
-            order.save()
-            return JsonResponse({'success': True, 'message': f'Order #{order.id} updated!'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
+            order = Order.objects.select_related('shop', 'customer').get(id=data.get('order_id'), shop=shop)
+            order_flow.set_status(order, data.get('status'))
+            return JsonResponse({'success': True,
+                                 'message': f'অর্ডার #{order.id} এখন "{order_flow.STATUS_BN[order.status]}"'})
+        except order_flow.FlowError as exc:
+            return JsonResponse({'success': False, 'error': str(exc)})
+        except Order.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'অর্ডারটা পাওয়া যায়নি।'})
+        except Exception:
+            return JsonResponse({'success': False, 'error': 'অবস্থা বদলানো যায়নি, আবার চেষ্টা করুন।'})
+    return JsonResponse({'success': False, 'error': 'POST লাগবে'}, status=405)
 
 
 # ============================================================
@@ -435,7 +442,33 @@ def customer_list(request):
         page_obj = paginator.page(page)
     except (EmptyPage, PageNotAnInteger):
         page_obj = paginator.page(1)
+    risk.attach(shop, page_obj.object_list, lambda c: c.phone)
     return render(request, 'store/customers.html', {'page_obj': page_obj})
+
+
+@login_required(login_url='/accounts/login/')
+def customer_block(request, customer_id):
+    """ভুয়া অর্ডার দেওয়া নম্বর ব্লক/আনব্লক: ব্লক থাকলে ওয়েবসাইট থেকে সেই নম্বরে অর্ডার নেওয়া হয় না।"""
+    customer = get_object_or_404(Customer, pk=customer_id, shop=request.user.shop)
+    if request.method == 'POST' and customer.phone != risk.WALK_IN_PHONE:
+        customer.is_blocked = request.POST.get('block') == '1'
+        customer.save(update_fields=['is_blocked'])
+        messages.success(request, f'{customer.phone} ব্লক করা হয়েছে। এই নম্বর থেকে ওয়েবসাইটে আর অর্ডার নেওয়া হবে না।'
+                         if customer.is_blocked else f'{customer.phone}-এর ব্লক তুলে দেওয়া হয়েছে।')
+    return redirect(request.POST.get('next') or 'customer_list')
+
+
+@login_required(login_url='/accounts/login/')
+def order_risk(request):
+    """অর্ডার লেখার সময় মোবাইল নম্বর দিলে তার আগের ডেলিভারি-ফেরতের হিসাব (JSON)।"""
+    phone = _storefront_customer_phone(request.GET.get('phone', ''))
+    if not phone:
+        return JsonResponse({'ok': False})
+    shop = request.user.shop
+    customer = Customer.objects.filter(shop=shop, phone=phone).order_by('-id').first()
+    return JsonResponse({'ok': True, 'phone': phone, **risk.for_phone(shop, phone).as_dict(),
+                         'name': customer.name if customer else '',
+                         'address': customer.address if customer else ''})
 
 
 # ============================================================
@@ -670,8 +703,8 @@ def send_to_courier(request):
     # ট্র্যাকিং কোড সব কুরিয়ারের জন্য এই ফিল্ডেই থাকে (নামটা পুরনো)
     order.steadfast_tracking_code = str(result['tracking_code'])[:100]
     order.courier_partner = courier
-    order.status = 'Shipped'
-    order.save(update_fields=['steadfast_tracking_code', 'courier_partner', 'status'])
+    order.save(update_fields=['steadfast_tracking_code', 'courier_partner'])
+    order_flow.set_status(order, 'Shipped')         # চালু থাকলে কাস্টমারকে ট্র্যাকিং লিংকসহ SMS
     cod = couriers.cod_amount(order)
     messages.success(request, f'{courier}-এ পাঠানো হয়েছে ✓ ট্র্যাকিং: {result["tracking_code"]} · '
                               + (f'কাস্টমারের কাছ থেকে তুলবে ৳{cod}' if cod else 'আগে পরিশোধ, কিছু তুলবে না'))
@@ -750,8 +783,10 @@ def steadfast_webhook(request):
     if notification == 'delivery_status' and status:
         new_status = {'delivered': 'Delivered', 'partial_delivered': 'Delivered', 'cancelled': 'Returned'}.get(status)
         if new_status and order.status != new_status:
-            order.status = new_status
-            order.save(update_fields=['status'])
+            try:
+                order_flow.set_status(order, new_status)
+            except order_flow.FlowError:
+                pass
     return JsonResponse({'message': 'OK'}, status=200)
 
 
@@ -1205,6 +1240,72 @@ def _checkout_context(shop):
     }
 
 
+# ============================================================
+# কাস্টমারের অর্ডার ট্র্যাক করা
+# ============================================================
+TRACK_STEPS = [('Pending', 'অর্ডার পেয়েছি', 'bi-bag-check-fill'), ('Confirmed', 'কনফার্ম হয়েছে', 'bi-patch-check-fill'),
+               ('Shipped', 'কুরিয়ারে দেওয়া হয়েছে', 'bi-truck'), ('Delivered', 'ডেলিভারি হয়েছে', 'bi-house-heart-fill')]
+COURIER_TRACK_URLS = {'steadfast': 'https://steadfast.com.bd/t/{code}',
+                      'redx': 'https://redx.com.bd/track-parcel/?trackingId={code}'}
+
+
+def _track_context(request, shop, order):
+    from . import seo
+    reached = [key for key, _l, _i in TRACK_STEPS].index(order.status) if order.status in (
+        'Pending', 'Confirmed', 'Shipped', 'Delivered') else -1
+    steps = [{'label': label, 'icon': icon,
+              'state': 'done' if index < reached or (index == reached == 3) else 'now' if index == reached else 'wait'}
+             for index, (_key, label, icon) in enumerate(TRACK_STEPS)]
+    courier = (order.courier_partner or '').strip()
+    template = COURIER_TRACK_URLS.get(courier.lower())
+    phone = order.customer.phone or ''
+    return {
+        'shop': shop, 'order': order, 'steps': steps, 'cancelled': order.status in order_flow.NOT_COUNTED,
+        'status_label': order_flow.STATUS_BN.get(order.status, order.status),
+        'items': list(order.items.select_related('product')),
+        'courier': courier, 'tracking_code': order.steadfast_tracking_code or '',
+        'courier_url': template.format(code=order.steadfast_tracking_code) if template and order.steadfast_tracking_code else '',
+        'masked_phone': f'{phone[:3]}*****{phone[-3:]}' if len(phone) >= 8 else '',
+        'order_day': timezone.localtime(order.created_at).date(),
+        'wa_text': f'আমার অর্ডার নং {order.id}',
+        'meta': seo.storefront_meta(request, shop, title=f'অর্ডার ট্র্যাক করুন — {shop.name}', noindex=True,
+                                    link_name='storefront_track'),
+    }
+
+
+def storefront_track(request, shop_slug):
+    """কাস্টমার অর্ডার নম্বর আর মোবাইল নম্বর দিয়ে নিজের অর্ডারের অবস্থা দেখে।"""
+    from . import seo
+    shop = get_object_or_404(Shop, slug=shop_slug)
+    number = request.GET.get('order', '').strip()
+    phone = request.GET.get('phone', '').strip()
+    error = ''
+    if number or phone:
+        digits = ''.join(ch for ch in number.translate(str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789')) if ch.isdigit())
+        clean_phone = _storefront_customer_phone(phone)
+        order = (Order.objects.filter(shop=shop, pk=digits, customer__phone=clean_phone).exclude(source='pos').first()
+                 if digits and len(digits) < 12 and clean_phone else None)
+        if order is not None:
+            return redirect(storefront_link(shop, 'storefront_track_order', order_flow.track_code(order),
+                                            request=request))
+        error = 'এই অর্ডার নম্বর আর মোবাইল নম্বর মিলিয়ে কোনো অর্ডার পাওয়া যায়নি। নম্বর দুটো আবার দেখে নিন।'
+    return render(request, 'store/storefront/track.html', {
+        'shop': shop, 'order': None, 'error': error, 'number': number, 'phone': phone,
+        'meta': seo.storefront_meta(request, shop, title=f'অর্ডার ট্র্যাক করুন — {shop.name}',
+                                    description=f'{shop.name}-এ দেওয়া অর্ডার এখন কোথায় আছে দেখুন।',
+                                    link_name='storefront_track'),
+    })
+
+
+def storefront_track_order(request, shop_slug, code):
+    """SMS-এর লিংক বা খোঁজার পর: অর্ডারের অবস্থা। কোড না মিললে খোঁজার পেজে।"""
+    shop = get_object_or_404(Shop, slug=shop_slug)
+    order = order_flow.order_from_code(shop, code)
+    if order is None:
+        return redirect(storefront_link(shop, 'storefront_track', request=request))
+    return render(request, 'store/storefront/track.html', _track_context(request, shop, order))
+
+
 def _storefront_customer_phone(raw):
     from accounts.forms import normalize_bd_mobile
     return normalize_bd_mobile(raw)
@@ -1248,6 +1349,10 @@ def storefront_place_order(request, shop_slug):
         return JsonResponse({'success': False, 'error': 'নাম, মোবাইল নম্বর আর ঠিকানা দিন।'})
     if not phone:
         return JsonResponse({'success': False, 'error': 'সঠিক মোবাইল নম্বর দিন (০১ দিয়ে শুরু, ১১ সংখ্যা)।'})
+
+    if risk.is_blocked(shop, phone):
+        return JsonResponse({'success': False,
+                             'error': 'এই নম্বর থেকে এখন অর্ডার নেওয়া যাচ্ছে না। দোকানে সরাসরি যোগাযোগ করুন।'})
 
     choices = shop_payments.checkout_choices(shop)
     choice = data.get('payment') or choices[0]
@@ -1313,7 +1418,8 @@ def storefront_place_order(request, shop_slug):
                                  'message': result.get('error')})
         return JsonResponse({'success': True, 'order_id': sf_order.id, 'redirect': result['payment_url']})
 
-    sms.send_auto(shop, phone, sms.order_received_text(shop, main_order), f'অর্ডার নং {sms.bn_num(main_order.id)}')
+    if shop.sms_on_received:
+        sms.send_auto(shop, phone, sms.order_received_text(shop, main_order), f'অর্ডার নং {sms.bn_num(main_order.id)}')
     return JsonResponse({'success': True, 'order_id': sf_order.id, 'redirect': success_url})
 
 
@@ -1406,6 +1512,8 @@ def storefront_order_success(request, shop_slug, order_id):
         'shop': shop, 'order': order, 'main_order': main, 'last_payment': last_payment,
         'payment_msg': payment_msg, 'payment_pending': payment_pending, 'payment_label': payment_label,
         'order_no': f'ORD-{main.id}' if main else f'SF-{order.id}',
+        'track_url': storefront_link(shop, 'storefront_track_order', order_flow.track_code(main), request=request)
+                     if main else '',
     })
 
 
@@ -1432,6 +1540,7 @@ def storefront_orders(request):
     paginator = Paginator(sf_orders, 20)
     page_number = request.GET.get('page', 1)
     sf_orders = paginator.get_page(page_number)
+    risk.attach(shop, sf_orders.object_list, lambda o: o.customer_phone)
 
     return render(request, 'store/storefront_orders.html', {
         'sf_orders': sf_orders,
@@ -1448,9 +1557,17 @@ def storefront_order_update_status(request, order_id):
     if request.method == 'POST':
         new_status = request.POST.get('status')
         if new_status in ['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled']:
-            sf_order.status = new_status
-            sf_order.save()
-            messages.success(request, f'Order #{sf_order.id} updated to {new_status}!')
+            try:
+                if sf_order.order_id:
+                    # মূল অর্ডারের সাথে একসাথে বদলায় (স্টক ফেরত, কাস্টমারকে SMS)
+                    order_flow.set_status(sf_order.order, new_status)
+                else:
+                    sf_order.status = new_status
+                    sf_order.save(update_fields=['status'])
+            except order_flow.FlowError as exc:
+                messages.error(request, str(exc))
+            else:
+                messages.success(request, f'অর্ডার #SF-{sf_order.id} এখন "{order_flow.STATUS_BN[new_status]}"।')
     return redirect('storefront_orders')
 
 
