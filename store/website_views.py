@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from . import delivery, shop_payments
-from .models import Banner, Category, DeliveryZone, Product, ShopPayout, StorefrontPayment
+from .models import Banner, Category, DeliveryZone, Product, Shop, ShopPayout, StorefrontPayment
 from .plans import has_custom_domain
 from .themes import DESIGNS, THEMES
 from .website_forms import (BannerUploadForm, CategoryForm, DeliverySettingsForm, DeliveryZoneForm,
@@ -25,6 +25,7 @@ TABS = [
     ('delivery', 'bi-truck', 'ডেলিভারি'),
     ('payment', 'bi-credit-card-2-front-fill', 'পেমেন্ট'),
     ('contact', 'bi-chat-square-text-fill', 'যোগাযোগ ও পলিসি'),
+    ('domain', 'bi-globe2', 'নিজের ডোমেইন'),
 ]
 TAB_KEYS = {key for key, _icon, _label in TABS}
 MAX_BANNERS = 8
@@ -59,6 +60,35 @@ def website_settings(request):
             'delivery': ('delivery_form', DeliverySettingsForm, 'ফ্রি ডেলিভারির নিয়ম সেভ হয়েছে।'),
             'payment': ('payment_form', PaymentSettingsForm, 'পেমেন্টের নিয়ম সেভ হয়েছে।'),
         }
+        if section == 'domain':
+            # নিজের ডোমেইন: সেভ, যাচাই, বা সরানো (store/domains.py)
+            from . import domains
+            action = request.POST.get('action')
+            if not has_custom_domain(shop):
+                messages.error(request, 'নিজের ডোমেইন Premium প্যাকেজে পাবেন।')
+            elif action == 'remove':
+                Shop.objects.filter(pk=shop.pk).update(custom_domain=None, custom_domain_status=Shop.DOMAIN_PENDING,
+                                                       custom_domain_note='')
+                messages.success(request, 'নিজের ডোমেইন সরানো হয়েছে; দোকান আগের মতো সাবডোমেইনে চলবে।')
+            elif action == 'verify':
+                ok, text = domains.verify(shop)
+                (messages.success if ok else messages.warning)(request, text)
+            else:
+                old_domain = shop.custom_domain
+                form = StoreProfileForm({'name': shop.name, 'phone': shop.phone, 'address': shop.address,
+                                         'subdomain': shop.slug, 'custom_domain': request.POST.get('custom_domain', '')},
+                                        instance=shop)
+                if form.is_valid():            # (is_valid ইনস্ট্যান্সে নতুন মান বসিয়ে দেয়, তাই আগেরটা আগে রাখা)
+                    new_domain = form.cleaned_data.get('custom_domain')
+                    if new_domain != old_domain:
+                        Shop.objects.filter(pk=shop.pk).update(custom_domain=new_domain, custom_domain_note='',
+                                                               custom_domain_status=Shop.DOMAIN_PENDING,
+                                                               custom_domain_checked_at=None)
+                    messages.success(request, 'ডোমেইন সেভ হয়েছে। এবার DNS দিয়ে নিচের "যাচাই করুন" চাপুন।'
+                                     if new_domain else 'ডোমেইন সরানো হয়েছে।')
+                else:
+                    messages.error(request, form.errors.get('custom_domain', ['ডোমেইন ঠিকমতো লিখুন।'])[0])
+            return _back('domain')
         if section in form_map:
             key, form_class, ok_message = form_map[section]
             form = form_class(request.POST, request.FILES, instance=shop)
@@ -126,6 +156,8 @@ def website_settings(request):
         'theme_options': list(THEMES.items()),
         'design_options': list(DESIGNS.items()),
         'custom_domain_allowed': has_custom_domain(shop),
+        'cname_target': __import__('store.domains', fromlist=['cname_target']).cname_target(),
+        'domain_auto': __import__('store.domains', fromlist=['cloudflare_ready']).cloudflare_ready(),
         'banners': Banner.objects.filter(shop=shop).order_by('-id'),
         'max_banners': MAX_BANNERS,
         'categories': Category.objects.filter(shop=shop).annotate(product_count=Count('product')).order_by('name'),

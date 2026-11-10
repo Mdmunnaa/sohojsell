@@ -395,6 +395,9 @@
         <a href="{% url 'coupon_list' %}" class="sb-link {% if request.resolver_match.url_name == 'coupon_list' %}active{% endif %}">
           <i class="bi bi-ticket-perforated"></i> <span class="sb-text-hide">কুপন ও অফার</span>
         </a>
+        <a href="{% url 'landing_list' %}" class="sb-link {% if '/landing/' in request.path %}active{% endif %}">
+          <i class="bi bi-megaphone"></i> <span class="sb-text-hide">ল্যান্ডিং পেজ</span>
+        </a>
         <a href="{% url 'review_list' %}" class="sb-link {% if request.resolver_match.url_name == 'review_list' %}active{% endif %}">
           <i class="bi bi-star"></i> <span class="sb-text-hide">রিভিউ</span>
           {% if pending_reviews %}<span class="badge ms-auto sb-text-hide" style="font-size:10px;background:rgba(245,158,11,.18);color:#FBBF24;">{{ pending_reviews }}</span>{% endif %}

@@ -1,0 +1,70 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}{% if page %}ল্যান্ডিং পেজ বদলান{% else %}নতুন ল্যান্ডিং পেজ{% endif %} — {{ shop.name }}{% endblock %}
+{% block page_title %}ল্যান্ডিং পেজ{% endblock %}
+
+{% block content %}
+{% include 'store/partials/ledger_styles.html' %}
+<style>
+  .sw-row { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--soft); cursor: pointer; margin: 0; }
+  .sw-row:last-child { border-bottom: 0; }
+  .sw-row b { display: block; font-size: 14px; } .sw-row small { color: var(--muted); font-size: 12.5px; }
+  .sw-row .form-switch { margin-left: auto; flex-shrink: 0; padding-left: 2.6em; }
+  .sw-row .form-check-input { width: 2.6em; height: 1.4em; margin-left: -2.6em; cursor: pointer; }
+  .sw-row .form-check-input:checked { background-color: #16A34A; border-color: #16A34A; }
+  textarea.lg-input { min-height: 120px; line-height: 1.7; }
+</style>
+<div class="lg">
+  <section class="lg-hero">
+    <div class="lg-hero-top">
+      <div>
+        <div class="lg-kicker"><a href="{% url 'landing_list' %}"><i class="bi bi-arrow-left"></i> সব পেজ</a></div>
+        <h1>{% if page %}ল্যান্ডিং পেজ বদলান{% else %}নতুন ল্যান্ডিং পেজ{% endif %}</h1>
+        <p>প্রোডাক্ট বেছে নিয়ে একটা আকর্ষণীয় শিরোনাম আর কয়েকটা সুবিধা লিখুন। বাকিটা (ছবি, দাম, রিভিউ, অর্ডার ফর্ম) নিজে থেকেই বসে যাবে।</p>
+      </div>
+      {% if page_url %}<div class="lg-actions"><a class="lg-btn white" href="{{ page_url }}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> পেজটা দেখুন</a></div>{% endif %}
+    </div>
+  </section>
+
+  <form method="post" autocomplete="off">
+    {% csrf_token %}
+    <div class="lg-grid2">
+      <section class="lg-card">
+        <div class="lg-head"><div><h2><i class="bi bi-pencil-square"></i> পেজের লেখা</h2></div></div>
+        <div class="lg-body" style="display: grid; gap: 14px;">
+          <div><label for="lp-product">কোন প্রোডাক্টের পেজ</label>
+            <select class="lg-input" name="product" id="lp-product" required>
+              <option value="">— বেছে নিন —</option>
+              {% for p in products %}<option value="{{ p.id }}"{% if form.product|stringformat:"s" == p.id|stringformat:"s" %} selected{% endif %}>{{ p.name }} — {{ p.price|taka }}{% if p.stock_quantity <= 0 %} (স্টক শেষ){% endif %}</option>{% endfor %}
+            </select></div>
+          <div><label for="lp-headline">শিরোনাম</label><input class="lg-input" type="text" name="headline" id="lp-headline" maxlength="120" required value="{{ form.headline }}" placeholder="যেমন: ঘরে বসে পান আসল টাঙ্গাইল তাঁতের শাড়ি"><div class="lg-help">কাস্টমার প্রথমে এটাই পড়ে। সমস্যা বা সুবিধাটা বলুন, প্রোডাক্টের নাম না।</div></div>
+          <div><label for="lp-sub">নিচের লাইন <span style="font-weight:500;color:var(--muted);">(ঐচ্ছিক)</span></label><input class="lg-input" type="text" name="subheadline" id="lp-sub" maxlength="200" value="{{ form.subheadline }}" placeholder="যেমন: ১০০% সুতি, ধোয়ার পরেও রং যায় না। সারা দেশে ক্যাশ অন ডেলিভারি।"></div>
+          <div><label for="lp-bullets">সুবিধাগুলো <span style="font-weight:500;color:var(--muted);">(প্রতি লাইনে একটা)</span></label><textarea class="lg-input" name="bullets" id="lp-bullets" maxlength="2000">{{ form.bullets }}</textarea></div>
+          <div><label for="lp-offer">অফারের লাইন <span style="font-weight:500;color:var(--muted);">(ঐচ্ছিক, উপরে হলুদ ব্যাজে দেখাবে)</span></label><input class="lg-input" type="text" name="offer_text" id="lp-offer" maxlength="120" value="{{ form.offer_text }}" placeholder="যেমন: আজকের মধ্যে অর্ডারে ফ্রি ডেলিভারি"></div>
+          <div class="lg-fields">
+            <div><label for="lp-cta">বাটনের লেখা</label><input class="lg-input" type="text" name="cta_text" id="lp-cta" maxlength="40" value="{{ form.cta_text }}"></div>
+            <div><label for="lp-slug">লিংকের শেষ অংশ <span style="font-weight:500;color:var(--muted);">(ফাঁকা = শিরোনাম থেকে)</span></label><input class="lg-input" type="text" name="slug" id="lp-slug" maxlength="60" value="{{ form.slug }}" placeholder="যেমন: tangail-saree"><div class="lg-help">ইংরেজিতে ছোট রাখলে বিজ্ঞাপনে লিংকটা সুন্দর দেখায়</div></div>
+          </div>
+        </div>
+      </section>
+
+      <div>
+        <section class="lg-card">
+          <div class="lg-head"><div><h2><i class="bi bi-sliders"></i> পেজে কী দেখাবে</h2></div></div>
+          <div class="lg-body">
+            <label class="sw-row" for="lp-rev"><span><b>কাস্টমারের রিভিউ</b><small>অনুমোদিত রিভিউ থাকলে পেজে দেখাবে</small></span><span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="lp-rev" name="show_reviews"{% if form.show_reviews %} checked{% endif %}></span></label>
+            <label class="sw-row" for="lp-stock"><span><b>স্টকের অবস্থা</b><small>"মাত্র ৫টা বাকি" — তাড়া তৈরি করে</small></span><span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="lp-stock" name="show_stock"{% if form.show_stock %} checked{% endif %}></span></label>
+            <label class="sw-row" for="lp-active"><span><b>পেজ চালু</b><small>বন্ধ থাকলে লিংকে গেলে দোকানের হোম দেখাবে</small></span><span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="lp-active" name="is_active"{% if form.is_active %} checked{% endif %}></span></label>
+          </div>
+        </section>
+        <section class="lg-card">
+          <div class="lg-body">
+            <button class="lg-btn green" type="submit" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px;"><i class="bi bi-check-circle-fill"></i> {% if page %}সেভ করুন{% else %}পেজ বানান{% endif %}</button>
+            <div class="lg-help" style="margin-top: 10px;">পেজে দোকানের রং আর ডিজাইন, প্রোডাক্টের ছবি-দাম, ডেলিভারি এলাকা আর পেমেন্টের নিয়ম — সব ওয়েবসাইট সেটিংস থেকে আসে।</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}ল্যান্ডিং পেজ — {{ shop.name }}{% endblock %}
+{% block page_title %}ল্যান্ডিং পেজ{% endblock %}
+
+{% block content %}
+{% include 'store/partials/ledger_styles.html' %}
+<style>
+  .lpl-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--blue); font-weight: 700; word-break: break-all; }
+  .lpl-copy { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 2px 8px; font-size: 11.5px; font-weight: 700; color: var(--ink2); }
+</style>
+<div class="lg">
+  <section class="lg-hero">
+    <div class="lg-hero-top">
+      <div>
+        <div class="lg-kicker"><i class="bi bi-megaphone"></i> বিজ্ঞাপনের জন্য</div>
+        <h1>ল্যান্ডিং পেজ</h1>
+        <p>এক প্রোডাক্টের এক পাতার বিক্রির পেজ — উপরে প্রোডাক্ট, নিচে অর্ডার ফর্ম। Facebook বিজ্ঞাপনে এই লিংক দিলে কাস্টমার সরাসরি অর্ডার করে।</p>
+      </div>
+      <div class="lg-actions"><a class="lg-btn white" href="{% url 'landing_new' %}"><i class="bi bi-plus-lg"></i> নতুন ল্যান্ডিং পেজ</a></div>
+    </div>
+    <div class="lg-stats">
+      <div class="lg-stat"><small>মোট পেজ</small><b class="num">{{ pages|length|bn }}টা</b></div>
+      <div class="lg-stat"><small>মোট ভিজিট</small><b class="num">{{ total_views|bn }}</b></div>
+      <div class="lg-stat"><small>এই পেজগুলো থেকে অর্ডার</small><b class="num">{{ total_orders|bn }}টা</b></div>
+    </div>
+  </section>
+
+  <section class="lg-card">
+    <div class="lg-head"><div><h2><i class="bi bi-list-ul"></i> সব পেজ</h2></div></div>
+    {% if pages %}
+    <div class="lg-table-wrap" style="margin-top: 8px;">
+      <table class="lg-table stack">
+        <thead><tr><th>পেজ</th><th>লিংক</th><th class="r">ভিজিট</th><th class="r">অর্ডার</th><th class="r"></th></tr></thead>
+        <tbody>
+          {% for p in pages %}
+          <tr>
+            <td class="a"><a class="row-link" href="{% url 'landing_edit' p.id %}">{{ p.headline }}</a><small>{{ p.product.name }} · {{ p.product.price|taka }}{% if not p.is_active %} · <span style="color:#B91C1C;font-weight:700;">বন্ধ</span>{% endif %}</small></td>
+            <td class="c"><a class="lpl-link" href="{{ p.url }}" target="_blank" rel="noopener">{{ p.url }}</a> <button type="button" class="lpl-copy" data-copy="{{ p.url }}"><i class="bi bi-clipboard"></i> কপি</button></td>
+            <td class="r num b">{{ p.views|bn }}</td>
+            <td class="r num hide-sm">{{ p.order_count|bn }}</td>
+            <td class="r d"><div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;">
+              <span class="d-sm-none lg-chip gray">অর্ডার {{ p.order_count|bn }}</span>
+              <a class="lg-btn line sm" href="{% url 'landing_edit' p.id %}"><i class="bi bi-pencil"></i> বদলান</a>
+              <form method="post" action="{% url 'landing_action' p.id %}">{% csrf_token %}<input type="hidden" name="action" value="toggle"><button class="lg-btn line sm" type="submit">{% if p.is_active %}বন্ধ{% else %}চালু{% endif %}</button></form>
+              <form method="post" action="{% url 'landing_action' p.id %}" onsubmit="return confirm('পেজটা মুছে ফেলবেন? বিজ্ঞাপনে দেওয়া লিংক আর কাজ করবে না।');">{% csrf_token %}<input type="hidden" name="action" value="delete"><button class="lg-btn red sm" type="submit" aria-label="মুছুন"><i class="bi bi-trash3"></i></button></form>
+            </div></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="lg-empty"><i class="bi bi-megaphone"></i><b>এখনো কোনো ল্যান্ডিং পেজ নেই</b>যে প্রোডাক্টের বিজ্ঞাপন চালাবেন, তার জন্য একটা বানান
+      <div style="margin-top: 14px;"><a class="lg-btn dark" href="{% url 'landing_new' %}"><i class="bi bi-plus-lg"></i> প্রথম পেজ বানান</a></div></div>
+    {% endif %}
+  </section>
+</div>
+<script>
+document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => {
+  navigator.clipboard.writeText(b.dataset.copy).then(() => { b.innerHTML = '<i class="bi bi-check2"></i> কপি হয়েছে'; setTimeout(() => b.innerHTML = '<i class="bi bi-clipboard"></i> কপি', 1500); });
+}));
+</script>
+{% endblock %}

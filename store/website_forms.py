@@ -45,6 +45,8 @@ class StoreProfileForm(forms.ModelForm):
         from .plans import has_custom_domain
         if self.instance and self.instance.pk and not has_custom_domain(self.instance):
             self.fields.pop('custom_domain', None)
+        elif self.data and 'custom_domain' not in self.data:
+            self.fields.pop('custom_domain', None)     # "দোকানের তথ্য" ফর্ম থেকে এলে ডোমেইন অপরিবর্তিত থাকে
 
     def clean_subdomain(self):
         from .subdomains import normalize, validate_subdomain

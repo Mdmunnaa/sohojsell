@@ -16,6 +16,11 @@ class Shop(models.Model):
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=100, unique=True, blank=True, null=True)
     custom_domain = models.CharField(max_length=255, blank=True, null=True, unique=True, help_text='e.g. www.myanshop.com')
+    # নিজের ডোমেইনের অবস্থা (store/domains.py): pending → DNS মিললে dns_ok → চালু হলে live
+    DOMAIN_PENDING, DOMAIN_DNS_OK, DOMAIN_LIVE = 'pending', 'dns_ok', 'live'
+    custom_domain_status = models.CharField(max_length=10, default='pending', blank=True)
+    custom_domain_checked_at = models.DateTimeField(null=True, blank=True)
+    custom_domain_note = models.CharField(max_length=200, blank=True, default='')
     facebook_page_url = models.URLField(max_length=255, blank=True, null=True)
     # নিচের ৪টি লাইন অ্যাড করুন
     instagram_link = models.URLField(max_length=255, blank=True, null=True)
@@ -344,6 +349,8 @@ class Order(models.Model):
     # একই বিক্রি দুবার জমা হওয়া ঠেকাতে POS স্ক্রিনের দেওয়া আইডি (নেট কেটে আবার পাঠালে)
     pos_ref = models.CharField(max_length=40, blank=True, default='', db_index=True)
     coupon_code = models.CharField(max_length=30, blank=True, default='')
+    # কোন ল্যান্ডিং পেজ থেকে অর্ডার এসেছে (store/views_landing.py)
+    landing = models.ForeignKey('LandingPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')
     # বাতিল/ফেরত হয়ে মাল স্টকে ফিরে গেছে কিনা (store/order_flow.py) — দুবার ফেরত না যায়
     stock_returned = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -997,3 +1004,33 @@ class ProductReview(models.Model):
 
     class Meta:
         ordering = ['-id']
+
+
+# ============================================================
+# ল্যান্ডিং পেজ: এক প্রোডাক্টের এক পাতার বিক্রির পেজ (store/views_landing.py)
+# ============================================================
+class LandingPage(models.Model):
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='landing_pages')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='landing_pages')
+    slug = models.SlugField(max_length=60, allow_unicode=True)
+    headline = models.CharField(max_length=120)
+    subheadline = models.CharField(max_length=200, blank=True, default='')
+    bullets = models.TextField(blank=True, default='', help_text='প্রতি লাইনে একটা সুবিধা')
+    offer_text = models.CharField(max_length=120, blank=True, default='', help_text='যেমন: আজকের মধ্যে অর্ডারে ফ্রি ডেলিভারি')
+    cta_text = models.CharField(max_length=40, default='এখনই অর্ডার করুন')
+    show_reviews = models.BooleanField(default=True)
+    show_stock = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    views = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-id']
+        constraints = [models.UniqueConstraint(fields=['shop', 'slug'], name='unique_landing_slug_per_shop')]
+
+    @property
+    def bullet_list(self):
+        return [line.strip() for line in self.bullets.splitlines() if line.strip()]
+
+    def __str__(self):
+        return self.headline

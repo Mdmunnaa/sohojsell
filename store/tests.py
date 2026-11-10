@@ -397,19 +397,72 @@ class PlanLimitsTests(ShopTestMixin, TestCase):
             self.assertNotEqual(response.get('Location'), reverse('billing'))
 
     def test_custom_domain_only_on_premium(self):
-        base = {'section': 'store', 'name': 'Shop', 'phone': '01711111111', 'address': 'Dhaka',
-                'subdomain': 'myshop', 'custom_domain': 'www.example.com'}
+        base = {'section': 'domain', 'custom_domain': 'https://www.Example.com/shop'}
         _user, shop = self.make_shop(**self._paid('Standard'))
         self.client.post(reverse('website_settings'), base)
         shop.refresh_from_db()
-        self.assertEqual(shop.slug, 'myshop')
         self.assertFalse(shop.custom_domain)
+        page = self.client.get(reverse('website_settings') + '?tab=domain').content.decode()
+        self.assertIn('Premium প্যাকেজে পাবেন', page)
 
         shop.subscription_plan = 'Premium'
         shop.save()
         self.client.post(reverse('website_settings'), base)
         shop.refresh_from_db()
+        self.assertEqual((shop.custom_domain, shop.custom_domain_status), ('www.example.com', 'pending'))
+        page = self.client.get(reverse('website_settings') + '?tab=domain').content.decode()
+        for text in ['CNAME', 'shops.sellpunch.com', 'যাচাই করুন', 'DNS এখনো মেলেনি']:
+            self.assertIn(text, page)
+        # "দোকানের তথ্য" ফর্ম সেভ করলে ডোমেইন মুছে যায় না
+        self.client.post(reverse('website_settings'), {'section': 'store', 'name': 'Shop', 'phone': '01711111111',
+                                                       'address': 'Dhaka', 'subdomain': shop.slug})
+        shop.refresh_from_db()
         self.assertEqual(shop.custom_domain, 'www.example.com')
+        bad = self.client.post(reverse('website_settings'), {'section': 'domain', 'custom_domain': 'myshop.sellpunch.com'},
+                               follow=True).content.decode()
+        self.assertIn('এটা নিজের ডোমেইন না', bad)
+        # যাচাই: DNS না মিললে pending; মিললে dns_ok আর মালিকের তালিকায়; মালিক চালু করলে live + SMS
+        from . import domains
+        with mock.patch('store.domains.dns_points_here', return_value=False):
+            self.client.post(reverse('website_settings'), {'section': 'domain', 'action': 'verify'})
+        shop.refresh_from_db()
+        self.assertEqual(shop.custom_domain_status, 'pending')
+        with mock.patch('store.domains.dns_points_here', return_value=True):
+            response = self.client.post(reverse('website_settings'), {'section': 'domain', 'action': 'verify'}, follow=True)
+        shop.refresh_from_db()
+        self.assertEqual(shop.custom_domain_status, 'dns_ok')
+        self.assertIn('DNS ঠিক আছে', response.content.decode())
+        self.assertEqual(list(domains.pending_for_master()), [shop])
+        admin = User.objects.create_superuser(phone_number='01700000001', password='Admin-pass-1', name='Boss')
+        self.client.force_login(admin)
+        self.assertIn('www.example.com', self.client.get(reverse('master_dashboard')).content.decode())
+        with mock.patch('store.sms.notify') as notify:
+            self.client.post(reverse('master_domain_live', args=[shop.id]))
+        shop.refresh_from_db()
+        self.assertEqual(shop.custom_domain_status, 'live')
+        self.assertIn('www.example.com চালু', notify.call_args[0][1])
+        # Cloudflare টোকেন থাকলে যাচাইতেই live
+        self.client.force_login(_user)
+        Shop.objects.filter(pk=shop.pk).update(custom_domain_status='pending')
+        with self.settings(CLOUDFLARE_API_TOKEN='t', CLOUDFLARE_ZONE_ID='z'), \
+                mock.patch('store.domains.dns_points_here', return_value=True), \
+                mock.patch('store.domains.cloudflare_add_hostname', return_value=(True, 'ok')):
+            self.client.post(reverse('website_settings'), {'section': 'domain', 'action': 'verify'})
+        shop.refresh_from_db()
+        self.assertEqual(shop.custom_domain_status, 'live')
+        self.client.post(reverse('website_settings'), {'section': 'domain', 'action': 'remove'})
+        shop.refresh_from_db()
+        self.assertIsNone(shop.custom_domain)
+
+    def test_unknown_custom_domain_is_404(self):
+        _user, shop = self.make_shop(**self._paid('Premium'))
+        Shop.objects.filter(pk=shop.pk).update(custom_domain='www.rahim.com', slug='rahim')
+        with self.settings(STORE_BASE_DOMAIN='sellpunch.com', ALLOWED_HOSTS=['*']):
+            self.assertEqual(self.client.get('/', HTTP_HOST='www.rahim.com').status_code, 200)
+            self.assertEqual(self.client.get('/', HTTP_HOST='rahim.com').status_code, 200)
+            missing = self.client.get('/', HTTP_HOST='www.nobody.com')
+            self.assertEqual(missing.status_code, 404)
+            self.assertIn('এই ঠিকানায় কোনো দোকান নেই', missing.content.decode())
 
 
 @override_settings(STORE_BASE_DOMAIN='sellpunch.com')
@@ -2698,6 +2751,88 @@ class OffersReviewsSeoTests(ShopTestMixin, TestCase):
         with self.settings(STORE_BASE_DOMAIN='sellpunch.com', ALLOWED_HOSTS=['*']):
             response = self.client.get('/robots.txt', HTTP_HOST='ofshop.sellpunch.com')
             self.assertIn('://ofshop.sellpunch.com/sitemap.xml', response.content.decode())
+
+
+class LandingPageTests(ShopTestMixin, TestCase):
+    """ল্যান্ডিং পেজ: বানানো, লিংক, পাবলিক পেজ, সেখান থেকে অর্ডার, ভিজিট আর অর্ডার গোনা, বন্ধ করা।"""
+
+    def setUp(self):
+        from .models import Product
+        from . import variants
+        self.user, self.shop = self.make_shop(slug='lpshop')
+        self.saree = Product.objects.create(shop=self.shop, name='টাঙ্গাইল শাড়ি', price=Decimal('1800'),
+                                            compare_price=Decimal('2400'), cost_price=1200, stock_quantity=7,
+                                            description='আসল তাঁতের শাড়ি')
+        self.kurti = Product.objects.create(shop=self.shop, name='কুর্তি', price=Decimal('900'), cost_price=500)
+        variants.save_rows(self.kurti, [{'id': None, 'name': 'M', 'price': None, 'stock': 2}])
+
+    def create(self, **extra):
+        data = {'product': self.saree.id, 'headline': 'ঘরে বসে পান আসল টাঙ্গাইল শাড়ি', 'subheadline': 'ক্যাশ অন ডেলিভারি',
+                'bullets': '১০০% সুতি\nরং যায় না\n\n', 'offer_text': 'আজ ফ্রি ডেলিভারি', 'cta_text': '', 'slug': 'Tangail Saree',
+                'show_reviews': 'on', 'show_stock': 'on', 'is_active': 'on', **extra}
+        return self.client.post(reverse('landing_new'), data)
+
+    def test_create_and_public_page(self):
+        from .models import LandingPage
+        self.assertRedirects(self.create(), reverse('landing_list'))
+        page = LandingPage.objects.get()
+        self.assertEqual((page.slug, page.cta_text, page.bullet_list), ('tangail-saree', 'এখনই অর্ডার করুন', ['১০০% সুতি', 'রং যায় না']))
+        self.assertIn('নিন', self.create(slug='tangail-saree').content.decode())      # একই লিংক দুবার না
+        self.assertIn('প্রোডাক্ট বেছে নিন', self.create(product=999).content.decode())
+        listing = self.client.get(reverse('landing_list')).content.decode()
+        self.assertIn('/shop/lpshop/l/tangail-saree/', listing)
+        self.client.logout()
+        response = self.client.get('/shop/lpshop/l/tangail-saree/', HTTP_HOST='localhost')
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        for text in ['ঘরে বসে পান আসল টাঙ্গাইল শাড়ি', 'আজ ফ্রি ডেলিভারি', '১০০% সুতি', '৳১,৮০০', '৳২,৪০০', '২৫% ছাড়',
+                     'মাত্র ৭টা বাকি', 'অর্ডার করতে ফর্মটা পূরণ করুন', '"@type": "Product"', 'আসল তাঁতের শাড়ি']:
+            self.assertIn(text, html)
+        self.assertNotIn('সাইজ / রং', html)
+        page.refresh_from_db()
+        self.assertEqual(page.views, 1)
+        self.assertEqual(self.client.get('/shop/lpshop/l/nope/', HTTP_HOST='localhost').status_code, 404)
+
+    def test_order_from_landing_page_is_counted(self):
+        from .delivery import zones_for
+        from .models import LandingPage
+        self.create()
+        page = LandingPage.objects.get()
+        self.client.logout()
+        done = self.client.post('/shop/lpshop/place-order/', json.dumps({
+            'cart': [{'id': self.saree.id, 'qty': 2}], 'name': 'রহিম', 'phone': '01812345678', 'address': 'Savar, Dhaka',
+            'payment': 'cod', 'zone': zones_for(self.shop)[0].id, 'landing': 'tangail-saree'}),
+            content_type='application/json').json()
+        self.assertTrue(done['success'], done)
+        order = Order.objects.get(source='storefront')
+        self.assertEqual(order.landing_id, page.id)
+        self.assertIn('ল্যান্ডিং পেজ: ঘরে বসে', order.note)
+        self.client.force_login(self.user)
+        listing = self.client.get(reverse('landing_list'))
+        self.assertEqual(listing.context['total_orders'], 1)
+        # বাতিল হলে গোনা হয় না
+        from . import order_flow
+        order_flow.set_status(order, 'Cancelled')
+        self.assertEqual(self.client.get(reverse('landing_list')).context['total_orders'], 0)
+
+    def test_variants_toggle_and_other_shop(self):
+        from .models import LandingPage
+        self.create(product=self.kurti.id, slug='kurti')
+        self.client.logout()
+        html = self.client.get('/shop/lpshop/l/kurti/', HTTP_HOST='localhost').content.decode()
+        self.assertIn('সাইজ / রং', html)
+        self.assertIn('data-id="-', html)
+        page = LandingPage.objects.get()
+        self.client.force_login(self.user)
+        self.client.post(reverse('landing_action', args=[page.id]), {'action': 'toggle'})
+        self.client.logout()
+        off = self.client.get('/shop/lpshop/l/kurti/', HTTP_HOST='localhost')
+        self.assertEqual(off.status_code, 302)                                       # বন্ধ → দোকানের হোম
+        _u2, _other = self.make_shop(phone='01722222222')
+        self.client.force_login(_u2)
+        self.assertEqual(self.client.get(reverse('landing_edit', args=[page.id])).status_code, 404)
+        self.assertEqual(self.client.post(reverse('landing_action', args=[page.id]), {'action': 'delete'}).status_code, 404)
+        self.assertTrue(LandingPage.objects.filter(pk=page.pk).exists())
 
 
 class BrandTests(TestCase):

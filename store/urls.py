@@ -9,6 +9,7 @@ from . import views_pos
 from . import views_sms
 from . import views_ledger
 from . import views_offers
+from . import views_landing
 
 def favicon(request):
     from django.shortcuts import redirect
@@ -63,6 +64,11 @@ urlpatterns = [
     path('sms/buy/', views_sms.sms_buy, name='sms_buy'),
     path('sms/auto/', views_sms.sms_auto, name='sms_auto'),
     path('sms/customers/', views_sms.sms_customer_search, name='sms_customer_search'),
+    path('master/domains/<int:shop_id>/live/', views.master_domain_live, name='master_domain_live'),
+    path('landing/', views_landing.landing_list, name='landing_list'),
+    path('landing/new/', views_landing.landing_edit, name='landing_new'),
+    path('landing/<int:page_id>/', views_landing.landing_edit, name='landing_edit'),
+    path('landing/<int:page_id>/action/', views_landing.landing_action, name='landing_action'),
     path('offers/', views_offers.coupon_list, name='coupon_list'),
     path('offers/<int:coupon_id>/', views_offers.coupon_action, name='coupon_action'),
     path('orders/abandoned/', views_offers.abandoned_list, name='abandoned_list'),
@@ -146,6 +152,7 @@ urlpatterns = [
     path('shop/<slug:shop_slug>/category/<int:category_id>/', views.storefront_home, name='storefront_category'),
     path('shop/<slug:shop_slug>/checkout/', views.storefront_checkout, name='storefront_checkout'),
     path('shop/<slug:shop_slug>/place-order/', views.storefront_place_order, name='storefront_place_order'),
+    path('shop/<slug:shop_slug>/l/<str:slug>/', views_landing.storefront_landing, name='storefront_landing'),
     path('shop/<slug:shop_slug>/coupon/', views.storefront_coupon_check, name='storefront_coupon_check'),
     path('shop/<slug:shop_slug>/checkout-draft/', views.storefront_checkout_draft, name='storefront_checkout_draft'),
     path('shop/<slug:shop_slug>/product/<int:product_id>/review/', views.storefront_review_submit, name='storefront_review'),

@@ -49,6 +49,14 @@ if STORE_BASE_DOMAIN:
     ALLOWED_HOSTS.append(f'.{STORE_BASE_DOMAIN}')
     CSRF_TRUSTED_ORIGINS += [f'https://{STORE_BASE_DOMAIN}', f'https://*.{STORE_BASE_DOMAIN}']
 
+# সেলারের নিজের ডোমেইন: Host যা-ই আসুক Django-কে নিতে দেওয়া হয়; store/middleware.py অজানা ডোমেইন 404 করে
+if IS_PRODUCTION:
+    ALLOWED_HOSTS.append('*')
+# Cloudflare for SaaS (নিজের ডোমেইনে নিজে থেকে SSL): থাকলে সেলারের ডোমেইন "যাচাই"-তেই চালু হয়
+CLOUDFLARE_API_TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '').strip()
+CLOUDFLARE_ZONE_ID = os.environ.get('CLOUDFLARE_ZONE_ID', '').strip()
+CUSTOM_DOMAIN_TARGET = os.environ.get('CUSTOM_DOMAIN_TARGET', '').strip().lower()   # সেলার CNAME যেখানে দেবে
+
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 # মূল সাইটের ঠিকানা (ড্যাশবোর্ড যেখানে খোলে), যেমন cf.sellpunch.com। না দিলে Render-এর ঠিকানা।
 PRIMARY_HOST = os.environ.get('PRIMARY_HOST', '').strip().lower() or RENDER_EXTERNAL_HOSTNAME

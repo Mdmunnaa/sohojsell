@@ -139,6 +139,34 @@
 {% endif %}
 
 <!-- LOCKED SHOPS -->
+{% if pending_domains %}
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+  <div class="card-body p-0">
+    <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2">
+      <i class="bi bi-globe2 text-primary"></i>
+      <span class="fw-bold">নিজের ডোমেইন — চালু করার অপেক্ষায়</span>
+      <span class="badge bg-primary rounded-pill">{{ pending_domains|length }}</span>
+    </div>
+    <div class="px-4 py-2 small text-muted">সেলারের DNS মিলেছে। হোস্টিংয়ে (Render: Settings → Custom Domains, বা Cloudflare) ডোমেইনটা যোগ করে SSL হয়ে গেলে "চালু" চাপুন — সেলার SMS পাবে।</div>
+    <div class="table-responsive">
+      <table class="table mb-0 align-middle">
+        <thead class="table-light"><tr><th class="ps-4">দোকান</th><th>ডোমেইন</th><th>DNS মিলেছে</th><th class="text-end pe-4"></th></tr></thead>
+        <tbody>
+          {% for s in pending_domains %}
+          <tr>
+            <td class="ps-4 fw-semibold">{{ s.name }}<div class="small text-muted">{{ s.phone }} · {{ s.slug }}</div></td>
+            <td><code>{{ s.custom_domain }}</code></td>
+            <td class="small text-muted">{{ s.custom_domain_checked_at|date:"j M, g:i A" }}</td>
+            <td class="text-end pe-4"><form method="post" action="{% url 'master_domain_live' s.id %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-success rounded-pill fw-bold px-3" type="submit"><i class="bi bi-check2"></i> চালু</button></form></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% if locked_shops %}
 <div class="card border-0 shadow-sm rounded-4 mb-4">
   <div class="card-body p-0">

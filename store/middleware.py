@@ -57,6 +57,9 @@ class ShopSubdomainMiddleware:
                     return self._serve_shop(request, shop)
                 # Premium শেষ হলে নিজের ডোমেইনের কাস্টমারদের সাবডোমেইনে পাঠানো
                 return HttpResponseRedirect(shop.storefront_url)
+            # অজানা ডোমেইন (ALLOWED_HOSTS='*' বলে এখানে আসে) — মূল সাইট দেখানো যাবে না
+            return render(request, 'store/storefront/not_found.html',
+                          {'subdomain': host, 'main_url': f'https://{base}/' if base else '/'}, status=404)
         elif base and request.method in ('GET', 'HEAD'):
             redirect_response = self._redirect_old_shop_link(request, base)
             if redirect_response is not None:
@@ -129,7 +132,7 @@ class StaffAccessMiddleware:
                     (('/pos/',), staff.can_use_pos, "POS System"),
                     (('/products/', '/categories/', '/barcode/', '/purchases/', '/suppliers/'),
                      staff.can_manage_products, "Product Management"),
-                    (('/orders/', '/storefront-orders/', '/courier/', '/offers/', '/reviews/'),
+                    (('/orders/', '/storefront-orders/', '/courier/', '/offers/', '/reviews/', '/landing/'),
                      staff.can_manage_orders, "Order Management"),
                     (('/customers/',), staff.can_manage_customers, "Customer Database"),
                     (('/sms/',), staff.can_send_sms, "SMS Panel"),

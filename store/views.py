@@ -869,7 +869,9 @@ def master_dashboard(request):
     recent_payments = PaymentRequest.objects.filter(status='Approved').select_related('shop').order_by('-created_at')[:10]
     locked_shops = Shop.objects.filter(is_locked=True).order_by('-id')
 
+    from . import domains
     return render(request, 'store/master_dashboard.html', {
+        'pending_domains': list(domains.pending_for_master()),
         'total_shops': total_shops, 'total_users': total_users,
         'total_platform_orders': total_orders, 'total_sales_volume': total_sales,
         'recent_shops': recent_shops,
@@ -877,6 +879,19 @@ def master_dashboard(request):
         'recent_payments': recent_payments,
         'locked_shops': locked_shops,
     })
+
+
+@login_required(login_url='/accounts/login/')
+def master_domain_live(request, shop_id):
+    """মালিক হোস্টিংয়ে ডোমেইন যোগ করে SSL হওয়ার পর "চালু" চাপলে: অবস্থা live, সেলারকে SMS।"""
+    if not request.user.is_superuser:
+        return redirect('dashboard')
+    if request.method == 'POST':
+        from . import domains
+        shop = get_object_or_404(Shop, pk=shop_id)
+        domains.mark_live(shop)
+        messages.success(request, f'{shop.custom_domain} চালু করা হয়েছে, সেলারকে SMS গেছে।')
+    return redirect('master_dashboard')
 
 
 # ============================================================
@@ -1501,12 +1516,17 @@ def storefront_place_order(request, shop_slug):
                                                      defaults={'name': name, 'address': address})
         customer.name, customer.address = name, address
         customer.save(update_fields=['name', 'address'])
+        landing = None
+        if data.get('landing'):
+            from .models import LandingPage
+            landing = LandingPage.objects.filter(shop=shop, slug=str(data['landing'])[:60]).first()
         order_note = ' · '.join(x for x in [f'এলাকা: {zone.name}' if zone else '',
-                                            f'কুপন {coupon.code}' if coupon else '', note] if x) or None
+                                            f'কুপন {coupon.code}' if coupon else '',
+                                            f'ল্যান্ডিং পেজ: {landing.headline}' if landing else '', note] if x) or None
         main_order = Order.objects.create(
             shop=shop, customer=customer, source='storefront', delivery_charge=delivery_charge, discount=discount,
             payment_method='COD', status='Pending', total_amount=total, note=order_note,
-            coupon_code=coupon.code if coupon else '',
+            coupon_code=coupon.code if coupon else '', landing=landing,
             online_payment_status=Order.ONLINE_PENDING if pay_now > 0 else Order.ONLINE_NONE)
         sf_order.order = main_order
         sf_order.save(update_fields=['order'])
