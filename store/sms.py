@@ -243,22 +243,31 @@ class SmsResult:
     log_id: int = 0
 
 
+def gateway_keys():
+    """SMS Gateway BD-র চাবি: আগে environment (SMS_GATEWAY_CLIENT_ID / SMS_GATEWAY_API_KEY), না থাকলে Master Settings।"""
+    client_id = getattr(settings, 'SMS_GATEWAY_CLIENT_ID', '')
+    api_key = getattr(settings, 'SMS_GATEWAY_API_KEY', '')
+    if client_id and api_key:
+        return client_id, api_key
+    from .models import MasterSetting
+    setting = MasterSetting.objects.order_by('pk').first()
+    return ((getattr(setting, 'sms_client_id', '') or '').strip(), (getattr(setting, 'sms_api_key', '') or '').strip())
+
+
+def gateway_ready():
+    return all(gateway_keys())
+
+
 def gateway_send(phones, message):
     """
-    smsgateway.com.bd-তে পাঠায় (কমা দিয়ে অনেক নম্বর একসাথে)। ফেরত (ok, বার্তা):
+    SMS Gateway BD-তে non-masking পাঠায় (sender ID ছাড়া), কমা দিয়ে অনেক নম্বর একসাথে। ফেরত (ok, বার্তা):
     True = নিয়েছে, False = নেয়নি (খরচ ফেরত হবে), None = উত্তর আসেনি — হয়তো পাঠিয়েছে, তাই খরচ ফেরত না।
     """
     import requests
-    from .models import MasterSetting
-    setting = MasterSetting.objects.order_by('pk').first()
-    client_id = (getattr(setting, 'sms_client_id', '') or '').strip()
-    api_key = (getattr(setting, 'sms_api_key', '') or '').strip()
+    client_id, api_key = gateway_keys()
     if not client_id or not api_key:
         return False, 'SMS সার্ভিস এখনো চালু হয়নি, সাপোর্টে জানান'
     payload = {'client_id': client_id, 'key': api_key, 'recipient': ','.join(phones), 'message': message}
-    sender_id = (getattr(setting, 'sms_sender_id', '') or '').strip()
-    if sender_id:
-        payload['sender_id'] = sender_id
     try:
         response = requests.post(GATEWAY_URL, json=payload, timeout=GATEWAY_TIMEOUT,
                                  headers={'Content-Type': 'application/json', 'Accept': 'application/json'})

@@ -53,9 +53,10 @@
                             <label class="form-label fw-bold text-secondary small">SMS API Key</label>
                             <input type="text" name="sms_api_key" class="form-control bg-light" value="{{ setting.sms_api_key|default_if_none:'' }}" placeholder="e.g. A4Fn52tCWYc6JErGxuts">
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-secondary small">Sender ID</label>
-                            <input type="text" name="sms_sender_id" class="form-control bg-light" value="{{ setting.sms_sender_id|default_if_none:'' }}" placeholder="e.g. MyBrand">
+                        <div class="alert {% if sms_env_keys %}alert-success{% else %}alert-light border{% endif %} small mb-3">
+                            {% if sms_env_keys %}<i class="bi bi-check-circle-fill me-1"></i> SMS Gateway BD-র চাবি environment থেকে চালু আছে (SMS_GATEWAY_CLIENT_ID / SMS_GATEWAY_API_KEY) — উপরের ঘর দুটো লাগবে না।
+                            {% else %}Render/Cloudflare-এ <code>SMS_GATEWAY_CLIENT_ID</code> আর <code>SMS_GATEWAY_API_KEY</code> বসালে (Edumi-র একই মান) উপরের ঘর দুটো লাগবে না।{% endif %}
+                            দোকানের সব SMS non-masking যায় (sender ID ছাড়া)।
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold text-secondary small">সেলারদের জন্য SMS-এর দাম (৳ প্রতি SMS)</label>

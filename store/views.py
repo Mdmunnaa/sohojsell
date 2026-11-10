@@ -946,7 +946,6 @@ def master_settings(request):
         # SMS ডেটা সেভ করার লজিক
         setting.sms_client_id = request.POST.get('sms_client_id')
         setting.sms_api_key = request.POST.get('sms_api_key')
-        setting.sms_sender_id = request.POST.get('sms_sender_id')
         try:
             rate = Decimal(request.POST.get('sms_rate') or setting.sms_rate)
             if Decimal('0.05') <= rate <= Decimal('5'):
@@ -957,7 +956,10 @@ def master_settings(request):
         setting.save()
         messages.success(request, "Master Settings Updated!")
         return redirect('master_settings')
-    return render(request, 'store/master_settings.html', {'setting': setting})
+    return render(request, 'store/master_settings.html', {
+        'setting': setting,
+        'sms_env_keys': bool(django_settings.SMS_GATEWAY_CLIENT_ID and django_settings.SMS_GATEWAY_API_KEY),
+    })
 
 
 # POS (দোকানে বিক্রি): store/views_pos.py

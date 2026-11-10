@@ -27,6 +27,10 @@ services:
         sync: false
       - key: R2_PUBLIC_DOMAIN      # যেমন pub-xxxx.r2.dev বা media.sohojsell.com
         sync: false
+      - key: SMS_GATEWAY_CLIENT_ID     # SMS Gateway BD — Edumi-র একই অ্যাকাউন্ট
+        sync: false
+      - key: SMS_GATEWAY_API_KEY
+        sync: false
       - key: DJANGO_SUPERUSER_PHONE_NUMBER
         sync: false
       - key: DJANGO_SUPERUSER_PASSWORD

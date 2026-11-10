@@ -1,10 +1,8 @@
 # store/views_sms.py
 """SMS প্যানেল: ব্যালেন্স, একজনকে বা অনেক কাস্টমারকে SMS, SMS কেনা, অর্ডারের অটো SMS আর ইতিহাস। হিসাব store/sms.py-তে।"""
-import re
 import uuid
 from types import SimpleNamespace
 
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -13,12 +11,11 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from . import sms
-from .models import Customer, OnlinePayment, PaymentRequest
+from .models import Customer, OnlinePayment
 
 LOGIN = '/accounts/login/'
 DRAFT_KEY = 'sms_draft'
 SENT_KEY = 'sms_sent_ids'
-TRX_RE = re.compile(r'^[A-Za-z0-9]{6,20}$')
 
 # তৈরি মেসেজ — {link} জায়গায় দোকানের ওয়েবসাইট বসে। বাংলা লেখায় সংখ্যা বাংলা অঙ্কে।
 MESSAGE_TEMPLATES = [
@@ -127,8 +124,6 @@ def sms_panel(request):
         'min_buy': sms.MIN_BUY_TAKA,
         'max_buy': sms.MAX_BUY_TAKA,
         'online_payment_available': online_payment_available(shop),
-        'manual_number': settings.MANUAL_PAYMENT_NUMBER,
-        'pending_request': shop.payment_requests.filter(plan_name=sms.MANUAL_REQUEST_NAME, status='Pending').first(),
         'max_chars': sms.MAX_MESSAGE_CHARS,
         'max_numbers': sms.MAX_MANUAL_NUMBERS,
         'auto_sample': sms.order_received_text(shop, sample_order),
@@ -205,6 +200,7 @@ def sms_send(request):
 @login_required(login_url=LOGIN)
 @require_POST
 def sms_buy(request):
+    """Edumi-র মতো: যত টাকার খুশি (সর্বনিম্ন ৳৫০) — PayStation-এ টাকা দিলেই সাথে সাথে SMS যোগ হয়।"""
     shop = request.user.shop
     if not _can_manage(request):
         messages.error(request, 'SMS কিনতে দোকানের মালিককে বলুন।')
@@ -213,36 +209,13 @@ def sms_buy(request):
     if error:
         messages.error(request, error)
         return redirect(_panel_url('buy'))
-
-    if request.POST.get('method') == 'online':
-        from .payment_views import start_online_payment
-        from .payments import sms_item
-        item = sms_item(amount)
-        if item is None:
-            messages.error(request, 'এই টাকায় কোনো SMS হচ্ছে না, পরিমাণটা দেখে আবার চেষ্টা করুন।')
-            return redirect(_panel_url('buy'))
-        return start_online_payment(request, shop, item, back='sms_panel')
-
-    # bKash/Nagad-এ নিজে পাঠিয়ে লেনদেন নম্বর জমা
-    method = request.POST.get('payment_method')
-    sender = sms.normalize(request.POST.get('sender_number'))
-    trx = (request.POST.get('transaction_id') or '').strip().upper()
-    if method not in ('bKash', 'Nagad'):
-        messages.error(request, 'bKash না Nagad — কোনটা দিয়ে পাঠিয়েছেন বেছে নিন।')
-    elif not sender:
-        messages.error(request, 'যে নম্বর থেকে টাকা পাঠিয়েছেন সেটা ঠিকমতো দিন (যেমন 01712345678)।')
-    elif not TRX_RE.match(trx):
-        messages.error(request, 'লেনদেন নম্বর (TrxID) ঠিকমতো দিন — SMS-এ যেমন এসেছে, যেমন 8KJ9TY2Q1X।')
-    elif shop.payment_requests.filter(plan_name=sms.MANUAL_REQUEST_NAME, status='Pending').exists():
-        messages.warning(request, 'আপনার আগের SMS কেনার অনুরোধ এখনো যাচাই হচ্ছে। সেটা হয়ে গেলে আবার জমা দিন।')
-    elif PaymentRequest.objects.filter(transaction_id__iexact=trx).exists():
-        messages.error(request, 'এই লেনদেন নম্বর আগে ব্যবহার হয়েছে।')
-    else:
-        PaymentRequest.objects.create(shop=shop, plan_name=sms.MANUAL_REQUEST_NAME, payment_method=method,
-                                      sender_number=sender, transaction_id=trx, amount=amount, status='Pending')
-        messages.success(request, f'জমা হয়েছে! টাকা মিলিয়ে দেখা হলেই {sms.bn_num(sms.count_for_amount(amount))}টা '
-                                  'SMS আপনার ব্যালেন্সে যোগ হবে।')
-    return redirect(_panel_url('buy'))
+    from .payment_views import start_online_payment
+    from .payments import sms_item
+    item = sms_item(amount)
+    if item is None:
+        messages.error(request, 'এই টাকায় কোনো SMS হচ্ছে না, পরিমাণটা দেখে আবার চেষ্টা করুন।')
+        return redirect(_panel_url('buy'))
+    return start_online_payment(request, shop, item, back='sms_panel')
 
 
 @login_required(login_url=LOGIN)

@@ -233,6 +233,10 @@ PAYSTATION_PAY_WITH_CHARGE = os.environ.get('PAYSTATION_PAY_WITH_CHARGE', '0')
 # যাতে টেস্ট মোডে কোনো আসল সেলার বিনা টাকায় প্ল্যান চালু করতে না পারে।
 PAYSTATION_TEST_SHOPS = env_list('PAYSTATION_TEST_SHOPS')
 
+# SMS Gateway BD (smsgateway.com.bd) — Edumi-র মতো চাবি environment থেকে। দোকানের সব SMS non-masking
+# (sender ID ছাড়া) যায়, তাই আলাদা অনুমোদন লাগে না আর SMS দেরি করে না।
+SMS_GATEWAY_CLIENT_ID = os.environ.get('SMS_GATEWAY_CLIENT_ID', '').strip()
+SMS_GATEWAY_API_KEY = os.environ.get('SMS_GATEWAY_API_KEY', '').strip()
 # SMS: ১০০-র বেশি নম্বর বা অর্ডারের অটো SMS পেছনে (thread) যায়, যাতে পেইজ আটকে না থাকে। টেস্টে সরাসরি।
 SMS_BACKGROUND = env_bool('SMS_BACKGROUND', default=sys.argv[1:2] != ['test'])
 # bKash/Nagad-এ হাতে টাকা পাঠানোর নম্বর (প্যাকেজ বা SMS কেনা)

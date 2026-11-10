@@ -161,20 +161,6 @@
 .sp-pay:hover { filter: brightness(1.06); }
 .sp-pay.dark { background: var(--ink); box-shadow: none; }
 .sp-pay:disabled { background: #CBD5E1; box-shadow: none; cursor: not-allowed; }
-.sp-linkbtn { display: block; margin: 10px auto 0; border: 0; background: transparent; color: var(--blue); font: 600 13.5px 'Hind Siliguri', sans-serif;
-  cursor: pointer; }
-.sp-mp { margin-top: 14px; padding-top: 14px; border-top: 1px dashed #CBD5E1; }
-.sp-sendto { padding: 12px 14px; border-radius: 14px; background: #FDF2F8; border: 1px solid #FBCFE8; font-size: 13.5px; color: #831843; line-height: 1.6; }
-.sp-sendto .no { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
-.sp-sendto .no b { font: 700 19px 'DM Sans', sans-serif; letter-spacing: .5px; color: #500724; }
-.sp-copy { border: 1px solid #F9A8D4; background: #fff; color: #9D174D; border-radius: 9px; padding: 4px 10px; font: 600 12.5px 'Hind Siliguri', sans-serif; cursor: pointer; }
-.sp-copy.done { background: #16A34A; border-color: #16A34A; color: #fff; }
-.sp-seg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-.sp-seg2 label { margin: 0; display: flex; align-items: center; justify-content: center; gap: 6px; height: 42px; border: 1.5px solid var(--line);
-  border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; }
-.sp-seg2 input { position: absolute; opacity: 0; pointer-events: none; }
-.sp-seg2 label:has(input:checked) { border-color: var(--ink); background: var(--ink); color: #fff; }
-.sp-mp .sp-input { margin-top: 8px; }
 .sp-pending { display: flex; gap: 10px; padding: 11px 13px; border-radius: 13px; background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E;
   font-size: 13px; line-height: 1.5; margin-bottom: 14px; }
 .sp-note { font-size: 12.5px; color: var(--muted); margin-top: 9px; text-align: center; }
@@ -357,9 +343,6 @@
           {% if not can_manage %}
           <div class="sp-pending"><i class="bi bi-info-circle-fill"></i><span>SMS কিনতে দোকানের মালিককে বলুন।</span></div>
           {% else %}
-          {% if pending_request %}
-          <div class="sp-pending"><i class="bi bi-hourglass-split"></i><span>৳{{ pending_request.amount|floatformat:"0g"|bn }}-এর অনুরোধ যাচাই হচ্ছে ({{ pending_request.payment_method }} · {{ pending_request.transaction_id }})। মিললেই SMS যোগ হবে।</span></div>
-          {% endif %}
           <form method="post" action="{% url 'sms_buy' %}" id="spBuy" novalidate>
             {% csrf_token %}
             <div class="sp-packs">
@@ -367,28 +350,16 @@
               <button type="button" class="sp-pack {% if q.amount == 200 %}on{% endif %}" data-amount="{{ q.amount }}"><b>{{ q.count|floatformat:"0g"|bn }}টা</b><span>৳{{ q.amount|floatformat:"0g"|bn }}</span></button>
               {% endfor %}
             </div>
-            <label class="sp-label" for="spAmount">অথবা যত টাকার কিনবেন</label>
+            <label class="sp-label" for="spAmount">অথবা যত টাকার কিনবেন (সর্বনিম্ন ৳{{ min_buy|bn }})</label>
             <div class="sp-amount"><span>৳</span><input class="sp-input" type="number" name="amount" id="spAmount" min="{{ min_buy }}" max="{{ max_buy }}" step="1" inputmode="numeric" value="200"></div>
             <div class="sp-get" id="spGet"><span>আপনি পাবেন</span><b id="spGetCount">৫০০টা SMS</b></div>
             {% if online_payment_available %}
-            <button type="submit" name="method" value="online" class="sp-pay" id="spPayOnline"><i class="bi bi-lightning-charge-fill"></i> অনলাইনে পেমেন্ট করুন</button>
+            <button type="submit" class="sp-pay" id="spPayOnline"><i class="bi bi-lightning-charge-fill"></i> পেমেন্ট করে কিনুন</button>
             <div class="sp-note">bKash, Nagad, Rocket বা কার্ড — পেমেন্ট হলেই সাথে সাথে SMS যোগ হবে</div>
-            <button type="button" class="sp-linkbtn" id="spShowManual">নিজে bKash/Nagad-এ পাঠাতে চান?</button>
+            {% else %}
+            <button type="button" class="sp-pay" disabled><i class="bi bi-clock"></i> অনলাইন পেমেন্ট শীঘ্রই চালু হবে</button>
+            <div class="sp-note">পেমেন্ট চালু হলেই এখান থেকে সাথে সাথে SMS কিনতে পারবেন</div>
             {% endif %}
-            <div class="sp-mp" id="spManualPay" {% if online_payment_available %}hidden{% endif %}>
-              <div class="sp-sendto">
-                bKash বা Nagad থেকে উপরের টাকাটা <b>Send Money</b> করুন (Personal নম্বর):
-                <div class="no"><b>{{ manual_number }}</b><button type="button" class="sp-copy" data-copy="{{ manual_number }}">কপি</button></div>
-              </div>
-              <div class="sp-seg2" role="radiogroup" aria-label="কোনটা দিয়ে পাঠিয়েছেন">
-                <label><input type="radio" name="payment_method" value="bKash" checked> bKash</label>
-                <label><input type="radio" name="payment_method" value="Nagad"> Nagad</label>
-              </div>
-              <input class="sp-input" type="tel" name="sender_number" inputmode="tel" placeholder="যে নম্বর থেকে পাঠিয়েছেন" aria-label="যে নম্বর থেকে পাঠিয়েছেন">
-              <input class="sp-input" type="text" name="transaction_id" autocapitalize="characters" placeholder="লেনদেন নম্বর (TrxID)" aria-label="লেনদেন নম্বর">
-              <button type="submit" name="method" value="manual" class="sp-pay dark" id="spPayManual"><i class="bi bi-check2-circle"></i> জমা দিন</button>
-              <div class="sp-note">টাকা মিলিয়ে দেখা হলেই SMS যোগ হবে</div>
-            </div>
           </form>
           {% endif %}
         </div>
@@ -689,26 +660,13 @@
       var bad = value < min || value > max;
       $('spGet').classList.toggle('bad', bad);
       $('spGetCount').textContent = bad ? (value < min ? 'সর্বনিম্ন ৳' + bn(min) : 'সর্বোচ্চ ৳' + fmt(max)) : fmt(count) + 'টা SMS';
-      ['spPayOnline', 'spPayManual'].forEach(function (id) { if ($(id)) $(id).disabled = bad; });
+      if ($('spPayOnline')) $('spPayOnline').disabled = bad;
       packs.forEach(function (p) { p.classList.toggle('on', parseInt(p.dataset.amount, 10) === value); });
     }
     packs.forEach(function (p) { p.addEventListener('click', function () { amount.value = p.dataset.amount; calc(); }); });
     amount.addEventListener('input', calc);
     calc();
-    var showManual = $('spShowManual');
-    if (showManual) showManual.addEventListener('click', function () {
-      $('spManualPay').hidden = false; showManual.hidden = true;
-      var first = $('spManualPay').querySelector('input[name=sender_number]'); if (first) first.focus();
-    });
   }
-  document.querySelectorAll('.sp-copy').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var text = btn.dataset.copy;
-      var done = function () { btn.classList.add('done'); btn.textContent = 'কপি হয়েছে'; setTimeout(function () { btn.classList.remove('done'); btn.textContent = 'কপি'; }, 1500); };
-      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, function () {});
-      else { window.prompt('নম্বরটা কপি করুন:', text); }
-    });
-  });
 
   // ── ইতিহাস ──
   document.querySelectorAll('.sp-tabs button').forEach(function (tab) {

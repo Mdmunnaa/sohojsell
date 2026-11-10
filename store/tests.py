@@ -1755,24 +1755,46 @@ class SmsPanelTests(ShopTestMixin, TestCase):
         profile.save()
         html = self.client.get(reverse('sms_panel')).content.decode()
         self.assertIn('SMS কিনতে দোকানের মালিককে বলুন', html)
-        self.client.post(reverse('sms_buy'), {'amount': '200', 'method': 'manual', 'payment_method': 'bKash',
-                                              'sender_number': '01799999999', 'transaction_id': 'ABC123XYZ'})
-        self.assertFalse(PaymentRequest.objects.exists())
+        self.client.post(reverse('sms_buy'), {'amount': '200'})
+        self.assertFalse(OnlinePayment.objects.exists())
 
-    def test_buy_by_bkash_and_approve_at_current_rate(self):
+    def test_buy_online_like_edumi(self):
         from . import sms
         from .models import MasterSetting
-        response = self.client.post(reverse('sms_buy'), {'amount': '20', 'method': 'manual'})
-        self.assertRedirects(response, reverse('sms_panel') + '#buy', fetch_redirect_response=False)
-        self.assertFalse(PaymentRequest.objects.exists())
-        self.client.post(reverse('sms_buy'), {'amount': '300', 'method': 'manual', 'payment_method': 'bKash',
-                                              'sender_number': '01799999999', 'transaction_id': 'abc123xyz'})
-        request = PaymentRequest.objects.get()
-        self.assertEqual((request.plan_name, request.amount, request.transaction_id),
-                         (sms.MANUAL_REQUEST_NAME, Decimal('300'), 'ABC123XYZ'))
+        fake = FakePayStation()
+        with mock.patch('store.paystation.requests.post', side_effect=fake), \
+                override_settings(PAYSTATION_TEST_SHOPS=[self.shop.slug]):
+            response = self.client.post(reverse('sms_buy'), {'amount': '20'})
+            self.assertRedirects(response, reverse('sms_panel') + '#buy', fetch_redirect_response=False)
+            self.assertFalse(OnlinePayment.objects.exists())
+            response = self.client.post(reverse('sms_buy'), {'amount': '300'})
+            self.assertRedirects(response, 'https://sandbox.paystation.com.bd/checkout/test', fetch_redirect_response=False)
+            payment = OnlinePayment.objects.get()
+            self.assertEqual((payment.kind, payment.amount, payment.sms_count), ('sms', Decimal('300'), 750))
+            fake.v1 = {'status': 'Success', 'amount': '300'}
+            back = self.client.get(reverse('paystation_callback'), {'inv': payment.invoice_number})
+        self.assertRedirects(back, reverse('sms_panel'), fetch_redirect_response=False)
+        self.assertEqual(self.balance(), 850)
+        # আগে bKash-এ জমা দেওয়া পুরনো অনুরোধ মানলে এখনকার রেটে যোগ হয়
         MasterSetting.objects.create(sms_rate=Decimal('0.35'))
-        self.assertEqual(sms.approve_manual_request(request), 857)
-        self.assertEqual(self.balance(), 957)
+        old = PaymentRequest.objects.create(shop=self.shop, plan_name=sms.MANUAL_REQUEST_NAME, payment_method='bKash',
+                                            sender_number='01799999999', transaction_id='OLD123', amount=Decimal('300'))
+        self.assertEqual(sms.approve_manual_request(old), 857)
+
+    def test_gateway_uses_env_keys_and_non_masking(self):
+        from . import sms
+        from .models import MasterSetting
+        MasterSetting.objects.create(sms_client_id='old', sms_api_key='old', sms_sender_id='BRAND')
+        response = mock.Mock()
+        response.json.return_value = {'response_code': 200, 'message': 'ok'}
+        with override_settings(SMS_GATEWAY_CLIENT_ID='env-client', SMS_GATEWAY_API_KEY='env-key'), \
+                mock.patch('requests.post', return_value=response) as post:
+            self.assertEqual(sms.gateway_send(['01711111111', '01722222222'], 'hi'), (True, 'ok'))
+        payload = post.call_args.kwargs['json']
+        self.assertEqual(payload, {'client_id': 'env-client', 'key': 'env-key',
+                                   'recipient': '01711111111,01722222222', 'message': 'hi'})   # sender_id নেই
+        with override_settings(SMS_GATEWAY_CLIENT_ID='', SMS_GATEWAY_API_KEY=''):
+            self.assertEqual(sms.gateway_keys(), ('old', 'old'))
 
     def test_online_sms_codes(self):
         from .payments import resolve_item

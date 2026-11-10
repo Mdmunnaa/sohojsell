@@ -27,7 +27,7 @@ Render আর Cloudflare দুটোই নিজে থেকে নতুন 
    - Build variables: `DATABASE_URL` = Render-এর DATABASE_URL (Encrypt চাপুন)
    - তারপর Deploy। প্রথম build-এ ৫–১০ মিনিট লাগতে পারে।
 3. **Secrets দিন** — Worker `sellpunch` → Settings → Variables and Secrets → Add।
-   Render → Environment-এ যত Key আছে (SECRET_KEY, DATABASE_URL, R2_…, PAYSTATION_…, FACEBOOK_…, SITE_URL ইত্যাদি)
+   Render → Environment-এ যত Key আছে (SECRET_KEY, DATABASE_URL, R2_…, PAYSTATION_…, SMS_GATEWAY_…, FACEBOOK_…, SITE_URL ইত্যাদি)
    সবগুলো একই নাম আর মানে **Type: Secret** দিয়ে বসান। `DEBUG`, `PRIMARY_HOST`, `KEEP_WARM` দেবেন না।
    এখানে দেওয়া সব লেখা কন্টেইনারে environment variable হয়ে যায়।
 4. ২–৩ মিনিট পর **https://cf.sellpunch.com** খুলুন। প্রথমবার Cloudflare সার্ভার বানাতে কয়েক মিনিট নেয়;
