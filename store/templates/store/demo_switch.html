@@ -1,0 +1,27 @@
+{% load static %}<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>লাইভ ডেমো — {{ site.name }}</title>
+{% include 'store/partials/brand_head.html' %}
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Hind Siliguri',sans-serif;background:#F7F7FB;color:#0F1222;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;box-sizing:border-box}
+.box{background:#fff;border:1px solid #E7E8F0;border-radius:18px;padding:34px 30px;max-width:460px;width:100%;box-shadow:0 20px 50px -24px rgba(15,18,34,.25);text-align:center}
+h1{font-size:22px;margin:16px 0 8px}p{color:#3B3F55;line-height:1.7;margin:0 0 22px;font-size:15.5px}
+.btn{display:block;width:100%;box-sizing:border-box;padding:13px 18px;border-radius:100px;font-weight:700;font-size:15px;border:1.5px solid transparent;cursor:pointer;font-family:inherit;text-decoration:none;margin-top:10px}
+.brand{background:linear-gradient(135deg,#D63A2F,#F0604A);color:#fff}.out{background:#fff;border-color:#E7E8F0;color:#0F1222}
+</style>
+</head>
+<body>
+<div class="box">
+  <img src="{% static 'brand/sellpunch-logo.svg' %}" alt="{{ site.name }}" style="height:30px">
+  <h1>আপনি এখন "{{ request.user.name|default:request.user.phone_number }}" হিসেবে লগইন আছেন</h1>
+  <p>ডেমো দোকানটা দেখতে হলে এই অ্যাকাউন্ট থেকে লগআউট হয়ে ডেমো সেলার হিসেবে ঢুকতে হবে। পরে আবার নিজের নম্বর দিয়ে লগইন করতে পারবেন।</p>
+  <form method="post">{% csrf_token %}
+    <button type="submit" class="btn brand">লগআউট করে ডেমোতে ঢুকুন</button>
+  </form>
+  <a href="{% if request.user.is_superuser %}{% url 'master_dashboard' %}{% else %}{% url 'dashboard' %}{% endif %}" class="btn out">না, নিজের ড্যাশবোর্ডে ফিরি</a>
+</div>
+</body>
+</html>

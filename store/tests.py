@@ -3045,12 +3045,39 @@ class DemoShopTests(TestCase):
         self.assertEqual(self.client.get(reverse('demo_store')).url, self.shop.storefront_url)
         self.assertEqual(self.client.get(self.shop.storefront_url).status_code, 200)
 
-    def test_logged_in_seller_is_not_switched_to_demo(self):
+    def test_logged_in_seller_is_asked_before_switching(self):
         user = User.objects.create_user(phone_number='01755555555', password='Test-pass-123')
         Shop.objects.create(user=user, name='Real', phone='01755555555', address='Dhaka')
         self.client.force_login(user)
-        self.assertRedirects(self.client.get(reverse('demo_start')), reverse('dashboard'), fetch_redirect_response=False)
-        self.assertEqual(int(self.client.session['_auth_user_id']), user.pk)
+        response = self.client.get(reverse('demo_start') + '?to=pos')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('লগআউট করে ডেমোতে ঢুকুন', response.content.decode())
+        self.assertEqual(int(self.client.session['_auth_user_id']), user.pk)      # এখনো নিজের অ্যাকাউন্টে
+        response = self.client.post(reverse('demo_start') + '?to=pos')
+        self.assertRedirects(response, '/pos/', fetch_redirect_response=False)
+        self.assertEqual(int(self.client.session['_auth_user_id']), self.shop.user.pk)
+
+    def test_demo_never_takes_over_a_real_account(self):
+        from store import demo
+        # কেউ 01700000001 নম্বরে আসল দোকান খুলে রেখেছে — ডেমো অন্য নম্বর নেয়, ওই দোকানে হাত দেয় না
+        Shop.objects.filter(is_demo=True).delete()
+        User.objects.filter(phone_number__in=[demo.DEMO_PHONE, demo.DEMO_STAFF_PHONE]).delete()
+        real = User.objects.create_user(phone_number=demo.DEMO_PHONE, password='Test-pass-123', name='আসল মানুষ')
+        real_shop = Shop.objects.create(user=real, name='আসল দোকান', phone=demo.DEMO_PHONE, address='Dhaka')
+        shop = demo.build()
+        self.assertNotEqual(shop.pk, real_shop.pk)
+        self.assertNotEqual(shop.user.phone_number, demo.DEMO_PHONE)
+        real.refresh_from_db()
+        real_shop.refresh_from_db()
+        self.assertEqual((real.name, real_shop.name, real_shop.is_demo), ('আসল মানুষ', 'আসল দোকান', False))
+        self.assertTrue(real.check_password('Test-pass-123'))
+
+    def test_homepage_shows_demo_error_message(self):
+        from store import demo
+        with mock.patch('store.demo.build', side_effect=RuntimeError('boom')):
+            Shop.objects.filter(is_demo=True).delete()
+            response = self.client.get(reverse('demo_start'), follow=True)
+        self.assertIn('ডেমো এখন চালু নেই', response.content.decode())
 
     def test_demo_blocks_settings_billing_and_deletes(self):
         from store import demo

@@ -36,6 +36,7 @@ HISTORY_DAYS = 90
 PHOTO_DIR = Path(__file__).resolve().parent / 'demo' / 'photos'
 BLOCKED_MESSAGE = 'ডেমোতে এটা বদলানো যায় না। নিজের দোকান খুললে সবকিছু করতে পারবেন।'
 ZERO = Decimal('0')
+LAST_ERROR = ''          # শেষবার ডেমো বানাতে গিয়ে কী ভুল হয়েছিল (মাস্টারকে দেখানোর জন্য)
 
 # ডেমোতে POST করা যাবে না এমন জায়গা (যা বদলালে ডেমো ভেঙে যায় বা বাইরে টাকা/SMS যায়)
 BLOCKED_PREFIXES = ('/settings/', '/billing/', '/payment/', '/staff/', '/sms/buy/', '/facebook/', '/setup-shop/',
@@ -206,13 +207,17 @@ def reset_if_stale(max_age=RESET_AFTER):
     ২৪ ঘণ্টা পার হলে ডেমো আবার আগের মতো করে। একসাথে দুজন এলে একজনই করে (আগে সময়টা বসিয়ে নেয়)।
     ডেমো দোকান না থাকলে বানায়। ফেরত: দোকান (না বানাতে পারলে None)।
     """
+    global LAST_ERROR
     from .models import Shop
     shop = demo_shop()
     if shop is None:
         try:
-            return build()
-        except Exception:
+            shop = build()
+            LAST_ERROR = ''
+            return shop
+        except Exception as exc:    # noqa: BLE001 — ডেমো না থাকলে সাইট আটকাবে না
             logger.exception('Demo shop could not be built')
+            LAST_ERROR = f'{type(exc).__name__}: {exc}'
             return None
     now = timezone.now()
     claimed = (Shop.objects.filter(pk=shop.pk)
@@ -221,22 +226,45 @@ def reset_if_stale(max_age=RESET_AFTER):
     if claimed:
         try:
             build()
-        except Exception:
+            LAST_ERROR = ''
+        except Exception as exc:    # noqa: BLE001
             logger.exception('Demo shop reset failed')
+            LAST_ERROR = f'{type(exc).__name__}: {exc}'
             Shop.objects.filter(pk=shop.pk).update(demo_reset_at=None)
     return shop
 
 
-def _shop():
+def _demo_user(existing, first_phone, name):
+    """
+    ডেমোর ইউজার: আগেরটা থাকলে সেটাই; নইলে এমন নম্বরে নতুন বানায় যেটা কোনো আসল মানুষের না
+    (01700000001 কেউ টেস্ট করতে নিয়ে থাকলে আসল অ্যাকাউন্ট ছোঁয়া হয় না — পরের খালি নম্বর নেয়)।
+    """
     from django.contrib.auth import get_user_model
-    from .models import Shop
     User = get_user_model()
-    user, created = User.objects.get_or_create(phone_number=DEMO_PHONE, defaults={'name': 'ডেমো সেলার'})
-    if created or user.has_usable_password():
-        user.set_unusable_password()
-    user.name, user.is_active, user.is_staff, user.is_superuser = 'ডেমো সেলার', True, False, False
+    user = existing
+    if user is None:
+        for step in range(0, 100):
+            phone = str(int(first_phone) + step * 10).zfill(11)
+            found = User.objects.filter(phone_number=phone).first()
+            if found is None:
+                user = User(phone_number=phone, name=name)
+                break
+            if not (found.is_superuser or found.is_staff or hasattr(found, 'shop') or hasattr(found, 'staff_profile')):
+                user = found
+                break
+        else:
+            raise RuntimeError('ডেমোর জন্য খালি মোবাইল নম্বর পাওয়া যায়নি')
+    user.set_unusable_password()
+    user.name, user.is_active, user.is_staff, user.is_superuser = name, True, False, False
     user.save()
-    shop = Shop.objects.filter(user=user).first() or Shop(user=user)
+    return user
+
+
+def _shop():
+    from .models import Shop
+    shop = Shop.objects.filter(is_demo=True).select_related('user').first()
+    user = _demo_user(shop.user if shop else None, DEMO_PHONE, 'ডেমো সেলার')
+    shop = shop or Shop(user=user)
     other = Shop.objects.filter(slug=DEMO_SLUG).exclude(user=user).first()
     shop.slug = DEMO_SLUG if other is None else 'demo-shop'
     shop.name, shop.is_demo = SHOP_NAME, True
@@ -352,14 +380,9 @@ def _zones(shop):
 
 
 def _staff(shop):
-    from django.contrib.auth import get_user_model
     from .models import StaffProfile
-    User = get_user_model()
-    user, created = User.objects.get_or_create(phone_number=DEMO_STAFF_PHONE, defaults={'name': 'রাকিব (ক্যাশিয়ার)'})
-    if created or user.has_usable_password():
-        user.set_unusable_password()
-    user.name, user.is_active, user.is_staff, user.is_superuser = 'রাকিব (ক্যাশিয়ার)', True, False, False
-    user.save()
+    current = StaffProfile.objects.filter(shop=shop).select_related('user').first()
+    user = _demo_user(current.user if current else None, DEMO_STAFF_PHONE, 'রাকিব (ক্যাশিয়ার)')
     StaffProfile.objects.filter(shop=shop).exclude(user=user).delete()
     StaffProfile.objects.update_or_create(user=user, defaults={
         'shop': shop, 'can_use_pos': True, 'can_manage_products': False, 'can_manage_orders': True,
