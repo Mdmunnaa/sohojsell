@@ -813,12 +813,12 @@ class SoldCountTests(ShopTestMixin, TestCase):
 
     def test_shows_only_real_sold_count(self):
         html = self.client.get('/shop/soldshop/', HTTP_HOST='localhost').content.decode()
-        self.assertIn('3টা বিক্রি হয়েছে', html)          # শুধু Delivered + Shipped
+        self.assertIn('৩টা বিক্রি হয়েছে', html)          # শুধু Delivered + Shipped
         self.assertNotRegex(html, r'\d(\.\d)?/5(?!\d)')          # বানানো রেটিং নেই (প্রোডাক্ট id-তে /5.. থাকতে পারে)
         self.assertNotIn('-15%', html)
         self.assertEqual(html.count('বিক্রি হয়েছে'), 1)    # Lungi বিক্রি হয়নি, তাই কিছু দেখায় না
         detail = self.client.get(f'/shop/soldshop/product/{self.product.id}/', HTTP_HOST='localhost').content.decode()
-        self.assertIn('3টা বিক্রি হয়েছে', detail)
+        self.assertIn('৩টা বিক্রি হয়েছে', detail)
         self.assertNotIn('4.9/5', detail)
 
     def test_seller_can_turn_it_off(self):
