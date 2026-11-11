@@ -883,6 +883,8 @@ def master_dashboard(request):
         shop__is_demo=False, status__in=['Delivered', 'Shipped', 'Pending']
     ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     recent_shops = Shop.objects.filter(is_demo=False).order_by('-id')[:10]
+    from . import health
+    system_warnings = health.warnings()
 
     from .models import PaymentRequest
     pending_payments = PaymentRequest.objects.filter(status='Pending').select_related('shop').order_by('-created_at')
@@ -891,6 +893,7 @@ def master_dashboard(request):
 
     from . import domains
     return render(request, 'store/master_dashboard.html', {
+        'system_warnings': system_warnings,
         'pending_domains': list(domains.pending_for_master()),
         'total_shops': total_shops, 'total_users': total_users,
         'total_platform_orders': total_orders, 'total_sales_volume': total_sales,
