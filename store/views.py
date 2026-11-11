@@ -30,6 +30,8 @@ from . import couriers, offers, order_flow, reviews, risk, sms, variants
 from .themes import THEMES
 from django.urls import reverse
 
+BN_TO_EN_DIGITS = str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789')
+
 
 # ============================================================
 # LANDING PAGE
@@ -343,13 +345,14 @@ def order_list(request):
     shop = request.user.shop
     orders = Order.objects.filter(shop=shop).select_related('customer').order_by('-id')
 
-    search_query = request.GET.get('q', '')
+    search_query = request.GET.get('q', '').strip()
     if search_query:
-        orders = orders.filter(
-            Q(id__icontains=search_query) |
-            Q(customer__name__icontains=search_query) |
-            Q(customer__phone__icontains=search_query)
-        )
+        # "#1269", "ORD-1269" বা বাংলা সংখ্যা দিলেও অর্ডার নম্বর ধরে
+        number = search_query.lstrip('#').upper().removeprefix('ORD-').translate(BN_TO_EN_DIGITS)
+        query = Q(customer__name__icontains=search_query) | Q(customer__phone__icontains=search_query.translate(BN_TO_EN_DIGITS))
+        if number.isdigit():
+            query |= Q(id=int(number))
+        orders = orders.filter(query)
 
     status_filter = request.GET.get('status', '')
     if status_filter:
@@ -1686,12 +1689,14 @@ def storefront_orders(request):
     shop = request.user.shop
     sf_orders = StorefrontOrder.objects.filter(shop=shop).order_by('-created_at')
 
-    search = request.GET.get('q', '')
+    search = request.GET.get('q', '').strip()
     if search:
-        sf_orders = sf_orders.filter(
-            Q(customer_name__icontains=search) |
-            Q(customer_phone__icontains=search)
-        )
+        query = Q(customer_name__icontains=search) | Q(customer_phone__icontains=search)
+        # অর্ডার নম্বর দিয়েও খোঁজা যায় (#1269, SF-539 বা শুধু 1269) — মূল অর্ডারের নম্বরই দেখানো হয়
+        number = search.lstrip('#').upper().removeprefix('ORD-').removeprefix('SF-').translate(BN_TO_EN_DIGITS)
+        if number.isdigit():
+            query |= Q(order_id=int(number)) | Q(id=int(number))
+        sf_orders = sf_orders.filter(query)
 
     status_filter = request.GET.get('status', '')
     if status_filter:
@@ -1706,6 +1711,8 @@ def storefront_orders(request):
         'sf_orders': sf_orders,
         'search': search,
         'status_filter': status_filter,
+        'pending_count': StorefrontOrder.objects.filter(shop=shop, status='Pending').count(),
+        'status_bn': order_flow.STATUS_BN,
     })
 
 
@@ -1727,7 +1734,7 @@ def storefront_order_update_status(request, order_id):
             except order_flow.FlowError as exc:
                 messages.error(request, str(exc))
             else:
-                messages.success(request, f'অর্ডার #SF-{sf_order.id} এখন "{order_flow.STATUS_BN[new_status]}"।')
+                messages.success(request, f'অর্ডার #{sf_order.order_id or f"SF-{sf_order.id}"} এখন "{order_flow.STATUS_BN[new_status]}"।')
     return redirect('storefront_orders')
 
 

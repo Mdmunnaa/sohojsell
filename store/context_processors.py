@@ -45,9 +45,12 @@ def plan_info(request):
     if shop is None:
         return {}
     from .plans import limits_for, plan_label
-    from .models import ProductReview
+    from .models import Order, ProductReview
     limits = limits_for(shop)
-    return {'pending_reviews': ProductReview.objects.filter(shop=shop, is_approved=False).count(), 'plan': {
+    return {'pending_reviews': ProductReview.objects.filter(shop=shop, is_approved=False).count(),
+            # সাইডবারে লাল সংখ্যা: ওয়েবসাইটের যে অর্ডারগুলো এখনো "নতুন" (দেখা/কনফার্ম হয়নি)
+            'pending_web_orders': Order.objects.filter(shop=shop, source='storefront', status='Pending').count(),
+            'plan': {
         'label': plan_label(shop),
         'is_trial': shop.subscription_plan == 'Free',
         'products': limits['products'],

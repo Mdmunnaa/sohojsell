@@ -3183,3 +3183,40 @@ class HealthzTests(TestCase):
     def test_healthz_is_instant_and_public(self):
         response = self.client.get('/healthz/')
         self.assertEqual((response.status_code, response.content), (200, b'ok'))
+
+
+class WebOrderNumberTests(ShopTestMixin, TestCase):
+    """ওয়েবসাইটের অর্ডার আর সব অর্ডার — এক অর্ডার, এক নম্বর; সাইডবারে নতুন অর্ডারের সংখ্যা।"""
+
+    def setUp(self):
+        from store.models import Customer, StorefrontOrder
+        self.user, self.shop = self.make_shop()
+        self.customer = Customer.objects.create(shop=self.shop, name='কাস্টমার', phone='01811111111', address='ঢাকা')
+        self.order = Order.objects.create(shop=self.shop, customer=self.customer, source='storefront', status='Pending',
+                                          total_amount=470, delivery_charge=0)
+        self.sf = StorefrontOrder.objects.create(shop=self.shop, customer_name='কাস্টমার', customer_phone='01811111111',
+                                                 customer_address='ঢাকা', total_amount=470, order=self.order)
+        self.client.force_login(self.user)
+
+    def test_web_orders_page_shows_main_order_number(self):
+        html = self.client.get(reverse('storefront_orders')).content.decode()
+        self.assertIn(f'#{self.order.id}', html)
+        self.assertNotIn(f'#SF-{self.sf.id}', html)
+        self.assertIn('নতুন', html)
+        for q in (f'#{self.order.id}', f'ORD-{self.order.id}', str(self.order.id)):
+            self.assertIn(f'#{self.order.id}', self.client.get(reverse('storefront_orders') + f'?q={q}').content.decode())
+        self.assertNotIn('<td>', self.client.get(reverse('storefront_orders') + '?q=999999').content.decode().split('<tbody>')[1].split('</tr>')[0].replace('<td colspan', ''))
+
+    def test_all_orders_search_accepts_hash_and_bangla_digits(self):
+        bn = str(self.order.id).translate(str.maketrans('0123456789', '০১২৩৪৫৬৭৮৯'))
+        for q in (f'#{self.order.id}', f'ord-{self.order.id}', bn):
+            html = self.client.get(reverse('order_list') + f'?q={q}').content.decode()
+            self.assertIn(f'#{self.order.id}', html)
+
+    def test_sidebar_counts_pending_web_orders(self):
+        badge = 'class="badge ms-auto sb-new-badge"'
+        html = self.client.get(reverse('dashboard')).content.decode()
+        self.assertEqual(html.count(badge), 2)          # "সব অর্ডার" আর "ওয়েবসাইটের অর্ডার" দুটোতেই
+        self.assertIn('sb-new-badge" title="ওয়েবসাইটের নতুন অর্ডার">1</span>', html)
+        Order.objects.filter(pk=self.order.pk).update(status='Confirmed')
+        self.assertNotIn(badge, self.client.get(reverse('dashboard')).content.decode())

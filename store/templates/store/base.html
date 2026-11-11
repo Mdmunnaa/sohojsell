@@ -269,6 +269,8 @@
     }
 
     /* Page content */
+    .sb-new-badge { font-size:10.5px; background:#EF4444; color:#fff; font-weight:700; min-width:20px; padding:3px 6px; border-radius:999px; box-shadow:0 0 0 3px rgba(239,68,68,.2); }
+    .sidebar.collapsed .sb-new-badge { display:inline-block; position:absolute; top:6px; right:10px; margin:0; padding:2px 5px; min-width:16px; font-size:9px; }
     .demo-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
       padding: 10px 24px; background: linear-gradient(90deg,#FEF3C7,#FDE68A); color:#78350F; font-size:13.5px; border-bottom:1px solid #FCD34D; }
     .demo-bar-text { flex: 1 1 320px; min-width: 0; }
@@ -391,9 +393,11 @@
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_orders %}
         <a href="{% url 'order_list' %}" class="sb-link {% if request.resolver_match.url_name == 'order_list' %}active{% endif %}">
           <i class="bi bi-cart-check"></i> <span class="sb-text-hide">সব অর্ডার</span>
+          {% if pending_web_orders %}<span class="badge ms-auto sb-new-badge" title="ওয়েবসাইটের নতুন অর্ডার">{{ pending_web_orders }}</span>{% endif %}
         </a>
         <a href="{% url 'storefront_orders' %}" class="sb-link {% if request.resolver_match.url_name == 'storefront_orders' %}active{% endif %}">
           <i class="bi bi-globe"></i> <span class="sb-text-hide">ওয়েবসাইটের অর্ডার</span>
+          {% if pending_web_orders %}<span class="badge ms-auto sb-new-badge" title="নতুন অর্ডার — এখনো কনফার্ম হয়নি">{{ pending_web_orders }}</span>{% endif %}
         </a>
         <a href="{% url 'courier' %}" class="sb-link {% if request.resolver_match.url_name == 'courier' %}active{% endif %}">
           <i class="bi bi-truck"></i> <span class="sb-text-hide">কুরিয়ার</span>

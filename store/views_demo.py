@@ -72,8 +72,3 @@ def demo_check(request):
             f'<p><a href="/demo/">/demo/</a> · <a href="/saas-master/">মাস্টার</a></p></body>')
     return HttpResponse(html, status=status)
 
-
-def healthz(request):
-    """Render-এর health check: ডেটাবেস না ছুঁয়ে সাথে সাথে "ok" — deploy যেন ডেটাবেস ধীর হলে আটকে না যায়।"""
-    from django.http import HttpResponse
-    return HttpResponse('ok', content_type='text/plain')

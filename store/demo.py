@@ -431,7 +431,7 @@ def _history(shop, rng, products, staff_user):
             n_pos = max(3, n_pos // 2)
 
         for _ in range(n_web):
-            when = _at(day, rng.randint(9, 23), rng.randint(0, 59))
+            when = _clock(rng, day, 9, 23, back)
             customer = rng.choice(risky) if rng.random() < 0.06 else web_pick()
             lines = _lines(rng, products, weights, max_lines=3)
             subtotal = sum(price * qty for _p, _v, price, qty in lines)
@@ -463,7 +463,7 @@ def _history(shop, rng, products, staff_user):
                 landing_orders.append(order)
 
         for _ in range(n_pos):
-            when = _at(day, rng.randint(10, 21), rng.randint(0, 59))
+            when = _clock(rng, day, 10, 21, back)
             lines = _lines(rng, products, weights, max_lines=4)
             subtotal = sum(price * qty for _p, _v, price, qty in lines)
             discount = ZERO
@@ -616,6 +616,17 @@ def _history(shop, rng, products, staff_user):
 
     return {'orders': orders, 'web_customers': web_customers, 'coupons_used': coupons_used,
             'landing_orders': landing_orders, 'walk_in': walk_in}
+
+
+def _clock(rng, day, first_hour, last_hour, days_ago):
+    """দিনের একটা সময়; আজকের অর্ডার কখনো "ভবিষ্যতে" (এখনকার পরে) পড়ে না।"""
+    if days_ago == 0:
+        now = timezone.localtime()
+        last_hour = min(last_hour, max(first_hour, now.hour))
+        hour = rng.randint(first_hour, last_hour)
+        minute = rng.randint(0, max(0, now.minute - 1)) if hour == now.hour else rng.randint(0, 59)
+        return _at(day, hour, minute)
+    return _at(day, rng.randint(first_hour, last_hour), rng.randint(0, 59))
 
 
 def _lines(rng, products, weights, max_lines):

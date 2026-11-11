@@ -1,35 +1,39 @@
 {% extends 'store/base.html' %}
+{% load bangla %}
 {% block page_title %}ওয়েবসাইটের অর্ডার{% endblock %}
-{% block title %}Online Orders{% endblock %}
+{% block title %}ওয়েবসাইটের অর্ডার - {{ request.user.shop.name }}{% endblock %}
 {% block content %}
 {% include 'store/partials/risk_styles.html' %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h3 class="fw-bold mb-0"><i class="bi bi-globe me-2 text-primary"></i>Online Orders <span class="badge bg-primary ms-2">{{ sf_orders.count }}</span></h3>
-  <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
+  <div>
+    <h3 class="fw-bold mb-1"><i class="bi bi-globe me-2 text-primary"></i>ওয়েবসাইটের অর্ডার {% if pending_count %}<span class="badge bg-danger ms-2">{{ pending_count|bn }}টা নতুন</span>{% endif %}</h3>
+    <p class="text-muted mb-0 small">কাস্টমার নিজে ওয়েবসাইট থেকে যে অর্ডার দিয়েছে। নম্বরটা "সব অর্ডার"-এর নম্বরই — এক অর্ডার, এক নম্বর।</p>
+  </div>
+  <a href="{% url 'order_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-cart-check"></i> সব অর্ডার</a>
 </div>
 
 <div class="card shadow-sm border-0 mb-3">
   <div class="card-body py-2">
     <form class="row g-2 align-items-center" method="GET">
       <div class="col-md-4">
-        <input type="text" name="q" value="{{ search }}" class="form-control form-control-sm" placeholder="🔍 Search by name or phone...">
+        <input type="text" name="q" value="{{ search }}" class="form-control form-control-sm" placeholder="অর্ডার নং, নাম বা মোবাইল নম্বর...">
       </div>
       <div class="col-md-3">
         <select name="status" class="form-select form-select-sm">
-          <option value="">All Status</option>
-          <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
-          <option value="Confirmed" {% if status_filter == 'Confirmed' %}selected{% endif %}>Confirmed</option>
-          <option value="Shipped" {% if status_filter == 'Shipped' %}selected{% endif %}>Shipped</option>
-          <option value="Delivered" {% if status_filter == 'Delivered' %}selected{% endif %}>Delivered</option>
-          <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+          <option value="">সব স্ট্যাটাস</option>
+          <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>নতুন</option>
+          <option value="Confirmed" {% if status_filter == 'Confirmed' %}selected{% endif %}>কনফার্ম</option>
+          <option value="Shipped" {% if status_filter == 'Shipped' %}selected{% endif %}>কুরিয়ারে</option>
+          <option value="Delivered" {% if status_filter == 'Delivered' %}selected{% endif %}>ডেলিভারি হয়েছে</option>
+          <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>বাতিল</option>
         </select>
       </div>
       <div class="col-md-2">
-        <button type="submit" class="btn btn-primary btn-sm w-100">Filter</button>
+        <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-funnel"></i> খুঁজুন</button>
       </div>
       {% if search or status_filter %}
       <div class="col-md-2">
-        <a href="{% url 'storefront_orders' %}" class="btn btn-outline-secondary btn-sm w-100">Clear</a>
+        <a href="{% url 'storefront_orders' %}" class="btn btn-outline-secondary btn-sm w-100">সব দেখুন</a>
       </div>
       {% endif %}
     </form>
@@ -41,43 +45,43 @@
     <table class="table table-hover mb-0">
       <thead class="table-light">
         <tr>
-          <th>#Order</th>
-          <th>Customer</th>
-          <th>Phone</th>
-          <th>Address</th>
-          <th>Total</th>
-          <th>Status</th>
-          <th>Date</th>
-          <th>Action</th>
+          <th>অর্ডার</th>
+          <th>কাস্টমার</th>
+          <th>মোবাইল</th>
+          <th>ঠিকানা</th>
+          <th>টাকা</th>
+          <th>স্ট্যাটাস</th>
+          <th>কখন</th>
+          <th>স্ট্যাটাস বদলান</th>
         </tr>
       </thead>
       <tbody>
         {% for order in sf_orders %}
         <tr>
-          <td><span class="badge bg-light text-dark border fw-bold">#SF-{{ order.id }}</span></td>
+          <td>{% if order.order_id %}<a href="{% url 'order_list' %}?q={{ order.order_id }}" class="badge bg-light text-primary border fw-bold text-decoration-none" title="সব অর্ডারে দেখুন">#{{ order.order_id }}</a>{% else %}<span class="badge bg-light text-dark border fw-bold">#SF-{{ order.id }}</span>{% endif %}</td>
           <td class="fw-semibold">{{ order.customer_name }}</td>
           <td><a href="tel:{{ order.customer_phone }}">{{ order.customer_phone }}</a>
             <div class="mt-1">{% include 'store/partials/risk_chip.html' with r=order.risk %}</div></td>
           <td style="max-width:180px; font-size:13px;">{{ order.customer_address|truncatechars:50 }}</td>
           <td class="fw-bold text-primary">৳{{ order.total_amount|floatformat:0 }}</td>
           <td>
-            {% if order.status == 'Pending' %}<span class="badge bg-warning text-dark">Pending</span>
-            {% elif order.status == 'Confirmed' %}<span class="badge bg-info text-white">Confirmed</span>
-            {% elif order.status == 'Shipped' %}<span class="badge bg-primary">Shipped</span>
-            {% elif order.status == 'Delivered' %}<span class="badge bg-success">Delivered</span>
-            {% elif order.status == 'Cancelled' %}<span class="badge bg-danger">Cancelled</span>
+            {% if order.status == 'Pending' %}<span class="badge bg-warning text-dark">নতুন</span>
+            {% elif order.status == 'Confirmed' %}<span class="badge bg-info text-white">কনফার্ম</span>
+            {% elif order.status == 'Shipped' %}<span class="badge bg-primary">কুরিয়ারে</span>
+            {% elif order.status == 'Delivered' %}<span class="badge bg-success">ডেলিভারি হয়েছে</span>
+            {% elif order.status == 'Cancelled' %}<span class="badge bg-danger">বাতিল</span>
             {% endif %}
           </td>
-          <td style="font-size:12px; color:#6c757d;">{{ order.created_at|date:"d M, H:i" }}</td>
+          <td style="font-size:12px; color:#6c757d; white-space:nowrap;">{{ order.created_at|bn_when }}</td>
           <td>
             <form method="POST" action="{% url 'storefront_order_status' order.id %}" class="d-flex gap-1">
               {% csrf_token %}
               <select name="status" class="form-select form-select-sm" style="width:120px;">
-                <option value="Pending" {% if order.status == 'Pending' %}selected{% endif %}>Pending</option>
-                <option value="Confirmed" {% if order.status == 'Confirmed' %}selected{% endif %}>Confirmed</option>
-                <option value="Shipped" {% if order.status == 'Shipped' %}selected{% endif %}>Shipped</option>
-                <option value="Delivered" {% if order.status == 'Delivered' %}selected{% endif %}>Delivered</option>
-                <option value="Cancelled" {% if order.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                <option value="Pending" {% if order.status == 'Pending' %}selected{% endif %}>নতুন</option>
+                <option value="Confirmed" {% if order.status == 'Confirmed' %}selected{% endif %}>কনফার্ম</option>
+                <option value="Shipped" {% if order.status == 'Shipped' %}selected{% endif %}>কুরিয়ারে</option>
+                <option value="Delivered" {% if order.status == 'Delivered' %}selected{% endif %}>ডেলিভারি হয়েছে</option>
+                <option value="Cancelled" {% if order.status == 'Cancelled' %}selected{% endif %}>বাতিল</option>
               </select>
               <button type="submit" class="btn btn-sm btn-primary">✓</button>
             </form>
@@ -86,7 +90,7 @@
         {% empty %}
         <tr><td colspan="8" class="text-center py-5 text-muted">
           <i class="bi bi-inbox" style="font-size:40px; display:block; margin-bottom:10px;"></i>
-          No online orders yet. Share your store link to get orders!
+          ওয়েবসাইট থেকে এখনো কোনো অর্ডার আসেনি। দোকানের লিংকটা Facebook-এ শেয়ার করুন।
         </td></tr>
         {% endfor %}
       </tbody>
