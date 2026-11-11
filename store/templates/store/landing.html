@@ -1,4 +1,4 @@
-{% load static %}{% load bangla %}<!DOCTYPE html>
+{% load static speed %}{% load bangla %}<!DOCTYPE html>
 <html lang="bn">
 <head>
 <meta charset="UTF-8">
@@ -9,10 +9,8 @@
 <meta property="og:description" content="ওয়েবসাইট, POS, অর্ডার, কুরিয়ার, SMS, বাকির খাতা আর লাভের হিসাব — সব এক জায়গায়। ৩০ দিন ফ্রি, কার্ড লাগে না।">
 {% include 'store/partials/landing_seo.html' %}
 {% include 'store/partials/brand_head.html' %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
-{% include 'store/partials/bn_digit_fix.html' %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+{% include 'store/partials/fonts.html' with hind=1 jakarta=1 %}
+{% include 'store/partials/icons_public.html' %}
 {% include 'store/partials/landing_style.html' %}
 </head>
 <body>
@@ -72,9 +70,9 @@
     <div class="hero-shot">
       <div class="frame">
         <div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/dashboard</i></div>
-        <img src="{% static 'landing/dashboard.webp' %}" alt="{{ site.name }} সেলার ড্যাশবোর্ড — আজকের বিক্রি, লাভ, নতুন অর্ডার" width="1800" height="1125" fetchpriority="high">
+        <img src="{% static 'landing/dashboard.webp' %}" srcset="{% img_srcset 'landing/dashboard.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="{{ site.name }} সেলার ড্যাশবোর্ড — আজকের বিক্রি, লাভ, নতুন অর্ডার" width="1800" height="1125" fetchpriority="high">
       </div>
-      <div class="phone hero-phone"><img src="{% static 'landing/shop-phone.webp' %}" alt="মোবাইলে দোকানের ওয়েবসাইট" width="780" height="1688" loading="lazy"></div>
+      <div class="phone hero-phone"><img src="{% static 'landing/shop-phone.webp' %}" srcset="{% img_srcset 'landing/shop-phone.webp' 780 %}" sizes="(max-width: 900px) 36vw, 230px" alt="মোবাইলে দোকানের ওয়েবসাইট" width="780" height="1688" loading="lazy"></div>
       <div class="hero-badge"><div class="ic"><i class="bi bi-bag-check-fill"></i></div><div><b>নতুন অর্ডার এসেছে</b>কাস্টমারকে SMS চলে গেছে</div></div>
     </div>
   </div>
@@ -149,12 +147,12 @@
         <a href="{% url 'demo_store' %}" class="feat-link">ডেমো দোকানটা কাস্টমার যেভাবে দেখে <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>demo.{{ site.store_domain }}</i></div><img src="{% static 'landing/shop.webp' %}" alt="দোকানের ওয়েবসাইট — ব্যানার, ক্যাটাগরি, প্রোডাক্ট" width="1800" height="1125" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>demo.{{ site.store_domain }}</i></div><img src="{% static 'landing/shop.webp' %}" srcset="{% img_srcset 'landing/shop.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="দোকানের ওয়েবসাইট — ব্যানার, ক্যাটাগরি, প্রোডাক্ট" width="1800" height="1125" loading="lazy"></div>
         <div class="designs">
-          <figure><img src="{% static 'landing/design-classic.webp' %}" alt="ক্লাসিক ডিজাইন" loading="lazy"><figcaption>ক্লাসিক</figcaption></figure>
-          <figure><img src="{% static 'landing/design-minimal.webp' %}" alt="মিনিমাল ডিজাইন" loading="lazy"><figcaption>মিনিমাল</figcaption></figure>
-          <figure><img src="{% static 'landing/design-bold.webp' %}" alt="বোল্ড ডিজাইন" loading="lazy"><figcaption>বোল্ড</figcaption></figure>
-          <figure><img src="{% static 'landing/design-soft.webp' %}" alt="সফট ডিজাইন" loading="lazy"><figcaption>সফট</figcaption></figure>
+          <figure><img src="{% static 'landing/design-classic.webp' %}" srcset="{% img_srcset 'landing/design-classic.webp' 1200 %}" sizes="(max-width: 900px) 45vw, 230px" width="1200" height="750" alt="ক্লাসিক ডিজাইন" loading="lazy"><figcaption>ক্লাসিক</figcaption></figure>
+          <figure><img src="{% static 'landing/design-minimal.webp' %}" srcset="{% img_srcset 'landing/design-minimal.webp' 1200 %}" sizes="(max-width: 900px) 45vw, 230px" width="1200" height="750" alt="মিনিমাল ডিজাইন" loading="lazy"><figcaption>মিনিমাল</figcaption></figure>
+          <figure><img src="{% static 'landing/design-bold.webp' %}" srcset="{% img_srcset 'landing/design-bold.webp' 1200 %}" sizes="(max-width: 900px) 45vw, 230px" width="1200" height="750" alt="বোল্ড ডিজাইন" loading="lazy"><figcaption>বোল্ড</figcaption></figure>
+          <figure><img src="{% static 'landing/design-soft.webp' %}" srcset="{% img_srcset 'landing/design-soft.webp' 1200 %}" sizes="(max-width: 900px) 45vw, 230px" width="1200" height="750" alt="সফট ডিজাইন" loading="lazy"><figcaption>সফট</figcaption></figure>
         </div>
       </div>
     </div>
@@ -172,8 +170,8 @@
         </ul>
       </div>
       <div class="feat-shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/pos</i></div><img src="{% static 'landing/pos.webp' %}" alt="POS স্ক্রিন — প্রোডাক্ট, বিল, পেমেন্ট" width="1800" height="1125" loading="lazy"></div>
-        <div class="phone"><img src="{% static 'landing/pos-phone.webp' %}" alt="মোবাইলে POS" width="780" height="1688" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/pos</i></div><img src="{% static 'landing/pos.webp' %}" srcset="{% img_srcset 'landing/pos.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="POS স্ক্রিন — প্রোডাক্ট, বিল, পেমেন্ট" width="1800" height="1125" loading="lazy"></div>
+        <div class="phone"><img src="{% static 'landing/pos-phone.webp' %}" srcset="{% img_srcset 'landing/pos-phone.webp' 780 %}" sizes="(max-width: 900px) 36vw, 230px" alt="মোবাইলে POS" width="780" height="1688" loading="lazy"></div>
       </div>
     </div>
 
@@ -190,8 +188,8 @@
         </ul>
       </div>
       <div class="feat-shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/orders</i></div><img src="{% static 'landing/orders.webp' %}" alt="অর্ডারের তালিকা — স্ট্যাটাস, কুরিয়ার, ঝুঁকি" width="1800" height="1125" loading="lazy"></div>
-        <div class="phone"><img src="{% static 'landing/track-phone.webp' %}" alt="কাস্টমারের অর্ডার ট্র্যাকিং পেজ" width="780" height="1688" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/orders</i></div><img src="{% static 'landing/orders.webp' %}" srcset="{% img_srcset 'landing/orders.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="অর্ডারের তালিকা — স্ট্যাটাস, কুরিয়ার, ঝুঁকি" width="1800" height="1125" loading="lazy"></div>
+        <div class="phone"><img src="{% static 'landing/track-phone.webp' %}" srcset="{% img_srcset 'landing/track-phone.webp' 780 %}" sizes="(max-width: 900px) 36vw, 230px" alt="কাস্টমারের অর্ডার ট্র্যাকিং পেজ" width="780" height="1688" loading="lazy"></div>
       </div>
     </div>
 
@@ -208,7 +206,7 @@
         </ul>
       </div>
       <div class="feat-shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/reports</i></div><img src="{% static 'landing/reports.webp' %}" alt="ব্যবসার রিপোর্ট — বিক্রি, লাভ, খরচ" width="1800" height="1125" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/reports</i></div><img src="{% static 'landing/reports.webp' %}" srcset="{% img_srcset 'landing/reports.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="ব্যবসার রিপোর্ট — বিক্রি, লাভ, খরচ" width="1800" height="1125" loading="lazy"></div>
       </div>
     </div>
 
@@ -224,7 +222,7 @@
         </ul>
       </div>
       <div class="feat-shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/dues</i></div><img src="{% static 'landing/dues.webp' %}" alt="বাকির খাতা — কার কাছে কত বাকি, তাগাদা SMS" width="1800" height="1125" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/dues</i></div><img src="{% static 'landing/dues.webp' %}" srcset="{% img_srcset 'landing/dues.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="বাকির খাতা — কার কাছে কত বাকি, তাগাদা SMS" width="1800" height="1125" loading="lazy"></div>
       </div>
     </div>
 
@@ -241,8 +239,8 @@
         </ul>
       </div>
       <div class="feat-shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/sms</i></div><img src="{% static 'landing/sms.webp' %}" alt="SMS প্যানেল — কাস্টমারদের SMS পাঠানো" width="1800" height="1125" loading="lazy"></div>
-        <div class="phone"><img src="{% static 'landing/landing-phone.webp' %}" alt="এক প্রোডাক্টের ল্যান্ডিং পেজ" width="780" height="1688" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/sms</i></div><img src="{% static 'landing/sms.webp' %}" srcset="{% img_srcset 'landing/sms.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="SMS প্যানেল — কাস্টমারদের SMS পাঠানো" width="1800" height="1125" loading="lazy"></div>
+        <div class="phone"><img src="{% static 'landing/landing-phone.webp' %}" srcset="{% img_srcset 'landing/landing-phone.webp' 780 %}" sizes="(max-width: 900px) 36vw, 230px" alt="এক প্রোডাক্টের ল্যান্ডিং পেজ" width="780" height="1688" loading="lazy"></div>
       </div>
     </div>
   </div>
@@ -346,7 +344,7 @@
         </div>
       </div>
       <div class="shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/demo</i></div><img src="{% static 'landing/reports-chart.webp' %}" alt="ডেমো দোকানের লাভ-লোকসানের রিপোর্ট" width="1800" height="1125" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/demo</i></div><img src="{% static 'landing/reports-chart.webp' %}" srcset="{% img_srcset 'landing/reports-chart.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="ডেমো দোকানের লাভ-লোকসানের রিপোর্ট" width="1800" height="1125" loading="lazy"></div>
       </div>
     </div>
   </div>
@@ -399,11 +397,11 @@
         </div>
       </div>
       <div>
-        <h4>সফটওয়্যার</h4>
+        <h3>সফটওয়্যার</h3>
         <div class="lk"><a href="#features">যা যা আছে</a><a href="#pricing">দাম</a><a href="{% url 'demo_start' %}">লাইভ ডেমো</a><a href="{% url 'signup' %}">ফ্রি শুরু করুন</a><a href="{% url 'login' %}">লগইন</a></div>
       </div>
       <div>
-        <h4>যোগাযোগ</h4>
+        <h3>যোগাযোগ</h3>
         <div class="lk">
           {% if site.phone %}<a href="tel:{{ site.phone }}"><i class="bi bi-telephone"></i> {{ site.phone }}</a>{% endif %}
           {% if site.whatsapp_url %}<a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp-এ লিখুন</a>{% endif %}
@@ -412,7 +410,7 @@
         </div>
       </div>
       <div>
-        <h4>নীতিমালা</h4>
+        <h3>নীতিমালা</h3>
         <div class="lk"><a href="{% url 'privacy_policy' %}">প্রাইভেসি পলিসি</a><a href="{% url 'terms' %}">ব্যবহারের শর্ত</a><a href="{% url 'refund_policy' %}">রিফান্ড পলিসি</a><a href="{% url 'data_deletion' %}">ডেটা মুছে ফেলা</a></div>
       </div>
     </div>

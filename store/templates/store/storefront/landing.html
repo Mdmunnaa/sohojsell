@@ -5,7 +5,7 @@
 {% include 'store/storefront/_head.html' %}
 <style>
 :root { --orange: #F57224; --orange-dark: #d85c14; --orange-light: #FFF3EB; --orange-2: #FF8C42; --orange-rgb: 245,114,36;
-  --dark: #0F172A; --ink2: #334155; --muted: #64748B; --border: #E2E8F0; --bg: #F6F7FB; }
+  --dark: #0F172A; --ink2: #334155; --muted: #5B6578; --border: #E2E8F0; --bg: #F6F7FB; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink2); -webkit-font-smoothing: antialiased; }
 img { max-width: 100%; }
@@ -37,7 +37,7 @@ img { max-width: 100%; }
 .lp-stock.ok { color: #166534; }
 .lp-cta { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 15px; border-radius: 14px; border: 0; background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; font-weight: 900; font-size: 17px; text-decoration: none; box-shadow: 0 10px 24px -10px rgba(var(--orange-rgb), .7); cursor: pointer; font-family: inherit; }
 .lp-cta:hover { filter: brightness(1.05); color: #fff; }
-.lp-wa { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; padding: 12px; border-radius: 14px; border: 2px solid #25D366; background: #F0FDF4; color: #128C7E; font-weight: 800; font-size: 14.5px; text-decoration: none; }
+.lp-wa { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; padding: 12px; border-radius: 14px; border: 2px solid #25D366; background: #F0FDF4; color: #0B7065; font-weight: 800; font-size: 14.5px; text-decoration: none; }
 .lp-trust { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 18px; }
 .lp-trust div { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 12px 8px; text-align: center; font-size: 12px; font-weight: 700; color: var(--ink2); }
 .lp-trust i { display: block; font-size: 22px; color: var(--orange); margin-bottom: 4px; }
@@ -80,8 +80,8 @@ textarea.lp-input { min-height: 72px; resize: vertical; }
 .lp-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: rgba(255,255,255,.96); backdrop-filter: blur(8px); border-top: 1px solid var(--border); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 12px; }
 .lp-bar b { font-size: 20px; font-weight: 900; color: var(--orange); white-space: nowrap; }
 .lp-bar .lp-cta { padding: 12px; font-size: 15px; width: auto; flex: 1; }
-.lp-foot { text-align: center; font-size: 12px; color: #94A3B8; margin-top: 20px; }
-.lp-foot a { color: #94A3B8; }
+.lp-foot { text-align: center; font-size: 12px; color: #5B6578; margin-top: 20px; }
+.lp-foot a { color: #5B6578; }
 @media (min-width: 820px) {
   .lp-hero { grid-template-columns: 1fr 1fr; align-items: start; }
   .lp-h1 { font-size: 32px; }

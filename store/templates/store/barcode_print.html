@@ -1,9 +1,10 @@
 {% extends 'store/base.html' %}
+{% load static %}
 {% block page_title %}বারকোড প্রিন্ট{% endblock %}
 {% block title %}Print Barcodes{% endblock %}
 {% block content %}
 
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+{% include 'store/partials/fonts.html' with jakarta=1 %}
 
 <style>
 :root {
@@ -119,7 +120,7 @@
 .psi-name { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .psi-meta { font-size: 11px; color: var(--ink3); margin-top: 1px; display: flex; align-items: center; gap: 5px; }
 .psi-price { font-weight: 600; color: var(--accent); }
-.psi-barcode { font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+.psi-barcode { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
 .psi-nobc { color: #f59e0b; font-size: 10px; }
 .psi-qty {
   width: 52px; padding: 5px 6px; border: 1.5px solid var(--border2);
@@ -355,7 +356,7 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script src="{% static 'vendor/jsbarcode/JsBarcode.all.min.js' %}"></script>
 <script>
 const SHOP_NAME = '{{ shop.name|escapejs }}';
 let selected = {};

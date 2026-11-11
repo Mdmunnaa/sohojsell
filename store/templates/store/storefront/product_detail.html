@@ -7,7 +7,7 @@
 :root {
   --orange: #F57224; --orange-dark: #d85c14; --orange-light: #FFF3EB;
   --bg: #F2F4F8; --white: #ffffff; --dark: #0F172A; --text: #334155;
-  --muted: #64748B; --border: #E2E8F0;
+  --muted: #5B6578; --border: #E2E8F0;
   --shadow-sm: 0 4px 6px -1px rgba(0,0,0,0.05);
   --shadow-md: 0 10px 25px -3px rgba(0,0,0,0.08);
   --glass: rgba(255, 255, 255, 0.85);
@@ -19,7 +19,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .mob-header { position: absolute; top: 0; left: 0; right: 0; padding: 12px 16px; z-index: 5; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
 .mob-btn { width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); color: var(--dark); border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; pointer-events: all; text-decoration: none; transition: 0.2s; position: relative; }
 .mob-btn:active { transform: scale(0.95); }
-.mob-badge { position: absolute; top: -2px; right: -2px; background: #FF3333; color: #fff; font-size: 10px; font-weight: 900; width: 18px; height: 18px; border-radius: 9px; display: none; align-items: center; justify-content: center; border: 2px solid #fff; }
+.mob-badge { position: absolute; top: -2px; right: -2px; background: #D92D20; color: #fff; font-size: 10px; font-weight: 900; width: 18px; height: 18px; border-radius: 9px; display: none; align-items: center; justify-content: center; border: 2px solid #fff; }
 
 /* DESKTOP HEADER */
 .desk-header { display: none; position: sticky; top: 0; background: var(--glass); backdrop-filter: blur(12px); padding: 0 24px; box-shadow: var(--shadow-sm); z-index: 100; height: 70px; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.3); }
@@ -42,7 +42,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .footer-contact { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
 .footer-contact a { color: var(--dark); font-weight: 700; text-decoration: none; }
 .prod-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 80px; color: #E8EAF0; }
-.img-badge { position: absolute; bottom: 16px; left: 0; background: #FF3333; color: #fff; font-size: 12px; font-weight: 900; padding: 6px 16px 6px 12px; border-radius: 0 20px 20px 0; box-shadow: 0 4px 10px rgba(255,51,51,0.3); }
+.img-badge { position: absolute; bottom: 16px; left: 0; background: #D92D20; color: #fff; font-size: 12px; font-weight: 900; padding: 6px 16px 6px 12px; border-radius: 0 20px 20px 0; box-shadow: 0 4px 10px rgba(255,51,51,0.3); }
 .img-badge.low { background: #FF8C00; }
 .img-share { position: absolute; top: 16px; right: 16px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--dark); box-shadow: var(--shadow-sm); transition: 0.2s; }
 .img-share:active { transform: scale(0.9); }
@@ -68,8 +68,8 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .stars i.off { color: #D1D5DB; }
 .rating-line { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--dark); margin-bottom: 10px; text-decoration: none; }
 .rating-line small { color: var(--muted); font-weight: 600; }
-.wa-order { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; padding: 13px; border-radius: 14px; border: 2px solid #25D366; background: #F0FDF4; color: #128C7E; font-weight: 800; font-size: 15px; text-decoration: none; }
-.wa-order:hover { background: #DCFCE7; color: #128C7E; }
+.wa-order { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; padding: 13px; border-radius: 14px; border: 2px solid #25D366; background: #F0FDF4; color: #0B7065; font-weight: 800; font-size: 15px; text-decoration: none; }
+.wa-order:hover { background: #DCFCE7; color: #0B7065; }
 {# রিভিউ #}
 .rv-top { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; margin-bottom: 16px; }
 .rv-big { text-align: center; }
@@ -306,7 +306,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 <div class="desk-header">
   <a href="{% shop_url 'storefront_home' shop %}" class="desk-store-link">
     {% if shop.logo %}
-      <div class="desk-store-logo"><img src="{{ shop.logo.url }}" alt="{{ shop.name }}"></div>
+      <div class="desk-store-logo"><img src="{{ shop.logo.url }}" alt=""></div>
     {% else %}
       <div class="desk-store-logo">{{ shop.name|slice:":1"|upper }}</div>
     {% endif %}
@@ -353,7 +353,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
     <div class="info-card">
       <div class="price-main"><span id="price-now">৳{{ product.price|floatformat:0 }}</span>{% if product.discount_percent %}
         <span style="font-size:16px;font-weight:600;color:var(--muted);text-decoration:line-through;letter-spacing:0;">৳{{ product.compare_price|floatformat:0 }}</span>
-        <span style="font-size:13px;font-weight:800;background:#FF3333;color:#fff;padding:3px 8px;border-radius:6px;letter-spacing:0;vertical-align:middle;">-{{ product.discount_percent }}%</span>{% endif %}</div>
+        <span style="font-size:13px;font-weight:800;background:#D92D20;color:#fff;padding:3px 8px;border-radius:6px;letter-spacing:0;vertical-align:middle;">-{{ product.discount_percent }}%</span>{% endif %}</div>
       <div class="prod-title-text">{{ product.name }}</div>
       {% if product.rating %}
       <a class="rating-line" href="#reviews">{% include 'store/storefront/_stars.html' with avg=product.rating.avg %} {% num product.rating.avg %} <small>({% t "{n}টা রিভিউ" n=product.rating.count %})</small></a>
@@ -512,7 +512,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
       <!-- Dynamic Social Links -->
       <div class="social-links">
         {% if shop.facebook_page_url %}
-        <a href="{{ shop.facebook_page_url }}" target="_blank"><i class="bi bi-facebook" style="color: #1877F2;"></i></a>
+        <a href="{{ shop.facebook_page_url }}" target="_blank" rel="noopener" aria-label="Facebook"><i class="bi bi-facebook" style="color: #1877F2;"></i></a>
         {% endif %}
         {% if shop.instagram_link %}
         <a href="{{ shop.instagram_link }}" target="_blank"><i class="bi bi-instagram" style="color: #E4405F;"></i></a>
@@ -577,7 +577,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 
 {{ variant_list|json_script:"variant-list" }}
 <!-- Bootstrap Bundle JS added here for modals -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% include 'store/storefront/_modal.html' %}
 
 <script>
 

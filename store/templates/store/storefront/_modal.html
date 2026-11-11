@@ -1,0 +1,52 @@
+{# Bootstrap-এর পুরো JS (৮০ KB) ছাড়াই পলিসির modal খোলা/বন্ধ — data-bs-toggle="modal" / data-bs-dismiss="modal" আগের মতোই কাজ করে #}
+<script>
+(function () {
+  var backdrop = null, opened = null;
+  function open(modal) {
+    if (opened) close(opened);
+    opened = modal;
+    modal.style.display = 'block';
+    modal.removeAttribute('aria-hidden');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('role', 'dialog');
+    backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade';
+    document.body.appendChild(backdrop);
+    document.body.classList.add('modal-open');
+    void modal.offsetWidth;                          // reflow, তারপর fade-in
+    modal.classList.add('show');
+    backdrop.classList.add('show');
+    var focusable = modal.querySelector('[data-bs-dismiss="modal"]');
+    if (focusable) focusable.focus();
+  }
+  function close(modal) {
+    modal.classList.remove('show');
+    if (backdrop) backdrop.classList.remove('show');
+    var dead = backdrop;
+    backdrop = null; opened = null;
+    setTimeout(function () {
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden', 'true');
+      modal.removeAttribute('aria-modal');
+      if (dead) dead.remove();
+      document.body.classList.remove('modal-open');
+    }, 150);
+  }
+  document.addEventListener('click', function (e) {
+    var trigger = e.target.closest('[data-bs-toggle="modal"]');
+    if (trigger) {
+      var modal = document.querySelector(trigger.getAttribute('data-bs-target'));
+      if (modal) { e.preventDefault(); open(modal); }
+      return;
+    }
+    if (!opened) return;
+    if (e.target.closest('[data-bs-dismiss="modal"]') || e.target === opened) close(opened);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && opened) close(opened);
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-bs-toggle="modal"][role="button"]')) {
+      e.preventDefault(); e.target.click();
+    }
+  });
+})();
+</script>

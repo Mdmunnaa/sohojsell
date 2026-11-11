@@ -1,10 +1,11 @@
 {% extends 'store/base.html' %}
+{% load static %}
 {% block page_title %}প্রোডাক্ট এডিট{% endblock %}
 {% block title %}Edit Product - {{ request.user.shop.name }}{% endblock %}
 
 {% block content %}
 <!-- Html5Qrcode Library (For Camera Scan) -->
-<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="{% static 'vendor/html5-qrcode/html5-qrcode.min.js' %}"></script>
 
 <style>
     /* Premium Form Styles */

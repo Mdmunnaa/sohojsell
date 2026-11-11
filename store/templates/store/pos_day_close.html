@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>দিনশেষের হিসাব {{ summary.day|date:"d M Y" }} — {{ shop.name }}</title>
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
-{% include 'store/partials/bn_digit_fix.html' %}
+{% include 'store/partials/fonts.html' with hind=1 %}
 <style>
   @page { size: 80mm auto; margin: 0; }
   * { box-sizing: border-box; }

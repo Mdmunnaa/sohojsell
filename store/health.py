@@ -10,6 +10,33 @@ from django.core.checks import Warning, register
 
 BUCKET_RE = re.compile(r'^[a-zA-Z0-9.\-_]{1,255}$')
 ACCOUNT_RE = re.compile(r'^[0-9a-f]{32}$')
+NEON_REGION_RE = re.compile(r'\.([a-z]{2}-[a-z]+-\d)\.aws\.neon\.tech$')
+SERVER_REGION = 'ap-southeast-1'      # সার্ভার (Render Singapore / Cloudflare APAC) — ডাটাবেসও এখানে থাকা দরকার
+
+
+def database_region():
+    """Neon-এর হোস্টের নাম থেকে অঞ্চল (যেমন ap-southeast-1); Neon না হলে ''।"""
+    host = (settings.DATABASES.get('default', {}).get('HOST') or '').lower()
+    match = NEON_REGION_RE.search(host)
+    return match.group(1) if match else ''
+
+
+def database_latency_ms(tries=3):
+    """ডাটাবেস এক প্রশ্নে কত সময় নেয় (ms, সবচেয়ে কম) — পাতা ধীর হলে আগে এটা দেখুন।"""
+    import time
+    from django.db import connection
+    best = None
+    try:
+        with connection.cursor() as cursor:
+            for _ in range(tries):
+                started = time.perf_counter()
+                cursor.execute('SELECT 1')
+                cursor.fetchone()
+                spent = (time.perf_counter() - started) * 1000
+                best = spent if best is None else min(best, spent)
+    except Exception:    # noqa: BLE001 — মাপা না গেলে চুপচাপ বাদ
+        return None
+    return round(best, 1)
 
 
 def warnings():
@@ -27,6 +54,10 @@ def warnings():
             found.append('R2_PUBLIC_DOMAIN দেওয়া নেই — ছবির লিংক সাময়িক (signed) হবে, Facebook-এ শেয়ার করলে ছবি দেখাবে না।')
     elif getattr(settings, 'IS_PRODUCTION', False):
         found.append('R2 সেট করা নেই — ছবি সার্ভারের ডিস্কে যাচ্ছে, প্রতি deploy-এ মুছে যাবে।')
+    region = database_region()
+    if region and region != SERVER_REGION:
+        found.append(f'Neon ডাটাবেস {region} অঞ্চলে, কিন্তু সার্ভার সিঙ্গাপুরে ({SERVER_REGION}) — প্রতিটা প্রশ্ন সমুদ্র পেরিয়ে যায়, '
+                     'তাই সব পাতা অনেক ধীর। Neon-এ সিঙ্গাপুরে (AWS ap-southeast-1) নতুন প্রজেক্ট বানিয়ে ডাটা সরান।')
     return found
 
 

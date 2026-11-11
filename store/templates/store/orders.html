@@ -1,4 +1,5 @@
 {% extends 'store/base.html' %}
+{% load static %}
 {% load bangla %}
 {% block page_title %}অর্ডার{% endblock %}
 
@@ -211,7 +212,7 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{% static 'vendor/sweetalert2/sweetalert2.all.min.js' %}"></script>
 <script>
     let courierAddress = '';
     let redxAreas = null;

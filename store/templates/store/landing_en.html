@@ -1,4 +1,4 @@
-{% load static %}<!DOCTYPE html>
+{% load static speed %}<!DOCTYPE html>
 {# ইংরেজি হোমপেজ (/en/) — বাংলাটা store/landing.html। চেহারা একই (partials/landing_style.html); লেখা আলাদা, তাই নতুন সেকশন যোগ করলে দুটোতেই দিন। #}
 <html lang="en">
 <head>
@@ -10,9 +10,8 @@
 <meta property="og:description" content="Online store, POS billing, courier booking, customer SMS, due tracking and profit reports — in one place. 30 days free, no card needed.">
 {% include 'store/partials/landing_seo.html' %}
 {% include 'store/partials/brand_head.html' %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Hind+Siliguri:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+{% include 'store/partials/fonts.html' with hind=1 jakarta=1 %}
+{% include 'store/partials/icons_public.html' %}
 {% include 'store/partials/landing_style.html' %}
 </head>
 <body>
@@ -67,9 +66,9 @@
     <div class="hero-shot">
       <div class="frame">
         <div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/dashboard</i></div>
-        <img src="{% static 'landing/dashboard.webp' %}" alt="{{ site.name }} seller dashboard (in Bangla) — today's sales, profit and new orders" width="1800" height="1125" fetchpriority="high">
+        <img src="{% static 'landing/dashboard.webp' %}" srcset="{% img_srcset 'landing/dashboard.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="{{ site.name }} seller dashboard (in Bangla) — today's sales, profit and new orders" width="1800" height="1125" fetchpriority="high">
       </div>
-      <div class="phone hero-phone"><img src="{% static 'landing/shop-phone-en.webp' %}" alt="An online store built with {{ site.name }}, in English, on a phone" width="780" height="1688" loading="lazy"></div>
+      <div class="phone hero-phone"><img src="{% static 'landing/shop-phone-en.webp' %}" srcset="{% img_srcset 'landing/shop-phone-en.webp' 780 %}" sizes="(max-width: 900px) 36vw, 230px" alt="An online store built with {{ site.name }}, in English, on a phone" width="780" height="1688" loading="lazy"></div>
       <div class="hero-badge"><div class="ic"><i class="bi bi-bag-check-fill"></i></div><div><b>New order received</b>SMS sent to the customer</div></div>
     </div>
   </div>
@@ -144,12 +143,12 @@
         <a href="{% url 'demo_store' %}" class="feat-link">See the demo store as a customer <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>demo.{{ site.store_domain }}</i></div><img src="{% static 'landing/shop-en.webp' %}" alt="Online store home page — banner, categories and products" width="1800" height="1125" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>demo.{{ site.store_domain }}</i></div><img src="{% static 'landing/shop-en.webp' %}" srcset="{% img_srcset 'landing/shop-en.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="Online store home page — banner, categories and products" width="1800" height="1125" loading="lazy"></div>
         <div class="designs">
-          <figure><img src="{% static 'landing/design-classic-en.webp' %}" alt="Classic store design" loading="lazy"><figcaption>Classic</figcaption></figure>
-          <figure><img src="{% static 'landing/design-minimal-en.webp' %}" alt="Minimal store design" loading="lazy"><figcaption>Minimal</figcaption></figure>
-          <figure><img src="{% static 'landing/design-bold-en.webp' %}" alt="Bold store design" loading="lazy"><figcaption>Bold</figcaption></figure>
-          <figure><img src="{% static 'landing/design-soft-en.webp' %}" alt="Soft store design" loading="lazy"><figcaption>Soft</figcaption></figure>
+          <figure><img src="{% static 'landing/design-classic-en.webp' %}" srcset="{% img_srcset 'landing/design-classic-en.webp' 1200 %}" sizes="(max-width: 900px) 45vw, 230px" width="1200" height="750" alt="Classic store design" loading="lazy"><figcaption>Classic</figcaption></figure>
+          <figure><img src="{% static 'landing/design-minimal-en.webp' %}" srcset="{% img_srcset 'landing/design-minimal-en.webp' 1200 %}" sizes="(max-width: 900px) 45vw, 230px" width="1200" height="750" alt="Minimal store design" loading="lazy"><figcaption>Minimal</figcaption></figure>
+          <figure><img src="{% static 'landing/design-bold-en.webp' %}" srcset="{% img_srcset 'landing/design-bold-en.webp' 1200 %}" sizes="(max-width: 900px) 45vw, 230px" width="1200" height="750" alt="Bold store design" loading="lazy"><figcaption>Bold</figcaption></figure>
+          <figure><img src="{% static 'landing/design-soft-en.webp' %}" srcset="{% img_srcset 'landing/design-soft-en.webp' 1200 %}" sizes="(max-width: 900px) 45vw, 230px" width="1200" height="750" alt="Soft store design" loading="lazy"><figcaption>Soft</figcaption></figure>
         </div>
       </div>
     </div>
@@ -167,8 +166,8 @@
         </ul>
       </div>
       <div class="feat-shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/pos</i></div><img src="{% static 'landing/pos.webp' %}" alt="POS screen (in Bangla) — products, bill and payment" width="1800" height="1125" loading="lazy"></div>
-        <div class="phone"><img src="{% static 'landing/pos-phone.webp' %}" alt="POS on a phone" width="780" height="1688" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/pos</i></div><img src="{% static 'landing/pos.webp' %}" srcset="{% img_srcset 'landing/pos.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="POS screen (in Bangla) — products, bill and payment" width="1800" height="1125" loading="lazy"></div>
+        <div class="phone"><img src="{% static 'landing/pos-phone.webp' %}" srcset="{% img_srcset 'landing/pos-phone.webp' 780 %}" sizes="(max-width: 900px) 36vw, 230px" alt="POS on a phone" width="780" height="1688" loading="lazy"></div>
       </div>
     </div>
 
@@ -185,8 +184,8 @@
         </ul>
       </div>
       <div class="feat-shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/orders</i></div><img src="{% static 'landing/orders.webp' %}" alt="Order list (in Bangla) — status, courier and risk" width="1800" height="1125" loading="lazy"></div>
-        <div class="phone"><img src="{% static 'landing/track-phone-en.webp' %}" alt="Customer order tracking page in English" width="780" height="1688" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/orders</i></div><img src="{% static 'landing/orders.webp' %}" srcset="{% img_srcset 'landing/orders.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="Order list (in Bangla) — status, courier and risk" width="1800" height="1125" loading="lazy"></div>
+        <div class="phone"><img src="{% static 'landing/track-phone-en.webp' %}" srcset="{% img_srcset 'landing/track-phone-en.webp' 780 %}" sizes="(max-width: 900px) 36vw, 230px" alt="Customer order tracking page in English" width="780" height="1688" loading="lazy"></div>
       </div>
     </div>
 
@@ -203,7 +202,7 @@
         </ul>
       </div>
       <div class="feat-shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/reports</i></div><img src="{% static 'landing/reports.webp' %}" alt="Business reports (in Bangla) — sales, profit and expenses" width="1800" height="1125" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/reports</i></div><img src="{% static 'landing/reports.webp' %}" srcset="{% img_srcset 'landing/reports.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="Business reports (in Bangla) — sales, profit and expenses" width="1800" height="1125" loading="lazy"></div>
       </div>
     </div>
 
@@ -219,7 +218,7 @@
         </ul>
       </div>
       <div class="feat-shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/dues</i></div><img src="{% static 'landing/dues.webp' %}" alt="Due book (in Bangla) — who owes how much, reminder SMS" width="1800" height="1125" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/dues</i></div><img src="{% static 'landing/dues.webp' %}" srcset="{% img_srcset 'landing/dues.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="Due book (in Bangla) — who owes how much, reminder SMS" width="1800" height="1125" loading="lazy"></div>
       </div>
     </div>
 
@@ -236,8 +235,8 @@
         </ul>
       </div>
       <div class="feat-shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/sms</i></div><img src="{% static 'landing/sms.webp' %}" alt="SMS panel (in Bangla) — send SMS to customers" width="1800" height="1125" loading="lazy"></div>
-        <div class="phone"><img src="{% static 'landing/landing-phone-en.webp' %}" alt="Single-product landing page in English" width="780" height="1688" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/sms</i></div><img src="{% static 'landing/sms.webp' %}" srcset="{% img_srcset 'landing/sms.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="SMS panel (in Bangla) — send SMS to customers" width="1800" height="1125" loading="lazy"></div>
+        <div class="phone"><img src="{% static 'landing/landing-phone-en.webp' %}" srcset="{% img_srcset 'landing/landing-phone-en.webp' 780 %}" sizes="(max-width: 900px) 36vw, 230px" alt="Single-product landing page in English" width="780" height="1688" loading="lazy"></div>
       </div>
     </div>
   </div>
@@ -341,7 +340,7 @@
         </div>
       </div>
       <div class="shot">
-        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/demo</i></div><img src="{% static 'landing/reports-chart.webp' %}" alt="Demo shop profit and loss report" width="1800" height="1125" loading="lazy"></div>
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/demo</i></div><img src="{% static 'landing/reports-chart.webp' %}" srcset="{% img_srcset 'landing/reports-chart.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="Demo shop profit and loss report" width="1800" height="1125" loading="lazy"></div>
       </div>
     </div>
   </div>
@@ -394,11 +393,11 @@
         </div>
       </div>
       <div>
-        <h4>Product</h4>
+        <h3>Product</h3>
         <div class="lk"><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="{% url 'demo_start' %}">Live demo</a><a href="{% url 'signup' %}">Start free</a><a href="{% url 'login' %}">Log in</a></div>
       </div>
       <div>
-        <h4>Contact</h4>
+        <h3>Contact</h3>
         <div class="lk">
           {% if site.phone %}<a href="tel:{{ site.phone }}"><i class="bi bi-telephone"></i> {{ site.phone }}</a>{% endif %}
           {% if site.whatsapp_url %}<a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp us</a>{% endif %}
@@ -407,7 +406,7 @@
         </div>
       </div>
       <div>
-        <h4>Policies</h4>
+        <h3>Policies</h3>
         <div class="lk"><a href="{% url 'privacy_policy' %}">Privacy policy</a><a href="{% url 'terms' %}">Terms of use</a><a href="{% url 'refund_policy' %}">Refund policy</a><a href="{% url 'data_deletion' %}">Data deletion</a></div>
       </div>
     </div>

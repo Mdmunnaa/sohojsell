@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
-{% include 'store/partials/bn_digit_fix.html' %}
+{% include 'store/partials/fonts.html' with hind=1 %}
 <title>{{ shop.name }} — {% t "সাময়িক বন্ধ" %}</title>
 <style>
   body { font-family: 'Hind Siliguri', 'Segoe UI', sans-serif; margin: 0; padding: 16px; background: #f4f6f9; display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; }

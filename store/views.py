@@ -373,7 +373,8 @@ def order_create(request):
 @login_required(login_url='/accounts/login/')
 def order_list(request):
     shop = request.user.shop
-    orders = Order.objects.filter(shop=shop).select_related('customer').order_by('-id')
+    orders = (Order.objects.filter(shop=shop).select_related('customer')
+              .prefetch_related('items__product', 'items__variant').order_by('-id'))   # প্রতি অর্ডারে আলাদা query না
 
     search_query = request.GET.get('q', '').strip()
     if search_query:
@@ -918,6 +919,10 @@ def master_dashboard(request):
     recent_shops = Shop.objects.filter(is_demo=False).order_by('-id')[:10]
     from . import health
     system_warnings = health.warnings()
+    db_latency = health.database_latency_ms()
+    if db_latency is not None and db_latency > 25:
+        system_warnings.append(f'ডাটাবেস প্রতি প্রশ্নে {db_latency:.0f} ms নিচ্ছে (৫ ms-এর নিচে থাকা উচিত) — একটা পাতায় ২০–৩০টা প্রশ্ন '
+                               'হয়, তাই পাতা খুলতে সেকেন্ড লেগে যায়। ডাটাবেস আর সার্ভার একই অঞ্চলে (সিঙ্গাপুর) আছে কিনা দেখুন।')
 
     from .models import PaymentRequest
     pending_payments = PaymentRequest.objects.filter(status='Pending').select_related('shop').order_by('-created_at')
@@ -927,6 +932,7 @@ def master_dashboard(request):
     from . import domains
     return render(request, 'store/master_dashboard.html', {
         'system_warnings': system_warnings,
+        'db_latency': db_latency, 'db_region': health.database_region(),
         'pending_domains': list(domains.pending_for_master()),
         'total_shops': total_shops, 'total_users': total_users,
         'total_platform_orders': total_orders, 'total_sales_volume': total_sales,

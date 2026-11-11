@@ -3520,7 +3520,8 @@ class DailyCronTests(TestCase):
         with mock.patch('store.dues.run_auto_reminders', return_value={7: 3, 9: 2}) as run:
             response = self.client.post(self.url, HTTP_X_CRON_SECRET='s3cret-value')
         run.assert_called_once()
-        self.assertEqual(response.json(), {'due_reminders': {'shops': 2, 'sms': 5}})
+        self.assertEqual(response.json()['due_reminders'], {'shops': 2, 'sms': 5})
+        self.assertEqual(response.json()['optimize_images'], 'ok')
         with mock.patch('store.dues.run_auto_reminders', side_effect=RuntimeError('gateway down')):
             response = self.client.post(self.url, HTTP_X_CRON_SECRET='s3cret-value')
         self.assertEqual(response.status_code, 200)
@@ -3528,3 +3529,77 @@ class DailyCronTests(TestCase):
 
     def test_robots_hides_internal(self):
         self.assertIn('Disallow: /internal/', self.client.get('/robots.txt').content.decode())
+
+
+class SpeedTests(ShopTestMixin, TestCase):
+    """PageSpeed ১০০-এর পাহারা: বাইরের CDN নেই, দোকানের পাতায় CSS ভেতরেই, আইকন আছে, HTML gzip, অর্ডার লিস্টে N+1 নেই।"""
+    CDN = re.compile(r'(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|unpkg\.com)')
+
+    def test_no_third_party_cdn_in_templates(self):
+        from pathlib import Path
+        found = []
+        for path in (Path(__file__).parent / 'templates').rglob('*.html'):
+            for n, line in enumerate(path.read_text(encoding='utf-8').splitlines(), start=1):
+                if self.CDN.search(line):
+                    found.append(f'{path.name}:{n}: {line.strip()[:100]}')
+        self.assertFalse(found, '\nবাইরের CDN — store/static/vendor থেকে দিন (tools/build_vendor.py):\n' + '\n'.join(found))
+
+    def test_public_icons_are_in_the_small_icon_font(self):
+        """দোকান/হোমপেজে নতুন আইকন যোগ হলে tools/build_vendor.py আবার চালাতে হবে, নাহলে ফাঁকা ঘর দেখাবে।"""
+        import importlib.util
+        from pathlib import Path
+        root = Path(__file__).resolve().parent.parent
+        spec = importlib.util.spec_from_file_location('build_vendor', root / 'tools' / 'build_vendor.py')
+        build_vendor = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(build_vendor)
+        partial = (Path(__file__).parent / 'templates' / 'store' / 'partials' / 'icons_public.html').read_text(encoding='utf-8')
+        have = set(re.findall(r'\.bi-([a-z0-9-]+)::before', partial))
+        css = (Path(__file__).parent / 'static' / 'vendor' / 'bootstrap-icons' / 'bootstrap-icons.min.css').read_text()
+        known = {name: 0 for name in re.findall(r'\.bi-([a-z0-9-]+)::before', css)}
+        missing = sorted(set(build_vendor.public_icon_names(known)) - have)
+        self.assertFalse(missing, f'icons_public.html-এ নেই: {missing} — python tools/build_vendor.py <node_modules> চালান')
+
+    def test_storefront_has_inline_css_and_no_bootstrap_js(self):
+        _user, shop = self.make_shop()
+        self.client.logout()
+        html = self.client.get(reverse('storefront_home', args=[shop.slug])).content.decode()
+        self.assertIn('.modal-dialog', html)                         # Bootstrap-এর দরকারি অংশ পাতার ভেতরেই
+        self.assertNotIn('bootstrap.min.css', html)
+        self.assertNotIn('bootstrap.bundle', html)
+        self.assertIn("data-bs-toggle=\"modal\"]", html)               # নিজের ছোট modal স্ক্রিপ্ট
+        self.assertIn('hind-siliguri-bengali-400', html)
+        self.assertNotIn('hind-siliguri-bengali-500', html)          # বাংলা ফন্টের দুটো ফাইলই
+
+    def test_homepage_images_are_responsive(self):
+        html = self.client.get('/').content.decode()
+        self.assertIn('dashboard-390w', html)
+        self.assertIn('sizes="(max-width: 900px) 92vw, 640px"', html)
+
+    def test_html_is_gzipped(self):
+        response = self.client.get('/', HTTP_ACCEPT_ENCODING='gzip')
+        self.assertEqual(response['Content-Encoding'], 'gzip')
+
+    def test_orders_page_has_no_query_per_order(self):
+        from store.models import Customer, Order, OrderItem, Product
+        _user, shop = self.make_shop()
+        customer = Customer.objects.create(shop=shop, name='Rahim', phone='01712345678', address='Savar')
+        product = Product.objects.create(shop=shop, name='Tee', price=500, stock_quantity=50)
+        for _ in range(20):
+            order = Order.objects.create(shop=shop, customer=customer, total_amount=500)
+            OrderItem.objects.create(order=order, product=product, quantity=1, price=500)
+        self.client.get(reverse('order_list'))
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        with CaptureQueriesContext(connection) as queries:
+            self.assertEqual(self.client.get(reverse('order_list')).status_code, 200)
+        self.assertLess(len(queries), 25, '\n'.join(q['sql'][:120] for q in queries.captured_queries))
+
+    def test_far_database_region_is_flagged(self):
+        from store import health
+        with mock.patch.dict('django.conf.settings.DATABASES',
+                             {'default': {'HOST': 'ep-x-123.us-east-2.aws.neon.tech'}}):
+            self.assertEqual(health.database_region(), 'us-east-2')
+            self.assertTrue(any('us-east-2' in text for text in health.warnings()))
+        with mock.patch.dict('django.conf.settings.DATABASES',
+                             {'default': {'HOST': 'ep-x-123-pooler.ap-southeast-1.aws.neon.tech'}}):
+            self.assertFalse(any('অঞ্চলে' in text for text in health.warnings()))

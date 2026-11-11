@@ -1,12 +1,11 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="bn">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>রসিদ #ORD-{{ order.id }} — {{ shop.name }}</title>
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
-{% include 'store/partials/bn_digit_fix.html' %}
+{% include 'store/partials/fonts.html' with hind=1 %}
 <style>
   @page { size: {{ width }}mm auto; margin: 0; }
   * { box-sizing: border-box; }
@@ -104,7 +103,7 @@
   <a class="alt" href="?w={% if width == 58 %}80{% else %}58{% endif %}">{% if width == 58 %}80mm{% else %}58mm{% endif %} কাগজ</a>
   <a class="alt" href="{% url 'pos' %}">POS-এ ফিরুন</a>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script src="{% static 'vendor/jsbarcode/JsBarcode.all.min.js' %}"></script>
 <script>
   (function () {
     try {

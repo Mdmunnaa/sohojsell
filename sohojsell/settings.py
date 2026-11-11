@@ -90,6 +90,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',     # static ফাইল (admin-এর CSS ইত্যাদি)
+    'django.middleware.gzip.GZipMiddleware',          # HTML ছোট করে পাঠানো (static ফাইল whitenoise নিজেই দেয়, তাই এর পরে)
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

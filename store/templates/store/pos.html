@@ -1,4 +1,5 @@
 {% extends 'store/base.html' %}
+{% load static %}
 {% block page_title %}POS — দোকানে বিক্রি{% endblock %}
 {% block title %}POS — {{ shop.name }}{% endblock %}
 {% block message_toasts %}{% endblock %}
@@ -459,7 +460,7 @@
 <iframe id="print-frame" title="রসিদ" style="position:absolute;width:0;height:0;border:0;visibility:hidden;"></iframe>
 
 {{ pos_config|json_script:"pos-config" }}
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+<script src="{% static 'vendor/html5-qrcode/html5-qrcode.min.js' %}" defer></script>
 <script>
 (function () {
 'use strict';
