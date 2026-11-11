@@ -10,7 +10,7 @@
 body { margin: 0; background: var(--bg); color: var(--ink2); min-height: 100vh; }
 .tk-top { background: #fff; border-bottom: 1px solid var(--line); }
 .tk-top-in { max-width: 620px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
-.tk-logo { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; overflow: hidden; flex-shrink: 0; }
+.tk-logo { text-decoration: none; width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; overflow: hidden; flex-shrink: 0; }
 .tk-logo img { width: 100%; height: 100%; object-fit: cover; }
 .tk-shop { font-weight: 800; color: var(--ink); font-size: 16px; line-height: 1.2; text-decoration: none; }
 .tk-shop small { display: block; font-size: 12px; color: var(--muted); font-weight: 500; }
@@ -59,7 +59,7 @@ body { margin: 0; background: var(--bg); color: var(--ink2); min-height: 100vh; 
 <body>
 <header class="tk-top">
   <div class="tk-top-in">
-    <div class="tk-logo">{% if shop.logo %}<img src="{{ shop.logo.url }}" alt="">{% else %}{{ shop.name|slice:":1"|upper }}{% endif %}</div>
+    <a class="tk-logo" href="{% shop_url 'storefront_home' shop %}" aria-label="{{ shop.name }} — হোম">{% if shop.logo %}<img src="{{ shop.logo.url }}" alt="">{% else %}{{ shop.name|slice:":1"|upper }}{% endif %}</a>
     <a class="tk-shop" href="{% shop_url 'storefront_home' shop %}">{{ shop.name }}<small>অর্ডার ট্র্যাক করুন</small></a>
     <a class="tk-home" href="{% shop_url 'storefront_home' shop %}"><i class="bi bi-shop"></i> দোকানে যান</a>
   </div>

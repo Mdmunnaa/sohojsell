@@ -334,7 +334,7 @@
       <input type="hidden" name="section" value="banner_add">
       <div class="fw-bold mb-3">নতুন ব্যানার</div>
       <div class="row g-3">
-        <div class="col-md-6">{{ banner_form.image }}{% for e in banner_form.image.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}<div class="ws-help">JPG/PNG, ৩ MB-এর ছোট</div></div>
+        <div class="col-md-6">{{ banner_form.image }}{% for e in banner_form.image.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}<div class="ws-help">JPG/PNG, ৩ MB-এর ছোট। সবচেয়ে ভালো মাপ <b>১৬০০ × ৬০০</b> পিক্সেল — তাহলে পুরো ছবিটা কোনো পাশ বাদ না পড়ে দেখায়।</div></div>
         <div class="col-md-6">{{ banner_form.title }}</div>
       </div>
       <div class="mt-3"><button type="submit" class="ws-save"><i class="bi bi-upload me-1"></i> আপলোড করুন</button></div>

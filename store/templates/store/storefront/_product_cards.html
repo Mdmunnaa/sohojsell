@@ -20,7 +20,7 @@
     <a class="prod-title" href="{% shop_url 'storefront_product_detail' shop product.id %}" onclick="event.stopPropagation()">{{ product.name }}</a>
     <div class="prod-price">৳{{ product.price|floatformat:0 }}{% if product.discount_percent %} <span class="prod-old">৳{{ product.compare_price|floatformat:0 }}</span>{% endif %}</div>
     {% if product.rating %}<div class="prod-sub">{% include 'store/storefront/_stars.html' with avg=product.rating.avg %} {{ product.rating.avg|bn }} ({{ product.rating.count|bn }})</div>{% endif %}
-    {% if product.sold_count %}<div class="prod-sub"><i class="bi bi-bag-check-fill text-success"></i> {{ product.sold_count }}টা বিক্রি হয়েছে</div>{% endif %}
+    {% if product.sold_count %}<div class="prod-sub"><i class="bi bi-bag-check-fill text-success"></i> {{ product.sold_count|bn }}টা বিক্রি হয়েছে</div>{% endif %}
   </div>
 </div>
 {% endfor %}

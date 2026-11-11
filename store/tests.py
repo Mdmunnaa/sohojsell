@@ -3220,3 +3220,39 @@ class WebOrderNumberTests(ShopTestMixin, TestCase):
         self.assertIn('sb-new-badge" title="ওয়েবসাইটের নতুন অর্ডার">1</span>', html)
         Order.objects.filter(pk=self.order.pk).update(status='Confirmed')
         self.assertNotIn(badge, self.client.get(reverse('dashboard')).content.decode())
+
+
+class StorefrontOrderUiTests(TestCase):
+    """ওয়েবসাইট: পরিমাণ বাছাই, চেকআউটে অর্ডারের তালিকা, লোগো চাপলে হোম, ব্যানার না কাটা।"""
+
+    def setUp(self):
+        from .models import Product
+        user = User.objects.create_user(phone_number='01788888881', password='Test-pass-123')
+        self.shop = Shop.objects.create(user=user, name='টেস্ট দোকান', phone='01788888881', address='ঢাকা', slug='testsf')
+        self.product = Product.objects.create(shop=self.shop, name='টি-শার্ট', price=450, stock_quantity=10)
+
+    def test_product_page_has_quantity_and_checkout_items(self):
+        html = self.client.get(reverse('storefront_product_detail', args=[self.shop.slug, self.product.id])).content.decode()
+        self.assertIn('id="qty-val"', html)
+        self.assertIn('id="co-items"', html)
+        self.assertIn('buyNow(i.id, i.name, i.price, i.stock, i.image, chosenQty)', html)
+
+    def test_home_logo_links_home_and_bar_is_not_fixed(self):
+        html = self.client.get(reverse('storefront_home', args=[self.shop.slug])).content.decode()
+        self.assertIn('class="shop-home-link"', html)
+        self.assertIn('.app-top-bar { position: sticky;', html)
+        self.assertNotIn('padding-top: 135px', html)
+
+    def test_two_orders_with_quantity(self):
+        from store import delivery
+        url = reverse('storefront_place_order', args=[self.shop.slug])
+        zone = delivery.zones_for(self.shop)[0].id
+        for qty in (3, 2):
+            response = self.client.post(url, json.dumps({'cart': [{'id': self.product.id, 'qty': qty}], 'name': 'ক',
+                                                         'phone': '01812345678', 'address': 'ঢাকা', 'payment': 'cod',
+                                                         'zone': zone}),
+                                        content_type='application/json')
+            self.assertTrue(response.json()['success'], response.json())
+        self.assertEqual(sorted(OrderItem.objects.filter(order__shop=self.shop).values_list('quantity', flat=True)), [2, 3])
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_quantity, 5)
