@@ -120,22 +120,22 @@ def find_product(shop, *texts):
 def build_private_message(shop, product, commenter_name=''):
     from .links import absolute_storefront_link
     hello = f'আসসালামু আলাইকুম{" " + commenter_name.split()[0] if commenter_name else ""}! '
-    hello += f'{shop.name}-এ কমেন্ট করার জন্য ধন্যবাদ 😊'
+    hello += f'{shop.name}-এ কমেন্ট করার জন্য ধন্যবাদ।'
     if product and product.stock_quantity > 0:
         price = f'৳{product.price:,.0f}'
         if product.discount_percent:
             price += f' (আগে ৳{product.compare_price:,.0f}, {product.discount_percent}% ছাড়)'
         link = absolute_storefront_link(shop, 'storefront_product_detail', product.id)
         return (f'{hello}\n\n{product.name}\nদাম: {price}\n\n'
-                f'অর্ডার করতে এখানে চাপুন 👉 {link}\n\nকোনো প্রশ্ন থাকলে এখানেই লিখুন।')
+                f'অর্ডার করতে এই লিংকে চাপুন: {link}\n\nকোনো প্রশ্ন থাকলে এখানেই লিখুন।')
     link = absolute_storefront_link(shop)
     if product:
         return (f'{hello}\n\n"{product.name}" এই মুহূর্তে স্টকে নেই। আমাদের অন্য প্রোডাক্ট দেখুন আর অর্ডার করুন '
-                f'👉 {link}')
-    return f'{hello}\n\nআমাদের সব প্রোডাক্ট দেখতে আর অর্ডার করতে এখানে চাপুন 👉 {link}\n\nকোনো প্রশ্ন থাকলে এখানেই লিখুন।'
+                f'{link}')
+    return f'{hello}\n\nআমাদের সব প্রোডাক্ট দেখতে আর অর্ডার করতে এই লিংকে চাপুন: {link}\n\nকোনো প্রশ্ন থাকলে এখানেই লিখুন।'
 
 
-PUBLIC_REPLY_TEXT = 'ইনবক্স চেক করুন, বিস্তারিত পাঠানো হয়েছে ✅'
+PUBLIC_REPLY_TEXT = 'ইনবক্স চেক করুন, বিস্তারিত পাঠানো হয়েছে।'
 
 
 # ---------------------------------------------------------------- webhook ইভেন্ট

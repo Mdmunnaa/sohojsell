@@ -17,7 +17,7 @@
 <div class="card border-0 shadow-sm rounded-3 mb-3">
   <div class="card-body py-2 px-3">
     <form method="GET" class="d-flex gap-2 align-items-center">
-      <input type="text" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm rounded-pill" style="max-width:280px;" placeholder="🔍 Search by name or phone...">
+      <input type="text" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm rounded-pill" style="max-width:280px;" placeholder="Search by name or phone...">
       <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">Search</button>
       {% if request.GET.q %}<a href="{% url 'customer_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill">Clear</a>{% endif %}
     </form>

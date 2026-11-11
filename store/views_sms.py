@@ -235,7 +235,7 @@ def sms_auto(request):
         messages.success(request, 'কাস্টমারকে অটো SMS বন্ধ করা হয়েছে।')
     else:
         on = [label for key, label, _h, _s in _auto_events(shop) if getattr(shop, key)]
-        messages.success(request, ('অটো SMS যাবে: ' + ', '.join(on) + ' ✓') if on
+        messages.success(request, ('অটো SMS যাবে: ' + ', '.join(on) + '।') if on
                          else 'অটো SMS চালু, কিন্তু কোনো সময় বাছা নেই — নিচের সুইচগুলো থেকে বেছে নিন।')
     return redirect('sms_panel')
 

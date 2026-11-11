@@ -303,7 +303,7 @@
           <div class="psi" id="psi-{{ product.id }}"
                onclick="toggleProduct({{ product.id }}, '{{ product.name|escapejs }}', {{ product.price }}, '{{ product.barcode|default:'' }}')">
             <div class="psi-chk">
-              <span class="psi-chk-mark">✓</span>
+              <span class="psi-chk-mark"><i class="bi bi-check-lg"></i></span>
             </div>
             <div class="psi-info">
               <div class="psi-name">{{ product.name }}</div>
@@ -313,7 +313,7 @@
                   <span>·</span>
                   <span class="psi-barcode">{{ product.barcode }}</span>
                 {% else %}
-                  <span class="psi-nobc">⚠ No barcode</span>
+                  <span class="psi-nobc"><i class="bi bi-exclamation-triangle"></i> No barcode</span>
                 {% endif %}
               </div>
             </div>

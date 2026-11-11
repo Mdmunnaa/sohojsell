@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="bn">
 <head>
 <meta charset="UTF-8">
@@ -16,7 +16,7 @@
 </head>
 <body>
 <div class="box">
-  <div style="font-size:56px;">🔍</div>
+  <img src="{% static 'brand/sellpunch-logo.svg' %}" alt="{{ site.name }}" style="height:40px;width:auto">
   <h2>এই ঠিকানায় কোনো দোকান নেই</h2>
   <p style="color:#6c757d;"><code>{{ subdomain }}</code> নামে কোনো দোকান খুঁজে পাওয়া যায়নি। ঠিকানার বানান আরেকবার দেখে নিন।</p>
   <p style="color:#6c757d;font-size:14px;">No shop was found at <code>{{ subdomain }}</code>. Please check the address.</p>

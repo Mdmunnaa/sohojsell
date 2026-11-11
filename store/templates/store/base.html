@@ -250,22 +250,6 @@
       font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -.2px;
     }
     .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-    .live-pill {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 20px; padding: 4px 12px;
-      font-size: 11.5px; font-weight: 600; color: var(--text2);
-    }
-    .live-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 0 3px rgba(34,197,94,.2);
-      animation: pulse 2s ease infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
-      50% { box-shadow: 0 0 0 5px rgba(34,197,94,.08); }
-    }
 
     /* Page content */
     .sb-new-badge { font-size:10.5px; background:#EF4444; color:#fff; font-weight:700; min-width:20px; padding:3px 6px; border-radius:999px; box-shadow:0 0 0 3px rgba(239,68,68,.2); }
@@ -475,7 +459,7 @@
         </a>
         <a href="{% url 'billing' %}" class="sb-link {% if request.resolver_match.url_name == 'billing' %}active{% endif %}" style="{% if shop.is_locked %}background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);{% endif %}">
           <i class="bi bi-{% if shop.is_locked %}lock-fill text-danger{% else %}wallet2{% endif %}"></i>
-          <span class="sb-text-hide">প্যাকেজ ও বিল{% if shop.is_locked %} 🔒{% endif %}</span>
+          <span class="sb-text-hide">প্যাকেজ ও বিল{% if shop.is_locked %} <i class="bi bi-lock-fill"></i>{% endif %}</span>
           {% if shop.days_remaining > 0 and shop.days_remaining <= 7 %}
           <span class="badge bg-warning text-dark ms-auto" style="font-size:10px;">{{ shop.days_remaining }} দিন</span>
           {% endif %}
@@ -522,11 +506,7 @@
       </button>
 
       <div class="topbar-title">{% block page_title %}ড্যাশবোর্ড{% endblock %}</div>
-      <div class="topbar-right">
-        <div class="live-pill">
-          <span class="live-dot"></span> Live
-        </div>
-      </div>
+      <div class="topbar-right"></div>
     </div>
 
     {% if shop.is_demo %}

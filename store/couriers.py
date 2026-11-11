@@ -152,7 +152,7 @@ def steadfast_test(shop):
                         headers=_steadfast_headers(shop))
     result = _json(response)
     if response.status_code == 200 and result.get('status') == 200:
-        return f"Steadfast কানেক্ট আছে ✓ (ব্যালান্স ৳{result.get('current_balance', 0)})"
+        return f"Steadfast কানেক্ট আছে (ব্যালান্স ৳{result.get('current_balance', 0)})"
     if response.status_code == 401:
         raise CourierError('Steadfast API Key বা Secret Key ভুল।')
     raise CourierError('Steadfast: ' + _first_error(result, f'যাচাই হয়নি (HTTP {response.status_code})।'))
@@ -267,7 +267,7 @@ def pathao_test(shop):
     stores = pathao_fetch_stores(shop)
     if not stores:
         raise CourierError('Pathao কানেক্ট আছে, কিন্তু কোনো চালু স্টোর নেই।')
-    return f'Pathao কানেক্ট আছে ✓ ({len(stores)}টা স্টোর পাওয়া গেছে)'
+    return f'Pathao কানেক্ট আছে ({len(stores)}টা স্টোর পাওয়া গেছে)'
 
 
 # ---------------------------------------------------------------- RedX
@@ -336,7 +336,7 @@ def redx_test(shop):
     result = _json(response)
     if response.status_code == 200:
         count = len(result.get('pickup_stores') or []) if isinstance(result, dict) else 0
-        return f'RedX কানেক্ট আছে ✓ ({count}টা পিকআপ স্টোর)'
+        return f'RedX কানেক্ট আছে ({count}টা পিকআপ স্টোর)'
     if response.status_code == 401:
         raise CourierError('RedX টোকেন ভুল বা মেয়াদ শেষ।')
     raise CourierError('RedX: ' + _first_error(result, f'যাচাই হয়নি (HTTP {response.status_code})।'))

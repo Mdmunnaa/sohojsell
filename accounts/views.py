@@ -53,7 +53,7 @@ def signup(request):
             else:
                 # allauth যোগ হওয়ার পর দুটো auth backend আছে, তাই কোনটা দিয়ে লগইন সেটা বলে দিতে হয়
                 login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-                messages.success(request, f"🎉 স্বাগতম! {data['shop_name']}-এর অ্যাকাউন্ট তৈরি হয়েছে, "
+                messages.success(request, f"স্বাগতম! {data['shop_name']}-এর অ্যাকাউন্ট তৈরি হয়েছে, "
                                           "৩০ দিন সব ফিচার সম্পূর্ণ ফ্রি।")
                 return redirect('dashboard')
 
@@ -74,7 +74,7 @@ def check_subdomain(request):
     except Exception as exc:  # ValidationError
         message = exc.messages[0] if hasattr(exc, 'messages') else str(exc)
         return JsonResponse({'ok': False, 'message': message, 'suggestion': suggest_available(value, exclude)})
-    return JsonResponse({'ok': True, 'value': cleaned, 'message': 'খালি আছে ✓'})
+    return JsonResponse({'ok': True, 'value': cleaned, 'message': 'খালি আছে'})
 
 
 def user_login(request):
@@ -93,16 +93,16 @@ def user_login(request):
 
         if user is not None:
             login(request, user)
-            messages.success(request, "Welcome back! 🚀")
+            messages.success(request, "আবার স্বাগতম!")
             if user.is_superuser:
                 return redirect('master_dashboard')
             return redirect('dashboard')
-        messages.error(request, "❌ মোবাইল নম্বর বা পাসওয়ার্ড ভুল!")
+        messages.error(request, "মোবাইল নম্বর বা পাসওয়ার্ড ভুল।")
 
     return render(request, 'accounts/login.html')
 
 
 def user_logout(request):
     logout(request)
-    messages.info(request, "You have been logged out successfully. 👋")
+    messages.info(request, "লগআউট হয়েছে।")
     return redirect('login')

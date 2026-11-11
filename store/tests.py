@@ -3603,3 +3603,29 @@ class SpeedTests(ShopTestMixin, TestCase):
         with mock.patch.dict('django.conf.settings.DATABASES',
                              {'default': {'HOST': 'ep-x-123-pooler.ap-southeast-1.aws.neon.tech'}}):
             self.assertFalse(any('অঞ্চলে' in text for text in health.warnings()))
+
+
+class NoEmojiTests(TestCase):
+    """ওয়েবসাইট, ড্যাশবোর্ড, মেসেজ — কোথাও ইমোজি না (দেখতে কৃত্রিম লাগে); দরকারে আইকন বা SellPunch লোগো।"""
+    EMOJI = re.compile('[\U0001F000-\U0001FAFF☀-⛿✀-➿⭐⭕️]')
+    ALLOWED = set('✓✗')   # সাধারণ টিক/ক্রস চিহ্ন (ইমোজি না)
+
+    def test_no_emoji_in_templates_or_messages(self):
+        from pathlib import Path
+        root = Path(__file__).resolve().parent.parent
+        found = []
+        for folder in ('store', 'accounts'):
+            for path in (root / folder).rglob('*'):
+                if path.suffix not in ('.html', '.py') or path.name == 'tests.py' or 'vendor' in path.parts:
+                    continue
+                for n, line in enumerate(path.read_text(encoding='utf-8').splitlines(), start=1):
+                    hits = [ch for ch in self.EMOJI.findall(line) if ch not in self.ALLOWED]
+                    if hits:
+                        found.append(f'{path.relative_to(root)}:{n}: {"".join(hits)}  {line.strip()[:80]}')
+        self.assertFalse(found, '\nইমোজি পাওয়া গেছে:\n' + '\n'.join(found))
+
+    def test_homepage_has_no_glowing_dot_label(self):
+        for page in ('/', '/en/'):
+            html = self.client.get(page).content.decode()
+            self.assertNotIn('class="pill"', html)
+            self.assertNotIn('class="dot"', html)

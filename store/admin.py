@@ -18,7 +18,7 @@ class PaymentRequestAdmin(admin.ModelAdmin):
     search_fields = ['shop__name', 'transaction_id', 'sender_number']
     actions = ['approve_payments', 'reject_payments']
 
-    @admin.action(description='✅ Approve selected payments')
+    @admin.action(description='Approve selected payments')
     def approve_payments(self, request, queryset):
         for req in queryset.filter(status='Pending'):
             shop = req.shop
@@ -33,7 +33,7 @@ class PaymentRequestAdmin(admin.ModelAdmin):
             req.save()
         self.message_user(request, "Payments Approved Successfully!")
 
-    @admin.action(description='❌ Reject selected payments')
+    @admin.action(description='Reject selected payments')
     def reject_payments(self, request, queryset):
         queryset.update(status='Rejected')
         self.message_user(request, "Selected payments have been rejected.")

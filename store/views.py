@@ -186,7 +186,7 @@ def setup_shop(request):
         except IntegrityError:
             form.add_error('subdomain', 'এই ঠিকানা এইমাত্র অন্য কেউ নিয়েছে, অন্যটা বেছে নিন।')
         else:
-            messages.success(request, "🎉 দোকান তৈরি হয়েছে! ৩০ দিন সব ফিচার ফ্রি।")
+            messages.success(request, "দোকান তৈরি হয়েছে! ৩০ দিন সব ফিচার ফ্রি।")
             return redirect('dashboard')
 
     return render(request, 'store/setup_shop.html', {'form': form})
@@ -696,7 +696,7 @@ def _save_settings_section(request, shop, form, section, action):
     """
     if section == 'pos':
         form.save()
-        messages.success(request, 'POS আর রসিদের সেটিং সেভ হয়েছে ✓', extra_tags=section)
+        messages.success(request, 'POS আর রসিদের সেটিং সেভ হয়েছে।', extra_tags=section)
         return True
 
     if section == 'pathao' and not form.connected:
@@ -707,7 +707,7 @@ def _save_settings_section(request, shop, form, section, action):
         except couriers.CourierError as exc:
             messages.error(request, str(exc), extra_tags=section)
             return False
-        messages.success(request, f'Pathao যুক্ত হয়েছে ✓ ({len(stores)}টা স্টোর পাওয়া গেছে)। '
+        messages.success(request, f'Pathao যুক্ত হয়েছে ({len(stores)}টা স্টোর পাওয়া গেছে)। '
                                   'আপনার Pathao পাসওয়ার্ড আমরা সেভ করি না।', extra_tags=section)
         return True
 
@@ -724,7 +724,7 @@ def _save_settings_section(request, shop, form, section, action):
         return True
 
     form.save()
-    messages.success(request, 'সেভ হয়েছে ✓', extra_tags=section)
+    messages.success(request, 'সেভ হয়েছে।', extra_tags=section)
     return True
 
 
@@ -759,7 +759,7 @@ def send_to_courier(request):
     order.save(update_fields=['steadfast_tracking_code', 'courier_partner'])
     order_flow.set_status(order, 'Shipped')         # চালু থাকলে কাস্টমারকে ট্র্যাকিং লিংকসহ SMS
     cod = couriers.cod_amount(order)
-    messages.success(request, f'{courier}-এ পাঠানো হয়েছে ✓ ট্র্যাকিং: {result["tracking_code"]} · '
+    messages.success(request, f'{courier}-এ পাঠানো হয়েছে। ট্র্যাকিং: {result["tracking_code"]} · '
                               + (f'কাস্টমারের কাছ থেকে তুলবে ৳{cod}' if cod else 'আগে পরিশোধ, কিছু তুলবে না'))
     return redirect('order_list')
 
@@ -893,7 +893,7 @@ def payment_success(request, plan_name):
         shop.sms_balance += SMS_BONUS.get(plan_name, 0)
         shop.save(update_fields=['subscription_plan', 'sms_balance'])
 
-    messages.success(request, f"🎉 আপনার shop এখন {plan_name} Plan-এ upgrade হয়েছে!")
+    messages.success(request, f"আপনার দোকান এখন {plan_name} প্ল্যানে।")
     return redirect('dashboard')
 
 
@@ -1944,7 +1944,7 @@ def billing_page(request):
     shop = request.user.shop
     # callback হারিয়ে গেলেও টাকা কাটা পেমেন্ট যেন ঝুলে না থাকে — পেইজ খুললেই আবার যাচাই
     for payment in recheck_pending(shop):
-        messages.success(request, f"✅ আপনার {payment.plan_name} পেমেন্ট নিশ্চিত হয়েছে।")
+        messages.success(request, f"আপনার {payment.plan_name} পেমেন্ট নিশ্চিত হয়েছে।")
         shop.refresh_from_db()
 
     pending_request = shop.payment_requests.filter(status='Pending').first()
@@ -2016,7 +2016,7 @@ def reject_payment(request, request_id):
     pay_req.status = 'Rejected'
     pay_req.save()
 
-    messages.warning(request, f"❌ {pay_req.shop.name}-এর payment rejected!")
+    messages.warning(request, f"{pay_req.shop.name}-এর payment rejected.")
     return redirect('master_dashboard')
 
 
@@ -2038,7 +2038,7 @@ def manual_unlock(request, shop_id):
 
         shop.is_locked = False
         shop.save()
-        messages.success(request, f"✅ {shop.name} manually unlocked! Valid until: {shop.valid_until}")
+        messages.success(request, f"{shop.name} manually unlocked. Valid until: {shop.valid_until}")
 
     return redirect('master_dashboard')
 
@@ -2129,7 +2129,7 @@ def import_bulk_products(request):
             )
             created_count += 1
 
-        msg = f'✅ {created_count} products imported successfully!'
+        msg = f'{created_count}টা প্রোডাক্ট যোগ হয়েছে।'
         if skipped_count:
             msg += f' ({skipped_count} rows skipped due to invalid data)'
         if created_count > 0:
@@ -2235,7 +2235,7 @@ def fb_page_select(request):
 
         from .facebook_bot import subscribe_page
         if subscribe_page(selected_page_id, page_token):
-            messages.success(request, f"'{selected_page.get('name')}' পেইজ যুক্ত হয়েছে ✓ "
+            messages.success(request, f"'{selected_page.get('name')}' পেইজ যুক্ত হয়েছে। "
                                       "এখন পোস্টে কেউ কমেন্ট করলে তার ইনবক্সে অর্ডারের লিংক চলে যাবে।",
                              extra_tags='facebook')
         else:

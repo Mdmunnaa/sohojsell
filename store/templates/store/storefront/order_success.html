@@ -163,7 +163,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
     <div class="title">{% t "পেমেন্ট বাকি আছে" %}</div>
     <p class="subtitle"><b>{{ order.customer_name }}</b>, {% t "আপনার অর্ডারটা রাখা হয়েছে।" %}<br>{% t "নিচের বাটনে পেমেন্ট করলেই অর্ডার কনফার্ম হবে।" %}</p>
     {% else %}
-    <div class="title">{% t "অর্ডার কনফার্ম!" %} 🎉</div>
+    <div class="title">{% t "অর্ডার কনফার্ম!" %}</div>
     <p class="subtitle">{% t "ধন্যবাদ," %} <b>{{ order.customer_name }}</b>!<br>{% t "আপনার অর্ডারটি সফলভাবে গৃহীত হয়েছে।" %}</p>
     {% endif %}
     {% if payment_msg %}
@@ -433,7 +433,7 @@ async function downloadPDF(){
 }
 
 function shareOrder(){
-  const txt='🎉 {% tjs "অর্ডার কনফার্ম!" %}\n\n{% tjs "অর্ডার নং:" %} #{{ order_no }}\n{% tjs "শপ:" %} {{ shop.name|escapejs }}\n{% tjs "মোট:" %} ৳{{ order.total_amount|floatformat:0 }}\n\n{% tjs "ধন্যবাদ!" %} 🛍️';
+  const txt='{% tjs "অর্ডার কনফার্ম!" %}\n\n{% tjs "অর্ডার নং:" %} #{{ order_no }}\n{% tjs "শপ:" %} {{ shop.name|escapejs }}\n{% tjs "মোট:" %} ৳{{ order.total_amount|floatformat:0 }}\n\n{% tjs "ধন্যবাদ!" %}';
   if(navigator.share){navigator.share({title:'{% tjs "অর্ডার কনফার্ম" %}',text:txt});}
   else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>alert('{% tjs "কপি হয়েছে!" %}'));}
 }

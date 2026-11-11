@@ -149,11 +149,11 @@ def paystation_callback(request):
     status, _payment, msg = apply_successful_payment(
         invoice, trx_id=trx_id, attempts=2, timeout=CALLBACK_VERIFY_TIMEOUT)
     if status in ('ok', 'already'):
-        messages.success(request, f'✅ {msg}')
+        messages.success(request, msg)
     elif status in ('unverified', 'failed'):
         messages.warning(request, f'⏳ {msg}' if status == 'unverified' else msg)
     else:
-        messages.error(request, f'❌ {msg}')
+        messages.error(request, msg)
     return redirect(back)
 
 

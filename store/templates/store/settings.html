@@ -437,7 +437,7 @@
         </label>
         <label class="switch-row" for="cb-public">
           <span>
-            <span class="t">কমেন্টের নিচে "ইনবক্স চেক করুন ✅"</span>
+            <span class="t">কমেন্টের নিচে "ইনবক্স চেক করুন"</span>
             <span class="d">পোস্টে সবাই দেখবে যে উত্তর দেওয়া হয়েছে, তাতে অন্যরাও কমেন্ট করতে উৎসাহ পায়।</span>
           </span>
           <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="cb-public" name="public_reply_enabled" {% if fb_page.public_reply_enabled %}checked{% endif %}></span>
@@ -504,7 +504,7 @@
       var el = document.getElementById(btn.dataset.copy);
       if (!el || !navigator.clipboard) return;
       navigator.clipboard.writeText(el.textContent.trim()).then(function () {
-        var old = btn.textContent; btn.textContent = 'কপি হয়েছে ✓';
+        var old = btn.textContent; btn.textContent = 'কপি হয়েছে';
         setTimeout(function () { btn.textContent = old; }, 1800);
       });
     });

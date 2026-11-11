@@ -14,10 +14,10 @@
 </head>
 <body>
 <div class="box">
-  <div style="font-size:60px;">🛑</div>
+  {% if shop.logo %}<img src="{{ shop.logo.url }}" alt="{{ shop.name }}" style="width:72px;height:72px;object-fit:contain;border-radius:16px;">{% endif %}
   <h2>{{ shop.name }}</h2>
   <p style="color:#6c757d;">{% t "এই দোকানের অনলাইন স্টোর এখন সাময়িকভাবে বন্ধ আছে।" %}<br>{% t "অর্ডার করতে সরাসরি যোগাযোগ করুন।" %}</p>
-  {% if shop.phone %}<p style="font-weight:700;"><a href="tel:{{ shop.phone }}" style="color:inherit;text-decoration:none;">📞 {{ shop.phone }}</a></p>{% endif %}
+  {% if shop.phone %}<p style="font-weight:700;"><a href="tel:{{ shop.phone }}" style="color:inherit;text-decoration:none;">{% t "কল করুন" %}: {{ shop.phone }}</a></p>{% endif %}
   {% if shop.facebook_page_url %}<a href="{{ shop.facebook_page_url }}" style="color:#0d6efd;">{% t "Facebook পেইজ" %} →</a>{% endif %}
 </div>
 </body>

@@ -1,4 +1,5 @@
 {% extends 'store/base.html' %}
+{% load static %}
 {% block title %}Billing & Plans{% endblock %}
 {% block page_title %}প্যাকেজ ও বিল{% endblock %}
 {% block content %}
@@ -23,10 +24,7 @@
   <div class="row align-items-center g-3">
     <div class="col-md-3 text-center">
       <div style="font-size:48px;">
-        {% if shop.subscription_plan == 'Premium' %}👑
-        {% elif shop.subscription_plan == 'Standard' %}🚀
-        {% elif shop.subscription_plan == 'Basic' %}📱
-        {% else %}🆓{% endif %}
+        <img src="{% static 'brand/sellpunch-logo-white.svg' %}" alt="{{ site.name }}" style="height:34px;width:auto">
       </div>
       <div class="badge rounded-pill mt-2 px-3 py-2" style="background:rgba(255,255,255,.15);color:#fff;font-size:14px;font-weight:800;">
         {% if shop.subscription_plan == 'Free' %}ফ্রি ট্রায়াল{% else %}{{ shop.subscription_plan }} Plan{% endif %}
@@ -81,11 +79,11 @@
   <div class="col-md-4">
     <div class="card border-0 shadow-sm h-100 rounded-4 {% if shop.subscription_plan == 'Basic' and not shop.is_locked %}border-primary border-2{% endif %}">
       {% if shop.subscription_plan == 'Basic' and not shop.is_locked %}
-      <div class="text-center py-2 rounded-top-4" style="background:#3b82f6;color:#fff;font-size:12px;font-weight:800;">✓ CURRENT PLAN</div>
+      <div class="text-center py-2 rounded-top-4" style="background:#3b82f6;color:#fff;font-size:12px;font-weight:800;"><i class="bi bi-check-lg"></i> CURRENT PLAN</div>
       {% endif %}
       <div class="card-body p-4">
         <div class="text-center mb-4">
-          <div style="font-size:36px;">📱</div>
+          <div style="font-size:34px;color:#3b82f6;"><i class="bi bi-globe2"></i></div>
           <h5 class="fw-900 mt-2 mb-1">Basic</h5>
           <div style="font-size:13px;color:#64748b;font-weight:600;">শুধু ওয়েবসাইট</div>
           <div style="font-size:28px;font-weight:900;color:#3b82f6;margin-top:10px;">৳499<small style="font-size:14px;color:#94a3b8;">/মাস</small></div>
@@ -107,11 +105,11 @@
   <div class="col-md-4">
     <div class="card border-0 h-100 rounded-4" style="box-shadow:0 8px 30px rgba(59,130,246,.2);border:2px solid #3b82f6 !important;">
       <div class="text-center py-2 rounded-top-4" style="background:#3b82f6;color:#fff;font-size:12px;font-weight:800;">
-        {% if shop.subscription_plan == 'Standard' and not shop.is_locked %}✓ CURRENT PLAN{% else %}⭐ MOST POPULAR{% endif %}
+        {% if shop.subscription_plan == 'Standard' and not shop.is_locked %}<i class="bi bi-check-lg"></i> CURRENT PLAN{% else %}MOST POPULAR{% endif %}
       </div>
       <div class="card-body p-4">
         <div class="text-center mb-4">
-          <div style="font-size:36px;">🚀</div>
+          <div style="font-size:34px;color:#3b82f6;"><i class="bi bi-facebook"></i></div>
           <h5 class="fw-900 mt-2 mb-1">Standard</h5>
           <div style="font-size:13px;color:#64748b;font-weight:600;">ওয়েবসাইট + Facebook</div>
           <div style="font-size:28px;font-weight:900;color:#3b82f6;margin-top:10px;">৳999<small style="font-size:14px;color:#94a3b8;">/মাস</small></div>
@@ -133,11 +131,11 @@
   <div class="col-md-4">
     <div class="card border-0 shadow-sm h-100 rounded-4 {% if shop.subscription_plan == 'Premium' and not shop.is_locked %}border-warning border-2{% endif %}">
       {% if shop.subscription_plan == 'Premium' and not shop.is_locked %}
-      <div class="text-center py-2 rounded-top-4" style="background:#f59e0b;color:#fff;font-size:12px;font-weight:800;">✓ CURRENT PLAN</div>
+      <div class="text-center py-2 rounded-top-4" style="background:#f59e0b;color:#fff;font-size:12px;font-weight:800;"><i class="bi bi-check-lg"></i> CURRENT PLAN</div>
       {% endif %}
       <div class="card-body p-4">
         <div class="text-center mb-4">
-          <div style="font-size:36px;">👑</div>
+          <div style="font-size:34px;color:#f59e0b;"><i class="bi bi-gem"></i></div>
           <h5 class="fw-900 mt-2 mb-1">Premium</h5>
           <div style="font-size:13px;color:#64748b;font-weight:600;">বড় ব্যবসার জন্য</div>
           <div style="font-size:28px;font-weight:900;color:#f59e0b;margin-top:10px;">৳1,999<small style="font-size:14px;color:#94a3b8;">/মাস</small></div>
@@ -202,8 +200,8 @@
             <td style="font-size:13px;">{{ p.payment_method|default:"—" }}</td>
             <td>{% if p.trx_id %}<code style="font-size:12px;background:#f1f5f9;padding:2px 8px;border-radius:4px;">{{ p.trx_id }}</code>{% else %}—{% endif %}</td>
             <td>
-              {% if p.status == 'Completed' %}<span class="badge bg-success rounded-pill">✓ সম্পন্ন</span>
-              {% elif p.status == 'Failed' %}<span class="badge bg-secondary rounded-pill">✗ হয়নি</span>
+              {% if p.status == 'Completed' %}<span class="badge bg-success rounded-pill"><i class="bi bi-check-lg"></i> সম্পন্ন</span>
+              {% elif p.status == 'Failed' %}<span class="badge bg-secondary rounded-pill"><i class="bi bi-x-lg"></i> হয়নি</span>
               {% else %}<span class="badge bg-warning text-dark rounded-pill">⏳ যাচাই চলছে</span>{% endif %}
             </td>
           </tr>
@@ -243,8 +241,8 @@
             <td style="font-size:13px;">{{ req.payment_method }}</td>
             <td><code style="font-size:12px;background:#f1f5f9;padding:2px 8px;border-radius:4px;">{{ req.transaction_id }}</code></td>
             <td>
-              {% if req.status == 'Approved' %}<span class="badge bg-success rounded-pill">✓ Approved</span>
-              {% elif req.status == 'Rejected' %}<span class="badge bg-danger rounded-pill">✗ Rejected</span>
+              {% if req.status == 'Approved' %}<span class="badge bg-success rounded-pill"><i class="bi bi-check-lg"></i> Approved</span>
+              {% elif req.status == 'Rejected' %}<span class="badge bg-danger rounded-pill"><i class="bi bi-x-lg"></i> Rejected</span>
               {% else %}<span class="badge bg-warning text-dark rounded-pill">⏳ Pending</span>{% endif %}
             </td>
           </tr>

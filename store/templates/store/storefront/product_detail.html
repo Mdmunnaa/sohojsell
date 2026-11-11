@@ -641,12 +641,12 @@ function addToCart(id, name, price, stock, image, qty) {
   qty = Math.max(1, qty || 1);
   if (stock <= 0) { showToast('{% tjs "এটা এখন স্টকে নেই" %}'); return; }
   const have = cart[id] ? cart[id].qty : 0;
-  if (have >= stock) { showToast('⚠️ {% tjs "স্টকে আর নেই" %}'); return; }
+  if (have >= stock) { showToast('{% tjs "স্টকে আর নেই" %}'); return; }
   const add = Math.min(qty, stock - have);
   if (cart[id]) cart[id].qty += add; else cart[id] = { id, name, price, qty: add, stock, image };
   saveCart(); renderCart();
-  showToast(add < qty ? '⚠️ ' + '{% tjs "স্টকে ছিল, {n}টা যোগ হলো" %}'.replace('{n}', toBn(add))
-    : '🛒 ' + (add > 1 ? '{% tjs "{n}টা কার্টে যোগ হয়েছে" %}'.replace('{n}', toBn(add)) : '{% tjs "কার্টে যোগ হয়েছে" %}'));
+  showToast(add < qty ? '{% tjs "স্টকে ছিল, {n}টা যোগ হলো" %}'.replace('{n}', toBn(add))
+    : (add > 1 ? '{% tjs "{n}টা কার্টে যোগ হয়েছে" %}'.replace('{n}', toBn(add)) : '{% tjs "কার্টে যোগ হয়েছে" %}'));
 }
 
 let toastTimer; function showToast(msg) { const t = document.getElementById('toast-sf'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500); }

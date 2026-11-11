@@ -123,7 +123,7 @@ class StaffAccessMiddleware:
                 request.user.shop = request.user.staff_profile.shop
                 request.user.is_shop_staff = True
 
-                # --- 🛑 PERMISSION SECURITY CHECK ---
+                # --- PERMISSION SECURITY CHECK ---
                 staff = request.user.staff_profile
                 path = request.path
 

@@ -1,4 +1,5 @@
 {% extends 'store/public_base.html' %}
+{% load static %}
 {% block title %}Create Free Shop - {{ site.name }}{% endblock %}
 
 {% block extra_css %}
@@ -40,7 +41,8 @@
         </div>
         <div class="col-md-7 login-right">
             <div class="text-center mb-4">
-                <h3 class="fw-bolder text-dark">ফ্রি দোকান খুলুন 🚀</h3>
+                <img src="{% static 'brand/sellpunch-mark.svg' %}" alt="" style="height:44px;width:auto" class="mb-3">
+                <h3 class="fw-bolder text-dark">ফ্রি দোকান খুলুন</h3>
                 <p class="text-muted small mb-0">কোনো কার্ড লাগবে না</p>
             </div>
             {% if messages %}

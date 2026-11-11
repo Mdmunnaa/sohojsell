@@ -504,13 +504,13 @@ function addToCart(id, name, price, stock, image) {
   id = String(id);
   if (stock <= 0) { showToast('{% tjs "এটা এখন স্টকে নেই" %}'); return; }
   if (cart[id]) {
-    if (cart[id].qty >= stock) { showToast('⚠️ {% tjs "স্টকে আর নেই" %}'); return; }
+    if (cart[id].qty >= stock) { showToast('{% tjs "স্টকে আর নেই" %}'); return; }
     cart[id].qty++;
   } else {
     cart[id] = { id, name, price, qty: 1, stock, image };
   }
   saveCart(); updateBtn(id); renderCart();
-  showToast('🛒 {% tjs "কার্টে যোগ হয়েছে" %}');
+  showToast('{% tjs "কার্টে যোগ হয়েছে" %}');
 }
 
 function updateBtn(id) {

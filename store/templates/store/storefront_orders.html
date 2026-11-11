@@ -83,7 +83,7 @@
                 <option value="Delivered" {% if order.status == 'Delivered' %}selected{% endif %}>ডেলিভারি হয়েছে</option>
                 <option value="Cancelled" {% if order.status == 'Cancelled' %}selected{% endif %}>বাতিল</option>
               </select>
-              <button type="submit" class="btn btn-sm btn-primary">✓</button>
+              <button type="submit" class="btn btn-sm btn-primary" aria-label="সেভ"><i class="bi bi-check-lg"></i></button>
             </form>
           </td>
         </tr>

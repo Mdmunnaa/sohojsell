@@ -151,7 +151,7 @@ function escapeHtml(text) {
 
 function changeQty(id, delta) {
   id = String(id); if (!cart[id]) return;
-  if (delta > 0 && cart[id].qty >= cart[id].stock) { showToast('⚠️ {% tjs "স্টকে আর নেই" %}'); return; }
+  if (delta > 0 && cart[id].qty >= cart[id].stock) { showToast('{% tjs "স্টকে আর নেই" %}'); return; }
   cart[id].qty += delta;
   if (cart[id].qty <= 0) delete cart[id];
   saveCart(); if (typeof updateBtn === 'function') updateBtn(id); renderCart();
@@ -309,7 +309,7 @@ async function placeOrder() {
   const phone = document.getElementById('co-phone').value.trim();
   const address = document.getElementById('co-address').value.trim();
   const note = document.getElementById('co-note').value.trim();
-  if (!name || !phone || !address) { showToast('⚠️ {% tjs "নাম, মোবাইল নম্বর আর ঠিকানা দিন" %}'); return; }
+  if (!name || !phone || !address) { showToast('{% tjs "নাম, মোবাইল নম্বর আর ঠিকানা দিন" %}'); return; }
   const n = checkoutNumbers();
   const zone = document.querySelector('input[name="co-zone"]:checked');
   const btn = document.getElementById('place-order-btn');
@@ -330,11 +330,11 @@ async function placeOrder() {
       window.location.href = data.redirect;
     } else {
       if (data.coupon_error) removeCoupon();
-      showToast('❌ ' + (data.error || '{% tjs "অর্ডার নেওয়া যায়নি, আবার চেষ্টা করুন" %}'));
+      showToast((data.error || '{% tjs "অর্ডার নেওয়া যায়নি, আবার চেষ্টা করুন" %}'));
       restore();
     }
   } catch (e) {
-    showToast('❌ {% tjs "ইন্টারনেট সংযোগ দেখুন, তারপর আবার চেষ্টা করুন" %}');
+    showToast('{% tjs "ইন্টারনেট সংযোগ দেখুন, তারপর আবার চেষ্টা করুন" %}');
     restore();
   }
 }

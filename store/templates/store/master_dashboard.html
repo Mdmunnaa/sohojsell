@@ -1,6 +1,7 @@
 {% extends 'store/base.html' %}
+{% load static %}
 {% block title %}Master HQ{% endblock %}
-{% block page_title %}🚀 Master HQ{% endblock %}
+{% block page_title %}<img src="{% static 'brand/sellpunch-mark.svg' %}" alt="" style="height:22px;width:auto;vertical-align:-5px;margin-right:6px">Master HQ{% endblock %}
 {% block content %}
 {% if system_warnings %}
 <div class="alert alert-danger rounded-4 shadow-sm mb-4">
@@ -266,7 +267,7 @@
                 {% if shop.days_remaining > 7 %}
                 <span class="text-success fw-semibold">{{ shop.valid_until|date:"d M Y" }}</span>
                 {% elif shop.days_remaining > 0 %}
-                <span class="text-warning fw-semibold">{{ shop.valid_until|date:"d M Y" }} ⚠️</span>
+                <span class="text-warning fw-semibold">{{ shop.valid_until|date:"d M Y" }} <i class="bi bi-exclamation-triangle-fill"></i></span>
                 {% else %}
                 <span class="text-danger fw-semibold">Expired</span>
                 {% endif %}
