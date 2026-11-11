@@ -1,0 +1,56 @@
+{% extends 'store/hq/base.html' %}
+{% load hq_tags %}
+{% block title %}সেলারদের নোটিশ{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>সেলারদের নোটিশ</h1>
+    <p class="sub">চালু নোটিশ সেলারদের ড্যাশবোর্ডের একদম উপরে দেখায় — নতুন ফিচার, অফার, সার্ভারের কাজ, দাম বদল। একসাথে সর্বোচ্চ ৩টা দেখায়।</p>
+  </div>
+</div>
+
+<div class="cols-wide">
+  <section class="panel flush">
+    <div class="panel-head"><h2>সব নোটিশ</h2></div>
+    <div class="tbl-wrap"><table class="tbl stack">
+      <thead><tr><th>নোটিশ</th><th>কাদের</th><th>অবস্থা</th><th></th></tr></thead>
+      <tbody>
+      {% for n in items %}
+        <tr>
+          <td><span class="lvl lvl-{{ n.level }}" aria-hidden="true"></span><span class="strong">{{ n.title }}</span>{% if n.body %}<div class="meta">{{ n.body|truncatechars:120 }}</div>{% endif %}<div class="meta">{{ n.starts_at|date:"d M Y" }}{% if n.ends_at %} থেকে {{ n.ends_at|date:"d M Y" }}{% else %} থেকে, শেষ নেই{% endif %}</div></td>
+          <td data-label="কাদের:">{{ n.get_audience_display }}</td>
+          <td>{% if n.live %}<span class="st st-ok">দেখাচ্ছে</span>{% elif not n.is_active %}<span class="st st-off">বন্ধ</span>{% else %}<span class="st st-muted">মেয়াদ শেষ</span>{% endif %}</td>
+          <td class="num"><div class="btn-row" style="justify-content: flex-end">
+            <form method="post" action="{% url 'hq_notice_action' n.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="action" value="toggle"><button class="btn btn-xs" type="submit">{% if n.is_active %}বন্ধ করুন{% else %}চালু করুন{% endif %}</button></form>
+            <form method="post" action="{% url 'hq_notice_action' n.pk %}" class="inline" data-confirm="নোটিশটা মুছে ফেলবেন?">{% csrf_token %}<input type="hidden" name="action" value="delete"><button class="btn btn-xs btn-ghost-danger" type="submit">মুছুন</button></form>
+          </div></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4"><div class="empty"><b>এখনো কোনো নোটিশ নেই</b>ডান পাশ থেকে প্রথমটা দিন।</div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>নতুন নোটিশ</h2></div>
+    <div class="panel-body">
+      {% if errors %}<div class="callout bad">{% for e in errors %}{{ e }} {% endfor %}</div>{% endif %}
+      <form method="post">{% csrf_token %}
+        <div class="field"><label for="ntTitle">শিরোনাম</label><input id="ntTitle" type="text" name="title" maxlength="120" value="{{ form.title }}" placeholder="যেমন: এখন ইংরেজিতেও ওয়েবসাইট" required></div>
+        <div class="field"><label for="ntBody">বিস্তারিত (ঐচ্ছিক)</label><textarea id="ntBody" name="body" maxlength="1000" rows="3">{{ form.body }}</textarea></div>
+        <div class="grid-2">
+          <div class="field"><label for="ntLevel">ধরন</label><select id="ntLevel" name="level">{% for key, label in levels %}<option value="{{ key }}"{% if form.level == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="ntAudience">কাদের দেখাবে</label><select id="ntAudience" name="audience">{% for key, label in audiences %}<option value="{{ key }}"{% if form.audience == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label for="ntLink">লিংক (ঐচ্ছিক)</label><input id="ntLink" type="text" name="link_url" maxlength="300" value="{{ form.link_url }}" placeholder="/website/ বা https://..."></div>
+          <div class="field"><label for="ntLinkText">লিংকের লেখা</label><input id="ntLinkText" type="text" name="link_text" maxlength="40" value="{{ form.link_text }}" placeholder="যেমন: চালু করুন"></div>
+        </div>
+        <div class="field"><label for="ntDays">কত দিন দেখাবে</label><input id="ntDays" type="number" name="days" min="0" max="365" value="7"><div class="help">০ দিলে নিজে বন্ধ না করা পর্যন্ত দেখাবে</div></div>
+        <button class="btn btn-primary" type="submit"><i class="bi bi-megaphone"></i>নোটিশ চালু করুন</button>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}

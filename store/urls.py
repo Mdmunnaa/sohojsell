@@ -13,6 +13,7 @@ from . import views_offers
 from . import views_landing
 from . import views_dues
 from . import views_demo
+from . import hq_views
 
 def favicon(request):
     from django.shortcuts import redirect
@@ -124,13 +125,26 @@ urlpatterns = [
     path('online-orders/<int:order_id>/status/', views.storefront_order_update_status, name='storefront_order_status'),
 
     # Master HQ (CEO only)
-    path('saas-master/', views.master_dashboard, name='master_dashboard'),
-    path('saas-master/shops/', views.manage_shops, name='manage_shops'),  # NEW
-    path('saas-master/users/', views.all_users, name='all_users'),  # NEW
-    path('saas-master/billing/', views.master_billing, name='master_billing'),  # NEW
+    # Master HQ (store/hq_views.py) — শুধু সুপারইউজার
+    path('saas-master/', hq_views.dashboard, name='master_dashboard'),
+    path('saas-master/shops/', hq_views.shops, name='manage_shops'),
+    path('saas-master/shops/<int:shop_id>/', hq_views.shop_detail, name='hq_shop'),
+    path('saas-master/shops/<int:shop_id>/action/', hq_views.shop_action, name='hq_shop_action'),
+    path('saas-master/users/', hq_views.users, name='all_users'),
+    path('saas-master/users/<int:user_id>/action/', hq_views.user_action, name='hq_user_action'),
+    path('saas-master/users/<int:user_id>/login/', hq_views.login_as, name='hq_login_as'),
+    path('saas-master/return/', hq_views.stop_login_as, name='hq_return'),
+    path('saas-master/billing/', hq_views.payments, name='master_billing'),
+    path('saas-master/payments/<int:payment_id>/recheck/', hq_views.payment_recheck, name='hq_payment_recheck'),
+    path('saas-master/payments/<int:payment_id>/complete/', hq_views.payment_complete, name='hq_payment_complete'),
     path('saas-master/settlements/', website_views.master_settlements, name='master_settlements'),
-    path('saas-master/settings/', views.master_settings, name='master_settings'),
-    path('saas-master/recharge-sms/', views.recharge_sms, name='recharge_sms'),
+    path('saas-master/sms/', hq_views.sms_panel, name='hq_sms'),
+    path('saas-master/notices/', hq_views.notices, name='hq_notices'),
+    path('saas-master/notices/<int:notice_id>/', hq_views.notice_action, name='hq_notice_action'),
+    path('saas-master/activity/', hq_views.activity, name='hq_activity'),
+    path('saas-master/search/', hq_views.search, name='hq_search'),
+    path('saas-master/settings/', hq_views.system_settings, name='master_settings'),
+    path('saas-master/recharge-sms/', hq_views.recharge_sms, name='recharge_sms'),
 
     # Barcode System
     path('pos/barcode-lookup/', views_pos.pos_barcode, name='barcode_lookup'),

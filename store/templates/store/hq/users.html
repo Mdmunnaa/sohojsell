@@ -1,0 +1,47 @@
+{% extends 'store/hq/base.html' %}
+{% load hq_tags %}
+{% block title %}ইউজার খুঁজুন{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>ইউজার খুঁজুন</h1>
+    <p class="sub">মালিক, স্টাফ আর সুপারইউজার — সবাই। "ঢুকুন" চাপলে সেই ইউজার যা দেখে তা-ই দেখবেন (২ ঘণ্টা পর্যন্ত), উপরের বাটনে ফিরে আসবেন।</p>
+  </div>
+</div>
+<div class="filters" role="group" aria-label="ধরন">
+  {% for key, label in roles %}<a class="chip{% if role == key %} on{% endif %}" href="?role={{ key }}{% if q %}&amp;q={{ q|urlencode }}{% endif %}">{{ label }}</a>{% endfor %}
+</div>
+<form class="filters" method="get">
+  <input type="hidden" name="role" value="{{ role }}">
+  <input class="input grow" type="search" name="q" value="{{ q }}" placeholder="ফোন নম্বর বা নাম" aria-label="ইউজার খুঁজুন">
+  <button class="btn btn-sm" type="submit"><i class="bi bi-search"></i>খুঁজুন</button>
+</form>
+<section class="panel flush">
+  <div class="tbl-wrap"><table class="tbl stack">
+    <thead><tr><th>ইউজার</th><th>ধরন</th><th>দোকান</th><th>লগইন</th><th class="num">শেষ লগইন</th><th></th></tr></thead>
+    <tbody>
+    {% for u in page_obj %}
+      <tr>
+        <td><span class="strong">{{ u.name|default:u.phone_number }}</span><div class="meta"><a href="tel:{{ u.phone_number }}">{{ u.phone_number }}</a> · যোগ {{ u.date_joined|date:"d M Y" }}</div></td>
+        <td data-label="ধরন:">{{ u.hq_role }}</td>
+        <td data-label="দোকান:">{% if u.hq_shop %}<a href="{% url 'hq_shop' u.hq_shop.pk %}">{{ u.hq_shop.name }}</a>{% else %}<span class="faint">-</span>{% endif %}</td>
+        <td>{% if u.is_active %}<span class="st st-ok">চালু</span>{% else %}<span class="st st-off">বন্ধ</span>{% endif %}</td>
+        <td class="num meta" data-label="শেষ লগইন:">{{ u.last_login|ago }}</td>
+        <td class="num">
+          {% if not u.is_superuser %}
+          <div class="btn-row" style="justify-content: flex-end">
+            {% if u.can_enter %}<form method="post" action="{% url 'hq_login_as' u.pk %}" class="inline" data-confirm="{{ u.phone_number }} হিসেবে ঢুকবেন?">{% csrf_token %}<button class="btn btn-xs" type="submit"><i class="bi bi-person-badge"></i>ঢুকুন</button></form>{% endif %}
+            <form method="post" action="{% url 'hq_user_action' u.pk %}" class="inline" data-confirm="{{ u.phone_number }}-এর নতুন পাসওয়ার্ড বানাবেন?">{% csrf_token %}<input type="hidden" name="action" value="password"><button class="btn btn-xs" type="submit"><i class="bi bi-key"></i>পাসওয়ার্ড</button></form>
+            <form method="post" action="{% url 'hq_user_action' u.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="action" value="toggle_active"><button class="btn btn-xs{% if u.is_active %} btn-ghost-danger{% endif %}" type="submit">{% if u.is_active %}লগইন বন্ধ{% else %}লগইন চালু{% endif %}</button></form>
+          </div>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6"><div class="empty"><b>কাউকে পাওয়া যায়নি</b>নম্বরের শেষ কয়েকটা অঙ্ক দিয়েও খোঁজা যায়।</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% include 'store/hq/_pager.html' %}
+</section>
+{% endblock %}

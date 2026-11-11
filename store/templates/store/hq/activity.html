@@ -1,0 +1,35 @@
+{% extends 'store/hq/base.html' %}
+{% load hq_tags %}
+{% block title %}Master HQ খাতা{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Master HQ খাতা</h1>
+    <p class="sub">Master HQ থেকে যা করা হয়েছে — কে, কখন, কোন দোকানে। পাসওয়ার্ড কখনো এখানে লেখা হয় না।</p>
+  </div>
+</div>
+<form class="filters" method="get">
+  <select class="input" name="action" aria-label="কাজ"><option value="">সব কাজ</option>{% for key, label in actions %}<option value="{{ key }}"{% if action == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  <input class="input grow" type="search" name="q" value="{{ q }}" placeholder="দোকান বা বিস্তারিত" aria-label="খাতায় খুঁজুন">
+  <button class="btn btn-sm" type="submit"><i class="bi bi-funnel"></i>দেখান</button>
+</form>
+<section class="panel flush">
+  <div class="tbl-wrap"><table class="tbl stack">
+    <thead><tr><th>কখন</th><th>কাজ</th><th>দোকান</th><th>বিস্তারিত</th><th>কে</th></tr></thead>
+    <tbody>
+    {% for e in page_obj %}
+      <tr>
+        <td class="nowrap meta">{{ e.created_at|date:"d M Y, h:i A" }}</td>
+        <td class="strong">{{ e.action_label }}</td>
+        <td data-label="দোকান:">{% if e.shop_id %}<a href="{% url 'hq_shop' e.shop_id %}">{{ e.shop_label }}</a>{% else %}{{ e.shop_label|default:"-" }}{% endif %}</td>
+        <td data-label="বিস্তারিত:">{{ e.detail|default:"" }}</td>
+        <td class="meta" data-label="কে:">{{ e.actor_label }}{% if e.ip %}<div class="faint">{{ e.ip }}</div>{% endif %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5"><div class="empty"><b>খাতা খালি</b>Master HQ থেকে যা করবেন, এখানে লেখা থাকবে।</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% include 'store/hq/_pager.html' %}
+</section>
+{% endblock %}

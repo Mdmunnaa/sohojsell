@@ -1,0 +1,63 @@
+{% extends 'store/hq/base.html' %}
+{% load hq_tags %}
+{% block title %}সিস্টেম সেটিংস{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>সিস্টেম সেটিংস</h1>
+    <p class="sub">পুরো প্ল্যাটফর্মের সুইচ আর চাবি। সার্ভারের গোপন চাবি (PayStation, R2, ডাটাবেস) Render/Cloudflare-এর environment-এ থাকে, এখানে শুধু অবস্থা দেখায়।</p>
+  </div>
+</div>
+
+{% if system_warnings %}
+<div class="callout bad" role="alert"><b>সার্ভারের সেটিংসে সমস্যা</b>
+  <ul>{% for text in system_warnings %}<li>{{ text }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="cols-wide">
+  <section class="panel">
+    <div class="panel-head"><h2>সুইচ আর SMS</h2></div>
+    <div class="panel-body">
+      <form method="post">{% csrf_token %}
+        <div class="field">
+          <label class="switch"><input type="checkbox" name="signups_open"{% if setting.signups_open %} checked{% endif %}><span>নতুন সাইনআপ চালু</span></label>
+          <div class="help">বন্ধ করলে নতুন কেউ অ্যাকাউন্ট খুলতে পারে না (ফোন বা Facebook কোনোটা দিয়েই)। যাদের অ্যাকাউন্ট আছে, তারা আগের মতো ঢুকতে পারে।</div>
+        </div>
+        <div class="field"><label for="stName">প্ল্যাটফর্মের নাম</label><input id="stName" type="text" name="platform_name" maxlength="100" value="{{ setting.platform_name }}"></div>
+        <div class="field"><label for="stRate">সেলারের কাছে প্রতি SMS-এর দাম (টাকা)</label><input id="stRate" type="number" name="sms_rate" step="0.01" min="0.05" max="5" value="{{ setting.sms_rate|floatformat:2 }}"><div class="help">০.০৫ থেকে ৫ টাকা। নতুন রিচার্জ থেকে এই দামে হিসাব হয়।</div></div>
+        {% if env_keys %}
+        <div class="callout">SMS গেটওয়ের চাবি সার্ভারের environment-এ বসানো (SMS_GATEWAY_CLIENT_ID / SMS_GATEWAY_API_KEY) — নিচের ঘরগুলো তখন কাজে লাগে না।</div>
+        {% endif %}
+        <div class="grid-2">
+          <div class="field"><label for="stClient">SMS Gateway BD — Client ID</label><input id="stClient" type="text" name="sms_client_id" value="{{ setting.sms_client_id|default_if_none:'' }}" autocomplete="off"></div>
+          <div class="field"><label for="stKey">API Key</label><input id="stKey" type="password" name="sms_api_key" value="" placeholder="{% if setting.sms_api_key %}বসানো আছে — বদলাতে নতুনটা লিখুন{% else %}বসানো নেই{% endif %}" autocomplete="new-password"></div>
+        </div>
+        {% if setting.sms_api_key %}<div class="field"><label class="check"><input type="checkbox" name="clear_sms_api_key"> API Key মুছে ফেলুন</label></div>{% endif %}
+        <button class="btn btn-primary" type="submit">রাখুন</button>
+      </form>
+    </div>
+  </section>
+
+  <div>
+    <section class="panel flush">
+      <div class="panel-head"><h2>সিস্টেমের অবস্থা</h2><span class="hint">Django {{ django_version }}</span></div>
+      <div class="tbl-wrap"><table class="tbl">
+        <tbody>
+        {% for label, ok, value, extra in checks %}
+          <tr><td>{{ label }}</td><td class="num">{% if ok %}<span class="st st-ok">{{ value }}</span>{% else %}<span class="st st-warn">{{ value }}</span>{% endif %}{% if extra %}<div class="meta">{{ extra }}</div>{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>আরও</h2></div>
+      <div class="panel-body btn-row">
+        <a class="btn btn-sm" href="/admin/" target="_blank" rel="noopener"><i class="bi bi-database"></i>Django Admin</a>
+        <a class="btn btn-sm" href="{% url 'demo_check' %}" target="_blank" rel="noopener"><i class="bi bi-clipboard-check"></i>ডেমো যাচাই</a>
+        <a class="btn btn-sm" href="/healthz/" target="_blank" rel="noopener"><i class="bi bi-heart-pulse"></i>healthz</a>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

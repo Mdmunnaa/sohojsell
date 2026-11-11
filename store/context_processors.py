@@ -58,3 +58,35 @@ def plan_info(request):
         'facebook': limits['facebook'],
         'custom_domain': limits['custom_domain'],
     }}
+
+
+HQ_ACTIVE = {
+    'master_dashboard': 'dashboard', 'manage_shops': 'shops', 'hq_shop': 'shops', 'all_users': 'users',
+    'master_billing': 'payments', 'master_settlements': 'settlements', 'hq_sms': 'sms', 'hq_notices': 'notices',
+    'hq_activity': 'activity', 'master_settings': 'settings',
+}
+
+
+def hq(request):
+    """
+    Master HQ-র মেনুর সংখ্যা; সেলারের পাতায় "Master HQ-তে ফিরুন" ব্যানার (সুপারইউজার ঢুকে থাকলে)
+    আর প্ল্যাটফর্ম নোটিশ (lazy — যে পাতা দেখায় শুধু সেখানেই ডাটাবেসে যায়)।
+    """
+    user = getattr(request, 'user', None)
+    if user is None or not user.is_authenticated:
+        return {}
+    from . import hq as rules
+    data = {}
+    if user.is_superuser:
+        if request.path.startswith('/saas-master/'):
+            match = getattr(request, 'resolver_match', None)
+            data['hq_nav'] = rules.nav_counts
+            data['active'] = HQ_ACTIVE.get(getattr(match, 'url_name', ''), '')
+        return data
+    impersonator = rules.impersonation(request)
+    if impersonator:
+        data['hq_impersonator'] = impersonator
+    shop = getattr(user, 'shop', None)
+    if shop is not None:
+        data['platform_notices'] = lambda: rules.notices_for(shop)
+    return data

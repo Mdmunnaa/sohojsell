@@ -1,0 +1,211 @@
+{% extends 'store/hq/base.html' %}
+{% load hq_tags %}
+{% block title %}ড্যাশবোর্ড{% endblock %}
+{% block extra_css %}
+.hero { background: var(--side); color: #dfe6f2; border-radius: 16px; padding: 22px 24px 20px; margin-bottom: 20px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px 32px; align-items: end; }
+.hero .label { color: #9fb0cc; font-size: 14px; }
+.hero .count { font-weight: 700; font-size: clamp(2.2rem, 1.6rem + 2.4vw, 3.3rem); line-height: 1.05; color: #fff; letter-spacing: -.02em; }
+.hero .count small { font-size: 15px; font-weight: 500; color: #9fb0cc; letter-spacing: 0; margin-left: 8px; }
+.hero .side { text-align: right; font-size: 14px; color: #b9c6dc; line-height: 1.75; }
+.hero .side b { color: #fff; font-size: 17px; }
+.hero .track { grid-column: 1 / -1; display: flex; height: 12px; border-radius: 6px; background: rgba(255,255,255,.1); overflow: hidden; gap: 2px; }
+.hero .track i { display: block; height: 100%; }
+.hero .keys { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 18px; color: #9fb0cc; font-size: 13px; margin-top: -8px; }
+.hero .keys a { color: #c9d4e8; }
+.hero .keys b { color: #fff; }
+.todo { list-style: none; margin: 0; padding: 0; }
+.todo li { border-bottom: 1px solid var(--line); }
+.todo li:last-child { border-bottom: 0; }
+.todo a { display: flex; align-items: center; gap: 12px; padding: 12px 18px; color: var(--ink); }
+.todo a:hover { background: var(--panel-2); text-decoration: none; }
+.todo .mark { width: 4px; align-self: stretch; border-radius: 2px; background: var(--warn); flex: none; }
+.todo .bad .mark { background: var(--bad); } .todo .good .mark { background: var(--ok); } .todo .info .mark { background: var(--brand); }
+.todo .txt { flex: 1; min-width: 0; }
+.todo .txt small { display: block; color: var(--muted); font-size: 13px; }
+.todo .go { color: var(--faint); }
+.legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; font-size: 14px; }
+.legend a { color: var(--ink); display: flex; justify-content: space-between; gap: 8px; }
+.legend a span { display: inline-flex; align-items: center; gap: 7px; }
+.legend a span::before { content: ''; width: 9px; height: 9px; border-radius: 3px; background: var(--c); }
+.split { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--line); margin: 6px 0 12px; gap: 2px; }
+.split i { display: block; height: 100%; }
+.feed { list-style: none; margin: 0; padding: 0; }
+.feed li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 18px; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.feed li:last-child { border-bottom: 0; }
+.feed .r { text-align: right; white-space: nowrap; }
+body.hq-dark .hero { background: #16244a; border: 1px solid var(--line-strong); }
+@media (max-width: 900px) { .hero { grid-template-columns: minmax(0, 1fr); } .hero .side { text-align: left; } }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>আজকের অবস্থা</h1>
+    <p class="sub">হিসাব {{ s.generated_at|date:"h:i A" }}-এর{% if db_latency is not None %} · ডাটাবেসের সাড়া {{ db_latency|floatformat:0 }} ms{% if db_region %} ({{ db_region }}){% endif %}{% endif %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{% url 'hq_notices' %}"><i class="bi bi-megaphone"></i>নোটিশ দিন</a>
+    <a class="btn btn-primary" href="{% url 'manage_shops' %}?status=trial_ending"><i class="bi bi-telephone"></i>আজ কাকে ফোন করবেন</a>
+  </div>
+</div>
+
+{% if system_warnings %}
+<div class="callout bad" role="alert"><b>সার্ভারের সেটিংসে সমস্যা</b>
+  <ul>{% for text in system_warnings %}<li>{{ text }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<section class="hero" aria-label="মোট দোকান">
+  <div>
+    <div class="label">SellPunch-এ মোট দোকান (ডেমো ছাড়া)</div>
+    <div class="count">{{ s.total|hq_num }}<small>এই মাসে নতুন {{ s.new.month|hq_num }}</small></div>
+  </div>
+  <div class="side">
+    আজ নতুন <b>{{ s.new.today|hq_num }}</b> · ৭ দিনে <b>{{ s.new.week|hq_num }}</b><br>
+    এই মাসে প্ল্যাটফর্মে অর্ডার <b>{{ s.orders_month|hq_num }}</b> · বিক্রি <b>{{ s.sales_month|hq_taka }}</b>
+  </div>
+  <div class="track" aria-hidden="true">
+    {% if s.total %}
+    <i style="width: {% widthratio s.status.paid s.total 100 %}%; background: #34d399"></i>
+    <i style="width: {% widthratio s.status.trial s.total 100 %}%; background: var(--amber)"></i>
+    <i style="width: {% widthratio s.status.locked s.total 100 %}%; background: #f87171"></i>
+    <i style="width: {% widthratio s.status.suspended s.total 100 %}%; background: #94a3b8"></i>
+    {% endif %}
+  </div>
+  <div class="keys">
+    <a href="{% url 'manage_shops' %}?status=paid">পেইড <b>{{ s.status.paid|hq_num }}</b></a>
+    <a href="{% url 'manage_shops' %}?status=trial">ফ্রি ট্রায়াল <b>{{ s.status.trial|hq_num }}</b></a>
+    <a href="{% url 'manage_shops' %}?status=locked">মেয়াদ শেষ <b>{{ s.status.locked|hq_num }}</b></a>
+    <a href="{% url 'manage_shops' %}?status=suspended">বন্ধ করা <b>{{ s.status.suspended|hq_num }}</b></a>
+  </div>
+</section>
+
+<div class="kpis" style="--n: 4">
+  <a class="kpi" href="{% url 'master_billing' %}?status=Completed&amp;period=month"><div class="label">এই মাসের আয়</div><div class="value">{{ s.revenue.total|hq_taka }}</div><div class="foot">প্যাকেজ {{ s.revenue.plans|hq_taka }} · SMS {{ s.revenue.sms|hq_taka }}</div></a>
+  <a class="kpi" href="{% url 'manage_shops' %}?status=paid"><div class="label">নিশ্চিত মাসিক আয় (পেইড)</div><div class="value">{{ s.mrr|hq_taka }}</div><div class="foot">ট্রায়াল সব পেইড হলে আরও {{ s.trial_value|hq_taka }}</div></a>
+  <a class="kpi" href="{% url 'manage_shops' %}?status=paid"><div class="label">পেইড দোকান</div><div class="value">{{ s.status.paid|hq_num }}</div><div class="foot">Basic {{ s.plans.Basic|default:0 }} · Standard {{ s.plans.Standard|default:0 }} · Premium {{ s.plans.Premium|default:0 }}</div></a>
+  <a class="kpi" href="{% url 'hq_sms' %}"><div class="label">এই মাসে SMS গেছে</div><div class="value">{{ s.sms_month|hq_num }}</div><div class="foot">{{ s.revenue.count|hq_num }}টা পেমেন্ট এসেছে এই মাসে</div></a>
+</div>
+
+<div class="cols-wide">
+  <div>
+    <section class="panel flush">
+      <div class="panel-head"><h2>এখন যা করতে হবে</h2></div>
+      <ul class="todo">
+        {% if a.signups_closed %}<li class="bad"><a href="{% url 'master_settings' %}"><span class="mark"></span><span class="txt">নতুন সাইনআপ বন্ধ আছে<small>মার্কেটিং চললে এখনই চালু করুন</small></span><i class="bi bi-chevron-right go"></i></a></li>{% endif %}
+        {% if a.settlements %}<li><a href="{% url 'master_settlements' %}"><span class="mark"></span><span class="txt">{{ a.settlements|hq_num }}টা দোকান টাকা তুলতে চায় ({{ a.settlements_amount|hq_taka }})<small>পাঠিয়ে লেনদেন নম্বর লিখুন — সেলার SMS পাবে</small></span><i class="bi bi-chevron-right go"></i></a></li>{% endif %}
+        {% if a.domains %}<li class="info"><a href="#domains"><span class="mark"></span><span class="txt">{{ a.domains|hq_num }}টা নিজের ডোমেইন চালুর অপেক্ষায়<small>DNS মিলেছে — হোস্টিংয়ে যোগ করে "চালু" চাপুন</small></span><i class="bi bi-chevron-right go"></i></a></li>{% endif %}
+        {% if a.stuck_payments %}<li><a href="{% url 'master_billing' %}?status=Pending"><span class="mark"></span><span class="txt">গত ৭ দিনে {{ a.stuck_payments|hq_num }}টা পেমেন্ট অসম্পূর্ণ<small>টাকা কেটে থাকলে "আবার যাচাই" চাপুন</small></span><i class="bi bi-chevron-right go"></i></a></li>{% endif %}
+        {% if a.legacy_payments %}<li><a href="{% url 'master_billing' %}#legacy"><span class="mark"></span><span class="txt">{{ a.legacy_payments|hq_num }}টা পুরনো bKash/Nagad পেমেন্ট অনুমোদনের অপেক্ষায়<small>লেনদেন নম্বর মিলিয়ে অনুমোদন দিন</small></span><i class="bi bi-chevron-right go"></i></a></li>{% endif %}
+        {% if a.trial_ending %}<li class="info"><a href="{% url 'manage_shops' %}?status=trial_ending"><span class="mark"></span><span class="txt">{{ a.trial_ending|hq_num }}টা দোকানের ট্রায়াল ৭ দিনের মধ্যে শেষ<small>ফোন করে পেইড করার সেরা সময়</small></span><i class="bi bi-chevron-right go"></i></a></li>{% endif %}
+        {% if a.expiring %}<li class="info"><a href="{% url 'manage_shops' %}?status=expiring"><span class="mark"></span><span class="txt">{{ a.expiring|hq_num }}টা পেইড দোকানের মেয়াদ ৭ দিনের মধ্যে শেষ<small>মনে করিয়ে দিলে নবায়ন বেশি হয়</small></span><i class="bi bi-chevron-right go"></i></a></li>{% endif %}
+        {% if a.locked %}<li><a href="{% url 'manage_shops' %}?status=locked"><span class="mark"></span><span class="txt">{{ a.locked|hq_num }}টা দোকানের মেয়াদ শেষ, ড্যাশবোর্ড লক<small>ফোন করলে অনেকেই নবায়ন করে</small></span><i class="bi bi-chevron-right go"></i></a></li>{% endif %}
+        {% if not a.signups_closed and not a.settlements and not a.domains and not a.stuck_payments and not a.legacy_payments and not a.trial_ending and not a.expiring and not a.locked %}
+        <li class="good"><a href="{% url 'manage_shops' %}"><span class="mark"></span><span class="txt">এই মুহূর্তে জরুরি কিছু নেই<small>নতুন সেলার আনার দিকে মন দিন</small></span><i class="bi bi-chevron-right go"></i></a></li>
+        {% endif %}
+      </ul>
+    </section>
+
+    {% if pending_domains %}
+    <section class="panel flush" id="domains">
+      <div class="panel-head"><h2>নিজের ডোমেইন — চালুর অপেক্ষায়</h2><span class="hint">হোস্টিংয়ে যোগ করে SSL হলে "চালু" চাপুন — সেলার SMS পাবে</span></div>
+      <div class="tbl-wrap"><table class="tbl stack">
+        <thead><tr><th>দোকান</th><th>ডোমেইন</th><th>DNS মিলেছে</th><th></th></tr></thead>
+        <tbody>
+        {% for d in pending_domains %}
+          <tr>
+            <td><a class="strong" href="{% url 'hq_shop' d.id %}">{{ d.name }}</a><div class="meta">{{ d.phone }} · {{ d.slug }}</div></td>
+            <td><code>{{ d.custom_domain }}</code></td>
+            <td class="meta nowrap">{{ d.custom_domain_checked_at|date:"d M, h:i A" }}</td>
+            <td class="num"><form method="post" action="{% url 'master_domain_live' d.id %}" class="inline">{% csrf_token %}<input type="hidden" name="next" value="{% url 'master_dashboard' %}"><button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-check2"></i>চালু</button></form></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+    {% endif %}
+
+    <section class="panel">
+      <div class="panel-head"><h2>গত ৩০ দিনের সাইনআপ</h2><span class="hint">আজ {{ s.new.today|hq_num }} · ৭ দিনে {{ s.new.week|hq_num }}</span></div>
+      <div class="panel-body">
+        <div class="bars" style="height: 140px">
+          {% for d in s.signups %}<a class="bar{% if forloop.last %} today{% endif %}" style="--h: {{ d.pct }}%" href="{% url 'manage_shops' %}" title="{{ d.day|date:'d M' }}: {{ d.n }}টা"><i></i></a>{% endfor %}
+        </div>
+        <div class="bar-axis"><span>{{ s.signups.0.day|date:"d M" }}</span><span>আজ</span></div>
+      </div>
+    </section>
+
+    <section class="panel flush">
+      <div class="panel-head"><h2>সর্বশেষ যোগ দিয়েছে</h2><a class="btn btn-sm" href="{% url 'manage_shops' %}">সব দেখুন</a></div>
+      <div class="tbl-wrap"><table class="tbl stack">
+        <thead><tr><th>দোকান</th><th>অবস্থা</th><th>যোগাযোগ</th><th class="num">কবে</th></tr></thead>
+        <tbody>
+        {% for shop in recent %}
+          <tr>
+            <td><a class="strong" href="{% url 'hq_shop' shop.id %}">{{ shop.name }}</a><div class="meta">{{ shop.slug }}{% if shop.custom_domain %} · {{ shop.custom_domain }}{% endif %}</div></td>
+            <td><span class="st st-{{ shop.hq_status }}">{{ shop.hq_status|hq_status }}</span></td>
+            <td class="nowrap">{% with p=shop.phone|default:shop.user.phone_number %}<a href="tel:{{ p }}">{{ p }}</a>{% endwith %}</td>
+            <td class="num meta">{{ shop.created_at|ago }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4"><div class="empty"><b>এখনো কোনো দোকান নেই</b>প্রথম সেলার এলে এখানে দেখাবে।</div></td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+  </div>
+
+  <div>
+    <section class="panel">
+      <div class="panel-head"><h2>দোকানের অবস্থা</h2><span class="hint">মোট {{ s.total|hq_num }}</span></div>
+      <div class="panel-body">
+        <div class="split" aria-hidden="true">
+          {% if s.total %}
+          <i style="width: {% widthratio s.status.paid s.total 100 %}%; background: var(--ok)"></i>
+          <i style="width: {% widthratio s.status.trial s.total 100 %}%; background: var(--warn)"></i>
+          <i style="width: {% widthratio s.status.locked s.total 100 %}%; background: var(--bad)"></i>
+          <i style="width: {% widthratio s.status.suspended s.total 100 %}%; background: var(--sus)"></i>
+          {% endif %}
+        </div>
+        <div class="legend">
+          <a href="{% url 'manage_shops' %}?status=paid" style="--c: var(--ok)"><span>পেইড</span><b>{{ s.status.paid|hq_num }}</b></a>
+          <a href="{% url 'manage_shops' %}?status=trial" style="--c: var(--warn)"><span>ফ্রি ট্রায়াল</span><b>{{ s.status.trial|hq_num }}</b></a>
+          <a href="{% url 'manage_shops' %}?status=locked" style="--c: var(--bad)"><span>মেয়াদ শেষ</span><b>{{ s.status.locked|hq_num }}</b></a>
+          <a href="{% url 'manage_shops' %}?status=suspended" style="--c: var(--sus)"><span>বন্ধ করা</span><b>{{ s.status.suspended|hq_num }}</b></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>আয় — গত ৬ মাস</h2><span class="hint">প্যাকেজ + SMS</span></div>
+      <div class="panel-body">
+        <div class="bars" style="height: 130px; gap: 10px; padding-top: 22px">
+          {% for m in s.months %}<div class="bar{% if forloop.last %} today{% endif %}" style="--h: {{ m.pct }}%" title="{{ m.month|date:'F Y' }}: {{ m.value|hq_taka }}"><b>{{ m.value|hq_taka }}</b><i></i></div>{% endfor %}
+        </div>
+        <div class="bar-axis">{% for m in s.months %}<span>{{ m.month|date:"M" }}</span>{% endfor %}</div>
+      </div>
+    </section>
+
+    <section class="panel flush">
+      <div class="panel-head"><h2>সর্বশেষ টাকা এসেছে</h2><a class="btn btn-sm" href="{% url 'master_billing' %}">খাতা</a></div>
+      <ul class="feed">
+        {% for p in payments %}
+        <li><span><a href="{% url 'hq_shop' p.shop_id %}">{{ p.shop.name }}</a><span class="meta"> · {% if p.kind == 'sms' %}SMS{% else %}{{ p.plan_name }}{% endif %}{% if p.environment == 'manual' %} · হাতে{% endif %}</span></span><span class="r"><b>{{ p.amount|hq_taka }}</b><br><span class="meta">{{ p.completed_at|date:"d M" }}</span></span></li>
+        {% empty %}
+        <li class="meta">এখনো কোনো পেমেন্ট আসেনি।</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="panel flush">
+      <div class="panel-head"><h2>Master HQ খাতা</h2><a class="btn btn-sm" href="{% url 'hq_activity' %}">সব</a></div>
+      <ul class="feed">
+        {% for e in log %}
+        <li><span>{{ e.action_label }}{% if e.shop_label %} · <span class="meta">{{ e.shop_label }}</span>{% endif %}</span><span class="r meta">{{ e.created_at|date:"d M, h:i A" }}</span></li>
+        {% empty %}
+        <li class="meta">এখনো কিছু করা হয়নি — যা করবেন, এখানে লেখা থাকবে।</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+</div>
+{% endblock %}

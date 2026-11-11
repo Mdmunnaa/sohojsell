@@ -1,85 +1,104 @@
-{% extends 'store/base.html' %}
+{% extends 'store/hq/base.html' %}
+{% load hq_tags %}
 {% block title %}সেলারদের টাকা{% endblock %}
-{% block page_title %}সেলারদের টাকা{% endblock %}
+{% block extra_css %}
+.req { border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 10px; background: var(--panel); }
+.req-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.req .amount { font-size: 24px; font-weight: 700; color: var(--ok); }
+.row-form { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.row-form .input { width: 140px; min-height: 32px; height: 32px; padding: 4px 9px; font-size: 14px; }
+.row-form .input.wide { width: 200px; }
+{% endblock %}
 {% block content %}
-<div style="max-width:1100px;margin:0 auto;">
-  {% if messages %}{% for m in messages %}<div class="alert {% if m.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} rounded-4 small fw-semibold">{{ m }}</div>{% endfor %}{% endif %}
-  <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
-    <div>
-      <h4 class="fw-bold mb-1">সেলারদের পাওনা</h4>
-      <div class="text-muted small">কাস্টমাররা দোকানের ওয়েবসাইটে অনলাইনে যা দিয়েছে, ফি কেটে সেলারের পাওনা। টাকা পাঠিয়ে এখানে লিখে রাখুন।</div>
-    </div>
-    <div class="fs-5 fw-bold">মোট পাওনা: ৳{{ total_due|floatformat:0 }}</div>
+<div class="page-head">
+  <div>
+    <h1>সেলারদের টাকা</h1>
+    <p class="sub">কাস্টমাররা দোকানের ওয়েবসাইটে অনলাইনে যা দিয়েছে, ফি কেটে সেলারের পাওনা। টাকা পাঠিয়ে এখানে লিখে রাখুন।</p>
   </div>
-  {% if open_requests %}
-  <div class="card border-0 shadow-sm rounded-4 mb-4" style="border:2px solid #F59E0B !important;">
-    <div class="card-body">
-      <h5 class="fw-bold mb-1"><i class="bi bi-bell-fill text-warning me-1"></i> টাকা তোলার অনুরোধ ({{ open_requests|length }})</h5>
-      <div class="text-muted small mb-3">টাকা পাঠিয়ে লেনদেন নম্বর দিন — সেলার SMS পাবে আর তার পেইজে দেখাবে। ভুল নম্বর হলে কারণ লিখে ফেরত দিন।</div>
-      {% for req in open_requests %}
-      <div class="border rounded-4 p-3 mb-2">
-        <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
-          <div>
-            <div class="fw-bold">{{ req.shop.name }} <span class="text-muted small fw-normal">· {{ req.created_at|date:"j M, g:i A" }}</span></div>
-            <div class="small mt-1">পাঠাবেন: <b>{{ req.method }}</b> <code class="fs-6">{{ req.account }}</code>{% if req.account_name %} · {{ req.account_name }}{% endif %}
-              <button type="button" class="btn btn-sm btn-light border py-0 ms-1" onclick="navigator.clipboard && navigator.clipboard.writeText('{{ req.account|escapejs }}'); this.textContent='কপি হয়েছে';">কপি</button></div>
-          </div>
-          <div class="fs-4 fw-bold text-success">৳{{ req.amount|floatformat:0 }}</div>
-        </div>
-        <div class="d-flex flex-wrap gap-2 mt-2">
-          <form method="post" class="d-flex gap-1 flex-wrap">{% csrf_token %}
-            <input type="hidden" name="action" value="request_paid"><input type="hidden" name="request_id" value="{{ req.pk }}">
-            <input type="text" name="reference" class="form-control form-control-sm" style="width:160px;" placeholder="TrxID" required aria-label="লেনদেন নম্বর">
-            <button class="btn btn-sm btn-success fw-bold" onclick="return confirm('৳{{ req.amount|floatformat:0 }} পাঠানো হয়েছে?')">পাঠিয়েছি</button>
-          </form>
-          <form method="post" class="d-flex gap-1 flex-wrap">{% csrf_token %}
-            <input type="hidden" name="action" value="request_reject"><input type="hidden" name="request_id" value="{{ req.pk }}">
-            <input type="text" name="reason" class="form-control form-control-sm" style="width:200px;" placeholder="ফেরতের কারণ" aria-label="কারণ">
-            <button class="btn btn-sm btn-outline-danger">ফেরত দিন</button>
-          </form>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-
-  <div class="card border-0 shadow-sm rounded-4 mb-4">
-    <div class="table-responsive">
-      <table class="table align-middle mb-0">
-        <thead class="small text-muted"><tr><th>দোকান</th><th>কোথায় পাঠাবেন</th><th class="text-end">মোট নেওয়া</th><th class="text-end">পাঠানো</th><th class="text-end">পাওনা</th><th class="text-end">তোলা যাবে</th><th style="min-width:300px;">টাকা পাঠানো লিখুন</th></tr></thead>
-        <tbody>
-        {% for r in rows %}
-          <tr>
-            <td><div class="fw-bold">{{ r.shop.name }}</div><div class="small text-muted">{{ r.shop.phone }}</div></td>
-            <td class="small">{% if r.shop.payout_account %}<b>{{ r.shop.get_payout_method_display }}</b> {{ r.shop.payout_account }}<br><span class="text-muted">{{ r.shop.payout_account_name }}</span>{% else %}<span class="text-danger">দেওয়া নেই</span>{% endif %}</td>
-            <td class="text-end">৳{{ r.net|floatformat:0 }}</td>
-            <td class="text-end">৳{{ r.paid_out|floatformat:0 }}</td>
-            <td class="text-end fw-bold {% if r.due > 0 %}text-success{% endif %}">৳{{ r.due|floatformat:0 }}</td>
-            <td class="text-end small">৳{{ r.available|floatformat:0 }}{% if r.holding %}<div class="text-muted">অপেক্ষায় ৳{{ r.holding|floatformat:0 }}</div>{% endif %}</td>
-            <td>
-              {% if r.due > 0 %}
-              <form method="post" class="d-flex gap-1 flex-wrap">{% csrf_token %}
-                <input type="hidden" name="shop_id" value="{{ r.shop.pk }}">
-                <input type="number" name="amount" value="{{ r.due|floatformat:2 }}" step="0.01" min="1" max="{{ r.due|floatformat:2 }}" class="form-control form-control-sm" style="width:110px;" required aria-label="টাকা">
-                <input type="text" name="reference" class="form-control form-control-sm" style="width:130px;" placeholder="TrxID" aria-label="লেনদেন নম্বর">
-                <button class="btn btn-sm btn-dark" onclick="return confirm('টাকা পাঠানো হয়েছে লিখে রাখবেন?')">লিখুন</button>
-              </form>
-              {% else %}<span class="text-muted small">সব পাঠানো হয়েছে</span>{% endif %}
-            </td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="7" class="text-center text-muted py-4">এখনো কোনো অনলাইন পেমেন্ট আসেনি।</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-  {% if recent_payouts %}
-  <h6 class="fw-bold">সাম্প্রতিক পাঠানো</h6>
-  <div class="card border-0 shadow-sm rounded-4"><div class="table-responsive"><table class="table table-sm mb-0 small">
-    {% for p in recent_payouts %}<tr><td>{{ p.paid_at|date:"j M Y, g:i A" }}</td><td>{{ p.shop.name }}</td><td>{{ p.method }} {{ p.account }}</td><td>{{ p.reference }}</td><td class="text-end fw-bold">৳{{ p.amount|floatformat:0 }}</td></tr>{% endfor %}
-  </table></div></div>
-  {% endif %}
+  <div class="actions"><div class="kpi" style="border: 1px solid var(--line); border-radius: 12px; background: var(--panel)"><div class="label">মোট পাওনা</div><div class="value">{{ total_due|hq_taka }}</div></div></div>
 </div>
+
+{% if open_requests %}
+<section class="panel" style="border-color: color-mix(in srgb, var(--amber) 60%, var(--line))">
+  <div class="panel-head"><h2>টাকা তোলার অনুরোধ ({{ open_requests|length }})</h2><span class="hint">পাঠিয়ে লেনদেন নম্বর দিন — সেলার SMS পাবে। ভুল নম্বর হলে কারণ লিখে ফেরত দিন।</span></div>
+  <div class="panel-body">
+    {% for req in open_requests %}
+    <div class="req">
+      <div class="req-top">
+        <div>
+          <a class="strong" href="{% url 'hq_shop' req.shop_id %}">{{ req.shop.name }}</a> <span class="meta">· {{ req.created_at|date:"d M, h:i A" }}</span>
+          <div style="margin-top: 4px">পাঠাবেন: <b>{{ req.method }}</b> <code>{{ req.account }}</code>{% if req.account_name %} · {{ req.account_name }}{% endif %}
+            <button type="button" class="btn btn-xs" data-copy="{{ req.account }}">কপি</button></div>
+        </div>
+        <div class="amount">৳{{ req.amount|floatformat:0 }}</div>
+      </div>
+      <div class="btn-row" style="margin-top: 10px">
+        <form method="post" class="row-form" data-confirm="৳{{ req.amount|floatformat:0 }} পাঠানো হয়েছে?">{% csrf_token %}
+          <input type="hidden" name="action" value="request_paid"><input type="hidden" name="request_id" value="{{ req.pk }}">
+          <input class="input" type="text" name="reference" placeholder="TrxID" required aria-label="লেনদেন নম্বর">
+          <button class="btn btn-sm btn-primary" type="submit">পাঠিয়েছি</button>
+        </form>
+        <form method="post" class="row-form">{% csrf_token %}
+          <input type="hidden" name="action" value="request_reject"><input type="hidden" name="request_id" value="{{ req.pk }}">
+          <input class="input wide" type="text" name="reason" placeholder="ফেরতের কারণ" aria-label="কারণ">
+          <button class="btn btn-sm btn-ghost-danger" type="submit">ফেরত দিন</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="panel flush">
+  <div class="panel-head"><h2>দোকান অনুযায়ী পাওনা</h2></div>
+  <div class="tbl-wrap"><table class="tbl stack">
+    <thead><tr><th>দোকান</th><th>কোথায় পাঠাবেন</th><th class="num">মোট নেওয়া</th><th class="num">পাঠানো</th><th class="num">পাওনা</th><th class="num">তোলা যাবে</th><th>টাকা পাঠানো লিখুন</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><a class="strong" href="{% url 'hq_shop' r.shop.pk %}">{{ r.shop.name }}</a><div class="meta">{{ r.shop.phone }}</div></td>
+        <td data-label="কোথায়:">{% if r.shop.payout_account %}<b>{{ r.shop.get_payout_method_display }}</b> {{ r.shop.payout_account }}<div class="meta">{{ r.shop.payout_account_name }}</div>{% else %}<span class="err">দেওয়া নেই</span>{% endif %}</td>
+        <td class="num" data-label="মোট নেওয়া:">৳{{ r.net|floatformat:0 }}</td>
+        <td class="num" data-label="পাঠানো:">৳{{ r.paid_out|floatformat:0 }}</td>
+        <td class="num strong" data-label="পাওনা:">৳{{ r.due|floatformat:0 }}</td>
+        <td class="num" data-label="তোলা যাবে:">৳{{ r.available|floatformat:0 }}{% if r.holding %}<div class="meta">অপেক্ষায় ৳{{ r.holding|floatformat:0 }}</div>{% endif %}</td>
+        <td>
+          {% if r.due > 0 %}
+          <form method="post" class="row-form" data-confirm="টাকা পাঠানো হয়েছে লিখে রাখবেন?">{% csrf_token %}
+            <input type="hidden" name="shop_id" value="{{ r.shop.pk }}">
+            <input class="input" type="number" name="amount" value="{{ r.due|floatformat:2 }}" step="0.01" min="1" max="{{ r.due|floatformat:2 }}" required aria-label="টাকা" style="width: 110px">
+            <input class="input" type="text" name="reference" placeholder="TrxID" aria-label="লেনদেন নম্বর" style="width: 120px">
+            <button class="btn btn-sm" type="submit">লিখুন</button>
+          </form>
+          {% else %}<span class="meta">সব পাঠানো হয়েছে</span>{% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7"><div class="empty"><b>এখনো কোনো অনলাইন পেমেন্ট আসেনি</b>কাস্টমাররা দোকানের ওয়েবসাইটে অনলাইনে দিলে এখানে দেখাবে।</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+{% if recent_payouts %}
+<section class="panel flush">
+  <div class="panel-head"><h2>সাম্প্রতিক পাঠানো</h2></div>
+  <div class="tbl-wrap"><table class="tbl stack">
+    <tbody>
+    {% for p in recent_payouts %}
+      <tr><td class="meta nowrap">{{ p.paid_at|date:"d M Y, h:i A" }}</td><td><a href="{% url 'hq_shop' p.shop_id %}">{{ p.shop.name }}</a></td><td>{{ p.method }} {{ p.account }}</td><td class="mono">{{ p.reference }}</td><td class="num strong">৳{{ p.amount|floatformat:0 }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('[data-copy]');
+  if (b && navigator.clipboard) { navigator.clipboard.writeText(b.getAttribute('data-copy')); b.textContent = 'কপি হয়েছে'; }
+});
+</script>
 {% endblock %}

@@ -890,59 +890,15 @@ def payment_success(request, plan_name):
     # ── Step 3: upgrade only if not already on this plan ──
     if shop.subscription_plan != plan_name:
         shop.subscription_plan = plan_name
-        shop.sms_balance += SMS_BONUS.get(plan_name, 0)
-        shop.save(update_fields=['subscription_plan', 'sms_balance'])
+        shop.save(update_fields=['subscription_plan'])
 
     messages.success(request, f"আপনার দোকান এখন {plan_name} প্ল্যানে।")
     return redirect('dashboard')
 
 
 # ============================================================
-# MASTER DASHBOARD (CEO ONLY)
+# MASTER HQ: store/hq_views.py (ড্যাশবোর্ড, দোকান, ইউজার, পেমেন্ট, SMS, নোটিশ, সেটিংস)
 # ============================================================
-@login_required(login_url='/accounts/login/')
-def master_dashboard(request):
-    if not request.user.is_superuser:
-        messages.error(request, "Access Denied!")
-        return redirect('order_list')
-
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-
-    # ডেমো দোকানের বানানো হিসাব প্ল্যাটফর্মের সংখ্যায় ঢোকে না
-    total_shops = Shop.objects.filter(is_demo=False).count()
-    total_users = User.objects.exclude(shop__is_demo=True).count()
-    total_orders = Order.objects.filter(shop__is_demo=False).count()
-    total_sales = Order.objects.filter(
-        shop__is_demo=False, status__in=['Delivered', 'Shipped', 'Pending']
-    ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    recent_shops = Shop.objects.filter(is_demo=False).order_by('-id')[:10]
-    from . import health
-    system_warnings = health.warnings()
-    db_latency = health.database_latency_ms()
-    if db_latency is not None and db_latency > 25:
-        system_warnings.append(f'ডাটাবেস প্রতি প্রশ্নে {db_latency:.0f} ms নিচ্ছে (৫ ms-এর নিচে থাকা উচিত) — একটা পাতায় ২০–৩০টা প্রশ্ন '
-                               'হয়, তাই পাতা খুলতে সেকেন্ড লেগে যায়। ডাটাবেস আর সার্ভার একই অঞ্চলে (সিঙ্গাপুর) আছে কিনা দেখুন।')
-
-    from .models import PaymentRequest
-    pending_payments = PaymentRequest.objects.filter(status='Pending').select_related('shop').order_by('-created_at')
-    recent_payments = PaymentRequest.objects.filter(status='Approved').select_related('shop').order_by('-created_at')[:10]
-    locked_shops = Shop.objects.filter(is_locked=True).order_by('-id')
-
-    from . import domains
-    return render(request, 'store/master_dashboard.html', {
-        'system_warnings': system_warnings,
-        'db_latency': db_latency, 'db_region': health.database_region(),
-        'pending_domains': list(domains.pending_for_master()),
-        'total_shops': total_shops, 'total_users': total_users,
-        'total_platform_orders': total_orders, 'total_sales_volume': total_sales,
-        'recent_shops': recent_shops,
-        'pending_payments': pending_payments,
-        'recent_payments': recent_payments,
-        'locked_shops': locked_shops,
-    })
-
-
 @login_required(login_url='/accounts/login/')
 def master_domain_live(request, shop_id):
     """মালিক হোস্টিংয়ে ডোমেইন যোগ করে SSL হওয়ার পর "চালু" চাপলে: অবস্থা live, সেলারকে SMS।"""
@@ -952,135 +908,11 @@ def master_domain_live(request, shop_id):
         from . import domains
         shop = get_object_or_404(Shop, pk=shop_id)
         domains.mark_live(shop)
+        from . import hq
+        hq.log_action(request, 'domain_live', shop, shop.custom_domain or '')
         messages.success(request, f'{shop.custom_domain} চালু করা হয়েছে, সেলারকে SMS গেছে।')
-    return redirect('master_dashboard')
-
-
-# ============================================================
-# MASTER HQ: MANAGE SHOPS, USERS & BILLING
-# ============================================================
-@login_required(login_url='/accounts/login/')
-def manage_shops(request):
-    if not request.user.is_superuser:
-        return redirect('dashboard')
-
-    shops = Shop.objects.all().order_by('-created_at')
-    search = request.GET.get('q', '')
-    if search:
-        shops = shops.filter(Q(name__icontains=search) | Q(phone__icontains=search))
-
-    paginator = Paginator(shops, 20)
-    page = request.GET.get('page', 1)
-    try:
-        page_obj = paginator.page(page)
-    except (EmptyPage, PageNotAnInteger):
-        page_obj = paginator.page(1)
-
-    return render(request, 'store/manage_shops.html', {'page_obj': page_obj, 'search': search})
-
-
-@login_required(login_url='/accounts/login/')
-def all_users(request):
-    if not request.user.is_superuser:
-        return redirect('dashboard')
-
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-    users = User.objects.all().order_by('-date_joined')
-    search = request.GET.get('q', '')
-    if search:
-        users = users.filter(Q(name__icontains=search) | Q(phone_number__icontains=search))
-
-    paginator = Paginator(users, 20)
-    page = request.GET.get('page', 1)
-    try:
-        page_obj = paginator.page(page)
-    except (EmptyPage, PageNotAnInteger):
-        page_obj = paginator.page(1)
-
-    return render(request, 'store/all_users.html', {'page_obj': page_obj, 'search': search})
-
-
-@login_required(login_url='/accounts/login/')
-def master_billing(request):
-    if not request.user.is_superuser:
-        return redirect('dashboard')
-
-    from .models import PaymentRequest
-    requests = PaymentRequest.objects.all().select_related('shop').order_by('-created_at')
-
-    paginator = Paginator(requests, 20)
-    page = request.GET.get('page', 1)
-    try:
-        page_obj = paginator.page(page)
-    except (EmptyPage, PageNotAnInteger):
-        page_obj = paginator.page(1)
-
-    return render(request, 'store/master_billing.html', {'page_obj': page_obj})
-
-
-@login_required(login_url='/accounts/login/')
-def recharge_sms(request):
-    if not request.user.is_superuser:
-        messages.error(request, "Access Denied!")
-        return redirect('dashboard')
-    if request.method == 'POST':
-        try:
-            shop = Shop.objects.get(id=request.POST.get('shop_id'))
-            amount = int(request.POST.get('amount', 0))
-            shop.sms_balance += amount
-            shop.save()
-            messages.success(request, f"Added {amount} SMS to {shop.name}!")
-        except Shop.DoesNotExist:
-            messages.error(request, "Shop not found!")
-    return redirect('master_dashboard')
-
-
-@login_required(login_url='/accounts/login/')
-def upgrade_shop_plan(request):
-    if not request.user.is_superuser:
-        messages.error(request, "Access Denied!")
-        return redirect('dashboard')
-    if request.method == 'POST':
-        try:
-            shop = Shop.objects.get(id=request.POST.get('shop_id'))
-            new_plan = request.POST.get('plan')
-            shop.subscription_plan = new_plan
-            shop.sms_balance += SMS_BONUS.get(new_plan, 0)
-            shop.save()
-            messages.success(request, f"{shop.name} upgraded to {new_plan} Plan!")
-        except Shop.DoesNotExist:
-            messages.error(request, "Shop not found!")
-    return redirect('master_dashboard')
-
-
-@login_required(login_url='/accounts/login/')
-def master_settings(request):
-    if not request.user.is_superuser:
-        return redirect('dashboard')
-    setting, _ = MasterSetting.objects.get_or_create(id=1)
-    if request.method == 'POST':
-        setting.payment_store_id = request.POST.get('payment_store_id')
-        setting.payment_secret_key = request.POST.get('payment_secret_key')
-        setting.is_payment_live = request.POST.get('is_payment_live') == 'on'
-
-        # SMS ডেটা সেভ করার লজিক
-        setting.sms_client_id = request.POST.get('sms_client_id')
-        setting.sms_api_key = request.POST.get('sms_api_key')
-        try:
-            rate = Decimal(request.POST.get('sms_rate') or setting.sms_rate)
-            if Decimal('0.05') <= rate <= Decimal('5'):
-                setting.sms_rate = rate
-        except (ArithmeticError, ValueError):
-            pass
-
-        setting.save()
-        messages.success(request, "Master Settings Updated!")
-        return redirect('master_settings')
-    return render(request, 'store/master_settings.html', {
-        'setting': setting,
-        'sms_env_keys': bool(django_settings.SMS_GATEWAY_CLIENT_ID and django_settings.SMS_GATEWAY_API_KEY),
-    })
+    target = request.POST.get('next', '')
+    return redirect(target if target.startswith('/saas-master/') else 'master_dashboard')
 
 
 # POS (দোকানে বিক্রি): store/views_pos.py
@@ -1973,7 +1805,7 @@ def approve_payment(request, request_id):
     if not request.user.is_superuser:
         return redirect('dashboard')
     if request.method != 'POST':
-        return redirect('master_dashboard')
+        return redirect('master_billing')
 
     from .models import PaymentRequest
     from django.utils import timezone
@@ -2001,7 +1833,9 @@ def approve_payment(request, request_id):
 
     pay_req.status = 'Approved'
     pay_req.save()
-    return redirect('master_dashboard')
+    from . import hq
+    hq.log_action(request, 'payment_legacy', shop, f'অনুমোদন: {pay_req.plan_name} ৳{pay_req.amount:.0f} ({pay_req.transaction_id})')
+    return redirect('master_billing')
 
 
 @login_required(login_url='/accounts/login/')
@@ -2011,13 +1845,16 @@ def reject_payment(request, request_id):
         messages.error(request, "Access Denied!")
         return redirect('dashboard')
 
+    if request.method != 'POST':
+        return redirect('master_billing')
     from .models import PaymentRequest
     pay_req = get_object_or_404(PaymentRequest, id=request_id)
     pay_req.status = 'Rejected'
     pay_req.save()
-
-    messages.warning(request, f"{pay_req.shop.name}-এর payment rejected.")
-    return redirect('master_dashboard')
+    from . import hq
+    hq.log_action(request, 'payment_legacy', pay_req.shop, f'বাতিল: {pay_req.plan_name} ({pay_req.transaction_id})')
+    messages.warning(request, f"{pay_req.shop.name}-এর পেমেন্ট বাতিল করা হয়েছে।")
+    return redirect('master_billing')
 
 
 @login_required(login_url='/accounts/login/')
@@ -2029,7 +1866,7 @@ def manual_unlock(request, shop_id):
     if request.method == 'POST':
         shop = get_object_or_404(Shop, id=shop_id)
         advance_days = int(request.POST.get('advance_days', 30))
-        today = date.today()
+        today = timezone.localdate()
 
         if shop.valid_until and shop.valid_until >= today:
             shop.valid_until = shop.valid_until + timedelta(days=advance_days)
@@ -2038,7 +1875,10 @@ def manual_unlock(request, shop_id):
 
         shop.is_locked = False
         shop.save()
-        messages.success(request, f"{shop.name} manually unlocked. Valid until: {shop.valid_until}")
+        from . import hq
+        hq.log_action(request, 'extend', shop, f'{advance_days} দিন (পুরনো বাটন) — মেয়াদ {shop.valid_until:%d-%m-%Y}')
+        messages.success(request, f"{shop.name}-এর লক খোলা হয়েছে, মেয়াদ {shop.valid_until:%d-%m-%Y} পর্যন্ত।")
+        return redirect('hq_shop', shop.pk)
 
     return redirect('master_dashboard')
 

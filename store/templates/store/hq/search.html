@@ -1,0 +1,63 @@
+{% extends 'store/hq/base.html' %}
+{% load hq_tags %}
+{% block title %}খোঁজা{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% if q %}"{{ q }}" খোঁজার ফল{% else %}খুঁজুন{% endif %}</h1>
+    <p class="sub">দোকানের নাম, সাবডোমেইন, নিজের ডোমেইন, ফোন নম্বর (শেষ কয়েকটা অঙ্কও চলে), ইনভয়েস বা Trx ID। যেকোনো পাতায় "/" চাপলে খোঁজার ঘরে যায়।</p>
+  </div>
+</div>
+{% if q %}
+<section class="panel flush">
+  <div class="panel-head"><h2>দোকান</h2><span class="hint">{{ shops|length }}টা</span></div>
+  <div class="tbl-wrap"><table class="tbl stack">
+    <tbody>
+    {% for shop in shops %}
+      <tr>
+        <td><a class="strong" href="{% url 'hq_shop' shop.pk %}">{{ shop.name }}</a><div class="meta">{{ shop.slug }}{% if shop.custom_domain %} · {{ shop.custom_domain }}{% endif %}</div></td>
+        <td><span class="st st-{{ shop.hq_status }}">{{ shop.hq_status|hq_status }}</span></td>
+        <td class="nowrap">{{ shop.phone|default:shop.user.phone_number }}</td>
+        <td class="num meta">{{ shop.created_at|date:"d M Y" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td><div class="empty">কোনো দোকান মেলেনি।</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+<section class="panel flush">
+  <div class="panel-head"><h2>ইউজার</h2><span class="hint">{{ users|length }} জন</span></div>
+  <div class="tbl-wrap"><table class="tbl stack">
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td class="strong">{{ u.name|default:u.phone_number }}<div class="meta">{{ u.phone_number }}</div></td>
+        <td>{% if u.is_superuser %}সুপারইউজার{% elif u.hq_shop %}<a href="{% url 'hq_shop' u.hq_shop.pk %}">{{ u.hq_shop.name }}</a>{% else %}<span class="faint">দোকান নেই</span>{% endif %}</td>
+        <td>{% if u.is_active %}<span class="st st-ok">লগইন চালু</span>{% else %}<span class="st st-off">লগইন বন্ধ</span>{% endif %}</td>
+      </tr>
+    {% empty %}
+      <tr><td><div class="empty">কোনো ইউজার মেলেনি।</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% if payments %}
+<section class="panel flush">
+  <div class="panel-head"><h2>পেমেন্ট</h2></div>
+  <div class="tbl-wrap"><table class="tbl stack">
+    <tbody>
+    {% for p in payments %}
+      <tr>
+        <td><a class="strong" href="{% url 'hq_shop' p.shop_id %}">{{ p.shop.name }}</a></td>
+        <td class="mono">{{ p.invoice_number }}<div class="meta">{{ p.trx_id }}</div></td>
+        <td><span class="st st-{{ p.status }}">{{ p.status }}</span></td>
+        <td class="num strong">{{ p.amount|hq_taka }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

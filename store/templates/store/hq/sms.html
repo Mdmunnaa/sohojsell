@@ -1,0 +1,115 @@
+{% extends 'store/hq/base.html' %}
+{% load hq_tags %}
+{% block title %}SMS{% endblock %}
+{% block extra_css %}
+.feed { list-style: none; margin: 0; padding: 0; }
+.feed li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 18px; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.feed li:last-child { border-bottom: 0; }
+.counter { text-align: right; }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>SMS</h1>
+    <p class="sub">সেলাররা নিজের ব্যালেন্স থেকে কাস্টমারকে SMS পাঠায় (প্রতিটা ৳{{ setting.sms_rate|floatformat:2 }})। এখানে খরচ, কার ব্যালেন্স কম, আর কোনো দোকানে SMS যোগ/বাদ।</p>
+  </div>
+  <div class="actions"><button class="btn btn-primary" type="button" data-dialog="dlgBroadcast"><i class="bi bi-send"></i>সেলারদের SMS পাঠান</button></div>
+</div>
+
+{% if not gateway_ready %}
+<div class="callout bad"><b>SMS গেটওয়ের চাবি বসানো নেই</b> — কোনো SMS যাচ্ছে না। <a href="{% url 'master_settings' %}">সিস্টেম সেটিংসে</a> বসান।</div>
+{% endif %}
+
+<div class="kpis" style="--n: 4">
+  <div class="kpi"><div class="label">এই মাসে গেছে</div><div class="value">{{ usage.used|default:0|hq_num }}</div><div class="foot">{{ usage.sends|hq_num }} বার পাঠানো</div></div>
+  <div class="kpi"><div class="label">এই মাসে SMS বিক্রি</div><div class="value">{{ revenue.v|default:0|hq_taka }}</div><div class="foot">{{ revenue.n|hq_num }}টা রিচার্জ</div></div>
+  <div class="kpi"><div class="label">সব দোকানে বাকি</div><div class="value">{{ balance_total|hq_num }}</div><div class="foot">সেলারদের কেনা, এখনো পাঠায়নি</div></div>
+  <div class="kpi"><div class="label">সমস্যা এই মাসে</div><div class="value">{{ usage.failed|hq_num }}</div><div class="foot">যায়নি বা কিছু যায়নি</div></div>
+</div>
+
+<div class="cols-wide">
+  <div>
+    <section class="panel">
+      <div class="panel-head"><h2>কোনো দোকানে SMS যোগ/বাদ</h2></div>
+      <div class="panel-body">
+        <form method="post">{% csrf_token %}
+          <input type="hidden" name="action" value="recharge">
+          <div class="grid-2">
+            <div class="field"><label for="rcShop">দোকান</label><input id="rcShop" type="text" name="shop" placeholder="সাবডোমেইন, ফোন বা দোকান নং" required></div>
+            <div class="field"><label for="rcAmount">কতটা SMS</label><input id="rcAmount" type="number" name="amount" placeholder="যেমন 500 (কমাতে -100)" required></div>
+          </div>
+          <button class="btn btn-primary" type="submit">রাখুন</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="panel flush">
+      <div class="panel-head"><h2>সর্বশেষ পাঠানো</h2><span class="hint">সব দোকান মিলিয়ে</span></div>
+      <div class="tbl-wrap"><table class="tbl stack">
+        <thead><tr><th>দোকান</th><th>কাদের</th><th>অবস্থা</th><th class="num">SMS</th><th class="num">কবে</th></tr></thead>
+        <tbody>
+        {% for log in recent %}
+          <tr>
+            <td><a class="strong" href="{% url 'hq_shop' log.shop_id %}">{{ log.shop.name }}</a><div class="meta">{% if log.kind == 'auto' %}অটো{% else %}প্যানেল থেকে{% endif %}</div></td>
+            <td>{{ log.audience }}<div class="meta">{{ log.message|truncatechars:60 }}</div>{% if log.error %}<div class="err">{{ log.error }}</div>{% endif %}</td>
+            <td><span class="st st-{{ log.status }}">{{ log.get_status_display }}</span></td>
+            <td class="num">{{ log.sms_used|hq_num }}</td>
+            <td class="num meta">{{ log.created_at|ago }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5"><div class="empty">এখনো কোনো SMS যায়নি।</div></td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+  </div>
+  <div>
+    <section class="panel flush">
+      <div class="panel-head"><h2>এই মাসে বেশি পাঠিয়েছে</h2></div>
+      <ul class="feed">
+        {% for row in top %}<li><a href="{% url 'hq_shop' row.shop_id %}">{{ row.shop__name }}</a><b>{{ row.used|hq_num }}</b></li>
+        {% empty %}<li class="meta">এই মাসে এখনো কেউ পাঠায়নি।</li>{% endfor %}
+      </ul>
+    </section>
+    <section class="panel flush">
+      <div class="panel-head"><h2>ব্যালেন্স কম (২০-এর নিচে)</h2><span class="hint">অর্ডারের SMS চালু আছে</span></div>
+      <ul class="feed">
+        {% for shop in low %}<li><span><a href="{% url 'hq_shop' shop.pk %}">{{ shop.name }}</a><span class="meta"> · {{ shop.phone|default:"" }}</span></span><b>{{ shop.sms_balance|hq_num }}</b></li>
+        {% empty %}<li class="meta">সবার যথেষ্ট আছে।</li>{% endfor %}
+      </ul>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>গেটওয়ে</h2></div>
+      <div class="panel-body">
+        <dl class="kv">
+          <dt>অবস্থা</dt><dd>{% if gateway_ready %}<span class="st st-ok">চালু</span>{% else %}<span class="st st-bad">চাবি নেই</span>{% endif %}</dd>
+          <dt>চাবি কোথা থেকে</dt><dd>{% if env_keys %}সার্ভারের environment{% else %}সিস্টেম সেটিংস{% endif %}</dd>
+          <dt>সেলারের দাম</dt><dd>প্রতি SMS ৳{{ setting.sms_rate|floatformat:2 }}</dd>
+        </dl>
+        <a class="btn btn-sm" href="{% url 'master_settings' %}" style="margin-top: 12px">সেটিংস বদলান</a>
+      </div>
+    </section>
+  </div>
+</div>
+
+<dialog class="dlg" id="dlgBroadcast" aria-labelledby="dlgBroadcastTitle">
+  <form method="post" data-confirm="এই SMS সত্যিই পাঠাবেন? খরচ প্ল্যাটফর্মের।">{% csrf_token %}
+    <input type="hidden" name="action" value="broadcast">
+    <div class="dlg-head"><h3 id="dlgBroadcastTitle">সেলারদের SMS পাঠান</h3><button type="button" class="icon-btn" data-close aria-label="বন্ধ"><i class="bi bi-x-lg"></i></button></div>
+    <div class="dlg-body">
+      <div class="field"><label for="bcAudience">কাদের</label><select id="bcAudience" name="audience">{% for key, label, n in audiences %}<option value="{{ key }}">{{ label }} ({{ n|hq_num }}টা দোকান)</option>{% endfor %}</select></div>
+      <div class="field"><label for="bcMessage">বার্তা</label><textarea id="bcMessage" name="message" maxlength="480" required placeholder="যেমন: SellPunch-এ নতুন: এখন ইংরেজিতেও ওয়েবসাইট। - SellPunch"></textarea><div class="help counter"><span id="bcCount">0</span> অক্ষর · বাংলায় ৭০ অক্ষরে ১টা SMS</div></div>
+      <p class="help">প্ল্যাটফর্মের খরচে যায়, দোকানের ব্যালেন্স কাটে না। বন্ধ করা আর ডেমো দোকানে যায় না।</p>
+    </div>
+    <div class="dlg-foot"><button type="button" class="btn" data-close>থাক</button><button class="btn btn-primary" type="submit">পাঠান</button></div>
+  </form>
+</dialog>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var box = document.getElementById('bcMessage'), out = document.getElementById('bcCount');
+  if (box) { box.addEventListener('input', function () { out.textContent = box.value.length; }); }
+})();
+</script>
+{% endblock %}

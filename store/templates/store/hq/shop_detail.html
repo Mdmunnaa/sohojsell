@@ -1,0 +1,301 @@
+{% extends 'store/hq/base.html' %}
+{% load hq_tags %}
+{% block title %}{{ shop.name }}{% endblock %}
+{% block extra_css %}
+.title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.big { font-size: 28px; font-weight: 700; line-height: 1.2; }
+.feed { list-style: none; margin: 0; padding: 0; }
+.feed li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 18px; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.feed li:last-child { border-bottom: 0; }
+.feed .r { text-align: right; white-space: nowrap; }
+.staff { list-style: none; margin: 10px 0 0; padding: 0; border-top: 1px solid var(--line); }
+.staff li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.staff li:last-child { border-bottom: 0; }
+.danger-zone { border-color: color-mix(in srgb, var(--bad) 35%, var(--line)); }
+.row-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row-form .input { width: auto; flex: 1; min-width: 120px; }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="crumb"><a href="{% url 'manage_shops' %}">সব দোকান</a><i class="bi bi-chevron-right"></i>{{ shop.slug }}</div>
+    <div class="title-row"><h1>{{ shop.name }}</h1><span class="st st-{{ status }}">{{ status|hq_status }}</span></div>
+    <p class="sub">যোগ দিয়েছে {{ shop.created_at|date:"d M Y" }} ({{ shop.created_at|ago }}) · দোকান নং {{ shop.pk }}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{{ shop.storefront_url }}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i>ওয়েবসাইট</a>
+    {% if owner.is_active and not owner.is_superuser %}
+    <form method="post" action="{% url 'hq_login_as' owner.pk %}" class="inline" data-confirm="{{ shop.name }}-এর মালিক হিসেবে ঢুকবেন? যা করবেন, সেলারের নামে হবে।">{% csrf_token %}<button class="btn" type="submit"><i class="bi bi-person-badge"></i>এই দোকানে ঢুকুন</button></form>
+    {% endif %}
+    <button class="btn btn-primary" type="button" data-dialog="dlgExtend"><i class="bi bi-calendar-plus"></i>মেয়াদ বাড়ান</button>
+  </div>
+</div>
+
+{% if shop.is_suspended %}
+<div class="callout bad"><b>এই দোকান বন্ধ করা আছে।</b> ওয়েবসাইট কাস্টমাররা দেখতে পাচ্ছে না, মালিক আর স্টাফ লগইন করতে পারছে না। চালু করতে নিচে "দোকান আবার চালু করুন"।</div>
+{% elif shop.is_demo %}
+<div class="callout">এটা ডেমো দোকান — প্রতিদিন নিজে থেকে নতুন করে বানানো হয়। এখানে বন্ধ, মুছে ফেলা আর পাসওয়ার্ড বদলানো যায় না।</div>
+{% endif %}
+
+<div class="kpis" style="--n: 4">
+  <div class="kpi"><div class="label">মোট অর্ডার</div><div class="value">{{ numbers.total|hq_num }}</div><div class="foot">এই মাসে {{ numbers.month|hq_num }}টা</div></div>
+  <div class="kpi"><div class="label">এই মাসের বিক্রি</div><div class="value">{{ numbers.sales|default:0|hq_taka }}</div><div class="foot">সব মিলিয়ে {{ numbers.all_sales|default:0|hq_taka }}</div></div>
+  <div class="kpi"><div class="label">প্রোডাক্ট / কাস্টমার</div><div class="value">{{ n_products|hq_num }} / {{ n_customers|hq_num }}</div><div class="foot">স্টাফ {{ staff|length }} জন</div></div>
+  <a class="kpi" href="{% url 'master_billing' %}?q={{ shop.slug|urlencode }}"><div class="label">আমাদের দিয়েছে (মোট)</div><div class="value">{{ paid_total|hq_taka }}</div><div class="foot">প্যাকেজ + SMS</div></a>
+</div>
+
+<div class="cols-wide">
+  <div>
+    <section class="panel">
+      <div class="panel-head"><h2>প্যাকেজ ও মেয়াদ</h2>
+        <div class="btn-row">
+          {% if shop.subscription_plan == 'Free' %}<button class="btn btn-sm" type="button" data-dialog="dlgTrial"><i class="bi bi-hourglass-split"></i>ট্রায়াল বাড়ান</button>{% endif %}
+          <button class="btn btn-sm" type="button" data-dialog="dlgPlan"><i class="bi bi-arrow-left-right"></i>প্যাকেজ বদলান</button>
+          <button class="btn btn-sm" type="button" data-dialog="dlgDate"><i class="bi bi-calendar-event"></i>তারিখ ঠিক করুন</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <dl class="kv">
+          <dt>প্যাকেজ</dt><dd>{% if shop.subscription_plan == 'Free' %}ফ্রি ট্রায়াল (Standard-এর সব সুবিধা){% else %}{{ shop.subscription_plan }}{% endif %}</dd>
+          <dt>মেয়াদ শেষ</dt><dd>{% if end %}{{ end|date:"d M Y" }} — {% if days_left < 0 %}<span class="st st-locked">{{ days_over }} দিন আগে শেষ</span>{% elif days_left == 0 %}<span class="st st-warn">আজ শেষ</span>{% else %}<span class="st {% if days_left <= 7 %}st-warn{% else %}st-ok{% endif %}">আর {{ days_left }} দিন</span>{% endif %}{% else %}<span class="faint">তারিখ নেই</span>{% endif %}</dd>
+          <dt>ওয়েবসাইট বন্ধ হবে</dt><dd>{% if shop.is_suspended %}বন্ধ করা আছে{% elif closes_on %}{{ closes_on|date:"d M Y" }} (মেয়াদের ৭ দিন পর){% else %}<span class="faint">-</span>{% endif %}</dd>
+          <dt>ড্যাশবোর্ড</dt><dd>{% if shop.is_locked %}<span class="st st-locked">লক</span> সেলার শুধু বিলিং পাতা দেখছে{% else %}<span class="st st-ok">খোলা</span>{% endif %}</dd>
+          <dt>পেইড হয়েছে কখনো</dt><dd>{% if shop.is_paid %}হ্যাঁ{% else %}না{% endif %}</dd>
+        </dl>
+        <div class="btn-row" style="margin-top: 14px">
+          {% if shop.is_locked %}
+          <form method="post" action="{% url 'hq_shop_action' shop.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="action" value="unlock"><button class="btn btn-sm" type="submit"><i class="bi bi-unlock"></i>লক খুলুন</button></form>
+          {% else %}
+          <form method="post" action="{% url 'hq_shop_action' shop.pk %}" class="inline" data-confirm="{{ shop.name }} এখনই লক করবেন? সেলার শুধু বিলিং পাতা দেখবে।">{% csrf_token %}<input type="hidden" name="action" value="lock"><button class="btn btn-sm btn-ghost-danger" type="submit"><i class="bi bi-lock"></i>এখনই লক করুন</button></form>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    <section class="panel flush">
+      <div class="panel-head"><h2>পেমেন্টের ইতিহাস</h2><a class="btn btn-sm" href="{% url 'master_billing' %}?q={{ shop.slug|urlencode }}">খাতায় দেখুন</a></div>
+      <div class="tbl-wrap"><table class="tbl stack">
+        <thead><tr><th>কী</th><th>অবস্থা</th><th>ইনভয়েস / Trx</th><th class="num">টাকা</th><th class="num">কবে</th></tr></thead>
+        <tbody>
+        {% for p in payments %}
+          <tr>
+            <td>{% if p.kind == 'sms' %}SMS {{ p.sms_count|hq_num }}টা{% else %}{{ p.plan_name }}, {{ p.days }} দিন{% endif %}{% if p.environment == 'manual' %}<div class="meta">হাতে নেওয়া</div>{% elif p.environment == 'sandbox' %}<div class="meta">sandbox</div>{% endif %}</td>
+            <td><span class="st st-{{ p.status }}">{% if p.status == 'Completed' %}সম্পন্ন{% elif p.status == 'Pending' %}অসম্পূর্ণ{% else %}ব্যর্থ{% endif %}</span></td>
+            <td class="mono">{{ p.invoice_number }}{% if p.trx_id %}<div class="meta">{{ p.trx_id }}{% if p.payment_method %} · {{ p.payment_method }}{% endif %}</div>{% endif %}</td>
+            <td class="num strong">{{ p.amount|hq_taka }}</td>
+            <td class="num meta">{{ p.completed_at|default:p.created_at|date:"d M Y" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5"><div class="empty">এখনো কোনো পেমেন্ট নেই।</div></td></tr>
+        {% endfor %}
+        {% for p in legacy_payments %}
+          <tr>
+            <td>{{ p.plan_name }}<div class="meta">পুরনো {{ p.payment_method }}</div></td>
+            <td><span class="st st-{{ p.status }}">{{ p.status }}</span></td>
+            <td class="mono">{{ p.transaction_id }}<div class="meta">{{ p.sender_number }}</div></td>
+            <td class="num strong">{{ p.amount|hq_taka }}</td>
+            <td class="num meta">{{ p.completed_at|default:p.created_at|date:"d M Y" }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="panel flush">
+      <div class="panel-head"><h2>সর্বশেষ SMS</h2><span class="hint">দোকানের নিজের ব্যালেন্স থেকে</span></div>
+      <div class="tbl-wrap"><table class="tbl stack">
+        <thead><tr><th>কাদের</th><th>অবস্থা</th><th class="num">SMS</th><th class="num">কবে</th></tr></thead>
+        <tbody>
+        {% for log in sms_logs %}
+          <tr>
+            <td>{{ log.audience }}<div class="meta">{{ log.message|truncatechars:70 }}</div></td>
+            <td><span class="st st-{{ log.status }}">{{ log.get_status_display }}</span></td>
+            <td class="num">{{ log.sms_used|hq_num }}</td>
+            <td class="num meta">{{ log.created_at|ago }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4"><div class="empty">এখনো কোনো SMS যায়নি।</div></td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="panel flush">
+      <div class="panel-head"><h2>এই দোকানে Master HQ যা করেছে</h2></div>
+      <ul class="feed">
+        {% for e in log %}
+        <li><span>{{ e.action_label }}{% if e.detail %}<span class="meta"> · {{ e.detail|truncatechars:90 }}</span>{% endif %}</span><span class="r meta">{{ e.created_at|date:"d M, h:i A" }}</span></li>
+        {% empty %}
+        <li class="meta">এখনো কিছু করা হয়নি।</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <div>
+    <section class="panel">
+      <div class="panel-head"><h2>মালিক ও লগইন</h2></div>
+      <div class="panel-body">
+        <dl class="kv">
+          <dt>নাম</dt><dd>{{ owner.name|default:"-" }}</dd>
+          <dt>লগইন নম্বর</dt><dd><a href="tel:{{ owner.phone_number }}">{{ owner.phone_number }}</a></dd>
+          {% if shop.phone and shop.phone != owner.phone_number %}<dt>দোকানের ফোন</dt><dd><a href="tel:{{ shop.phone }}">{{ shop.phone }}</a></dd>{% endif %}
+          <dt>শেষ লগইন</dt><dd>{{ owner.last_login|ago }}</dd>
+          <dt>লগইন</dt><dd>{% if owner.is_active %}<span class="st st-ok">চালু</span>{% else %}<span class="st st-off">বন্ধ</span>{% endif %}</dd>
+        </dl>
+        <div class="btn-row" style="margin-top: 14px">
+          <form method="post" action="{% url 'hq_shop_action' shop.pk %}" class="inline" data-confirm="{{ owner.phone_number }}-এর পাসওয়ার্ড বদলে নতুন একটা বানাবেন? পুরনোটা আর কাজ করবে না।">{% csrf_token %}<input type="hidden" name="action" value="password"><button class="btn btn-sm" type="submit"{% if shop.is_demo %} disabled{% endif %}><i class="bi bi-key"></i>পাসওয়ার্ড রিসেট</button></form>
+          <form method="post" action="{% url 'hq_user_action' owner.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="action" value="toggle_active"><button class="btn btn-sm{% if owner.is_active %} btn-ghost-danger{% endif %}" type="submit"{% if shop.is_demo %} disabled{% endif %}><i class="bi bi-{% if owner.is_active %}person-x{% else %}person-check{% endif %}"></i>{% if owner.is_active %}লগইন বন্ধ{% else %}লগইন চালু{% endif %}</button></form>
+        </div>
+        {% if staff %}
+        <ul class="staff">
+          {% for s in staff %}
+          <li><span>{{ s.user.name|default:"স্টাফ" }}<span class="meta"> · {{ s.user.phone_number }}{% if not s.user.is_active %} · লগইন বন্ধ{% endif %}</span></span>
+            {% if s.user.is_active %}<form method="post" action="{% url 'hq_login_as' s.user.pk %}" class="inline" data-confirm="এই স্টাফ হিসেবে ঢুকবেন?">{% csrf_token %}<button class="btn btn-xs" type="submit">ঢুকুন</button></form>{% endif %}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>SMS</h2>
+        <form method="post" action="{% url 'hq_shop_action' shop.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="action" value="sms_toggle"><label class="switch" title="দোকানের SMS পাঠানো চালু/বন্ধ"><input type="checkbox"{% if shop.is_sms_active %} checked{% endif %} onchange="this.form.submit()"><span class="meta">{% if shop.is_sms_active %}চালু{% else %}বন্ধ{% endif %}</span></label></form>
+      </div>
+      <div class="panel-body">
+        <div class="big">{{ shop.sms_balance|hq_num }} <span class="meta">SMS বাকি</span></div>
+        <form method="post" action="{% url 'hq_shop_action' shop.pk %}" class="row-form" style="margin-top: 12px">{% csrf_token %}
+          <input type="hidden" name="action" value="sms">
+          <input class="input" type="number" name="amount" placeholder="যেমন 500 বা -100" required aria-label="কতটা SMS (কমাতে মাইনাস)">
+          <input class="input" type="text" name="note" placeholder="কারণ (ঐচ্ছিক)" maxlength="200" aria-label="কারণ">
+          <button class="btn btn-sm" type="submit">যোগ/বাদ</button>
+        </form>
+        <p class="help">কমাতে চাইলে সামনে মাইনাস (-) দিন। টাকা নিয়ে থাকলে খাতায় লিখতে চাইলে নোটে লিখুন।</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>ওয়েবসাইট</h2></div>
+      <div class="panel-body">
+        <dl class="kv">
+          <dt>ঠিকানা</dt><dd><a href="{{ shop.storefront_url }}" target="_blank" rel="noopener">{{ shop.storefront_host_preview|default:shop.slug }}</a></dd>
+          <dt>নিজের ডোমেইন</dt><dd>{% if shop.custom_domain %}<code>{{ shop.custom_domain }}</code> <span class="st st-{{ shop.custom_domain_status|default:'pending' }}">{% if shop.custom_domain_status == 'live' %}চালু{% elif shop.custom_domain_status == 'dns_ok' %}DNS মিলেছে{% else %}অপেক্ষায়{% endif %}</span>{% else %}<span class="faint">নেই</span>{% endif %}</dd>
+          <dt>ভাষা</dt><dd>{% if shop.storefront_language == 'en' %}English{% else %}বাংলা{% endif %}</dd>
+          <dt>ডিজাইন</dt><dd>{{ shop.get_storefront_design_display }} · {{ shop.get_storefront_theme_display }}</dd>
+        </dl>
+        {% if shop.custom_domain and shop.custom_domain_status == 'dns_ok' %}
+        <form method="post" action="{% url 'master_domain_live' shop.pk %}" style="margin-top: 12px">{% csrf_token %}<input type="hidden" name="next" value="{% url 'hq_shop' shop.pk %}"><button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-check2"></i>ডোমেইন চালু করুন</button></form>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>নোট</h2><span class="hint">শুধু Master HQ-তে দেখা যায়</span></div>
+      <div class="panel-body">
+        <form method="post" action="{% url 'hq_shop_action' shop.pk %}">{% csrf_token %}
+          <input type="hidden" name="action" value="note">
+          <textarea class="input" name="note" rows="4" maxlength="4000" placeholder="যেমন: ১২ তারিখে ফোন করেছি, মাসের শেষে Standard নেবে" aria-label="নোট">{{ shop.hq_note }}</textarea>
+          <div style="margin-top: 8px"><button class="btn btn-sm" type="submit">নোট রাখুন</button></div>
+        </form>
+      </div>
+    </section>
+
+    {% if not shop.is_demo %}
+    <section class="panel danger-zone">
+      <div class="panel-head"><h2>সাবধানে</h2></div>
+      <div class="panel-body">
+        <div class="btn-row">
+          {% if shop.is_suspended %}
+          <form method="post" action="{% url 'hq_shop_action' shop.pk %}" class="inline" data-confirm="দোকান আবার চালু করবেন? মালিক আর স্টাফ আবার লগইন করতে পারবে।">{% csrf_token %}<input type="hidden" name="action" value="unsuspend"><button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-play-circle"></i>দোকান আবার চালু করুন</button></form>
+          {% else %}
+          <button class="btn btn-sm btn-ghost-danger" type="button" data-dialog="dlgSuspend"><i class="bi bi-slash-circle"></i>দোকান বন্ধ করুন</button>
+          {% endif %}
+          <button class="btn btn-sm btn-ghost-danger" type="button" data-dialog="dlgDelete"><i class="bi bi-trash3"></i>মুছে ফেলুন</button>
+        </div>
+        <p class="help">বন্ধ করলে ওয়েবসাইট আর সব লগইন বন্ধ হয়, ডাটা থাকে। মুছে ফেললে দোকানের সব ডাটা চিরতরে চলে যায়।</p>
+      </div>
+    </section>
+    {% endif %}
+  </div>
+</div>
+
+<dialog class="dlg" id="dlgExtend" aria-labelledby="dlgExtendTitle">
+  <form method="post" action="{% url 'hq_shop_action' shop.pk %}">{% csrf_token %}
+    <input type="hidden" name="action" value="extend">
+    <div class="dlg-head"><h3 id="dlgExtendTitle">মেয়াদ বাড়ান</h3><button type="button" class="icon-btn" data-close aria-label="বন্ধ"><i class="bi bi-x-lg"></i></button></div>
+    <div class="dlg-body">
+      <div class="grid-2">
+        <div class="field"><label for="exPlan">প্যাকেজ</label><select id="exPlan" name="plan">{% for key, label in plan_choices %}<option value="{{ key }}"{% if shop.subscription_plan == key or shop.subscription_plan == 'Free' and key == 'Standard' %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="exPeriod">কতদিন</label><select id="exPeriod" name="period"><option value="month">১ মাস (৩০ দিন)</option><option value="year">১ বছর (৩৬৫ দিন)</option><option value="days">নিজে লিখব</option></select></div>
+      </div>
+      <div class="field"><label for="exDays">দিন (শুধু "নিজে লিখব" হলে)</label><input id="exDays" type="number" name="days" min="1" max="1100" placeholder="যেমন 60"></div>
+      <div class="grid-2">
+        <div class="field"><label for="exAmount">টাকা নিয়েছেন (ঐচ্ছিক)</label><input id="exAmount" type="number" name="amount" min="0" step="1" placeholder="যেমন 999"><div class="help">দিলে পেমেন্টের খাতায় "হাতে নেওয়া" হিসেবে ওঠে</div></div>
+        <div class="field"><label for="exRef">লেনদেন নম্বর (ঐচ্ছিক)</label><input id="exRef" type="text" name="reference" maxlength="64" placeholder="bKash TrxID"></div>
+      </div>
+      <p class="help">মেয়াদ চলতে থাকলে তার পর থেকে যোগ হয়, শেষ হয়ে গেলে আজ থেকে। লক থাকলে খুলে যায়।</p>
+    </div>
+    <div class="dlg-foot"><button type="button" class="btn" data-close>থাক</button><button class="btn btn-primary" type="submit">মেয়াদ বাড়ান</button></div>
+  </form>
+</dialog>
+
+<dialog class="dlg" id="dlgTrial" aria-labelledby="dlgTrialTitle">
+  <form method="post" action="{% url 'hq_shop_action' shop.pk %}">{% csrf_token %}
+    <input type="hidden" name="action" value="trial">
+    <div class="dlg-head"><h3 id="dlgTrialTitle">ট্রায়াল বাড়ান</h3><button type="button" class="icon-btn" data-close aria-label="বন্ধ"><i class="bi bi-x-lg"></i></button></div>
+    <div class="dlg-body">
+      <div class="field"><label for="trDays">আরও কত দিন</label><input id="trDays" type="number" name="days" min="1" max="90" value="7" required><div class="help">এখন শেষ হবে {{ end|date:"d M Y" }}। ১ থেকে ৯০ দিন।</div></div>
+    </div>
+    <div class="dlg-foot"><button type="button" class="btn" data-close>থাক</button><button class="btn btn-primary" type="submit">বাড়ান</button></div>
+  </form>
+</dialog>
+
+<dialog class="dlg" id="dlgPlan" aria-labelledby="dlgPlanTitle">
+  <form method="post" action="{% url 'hq_shop_action' shop.pk %}">{% csrf_token %}
+    <input type="hidden" name="action" value="set_plan">
+    <div class="dlg-head"><h3 id="dlgPlanTitle">প্যাকেজ বদলান</h3><button type="button" class="icon-btn" data-close aria-label="বন্ধ"><i class="bi bi-x-lg"></i></button></div>
+    <div class="dlg-body">
+      <div class="field"><label for="plPlan">নতুন প্যাকেজ</label><select id="plPlan" name="plan">{% for key, label in plan_choices %}<option value="{{ key }}"{% if shop.subscription_plan == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <p class="help">মেয়াদের তারিখ একই থাকে, শুধু সুবিধা বদলায় (প্রোডাক্টের সীমা, স্টাফ, Facebook, নিজের ডোমেইন)।</p>
+    </div>
+    <div class="dlg-foot"><button type="button" class="btn" data-close>থাক</button><button class="btn btn-primary" type="submit">বদলান</button></div>
+  </form>
+</dialog>
+
+<dialog class="dlg" id="dlgDate" aria-labelledby="dlgDateTitle">
+  <form method="post" action="{% url 'hq_shop_action' shop.pk %}">{% csrf_token %}
+    <input type="hidden" name="action" value="set_date">
+    <div class="dlg-head"><h3 id="dlgDateTitle">মেয়াদের শেষ তারিখ</h3><button type="button" class="icon-btn" data-close aria-label="বন্ধ"><i class="bi bi-x-lg"></i></button></div>
+    <div class="dlg-body">
+      <div class="field"><label for="dtDate">কোন দিন পর্যন্ত চালু থাকবে</label><input id="dtDate" type="date" name="date" value="{% if end %}{{ end|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}" required><div class="help">{% if shop.subscription_plan == 'Free' %}ট্রায়ালের শেষ দিন বদলাবে।{% else %}{{ shop.subscription_plan }} প্যাকেজের শেষ দিন বদলাবে।{% endif %} আজ বা পরের তারিখ দিলে লক খুলে যায়।</div></div>
+    </div>
+    <div class="dlg-foot"><button type="button" class="btn" data-close>থাক</button><button class="btn btn-primary" type="submit">রাখুন</button></div>
+  </form>
+</dialog>
+
+{% if not shop.is_demo %}
+<dialog class="dlg" id="dlgSuspend" aria-labelledby="dlgSuspendTitle">
+  <form method="post" action="{% url 'hq_shop_action' shop.pk %}">{% csrf_token %}
+    <input type="hidden" name="action" value="suspend">
+    <div class="dlg-head"><h3 id="dlgSuspendTitle">দোকান বন্ধ করুন</h3><button type="button" class="icon-btn" data-close aria-label="বন্ধ"><i class="bi bi-x-lg"></i></button></div>
+    <div class="dlg-body">
+      <p>ওয়েবসাইট বন্ধ হবে, মালিক আর সব স্টাফের লগইন বন্ধ হবে। ডাটা থেকে যাবে, পরে আবার চালু করা যাবে।</p>
+      <div class="field"><label for="spReason">কারণ (খাতায় থাকবে)</label><input id="spReason" type="text" name="reason" maxlength="300" placeholder="যেমন: প্রতারণার অভিযোগ" required></div>
+    </div>
+    <div class="dlg-foot"><button type="button" class="btn" data-close>থাক</button><button class="btn btn-danger" type="submit">বন্ধ করুন</button></div>
+  </form>
+</dialog>
+
+<dialog class="dlg" id="dlgDelete" aria-labelledby="dlgDeleteTitle">
+  <form method="post" action="{% url 'hq_shop_action' shop.pk %}">{% csrf_token %}
+    <input type="hidden" name="action" value="delete">
+    <div class="dlg-head"><h3 id="dlgDeleteTitle">দোকান মুছে ফেলুন</h3><button type="button" class="icon-btn" data-close aria-label="বন্ধ"><i class="bi bi-x-lg"></i></button></div>
+    <div class="dlg-body">
+      <div class="callout bad">মালিকের অ্যাকাউন্ট, সব স্টাফ, প্রোডাক্ট, অর্ডার, কাস্টমার, পেমেন্টের রেকর্ড — সব চিরতরে মুছে যাবে। ফেরত আনা যাবে না।</div>
+      <div class="field"><label for="delConfirm">নিশ্চিত করতে সাবডোমেইন লিখুন: <code>{{ shop.slug }}</code></label><input id="delConfirm" type="text" name="confirm" autocomplete="off" required></div>
+    </div>
+    <div class="dlg-foot"><button type="button" class="btn" data-close>থাক</button><button class="btn btn-danger" type="submit">চিরতরে মুছুন</button></div>
+  </form>
+</dialog>
+{% endif %}
+{% endblock %}

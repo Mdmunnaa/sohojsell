@@ -3629,3 +3629,256 @@ class NoEmojiTests(TestCase):
             html = self.client.get(page).content.decode()
             self.assertNotIn('class="pill"', html)
             self.assertNotIn('class="dot"', html)
+
+
+@override_settings(SMS_BACKGROUND=False)
+class MasterHQTests(TestCase):
+    """Master HQ: শুধু সুপারইউজার; দোকানের অবস্থা; মেয়াদ/প্যাকেজ/SMS/লক/বন্ধ/মুছে ফেলা; অ্যাকাউন্টে ঢোকা; নোটিশ; খাতা।"""
+
+    def setUp(self):
+        from datetime import datetime, time
+        self.today = timezone.localdate()
+        self.admin = User.objects.create_superuser(phone_number='01700000100', password='Admin-pass-100', name='Munna')
+
+        def make(phone, name, **fields):
+            user = User.objects.create_user(phone_number=phone, password='Seller-pass-1', name=name)
+            return Shop.objects.create(user=user, name=name, slug=name.lower(), phone=phone, address='Dhaka', **fields)
+        self.trial = make('01711111111', 'Trialshop')
+        self.paid = make('01722222222', 'Paidshop', subscription_plan='Basic', valid_until=self.today + timedelta(days=20),
+                         is_paid=True)
+        self.expired = make('01733333333', 'Oldshop', subscription_plan='Standard',
+                            valid_until=self.today - timedelta(days=3))
+        self.ended_trial = make('01744444444', 'Endtrial')
+        Shop.objects.filter(pk=self.ended_trial.pk).update(
+            trial_ends_at=timezone.make_aware(datetime.combine(self.today - timedelta(days=2), time(12))))
+        self.client.force_login(self.admin)
+
+    def action(self, shop, **data):
+        return self.client.post(reverse('hq_shop_action', args=[shop.pk]), data, follow=True)
+
+    def test_only_superuser_can_open_any_page(self):
+        names = [('master_dashboard', []), ('manage_shops', []), ('hq_shop', [self.trial.pk]), ('all_users', []),
+                 ('master_billing', []), ('master_settlements', []), ('hq_sms', []), ('hq_notices', []),
+                 ('hq_activity', []), ('master_settings', []), ('hq_search', [])]
+        for name, args in names:
+            self.assertEqual(self.client.get(reverse(name, args=args)).status_code, 200, name)
+        self.client.force_login(self.trial.user)
+        for name, args in names:
+            self.assertEqual(self.client.get(reverse(name, args=args)).status_code, 302, name)
+        response = self.client.post(reverse('hq_shop_action', args=[self.paid.pk]), {'action': 'lock'})
+        self.assertEqual(response.status_code, 302)
+        self.paid.refresh_from_db()
+        self.assertFalse(self.paid.is_locked)
+        self.client.logout()
+        self.assertEqual(self.client.get(reverse('master_dashboard')).status_code, 302)
+
+    def test_status_counts_and_filters(self):
+        from store import hq
+        Shop.objects.filter(pk=self.paid.pk).update(is_suspended=False)
+        counts = hq.status_counts()
+        self.assertEqual((counts['paid'], counts['trial'], counts['locked'], counts['suspended']), (1, 1, 2, 0))
+        self.assertEqual(hq.shop_status(self.expired), 'locked')
+        self.assertEqual(hq.shop_status(Shop.objects.get(pk=self.ended_trial.pk)), 'locked')
+        html = self.client.get(reverse('manage_shops') + '?status=locked').content.decode()
+        self.assertIn('Oldshop', html)
+        self.assertIn('Endtrial', html)
+        self.assertNotIn('Paidshop', html)
+        html = self.client.get(reverse('manage_shops') + '?q=2222').content.decode()
+        self.assertIn('Paidshop', html)
+        self.assertNotIn('Trialshop', html)
+
+    def test_extend_records_manual_payment_and_log(self):
+        from .models import HQAuditLog
+        self.action(self.trial, action='extend', plan='Standard', period='month', amount='999', reference='BK77')
+        self.trial.refresh_from_db()
+        self.assertEqual(self.trial.subscription_plan, 'Standard')
+        self.assertEqual(self.trial.valid_until, self.today + timedelta(days=30))
+        payment = OnlinePayment.objects.get(shop=self.trial)
+        self.assertEqual((payment.environment, payment.status, payment.amount, payment.trx_id),
+                         ('manual', 'Completed', Decimal('999'), 'BK77'))
+        self.assertEqual(HQAuditLog.objects.get(action='extend').shop, self.trial)
+        # চলমান মেয়াদের পর থেকে যোগ হয়
+        self.action(self.trial, action='extend', plan='Standard', period='year', amount='')
+        self.trial.refresh_from_db()
+        self.assertEqual(self.trial.valid_until, self.today + timedelta(days=395))
+        # মেয়াদ শেষ দোকান: আজ থেকে, লক খুলে যায়
+        Shop.objects.filter(pk=self.expired.pk).update(is_locked=True)
+        self.action(self.expired, action='extend', plan='Premium', period='days', days='10')
+        self.expired.refresh_from_db()
+        self.assertEqual((self.expired.valid_until, self.expired.is_locked, self.expired.subscription_plan),
+                         (self.today + timedelta(days=10), False, 'Premium'))
+        response = self.action(self.expired, action='extend', plan='Gold', period='month')
+        self.assertIn('ঠিক করে দিন', response.content.decode())
+
+    def test_trial_plan_date_lock_unlock(self):
+        before = self.trial.trial_ends_at
+        self.action(self.trial, action='trial', days='7')
+        self.trial.refresh_from_db()
+        self.assertGreater(self.trial.trial_ends_at, before + timedelta(days=6))
+        self.action(self.paid, action='trial', days='7')           # পেইড দোকানে ট্রায়াল না
+        self.action(self.paid, action='set_plan', plan='Premium')
+        self.paid.refresh_from_db()
+        self.assertEqual((self.paid.subscription_plan, self.paid.valid_until), ('Premium', self.today + timedelta(days=20)))
+        self.action(self.paid, action='lock')
+        self.paid.refresh_from_db()
+        self.assertTrue(self.paid.is_locked)
+        self.action(self.paid, action='unlock')
+        self.paid.refresh_from_db()
+        self.assertFalse(self.paid.is_locked)
+        # মেয়াদ শেষ হলে লক খোলা যায় না, আগে তারিখ ঠিক করতে হয়
+        Shop.objects.filter(pk=self.expired.pk).update(is_locked=True)
+        response = self.action(self.expired, action='unlock')
+        self.assertIn('আগে মেয়াদ বাড়ান', response.content.decode())
+        new_day = self.today + timedelta(days=5)
+        self.action(self.expired, action='set_date', date=new_day.isoformat())
+        self.expired.refresh_from_db()
+        self.assertEqual((self.expired.valid_until, self.expired.is_locked), (new_day, False))
+
+    def test_suspend_closes_site_and_logins(self):
+        from .models import StaffProfile
+        from .plans import storefront_is_open
+        staff_user = User.objects.create_user(phone_number='01755555555', password='Staff-pass-1')
+        StaffProfile.objects.create(user=staff_user, shop=self.paid)
+        self.action(self.paid, action='suspend', reason='প্রতারণা')
+        self.paid.refresh_from_db()
+        staff_user.refresh_from_db()
+        self.assertTrue(self.paid.is_suspended)
+        self.assertFalse(storefront_is_open(self.paid))
+        self.assertFalse(self.paid.user.is_active)
+        self.assertFalse(staff_user.is_active)
+        self.assertFalse(self.client.login(phone_number='01722222222', password='Seller-pass-1'))
+        self.client.force_login(self.admin)
+        self.action(self.paid, action='unsuspend')
+        self.paid.refresh_from_db()
+        staff_user.refresh_from_db()
+        self.assertFalse(self.paid.is_suspended)
+        self.assertTrue(storefront_is_open(self.paid))
+        self.assertTrue(staff_user.is_active)
+
+    def test_sms_balance_and_toggle(self):
+        self.action(self.paid, action='sms', amount='500', note='বিকাশে নিয়েছি')
+        self.paid.refresh_from_db()
+        self.assertEqual(self.paid.sms_balance, 500)
+        self.action(self.paid, action='sms', amount='-600')
+        self.paid.refresh_from_db()
+        self.assertEqual(self.paid.sms_balance, 500)                 # শূন্যের নিচে না
+        self.client.post(reverse('hq_sms'), {'action': 'recharge', 'shop': 'paidshop', 'amount': '-100'})
+        self.paid.refresh_from_db()
+        self.assertEqual(self.paid.sms_balance, 400)
+        self.action(self.paid, action='sms_toggle')
+        self.paid.refresh_from_db()
+        self.assertFalse(self.paid.is_sms_active)
+
+    def test_password_reset_shows_once_and_is_not_logged(self):
+        from .models import HQAuditLog
+        response = self.action(self.trial, action='password')
+        password = re.search(r'Sell-[a-z]{4}-\d{4}', response.content.decode()).group(0)
+        self.assertTrue(self.client.login(phone_number='01711111111', password=password))
+        self.assertNotIn(password, HQAuditLog.objects.get(action='password').detail)
+
+    def test_delete_needs_exact_subdomain(self):
+        from .models import StaffProfile
+        staff_user = User.objects.create_user(phone_number='01755555556', password='Staff-pass-1')
+        StaffProfile.objects.create(user=staff_user, shop=self.expired)
+        self.action(self.expired, action='delete', confirm='wrong')
+        self.assertTrue(Shop.objects.filter(pk=self.expired.pk).exists())
+        self.action(self.expired, action='delete', confirm='OLDSHOP')
+        self.assertFalse(Shop.objects.filter(pk=self.expired.pk).exists())
+        self.assertFalse(User.objects.filter(phone_number__in=['01733333333', '01755555556']).exists())
+        from .models import HQAuditLog
+        self.assertEqual(HQAuditLog.objects.get(action='delete').shop_label, 'Oldshop')
+
+    def test_login_as_and_return(self):
+        owner = self.trial.user
+        owner.last_login = None
+        owner.save(update_fields=['last_login'])
+        response = self.client.post(reverse('hq_login_as', args=[owner.pk]), follow=True)
+        self.assertEqual(response.wsgi_request.user, owner)
+        html = response.content.decode()
+        self.assertIn('Master HQ-তে ফিরুন', html)
+        owner.refresh_from_db()
+        self.assertIsNone(owner.last_login)                          # সেলারের "শেষ লগইন" বদলায় না
+        response = self.client.post(reverse('hq_return'))
+        self.assertRedirects(response, reverse('hq_shop', args=[self.trial.pk]))
+        self.assertEqual(self.client.get(reverse('master_dashboard')).status_code, 200)
+        # সুপারইউজারে ঢোকা যায় না
+        other_admin = User.objects.create_superuser(phone_number='01700000101', password='Admin-pass-101')
+        self.client.post(reverse('hq_login_as', args=[other_admin.pk]))
+        self.assertEqual(self.client.get(reverse('master_dashboard')).wsgi_request.user, self.admin)
+        # ২ ঘণ্টা পেরোলে ফেরার টিকিট অচল — লগআউট
+        self.client.post(reverse('hq_login_as', args=[owner.pk]))
+        session = self.client.session
+        from store import hq
+        data = session[hq.IMPERSONATOR_KEY]
+        data['since'] -= 3 * 3600
+        session[hq.IMPERSONATOR_KEY] = data
+        session.save()
+        self.client.post(reverse('hq_return'))
+        self.assertFalse(self.client.get(reverse('master_dashboard')).wsgi_request.user.is_authenticated)
+
+    def test_notice_reaches_matching_sellers_only(self):
+        self.client.post(reverse('hq_notices'), {'title': 'নতুন ফিচার এসেছে', 'level': 'success', 'audience': 'trial',
+                                                 'days': '3'})
+        from .models import PlatformNotice
+        notice = PlatformNotice.objects.get()
+        self.client.force_login(self.trial.user)
+        self.assertIn('নতুন ফিচার এসেছে', self.client.get(reverse('dashboard')).content.decode())
+        self.client.force_login(self.paid.user)
+        self.assertNotIn('নতুন ফিচার এসেছে', self.client.get(reverse('dashboard')).content.decode())
+        self.client.force_login(self.admin)
+        self.client.post(reverse('hq_notice_action', args=[notice.pk]), {'action': 'toggle'})
+        self.client.force_login(self.trial.user)
+        self.assertNotIn('নতুন ফিচার এসেছে', self.client.get(reverse('dashboard')).content.decode())
+
+    def test_signups_can_be_closed(self):
+        self.client.post(reverse('master_settings'), {'sms_rate': '0.40', 'platform_name': 'SellPunch'})
+        from .models import MasterSetting
+        self.assertFalse(MasterSetting.objects.get().signups_open)
+        self.client.logout()
+        self.assertIn('নতুন অ্যাকাউন্ট খোলা এই মুহূর্তে বন্ধ', self.client.get(reverse('signup')).content.decode())
+        self.client.post(reverse('signup'), {'shop_name': 'Nayadokan', 'subdomain': 'nayadokan', 'phone': '01766666666',
+                                             'password': 'Strong-pass-1', 'password2': 'Strong-pass-1'})
+        self.assertFalse(User.objects.filter(phone_number='01766666666').exists())
+        self.client.force_login(self.admin)
+        self.client.post(reverse('master_settings'), {'signups_open': 'on', 'sms_rate': '0.40'})
+        self.assertTrue(MasterSetting.objects.get().signups_open)
+
+    def test_dashboard_numbers_and_search(self):
+        OnlinePayment.objects.create(shop=self.paid, kind='plan', plan_name='Basic', days=30, amount=Decimal('499'),
+                                     invoice_number='SS-1-AAAAAAAAAAAA', status='Completed', completed_at=timezone.now())
+        OnlinePayment.objects.create(shop=self.paid, kind='sms', plan_name='SMS-TK-100', sms_count=250,
+                                     amount=Decimal('100'), invoice_number='SS-1-BBBBBBBBBBBB', status='Completed',
+                                     completed_at=timezone.now())
+        context = self.client.get(reverse('master_dashboard')).context
+        s = context['s']
+        self.assertEqual((s['revenue']['total'], s['revenue']['plans'], s['mrr']), (Decimal('599'), Decimal('499'), Decimal('499')))
+        self.assertEqual(context['a']['locked'], 2)
+        self.assertEqual(context['total_shops'], 4)
+        self.assertRedirects(self.client.get(reverse('hq_search') + '?q=paidshop'), reverse('hq_shop', args=[self.paid.pk]))
+        self.assertIn('SS-1-BBBBBBBBBBBB', self.client.get(reverse('hq_search') + '?q=BBBBBBBB').content.decode())
+
+    def test_stuck_payment_can_be_completed_by_hand(self):
+        payment = OnlinePayment.objects.create(shop=self.paid, kind='sms', plan_name='SMS-TK-100', sms_count=250,
+                                               amount=Decimal('100'), invoice_number='SS-2-CCCCCCCCCCCC')
+        self.client.post(reverse('hq_payment_complete', args=[payment.pk]), {'trx_id': 'x'})
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, 'Pending')                   # Trx ID ছাড়া না
+        self.client.post(reverse('hq_payment_complete', args=[payment.pk]), {'trx_id': 'TRX12345'})
+        payment.refresh_from_db()
+        self.paid.refresh_from_db()
+        self.assertEqual((payment.status, self.paid.sms_balance), ('Completed', 250))
+
+    def test_broadcast_goes_to_live_sellers_only(self):
+        Shop.objects.filter(pk=self.expired.pk).update(is_suspended=True)
+        with mock.patch('store.sms.gateway_ready', return_value=True), \
+                mock.patch('store.sms.gateway_send', return_value=(True, 'ok')) as send:
+            self.client.post(reverse('hq_sms'), {'action': 'broadcast', 'audience': 'all', 'message': 'নতুন ফিচার'})
+        phones = send.call_args[0][0]
+        self.assertEqual(sorted(phones), ['01711111111', '01722222222', '01744444444'])
+
+    def test_seller_sidebar_and_old_links(self):
+        self.assertEqual(reverse('master_dashboard'), '/saas-master/')
+        html = self.client.get(reverse('master_dashboard')).content.decode()
+        self.assertIn('এখন যা করতে হবে', html)
+        self.assertIn('sellpunch-wordmark-white', html)
+        self.assertEqual(self.client.get(reverse('recharge_sms')).status_code, 302)

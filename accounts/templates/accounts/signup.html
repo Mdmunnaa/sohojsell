@@ -54,6 +54,10 @@
                 <div class="alert alert-danger rounded-3 small">{{ form.non_field_errors|join:" " }}</div>
             {% endif %}
 
+            {% if signups_closed %}
+            <div class="alert alert-warning rounded-3 small mb-3">নতুন অ্যাকাউন্ট খোলা এই মুহূর্তে বন্ধ আছে। একটু পরে আবার চেষ্টা করুন, অথবা আমাদের সাথে যোগাযোগ করুন।</div>
+            <a href="{% url 'login' %}" class="btn btn-signup w-100 shadow-sm">লগইন করুন</a>
+            {% else %}
             <form method="POST" action="{% url 'signup' %}" novalidate>
                 {% csrf_token %}
                 <div class="hp-field" aria-hidden="true"><input type="text" name="website" tabindex="-1" autocomplete="off"></div>
@@ -106,6 +110,7 @@
                 </p>
                 <button type="submit" class="btn btn-signup w-100 shadow-sm"><i class="bi bi-shop me-2"></i> ফ্রি দোকান খুলুন</button>
             </form>
+            {% endif %}
 
             <!-- Facebook Signup Option (Admin-এ Facebook Social App যোগ করলে তবেই দেখাবে) -->
             {% if facebook_login_enabled %}

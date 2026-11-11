@@ -46,6 +46,8 @@ def storefront_is_open(shop, today=None):
     কাস্টমাররা ওয়েবসাইট দেখতে পাবে কিনা। মেয়াদ চলাকালে আর মেয়াদ শেষের পর ৭ দিন পর্যন্ত চালু।
     পুরনো কোনো পেইড শপের মেয়াদের তারিখ না থাকলে বন্ধ না করে চালু রাখা হয়।
     """
+    if getattr(shop, 'is_suspended', False):           # Master HQ থেকে বন্ধ করা দোকান
+        return False
     end = subscription_end(shop)
     if end is None:
         return shop.subscription_plan != TRIAL_PLAN

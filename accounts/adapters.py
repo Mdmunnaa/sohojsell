@@ -29,6 +29,14 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             messages.warning(request, "Facebook লগইন এখনো চালু হয়নি। আপাতত মোবাইল নম্বর দিয়ে লগইন করুন।")
             raise ImmediateHttpResponse(redirect('login'))
 
+    def is_open_for_signup(self, request, sociallogin):
+        """Master HQ থেকে সাইনআপ বন্ধ থাকলে Facebook দিয়েও নতুন অ্যাকাউন্ট না।"""
+        from store.models import MasterSetting
+        setting = MasterSetting.objects.order_by('pk').only('signups_open').first()
+        if setting is not None and not setting.signups_open:
+            return False
+        return super().is_open_for_signup(request, sociallogin)
+
     def get_connect_redirect_url(self, request, socialaccount):
         return reverse('fb_page_select')
 

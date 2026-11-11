@@ -263,6 +263,17 @@
     .demo-bar-btn { background:#111827; color:#fff; padding:7px 14px; border-radius:999px; font-weight:700; text-decoration:none; white-space:nowrap; font-size:13px; }
     .demo-bar-btn:hover { background:#000; color:#fff; }
     @media (max-width: 768px) { .demo-bar { padding: 10px 16px; font-size: 12.5px; } }
+    /* Master HQ থেকে সেলারের অ্যাকাউন্টে ঢুকলে উপরে ফেরার বার; আর প্ল্যাটফর্মের নোটিশ */
+    .hq-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; background:#13203a; color:#e6ecf6; padding:10px 28px; font-size:14px; }
+    .hq-bar b { color:#fff; }
+    .hq-bar form { margin:0; }
+    .hq-bar-btn { background:#f5b301; color:#3b2a00; border:0; border-radius:8px; padding:7px 14px; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap; }
+    .pn { display:flex; gap:12px; align-items:flex-start; background:#fff; border:1px solid #e2e7f0; border-left:4px solid #2563eb; border-radius:12px; padding:12px 14px; margin-bottom:12px; font-size:14.5px; }
+    .pn-success { border-left-color:#059669; } .pn-warning { border-left-color:#c2410c; } .pn-danger { border-left-color:#dc2626; }
+    .pn-text { flex:1; min-width:0; } .pn-text b { display:block; } .pn-text p { margin:2px 0 0; color:#5b6b82; }
+    .pn-text a { font-weight:600; }
+    .pn-x { background:none; border:0; color:#8a98ad; padding:0 4px; cursor:pointer; font-size:15px; line-height:1; }
+    @media (max-width: 768px) { .hq-bar { padding: 10px 16px; } }
     .page-content {
       flex: 1;
       padding: 26px 28px 48px;
@@ -333,14 +344,9 @@
       {% if request.user.is_superuser %}
 
         <div class="sb-label">Master</div>
-        <a href="{% url 'master_dashboard' %}" class="sb-link {% if '/saas-master/' in request.path %}active{% endif %}">
-          <i class="bi bi-rocket-takeoff-fill"></i> <span class="sb-text-hide">Master HQ</span>
+        <a href="{% url 'master_dashboard' %}" class="sb-link">
+          <i class="bi bi-speedometer2"></i> <span class="sb-text-hide">Master HQ</span>
         </a>
-        <a href="{% url 'manage_shops' %}" class="sb-link"><i class="bi bi-shop-window"></i> <span class="sb-text-hide">Manage Shops</span></a>
-        <a href="{% url 'all_users' %}" class="sb-link"><i class="bi bi-people-fill"></i> <span class="sb-text-hide">All Users</span></a>
-        <a href="{% url 'master_billing' %}" class="sb-link"><i class="bi bi-wallet2"></i> <span class="sb-text-hide">Packages & Billing</span></a>
-        <a href="{% url 'master_settlements' %}" class="sb-link"><i class="bi bi-cash-stack"></i> <span class="sb-text-hide">সেলারদের টাকা</span></a>
-        <a href="{% url 'master_settings' %}" class="sb-link"><i class="bi bi-chat-dots-fill"></i> <span class="sb-text-hide">Master Setting</span></a>
 
       {% else %}
 
@@ -518,7 +524,35 @@
       </div>
     </div>
     {% endif %}
+    {% if hq_impersonator %}
+    <div class="hq-bar" role="status">
+      <div><i class="bi bi-person-badge"></i> Master HQ থেকে <b>{{ request.user.name|default:request.user.phone_number }}</b>-এর অ্যাকাউন্টে আছেন — যা করবেন, এই সেলারের নামে হবে।</div>
+      <form method="post" action="{% url 'hq_return' %}">{% csrf_token %}<button class="hq-bar-btn" type="submit">Master HQ-তে ফিরুন</button></form>
+    </div>
+    {% endif %}
     <div class="page-content">
+      {% with notices=platform_notices %}{% if notices %}
+      {% for n in notices %}
+      <div class="pn pn-{{ n.level }}" data-notice="{{ n.pk }}">
+        <div class="pn-text"><b>{{ n.title }}</b>{% if n.body %}<p>{{ n.body|linebreaksbr }}</p>{% endif %}{% if n.link_url %}<a href="{{ n.link_url }}">{{ n.link_text|default:"বিস্তারিত" }}</a>{% endif %}</div>
+        <button type="button" class="pn-x" aria-label="নোটিশ বন্ধ করুন"><i class="bi bi-x-lg"></i></button>
+      </div>
+      {% endfor %}
+      <script>
+      (function () {
+        var key = 'sp-notices-hidden', hidden = [];
+        try { hidden = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) {}
+        document.querySelectorAll('.pn[data-notice]').forEach(function (box) {
+          var id = box.getAttribute('data-notice');
+          if (hidden.indexOf(id) !== -1) { box.remove(); return; }
+          box.querySelector('.pn-x').addEventListener('click', function () {
+            box.remove(); hidden.push(id);
+            try { localStorage.setItem(key, JSON.stringify(hidden.slice(-30))); } catch (e) {}
+          });
+        });
+      })();
+      </script>
+      {% endif %}{% endwith %}
       {% block content %}{% endblock %}
     </div>
 

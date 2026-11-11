@@ -123,6 +123,9 @@ class Shop(models.Model):
                                            choices=[('bn', 'বাংলা'), ('en', 'English')])
     # লাইভ ডেমো দোকান (store/demo.py): যে কেউ /demo/ থেকে ঢুকে দেখতে পারে, রোজ নিজে থেকে আগের মতো হয়
     is_demo = models.BooleanField(default=False, editable=False)
+    # Master HQ থেকে দোকান বন্ধ করা (প্রতারণা, স্প্যাম ইত্যাদি) — মালিক/স্টাফ ঢুকতে পারে না, ওয়েবসাইটও বন্ধ
+    is_suspended = models.BooleanField(default=False)
+    hq_note = models.TextField(blank=True, default='', help_text='শুধু Master HQ-তে দেখা যায় — ফোনে কী কথা হলো ইত্যাদি')
     demo_reset_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     def is_subscription_active(self):
@@ -481,6 +484,7 @@ class MasterSetting(models.Model):
     delivery_charge_default = models.DecimalField(max_digits=8, decimal_places=2, default=100.00)
     sms_rate = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal('0.400'),
                                    help_text='সেলাররা প্রতি SMS কত টাকায় কিনবে')
+    signups_open = models.BooleanField(default=True, help_text='বন্ধ করলে নতুন কেউ অ্যাকাউন্ট খুলতে পারে না')
 
     def __str__(self):
         return "SaaS Master Settings"
@@ -1046,3 +1050,81 @@ class LandingPage(models.Model):
 
     def __str__(self):
         return self.headline
+
+
+# ============================================================
+# Master HQ — কে কখন কী করলো (store/hq.py log_action)
+# ============================================================
+class HQAuditLog(models.Model):
+    ACTION_LABELS = {
+        'extend': 'মেয়াদ বাড়ানো',
+        'trial': 'ট্রায়াল বাড়ানো',
+        'set_plan': 'প্যাকেজ বদল',
+        'set_date': 'মেয়াদের তারিখ বদল',
+        'lock': 'লক করা',
+        'unlock': 'লক খোলা',
+        'suspend': 'দোকান বন্ধ',
+        'unsuspend': 'দোকান আবার চালু',
+        'sms': 'SMS ব্যালেন্স বদল',
+        'sms_toggle': 'SMS চালু/বন্ধ',
+        'password': 'পাসওয়ার্ড রিসেট',
+        'user_active': 'লগইন চালু/বন্ধ',
+        'login_as': 'অ্যাকাউন্টে ঢোকা',
+        'note': 'নোট লেখা',
+        'domain_live': 'ডোমেইন চালু',
+        'delete': 'দোকান মুছে ফেলা',
+        'payment_recheck': 'পেমেন্ট আবার যাচাই',
+        'payment_manual': 'পেমেন্ট হাতে সম্পন্ন',
+        'payment_legacy': 'পুরনো পেমেন্ট অনুমোদন/বাতিল',
+        'notice': 'প্ল্যাটফর্ম নোটিশ',
+        'broadcast': 'সেলারদের SMS',
+        'settings': 'সিস্টেম সেটিংস',
+    }
+
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name='+')
+    actor_label = models.CharField(max_length=64, blank=True, default='')
+    action = models.CharField(max_length=40, db_index=True)
+    shop = models.ForeignKey(Shop, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    shop_label = models.CharField(max_length=200, blank=True, default='')
+    detail = models.TextField(blank=True, default='')
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    @property
+    def action_label(self):
+        return self.ACTION_LABELS.get(self.action, self.action)
+
+    def __str__(self):
+        return f'{self.action_label} — {self.shop_label}'
+
+
+# ============================================================
+# সব সেলারের ড্যাশবোর্ডে দেখানো নোটিশ (Master HQ থেকে)
+# ============================================================
+class PlatformNotice(models.Model):
+    LEVEL_CHOICES = (('info', 'তথ্য'), ('success', 'সুখবর'), ('warning', 'সতর্কতা'), ('danger', 'জরুরি'))
+    AUDIENCE_CHOICES = (('all', 'সব সেলার'), ('trial', 'শুধু ট্রায়ালে যারা'), ('paid', 'শুধু পেইড সেলার'),
+                        ('locked', 'যাদের মেয়াদ শেষ'))
+
+    title = models.CharField(max_length=120)
+    body = models.TextField(blank=True, default='')
+    level = models.CharField(max_length=10, choices=LEVEL_CHOICES, default='info')
+    audience = models.CharField(max_length=10, choices=AUDIENCE_CHOICES, default='all')
+    link_url = models.CharField(max_length=300, blank=True, default='')
+    link_text = models.CharField(max_length=40, blank=True, default='')
+    starts_at = models.DateTimeField(default=timezone.now)
+    ends_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title

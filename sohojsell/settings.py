@@ -119,6 +119,7 @@ TEMPLATES = [
                 'store.context_processors.facebook_login',
                 'store.context_processors.site_info',
                 'store.context_processors.plan_info',
+                'store.context_processors.hq',
             ],
         },
     },

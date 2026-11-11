@@ -36,6 +36,11 @@ def signup(request):
             return redirect('setup_shop')
         return redirect('dashboard')
 
+    from store.models import MasterSetting
+    setting = MasterSetting.objects.order_by('pk').only('signups_open').first()
+    if setting is not None and not setting.signups_open:       # Master HQ → সিস্টেম সেটিংস থেকে বন্ধ
+        return render(request, 'accounts/signup.html', {'signups_closed': True}, status=403 if request.method == 'POST' else 200)
+
     form = ShopSignupForm(request.POST or None)
     if request.method == 'POST':
         if _rate_limited('signup', request, limit=20, window_seconds=3600):

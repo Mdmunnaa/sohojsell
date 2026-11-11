@@ -1,0 +1,58 @@
+{% extends 'store/hq/base.html' %}
+{% load hq_tags %}
+{% block title %}সব দোকান{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>সব দোকান</h1>
+    <p class="sub">যেকোনো দোকানে চাপ দিলে তার সব তথ্য আর কাজ (মেয়াদ, প্যাকেজ, SMS, লক, লগইন) এক পাতায়।</p>
+  </div>
+</div>
+
+<div class="filters" role="group" aria-label="অবস্থা">
+  {% for f in filters %}
+  <a class="chip{% if status == f.key %} on{% endif %}" href="?status={{ f.key }}{% if plan %}&amp;plan={{ plan }}{% endif %}{% if q %}&amp;q={{ q|urlencode }}{% endif %}">{{ f.label }} <span class="n">{{ f.n|hq_num }}</span></a>
+  {% endfor %}
+</div>
+<form class="filters" method="get">
+  <input type="hidden" name="status" value="{{ status }}">
+  <input class="input grow" type="search" name="q" value="{{ q }}" placeholder="নাম, সাবডোমেইন, ফোন, ডোমেইন বা মালিকের নাম" aria-label="দোকান খুঁজুন">
+  <select class="input" name="plan" aria-label="প্যাকেজ">
+    <option value="">সব প্যাকেজ</option>
+    {% for key, label in plan_choices %}<option value="{{ key }}"{% if plan == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <select class="input" name="sort" aria-label="সাজানো">
+    <option value="new"{% if sort == 'new' %} selected{% endif %}>নতুন আগে</option>
+    <option value="old"{% if sort == 'old' %} selected{% endif %}>পুরনো আগে</option>
+    <option value="name"{% if sort == 'name' %} selected{% endif %}>নাম</option>
+    <option value="trial"{% if sort == 'trial' %} selected{% endif %}>ট্রায়াল আগে শেষ</option>
+    <option value="expiry"{% if sort == 'expiry' %} selected{% endif %}>মেয়াদ আগে শেষ</option>
+    <option value="sms"{% if sort == 'sms' %} selected{% endif %}>SMS বেশি</option>
+  </select>
+  <button class="btn btn-sm" type="submit"><i class="bi bi-funnel"></i>দেখান</button>
+</form>
+
+<section class="panel flush">
+  <div class="tbl-wrap"><table class="tbl stack">
+    <thead><tr><th>দোকান</th><th>অবস্থা</th><th>প্যাকেজ ও মেয়াদ</th><th>মালিক</th><th class="num">অর্ডার</th><th class="num">প্রোডাক্ট</th><th class="num">SMS</th><th class="num">যোগ দিয়েছে</th></tr></thead>
+    <tbody>
+    {% for shop in page_obj %}
+      <tr>
+        <td><a class="strong" href="{% url 'hq_shop' shop.id %}">{{ shop.name }}</a><div class="meta">{{ shop.slug }}{% if shop.custom_domain %} · {{ shop.custom_domain }}{% endif %}</div></td>
+        <td><span class="st st-{{ shop.hq_status }}">{{ shop.hq_status|hq_status }}</span></td>
+        <td class="nowrap" data-label="প্যাকেজ:">{% if shop.subscription_plan == 'Free' %}ট্রায়াল{% else %}{{ shop.subscription_plan }}{% endif %}
+          {% if shop.ends_on %}{% with left=shop.ends_on|days_left %}<div class="meta">{% if left < 0 %}শেষ হয়েছে {{ shop.ends_on|date:"d M Y" }}{% elif left == 0 %}আজ শেষ{% else %}{{ shop.ends_on|date:"d M Y" }} ({{ left }} দিন){% endif %}</div>{% endwith %}{% endif %}</td>
+        <td class="nowrap" data-label="মালিক:">{{ shop.user.name|default:"" }}<div class="meta">{% with p=shop.phone|default:shop.user.phone_number %}<a href="tel:{{ p }}">{{ p }}</a>{% endwith %}</div></td>
+        <td class="num inl" data-label="অর্ডার:">{{ shop.n_orders|hq_num }}</td>
+        <td class="num inl" data-label="প্রোডাক্ট:">{{ shop.n_products|hq_num }}</td>
+        <td class="num inl" data-label="SMS:">{{ shop.sms_balance|hq_num }}</td>
+        <td class="num inl meta" data-label="যোগ দিয়েছে:">{{ shop.created_at|date:"d M Y" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="8"><div class="empty"><b>কোনো দোকান পাওয়া যায়নি</b>ফিল্টার বা খোঁজার লেখা বদলে দেখুন।</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% include 'store/hq/_pager.html' %}
+</section>
+{% endblock %}

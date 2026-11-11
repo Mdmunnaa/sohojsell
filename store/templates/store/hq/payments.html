@@ -1,0 +1,86 @@
+{% extends 'store/hq/base.html' %}
+{% load hq_tags %}
+{% block title %}পেমেন্টের খাতা{% endblock %}
+{% block extra_css %}
+.fix { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; justify-content: flex-end; }
+.fix .input { width: 150px; min-height: 28px; height: 28px; padding: 2px 8px; font-size: 13px; }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>পেমেন্টের খাতা</h1>
+    <p class="sub">PayStation-এ প্যাকেজ আর SMS কেনা, আর Master HQ থেকে হাতে নেওয়া টাকা — সব এক জায়গায়।</p>
+  </div>
+</div>
+
+{% if legacy %}
+<section class="panel flush" id="legacy">
+  <div class="panel-head"><h2>পুরনো bKash/Nagad — অনুমোদনের অপেক্ষায়</h2><span class="hint">লেনদেন নম্বর মিলিয়ে দেখুন</span></div>
+  <div class="tbl-wrap"><table class="tbl stack">
+    <thead><tr><th>দোকান</th><th>প্যাকেজ</th><th>লেনদেন</th><th class="num">টাকা</th><th></th></tr></thead>
+    <tbody>
+    {% for r in legacy %}
+      <tr>
+        <td><a class="strong" href="{% url 'hq_shop' r.shop_id %}">{{ r.shop.name }}</a><div class="meta">{{ r.created_at|date:"d M, h:i A" }}</div></td>
+        <td>{{ r.plan_name }}</td>
+        <td class="mono">{{ r.payment_method }} · {{ r.transaction_id }}<div class="meta">{{ r.sender_number }}</div></td>
+        <td class="num strong">{{ r.amount|hq_taka }}</td>
+        <td class="num"><div class="btn-row" style="justify-content: flex-end">
+          <form method="post" action="{% url 'approve_payment' r.id %}" class="inline" data-confirm="অনুমোদন দেবেন? প্যাকেজ ৩০ দিনের জন্য চালু হবে।">{% csrf_token %}<input type="hidden" name="advance_days" value="30"><button class="btn btn-xs btn-primary" type="submit">অনুমোদন</button></form>
+          <form method="post" action="{% url 'reject_payment' r.id %}" class="inline" data-confirm="বাতিল করবেন?">{% csrf_token %}<button class="btn btn-xs btn-ghost-danger" type="submit">বাতিল</button></form>
+        </div></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+
+<div class="filters" role="group" aria-label="অবস্থা">
+  <a class="chip{% if not status %} on{% endif %}" href="?period={{ period }}&amp;kind={{ kind }}">সব</a>
+  <a class="chip{% if status == 'Completed' %} on{% endif %}" href="?status=Completed&amp;period={{ period }}&amp;kind={{ kind }}">সম্পন্ন</a>
+  <a class="chip{% if status == 'Pending' %} on{% endif %}" href="?status=Pending&amp;period={{ period }}&amp;kind={{ kind }}">অসম্পূর্ণ</a>
+  <a class="chip{% if status == 'Failed' %} on{% endif %}" href="?status=Failed&amp;period={{ period }}&amp;kind={{ kind }}">ব্যর্থ</a>
+</div>
+<form class="filters" method="get">
+  <input type="hidden" name="status" value="{{ status }}">
+  <input class="input grow" type="search" name="q" value="{{ q }}" placeholder="দোকান, ইনভয়েস বা Trx ID" aria-label="পেমেন্ট খুঁজুন">
+  <select class="input" name="kind" aria-label="কী কেনা"><option value="">প্যাকেজ + SMS</option><option value="plan"{% if kind == 'plan' %} selected{% endif %}>শুধু প্যাকেজ</option><option value="sms"{% if kind == 'sms' %} selected{% endif %}>শুধু SMS</option></select>
+  <select class="input" name="period" aria-label="সময়"><option value="">সব সময়</option><option value="month"{% if period == 'month' %} selected{% endif %}>এই মাস</option><option value="last"{% if period == 'last' %} selected{% endif %}>গত মাস</option><option value="manual"{% if period == 'manual' %} selected{% endif %}>শুধু হাতে নেওয়া</option></select>
+  <button class="btn btn-sm" type="submit"><i class="bi bi-funnel"></i>দেখান</button>
+</form>
+
+<div class="kpis" style="--n: 3">
+  <div class="kpi"><div class="label">এই তালিকায় সম্পন্ন</div><div class="value">{{ totals.done|default:0|hq_taka }}</div><div class="foot">{{ totals.n_done|hq_num }}টা পেমেন্ট</div></div>
+  <div class="kpi"><div class="label">মোট চেষ্টা</div><div class="value">{{ totals.n|hq_num }}</div><div class="foot">অসম্পূর্ণ/ব্যর্থসহ</div></div>
+  <a class="kpi" href="{% url 'master_settlements' %}"><div class="label">সেলারদের অনলাইন বিক্রির টাকা</div><div class="value"><i class="bi bi-arrow-right"></i></div><div class="foot">কাকে কত পাঠাতে হবে</div></a>
+</div>
+
+<section class="panel flush">
+  <div class="tbl-wrap"><table class="tbl stack">
+    <thead><tr><th>দোকান</th><th>কী</th><th>অবস্থা</th><th>ইনভয়েস / Trx</th><th class="num">টাকা</th><th class="num">কবে</th></tr></thead>
+    <tbody>
+    {% for p in page_obj %}
+      <tr>
+        <td><a class="strong" href="{% url 'hq_shop' p.shop_id %}">{{ p.shop.name }}</a><div class="meta">{{ p.shop.slug }}</div></td>
+        <td data-label="কী:">{% if p.kind == 'sms' %}SMS {{ p.sms_count|hq_num }}টা{% else %}{{ p.plan_name }}, {{ p.days }} দিন{% endif %}{% if p.environment == 'manual' %}<div class="meta">হাতে নেওয়া</div>{% elif p.environment == 'sandbox' %}<div class="meta">sandbox (পরীক্ষা)</div>{% endif %}</td>
+        <td><span class="st st-{{ p.status }}">{% if p.status == 'Completed' %}সম্পন্ন{% elif p.status == 'Pending' %}অসম্পূর্ণ{% else %}ব্যর্থ{% endif %}</span></td>
+        <td class="mono">{{ p.invoice_number }}{% if p.trx_id %}<div class="meta">{{ p.trx_id }}{% if p.payment_method %} · {{ p.payment_method }}{% endif %}</div>{% endif %}</td>
+        <td class="num strong">{{ p.amount|hq_taka }}
+          {% if p.stuck %}
+          <div class="fix">
+            <form method="post" action="{% url 'hq_payment_recheck' p.pk %}" class="inline">{% csrf_token %}<button class="btn btn-xs" type="submit">আবার যাচাই</button></form>
+            <form method="post" action="{% url 'hq_payment_complete' p.pk %}" class="fix" style="margin: 0" data-confirm="PayStation-এর প্যানেলে টাকা এসেছে নিশ্চিত? সম্পন্ন করলে দোকানে প্যাকেজ/SMS যোগ হবে।">{% csrf_token %}<input class="input" type="text" name="trx_id" placeholder="Trx ID" required aria-label="Trx ID"><button class="btn btn-xs" type="submit">হাতে সম্পন্ন</button></form>
+          </div>
+          {% endif %}
+        </td>
+        <td class="num meta" data-label="কবে:">{{ p.completed_at|default:p.created_at|date:"d M Y, h:i A" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6"><div class="empty"><b>কোনো পেমেন্ট নেই</b>ফিল্টার বদলে দেখুন।</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% include 'store/hq/_pager.html' %}
+</section>
+{% endblock %}
