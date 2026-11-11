@@ -3131,3 +3131,15 @@ class DemoShopTests(TestCase):
         real_user = User.objects.create_user(phone_number='01755555556', password='Test-pass-123')
         real_shop = Shop.objects.create(user=real_user, name='Real', phone='01755555556', address='Dhaka')
         self.assertEqual(risk.for_phones(real_shop, [returned.customer.phone])[returned.customer.phone].level, 'new')
+
+    def test_demo_check_page_for_master(self):
+        self.assertEqual(self.client.get(reverse('demo_check')).status_code, 302)        # মাস্টার ছাড়া না
+        admin = User.objects.create_superuser(phone_number='01799999991', password='Test-pass-123')
+        self.client.force_login(admin)
+        response = self.client.get(reverse('demo_check'))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('ডেমো ঠিক আছে', response.content.decode())
+        with mock.patch('store.demo.build', side_effect=RuntimeError('boom')):
+            response = self.client.get(reverse('demo_check'))
+        self.assertEqual(response.status_code, 500)
+        self.assertIn('RuntimeError: boom', response.content.decode())

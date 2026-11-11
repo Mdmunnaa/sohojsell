@@ -28,6 +28,7 @@ urlpatterns = [
     # লাইভ ডেমো (পাসওয়ার্ড ছাড়া ডেমো দোকানে ঢোকা)
     path('demo/', views_demo.demo_start, name='demo_start'),
     path('demo/shop/', views_demo.demo_store, name='demo_store'),
+    path('demo/check/', views_demo.demo_check, name='demo_check'),
 
     # নীতিমালা ও যোগাযোগ (সবার জন্য খোলা — Meta আর PayStation এগুলো দেখতে চায়)
     path('privacy-policy/', TemplateView.as_view(template_name='store/legal/privacy.html'), name='privacy_policy'),
