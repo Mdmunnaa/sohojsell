@@ -814,7 +814,7 @@ class SoldCountTests(ShopTestMixin, TestCase):
     def test_shows_only_real_sold_count(self):
         html = self.client.get('/shop/soldshop/', HTTP_HOST='localhost').content.decode()
         self.assertIn('3টা বিক্রি হয়েছে', html)          # শুধু Delivered + Shipped
-        self.assertNotIn('/5', html)                        # বানানো রেটিং নেই
+        self.assertNotRegex(html, r'\d(\.\d)?/5(?!\d)')          # বানানো রেটিং নেই (প্রোডাক্ট id-তে /5.. থাকতে পারে)
         self.assertNotIn('-15%', html)
         self.assertEqual(html.count('বিক্রি হয়েছে'), 1)    # Lungi বিক্রি হয়নি, তাই কিছু দেখায় না
         detail = self.client.get(f'/shop/soldshop/product/{self.product.id}/', HTTP_HOST='localhost').content.decode()
@@ -2966,3 +2966,141 @@ class BrandTests(TestCase):
         self.assertEqual(manifest['Content-Type'], 'application/manifest+json')
         self.assertEqual(json.loads(manifest.content)['name'], 'SellPunch')
         self.assertEqual(self.client.get('/favicon.ico').status_code, 302)
+
+
+class DemoShopTests(TestCase):
+    """লাইভ ডেমো: সাজানো দোকান, পাসওয়ার্ড ছাড়া ঢোকা, রোজ রিসেট, ক্ষতিকর কাজ বন্ধ।"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        import tempfile
+        cls.media = tempfile.mkdtemp()
+        cls._override = override_settings(MEDIA_ROOT=cls.media)
+        cls._override.enable()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._override.disable()
+        import shutil
+        shutil.rmtree(cls.media, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        from store import demo
+        self.shop = demo.build()
+
+    def test_seed_builds_a_full_shop(self):
+        from store import demo, dues
+        from .models import Coupon, Customer, Expense, LandingPage, ProductReview, Purchase, SmsLog, StaffProfile
+        shop = self.shop
+        self.assertTrue(shop.is_demo)
+        self.assertEqual(shop.slug, demo.DEMO_SLUG)
+        self.assertEqual(shop.products.count(), len(demo.PRODUCTS))
+        self.assertTrue(all(p.image and p.thumbnail for p in shop.products.all()))
+        self.assertEqual(shop.banners.count(), 2)
+        self.assertGreater(shop.orders.filter(source='pos').count(), 150)
+        self.assertGreater(shop.orders.filter(source='storefront', status='Delivered').count(), 80)
+        self.assertGreater(shop.orders.filter(status='Pending').count(), 0)
+        self.assertGreater(Customer.objects.filter(shop=shop).count(), 50)
+        self.assertGreater(len(dues.rows(shop)), 3)
+        self.assertEqual(Purchase.objects.filter(shop=shop).count(), 7)
+        self.assertGreater(Expense.objects.filter(shop=shop).count(), 20)
+        self.assertGreater(ProductReview.objects.filter(shop=shop, is_approved=True).count(), 10)
+        self.assertEqual(Coupon.objects.filter(shop=shop).count(), 4)
+        self.assertEqual(LandingPage.objects.filter(shop=shop).count(), 1)
+        self.assertGreater(SmsLog.objects.filter(shop=shop).count(), 5)
+        self.assertEqual(StaffProfile.objects.filter(shop=shop).count(), 1)
+        self.assertFalse(shop.user.has_usable_password())
+        # হিসাব মেলে: অর্ডারের তারিখ ৯০ দিনে ছড়ানো
+        oldest = shop.orders.order_by('created_at').first().created_at
+        self.assertLess(oldest, timezone.now() - timedelta(days=80))
+
+    def test_rebuild_keeps_images_and_resets_activity(self):
+        from store import demo
+        from .models import Order, Product
+        shop = self.shop
+        names = sorted(shop.products.values_list('image', flat=True))
+        product = shop.products.first()
+        product.name = 'দর্শকের বদলানো নাম'
+        product.save()
+        extra = Product.objects.create(shop=shop, name='দর্শকের প্রোডাক্ট', price=10, barcode='VISITOR-1')
+        Order.objects.filter(shop=shop).delete()
+        demo.build()
+        self.assertEqual(sorted(shop.products.values_list('image', flat=True)), names)   # ছবি আবার আপলোড হয় না
+        self.assertFalse(Product.objects.filter(pk=extra.pk).exists())
+        self.assertNotEqual(Product.objects.get(pk=product.pk).name, 'দর্শকের বদলানো নাম')
+        self.assertGreater(shop.orders.count(), 300)
+
+    def test_demo_login_without_password(self):
+        response = self.client.get(reverse('demo_start'))
+        self.assertRedirects(response, '/dashboard/', fetch_redirect_response=False)
+        html = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('লাইভ ডেমো', html)
+        self.assertIn('নিজের দোকান খুলুন', html)
+        self.assertEqual(self.client.get(reverse('demo_start') + '?to=pos').url, '/pos/')
+        self.assertEqual(self.client.get(reverse('pos')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('reports')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('due_list')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('demo_store')).url, self.shop.storefront_url)
+        self.assertEqual(self.client.get(self.shop.storefront_url).status_code, 200)
+
+    def test_logged_in_seller_is_not_switched_to_demo(self):
+        user = User.objects.create_user(phone_number='01755555555', password='Test-pass-123')
+        Shop.objects.create(user=user, name='Real', phone='01755555555', address='Dhaka')
+        self.client.force_login(user)
+        self.assertRedirects(self.client.get(reverse('demo_start')), reverse('dashboard'), fetch_redirect_response=False)
+        self.assertEqual(int(self.client.session['_auth_user_id']), user.pk)
+
+    def test_demo_blocks_settings_billing_and_deletes(self):
+        from store import demo
+        self.client.get(reverse('demo_start'))
+        product = self.shop.products.first()
+        response = self.client.post(reverse('settings'), {'name': 'হ্যাক'}, HTTP_REFERER='http://testserver/settings/')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Shop.objects.get(pk=self.shop.pk).name, demo.SHOP_NAME)
+        self.assertEqual(self.client.post(reverse('billing'), {'plan': 'Premium'}).status_code, 302)
+        self.assertEqual(self.client.post(reverse('website_settings'), {'section': 'domain', 'custom_domain': 'x.com'}).status_code, 302)
+        self.client.post(reverse('delete_product', args=[product.pk]))
+        self.assertTrue(self.shop.products.filter(pk=product.pk).exists())
+        # JSON চাওয়া হলে JSON-এ "না"
+        response = self.client.post(reverse('billing'), {'plan': 'Premium'}, HTTP_ACCEPT='application/json')
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('ডেমো', response.json()['error'])
+        # সাধারণ কাজ চলে: প্রোডাক্ট বদলানো, ডিজাইন বদলানো
+        response = self.client.post(reverse('website_settings'), {'section': 'design', 'storefront_theme': 'blue',
+                                                                  'storefront_design': 'minimal', 'color_mode': 'theme'})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Shop.objects.get(pk=self.shop.pk).storefront_theme, 'blue')
+
+    def test_demo_sms_never_reaches_gateway(self):
+        from store import sms
+        with mock.patch('store.sms.gateway_send') as gateway:
+            result = sms.send(self.shop, ['01811111111'], 'ডেমো থেকে টেস্ট', 'test')
+            self.assertTrue(result.ok)
+            gateway.assert_not_called()
+        self.assertEqual(Shop.objects.get(pk=self.shop.pk).sms_balance, 436)
+
+    def test_stale_demo_is_rebuilt_once(self):
+        from store import demo
+        from .models import Order
+        Shop.objects.filter(pk=self.shop.pk).update(demo_reset_at=timezone.now() - timedelta(hours=30))
+        Order.objects.filter(shop=self.shop).delete()
+        with mock.patch('store.demo.build', wraps=demo.build) as build:
+            demo.reset_if_stale()
+            demo.reset_if_stale()
+            self.assertEqual(build.call_count, 1)
+        self.assertGreater(Order.objects.filter(shop=self.shop).count(), 300)
+
+    def test_demo_excluded_from_master_numbers_and_risk(self):
+        from store import risk
+        admin = User.objects.create_superuser(phone_number='01799999990', password='Test-pass-123')
+        self.client.force_login(admin)
+        context = self.client.get(reverse('master_dashboard')).context
+        self.assertEqual(context['total_shops'], 0)
+        self.assertEqual(context['total_platform_orders'], 0)
+        # ডেমোর ফেরত-আসা কাস্টমারের নম্বর আসল দোকানে "ঝুঁকি" হিসেবে দেখায় না
+        returned = Order.objects.filter(shop=self.shop, status='Returned').first()
+        real_user = User.objects.create_user(phone_number='01755555556', password='Test-pass-123')
+        real_shop = Shop.objects.create(user=real_user, name='Real', phone='01755555556', address='Dhaka')
+        self.assertEqual(risk.for_phones(real_shop, [returned.customer.phone])[returned.customer.phone].level, 'new')

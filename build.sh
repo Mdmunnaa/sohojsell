@@ -5,6 +5,8 @@ set -o errexit
 pip install -r requirements.txt
 python manage.py collectstatic --no-input
 python manage.py migrate --no-input
+# লাইভ ডেমো দোকান (হোমপেজের "লাইভ ডেমো" বাটন) — প্রতি deploy-এ আবার সাজানো হয়
+python manage.py seed_demo || echo "ডেমো দোকান সাজানো যায়নি, প্রথম /demo/ ভিজিটে আবার চেষ্টা হবে।"
 # আগে আপলোড হওয়া প্রোডাক্টের ছবি ছোট করা (না পারলেও deploy থামবে না)
 python manage.py optimize_images --limit 300 || echo "ছবি ছোট করা যায়নি, পরের deploy-এ আবার চেষ্টা হবে।"
 

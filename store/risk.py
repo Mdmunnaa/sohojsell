@@ -88,7 +88,9 @@ def for_phones(shop, phones):
     result = {phone: Risk(phone=phone) for phone in phones}
     if not phones:
         return result
+    # ডেমো দোকানের বানানো অর্ডার আসল দোকানের হিসাবে ঢোকে না
     rows = (Order.objects.filter(customer__phone__in=phones).exclude(source='pos')
+            .filter(Q(shop=shop) | Q(shop__is_demo=False))
             .values('customer__phone')
             .annotate(own_delivered=Count('id', filter=Q(shop=shop, status='Delivered')),
                       own_failed=Count('id', filter=Q(shop=shop, status__in=FAILED)),

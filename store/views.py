@@ -39,7 +39,26 @@ def landing_page(request):
         if request.user.is_superuser:
             return redirect('master_dashboard')
         return redirect('dashboard')
-    return render(request, 'store/landing.html')
+    from .payments import PLAN_PRICES, PLAN_YEAR_PRICES
+    from .plans import PLAN_LIMITS
+    from .sms import sms_rate
+    plans = []
+    for key, tagline, pitch in (('Basic', 'একা চালানো ছোট দোকান', 'ওয়েবসাইট, POS, অর্ডার, SMS — সব মূল সুবিধা'),
+                                ('Standard', 'বাড়তে থাকা অনলাইন ব্যবসা', 'Facebook কমেন্ট থেকে অর্ডার, ৩ জন স্টাফ'),
+                                ('Premium', 'ব্র্যান্ড আর একাধিক দোকান', 'নিজের ডোমেইন (www.yourshop.com), সীমাহীন প্রোডাক্ট')):
+        limits = PLAN_LIMITS[key]
+        plans.append({
+            'key': key, 'tagline': tagline, 'pitch': pitch, 'popular': key == 'Standard',
+            'month': int(PLAN_PRICES[key]), 'year': int(PLAN_YEAR_PRICES[key]),
+            'year_per_month': int(PLAN_YEAR_PRICES[key] / 12),
+            'products': limits['products'], 'staff': limits['staff'], 'facebook': limits['facebook'],
+            'custom_domain': limits['custom_domain'],
+        })
+    try:
+        rate = sms_rate()
+    except Exception:    # noqa: BLE001 — ডেটাবেস ছাড়া হোমপেজ আটকাবে না
+        rate = None
+    return render(request, 'store/landing.html', {'plans': plans, 'sms_rate': rate, 'trial_days': 30})
 
 
 # ============================================================
@@ -98,7 +117,7 @@ def seller_dashboard(request):
         'recent_orders': dash.recent_orders(shop) if can['orders'] or can['money'] else [],
         'chart': dash.sales_chart(shop, today, chart_days) if can['money'] else None,
         'top_sellers': dash.top_sellers(shop, today) if can['money'] else [],
-        'setup': dash.setup_steps(shop, limits_for(shop)['facebook']) if is_owner else None,
+        'setup': dash.setup_steps(shop, limits_for(shop)['facebook']) if is_owner and not shop.is_demo else None,
         'trial_days': shop.days_remaining(),
         'fb_page': getattr(shop, 'fb_page', None),
     }
@@ -856,13 +875,14 @@ def master_dashboard(request):
     from django.contrib.auth import get_user_model
     User = get_user_model()
 
-    total_shops = Shop.objects.count()
-    total_users = User.objects.count()
-    total_orders = Order.objects.count()
+    # ডেমো দোকানের বানানো হিসাব প্ল্যাটফর্মের সংখ্যায় ঢোকে না
+    total_shops = Shop.objects.filter(is_demo=False).count()
+    total_users = User.objects.exclude(shop__is_demo=True).count()
+    total_orders = Order.objects.filter(shop__is_demo=False).count()
     total_sales = Order.objects.filter(
-        status__in=['Delivered', 'Shipped', 'Pending']
+        shop__is_demo=False, status__in=['Delivered', 'Shipped', 'Pending']
     ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    recent_shops = Shop.objects.all().order_by('-id')[:10]
+    recent_shops = Shop.objects.filter(is_demo=False).order_by('-id')[:10]
 
     from .models import PaymentRequest
     pending_payments = PaymentRequest.objects.filter(status='Pending').select_related('shop').order_by('-created_at')

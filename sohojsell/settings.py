@@ -100,6 +100,7 @@ MIDDLEWARE = [
     'store.middleware.ShopSubdomainMiddleware',          # দোকানের সাবডোমেইন → সেই দোকানের ওয়েবসাইট
     'store.subscription_middleware.SubscriptionMiddleware',
     'store.middleware.StaffAccessMiddleware',
+    'store.demo.DemoGuardMiddleware',                     # ডেমো দোকানে সেটিংস/বিল/মুছে ফেলা বন্ধ
 ]
 
 ROOT_URLCONF = 'sohojsell.urls'

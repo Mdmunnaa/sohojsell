@@ -55,3 +55,18 @@ def star_flags(avg):
     except (TypeError, ValueError):
         value = 0.0
     return [n <= value + 0.5 for n in range(1, 6)]
+
+
+@register.filter
+def bn_when(value):
+    """{{ order.created_at|bn_when }} → ১০ নভেম্বর, বিকাল ৩:২০"""
+    if not value:
+        return ''
+    from django.utils import timezone
+    from store.dashboard import BN_MONTHS
+    if timezone.is_aware(value):
+        value = timezone.localtime(value)
+    hour = value.hour
+    part = 'রাত' if hour < 5 else 'সকাল' if hour < 12 else 'দুপুর' if hour < 16 else 'বিকাল' if hour < 18 else 'সন্ধ্যা' if hour < 20 else 'রাত'
+    clock = f'{hour % 12 or 12}:{value.minute:02d}'
+    return f'{value.day} {BN_MONTHS[value.month - 1]}, {part} {clock}'.translate(BN_DIGITS)

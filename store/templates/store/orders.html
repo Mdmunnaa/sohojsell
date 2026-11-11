@@ -1,18 +1,19 @@
 {% extends 'store/base.html' %}
+{% load bangla %}
 {% block page_title %}অর্ডার{% endblock %}
 
-{% block title %}Orders - {{ request.user.shop.name }}{% endblock %}
+{% block title %}অর্ডার - {{ request.user.shop.name }}{% endblock %}
 
 {% block content %}
 {% include 'store/partials/risk_styles.html' %}
 <div class="container-fluid px-0">
     <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
         <div>
-            <h3 class="fw-bolder text-dark mb-1">Manage Orders 🛒</h3>
-            <p class="text-muted fw-medium mb-0">Track, update and process all your customer orders here.</p>
+            <h3 class="fw-bolder text-dark mb-1">সব অর্ডার 🛒</h3>
+            <p class="text-muted fw-medium mb-0">ওয়েবসাইট, ফোন আর দোকানের সব অর্ডার এক জায়গায় — স্ট্যাটাস বদলান, কুরিয়ারে পাঠান, রসিদ ছাপুন।</p>
         </div>
         <a href="{% url 'order_create' %}" class="btn btn-primary fw-bold shadow px-4 py-2 rounded-pill transition-all hover-lift">
-            <i class="bi bi-plus-lg me-2"></i> Create New Order
+            <i class="bi bi-plus-lg me-2"></i> নতুন অর্ডার
         </a>
     </div>
 
@@ -22,24 +23,24 @@
                 <div class="row g-3 align-items-center">
                     <div class="col-md-6 position-relative">
                         <i class="bi bi-search position-absolute text-muted" style="top: 50%; left: 25px; transform: translateY(-50%);"></i>
-                        <input type="text" name="q" class="form-control bg-light border-0 rounded-pill ps-5 py-2" placeholder="Search by Order ID, Name or Phone..." value="{{ search_query }}">
+                        <input type="text" name="q" class="form-control bg-light border-0 rounded-pill ps-5 py-2" placeholder="অর্ডার নং, নাম বা মোবাইল নম্বর দিয়ে খুঁজুন..." value="{{ search_query }}">
                     </div>
 
                     <div class="col-md-4">
                         <select name="status" class="form-select bg-light border-0 rounded-pill py-2 text-muted fw-medium">
-                            <option value="">-- All Statuses --</option>
-                            <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
-                            <option value="Confirmed" {% if status_filter == 'Confirmed' %}selected{% endif %}>Confirmed</option>
-                            <option value="Shipped" {% if status_filter == 'Shipped' %}selected{% endif %}>Shipped</option>
-                            <option value="Delivered" {% if status_filter == 'Delivered' %}selected{% endif %}>Delivered</option>
-                            <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
-                            <option value="Returned" {% if status_filter == 'Returned' %}selected{% endif %}>Returned</option>
+                            <option value="">সব স্ট্যাটাস</option>
+                            <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>নতুন</option>
+                            <option value="Confirmed" {% if status_filter == 'Confirmed' %}selected{% endif %}>কনফার্ম</option>
+                            <option value="Shipped" {% if status_filter == 'Shipped' %}selected{% endif %}>কুরিয়ারে</option>
+                            <option value="Delivered" {% if status_filter == 'Delivered' %}selected{% endif %}>ডেলিভারি হয়েছে</option>
+                            <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>বাতিল</option>
+                            <option value="Returned" {% if status_filter == 'Returned' %}selected{% endif %}>ফেরত</option>
                         </select>
                     </div>
 
                     <div class="col-md-2">
                         <button type="submit" class="btn btn-primary w-100 fw-bold rounded-pill shadow-sm py-2">
-                            <i class="bi bi-funnel-fill me-1"></i> Filter
+                            <i class="bi bi-funnel-fill me-1"></i> খুঁজুন
                         </button>
                     </div>
                 </div>
@@ -53,21 +54,21 @@
                 <table class="table table-borderless align-middle mb-0 table-hover">
                     <thead class="border-bottom text-muted small text-uppercase fw-bold">
                         <tr>
-                            <th class="px-4 py-4">Order ID</th>
-                            <th class="py-4">Customer</th>
-                            <th class="py-4">Products</th>
-                            <th class="py-4">Amount</th>
-                            <th class="py-4">Status</th>
-                            <th class="px-4 py-4 text-end">Actions</th>
+                            <th class="px-4 py-4">অর্ডার</th>
+                            <th class="py-4">কাস্টমার</th>
+                            <th class="py-4">প্রোডাক্ট</th>
+                            <th class="py-4">টাকা</th>
+                            <th class="py-4">স্ট্যাটাস</th>
+                            <th class="px-4 py-4 text-end">কাজ</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for order in orders %}
                         <tr class="border-bottom" style="transition: all 0.2s;">
-                            <td class="px-4 py-3 fw-bolder text-primary">#ORD-{{ order.id }}</td>
+                            <td class="px-4 py-3 fw-bolder text-primary">#{{ order.id }}<small class="d-block text-muted fw-normal" style="font-size:11px;">{{ order.created_at|bn_when }}</small></td>
                             <td class="py-3">
-                                <span class="fw-bold d-block text-dark">{{ order.customer.name }}</span>
-                                <small class="text-muted"><i class="bi bi-telephone-fill me-1" style="font-size: 0.7rem;"></i>{{ order.customer.phone }}</small>
+                                <span class="fw-bold d-block text-dark">{% if order.customer.phone == '00000000000' %}দোকানের কাস্টমার{% else %}{{ order.customer.name }}{% endif %}</span>
+                                {% if order.customer.phone != '00000000000' %}<small class="text-muted"><i class="bi bi-telephone-fill me-1" style="font-size: 0.7rem;"></i>{{ order.customer.phone }}</small>{% endif %}
                                 {% if order.source != 'pos' %}<div class="mt-1">{% include 'store/partials/risk_chip.html' with r=order.risk %}</div>{% endif %}
                             </td>
                             <td class="py-3">
@@ -77,7 +78,7 @@
                                             {{ item.display_name }} <strong class="text-primary ms-1">x{{ item.quantity }}</strong>
                                         </span>
                                     {% empty %}
-                                        <span class="text-muted small"><i class="bi bi-exclamation-circle"></i> No items</span>
+                                        <span class="text-muted small"><i class="bi bi-exclamation-circle"></i> কোনো প্রোডাক্ট নেই</span>
                                     {% endfor %}
                                 </div>
                             </td>
@@ -92,45 +93,45 @@
                                 {% elif order.online_payment_status == 'pending' %}
                                     <small class="d-block text-warning fw-semibold" style="font-size:11px;"><i class="bi bi-hourglass-split"></i> অনলাইন পেমেন্ট বাকি</small>
                                 {% endif %}
-                                {% if order.source == 'storefront' %}<small class="d-block text-muted" style="font-size:10px;"><i class="bi bi-globe2"></i> ওয়েবসাইট</small>{% endif %}
+                                {% if order.source == 'storefront' %}<small class="d-block text-muted" style="font-size:10px;"><i class="bi bi-globe2"></i> ওয়েবসাইট</small>{% elif order.source == 'pos' %}<small class="d-block text-muted" style="font-size:10px;"><i class="bi bi-shop"></i> দোকানে (POS)</small>{% endif %}
                             </td>
                             <td class="py-3" style="width: 150px;">
                                 <select class="form-select form-select-sm status-dropdown rounded-pill border-0 bg-light fw-bold text-center text-secondary shadow-sm" data-order-id="{{ order.id }}" style="cursor: pointer;">
-                                    <option value="Pending" {% if order.status == 'Pending' %}selected{% endif %}>Pending</option>
-                                    <option value="Confirmed" {% if order.status == 'Confirmed' %}selected{% endif %}>Confirmed</option>
-                                    <option value="Shipped" {% if order.status == 'Shipped' %}selected{% endif %}>Shipped</option>
-                                    <option value="Delivered" {% if order.status == 'Delivered' %}selected{% endif %}>Delivered</option>
-                                    <option value="Cancelled" {% if order.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
-                                    <option value="Returned" {% if order.status == 'Returned' %}selected{% endif %}>Returned</option>
+                                    <option value="Pending" {% if order.status == 'Pending' %}selected{% endif %}>নতুন</option>
+                                    <option value="Confirmed" {% if order.status == 'Confirmed' %}selected{% endif %}>কনফার্ম</option>
+                                    <option value="Shipped" {% if order.status == 'Shipped' %}selected{% endif %}>কুরিয়ারে</option>
+                                    <option value="Delivered" {% if order.status == 'Delivered' %}selected{% endif %}>ডেলিভারি হয়েছে</option>
+                                    <option value="Cancelled" {% if order.status == 'Cancelled' %}selected{% endif %}>বাতিল</option>
+                                    <option value="Returned" {% if order.status == 'Returned' %}selected{% endif %}>ফেরত</option>
                                 </select>
                             </td>
                             <td class="px-4 py-3 text-end">
                                 <div class="d-flex justify-content-end gap-2">
 
-                                    <a href="{% url 'order_edit' order.id %}" class="btn btn-sm btn-light text-primary rounded-circle shadow-sm" data-bs-toggle="tooltip" title="Edit Order" style="width: 35px; height: 35px; line-height: 22px;">
+                                    <a href="{% url 'order_edit' order.id %}" class="btn btn-sm btn-light text-primary rounded-circle shadow-sm" data-bs-toggle="tooltip" title="অর্ডার বদলান" style="width: 35px; height: 35px; line-height: 22px;">
                                         <i class="bi bi-pencil-square"></i>
                                     </a>
 
                                     {% if order.steadfast_tracking_code %}
-                                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill d-flex align-items-center px-3" data-bs-toggle="tooltip" title="Tracking Code: {{ order.courier_partner|default:'Courier' }}">
+                                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill d-flex align-items-center px-3" data-bs-toggle="tooltip" title="{{ order.courier_partner|default:'কুরিয়ার' }} ট্র্যাকিং কোড">
                                             <i class="bi bi-truck me-1"></i> {{ order.steadfast_tracking_code }}
                                         </span>
                                     {% else %}
                                         <!-- নতুন Courier Modal Trigger Button -->
-                                        <button type="button" class="btn btn-sm btn-light text-success rounded-circle shadow-sm" data-bs-toggle="modal" data-bs-target="#courierModal" onclick="setCourierData('{{ order.id }}', '{{ order.customer.name|escapejs }}', '{% if order.payment_method in prepaid_methods %}0{% else %}{{ order.due_amount|floatformat:0 }}{% endif %}', '{{ order.customer.address|default:''|escapejs }}')" data-bs-toggle="tooltip" title="Send to Courier" style="width: 35px; height: 35px; line-height: 22px;">
+                                        <button type="button" class="btn btn-sm btn-light text-success rounded-circle shadow-sm" data-bs-toggle="modal" data-bs-target="#courierModal" onclick="setCourierData('{{ order.id }}', '{{ order.customer.name|escapejs }}', '{% if order.payment_method in prepaid_methods %}0{% else %}{{ order.due_amount|floatformat:0 }}{% endif %}', '{{ order.customer.address|default:''|escapejs }}')" data-bs-toggle="tooltip" title="কুরিয়ারে পাঠান" style="width: 35px; height: 35px; line-height: 22px;">
                                             <i class="bi bi-truck"></i>
                                         </button>
                                     {% endif %}
 
-                                    <a href="{% url 'invoice' order.id %}?download=pdf" target="_blank" class="btn btn-sm btn-light text-danger rounded-circle shadow-sm" data-bs-toggle="tooltip" title="One-Click PDF Download" style="width: 35px; height: 35px; line-height: 22px;">
+                                    <a href="{% url 'invoice' order.id %}?download=pdf" target="_blank" class="btn btn-sm btn-light text-danger rounded-circle shadow-sm" data-bs-toggle="tooltip" title="PDF ইনভয়েস" style="width: 35px; height: 35px; line-height: 22px;">
                                           <i class="bi bi-file-earmark-pdf-fill"></i>
                                     </a>
 
-                                    <a href="{% url 'invoice' order.id %}" target="_blank" class="btn btn-sm btn-primary rounded-circle shadow-sm" data-bs-toggle="tooltip" title="Print POS Memo" style="width: 35px; height: 35px; line-height: 22px;">
+                                    <a href="{% url 'invoice' order.id %}" target="_blank" class="btn btn-sm btn-primary rounded-circle shadow-sm" data-bs-toggle="tooltip" title="রসিদ ছাপুন" style="width: 35px; height: 35px; line-height: 22px;">
                                         <i class="bi bi-printer-fill text-white"></i>
                                     </a>
 
-                                    <a href="{% url 'order_delete' order.id %}" class="btn btn-sm btn-light text-danger rounded-circle shadow-sm sweet-confirm" data-msg="Are you sure you want to delete this order? Stock will be restored." data-bs-toggle="tooltip" title="Delete Order" style="width: 35px; height: 35px; line-height: 22px;">
+                                    <a href="{% url 'order_delete' order.id %}" class="btn btn-sm btn-light text-danger rounded-circle shadow-sm sweet-confirm" data-msg="অর্ডারটা মুছে ফেলবেন? প্রোডাক্টের স্টক আবার যোগ হয়ে যাবে।" data-bs-toggle="tooltip" title="অর্ডার মুছুন" style="width: 35px; height: 35px; line-height: 22px;">
                                         <i class="bi bi-trash"></i>
                                     </a>
                                 </div>
@@ -140,8 +141,8 @@
                         <tr>
                             <td colspan="6" class="text-center py-5 text-muted">
                                 <i class="bi bi-cart-x fs-1 d-block mb-3 opacity-50"></i>
-                                <h5 class="fw-bold">No orders found</h5>
-                                <p>Click "Create New Order" to get started.</p>
+                                <h5 class="fw-bold">কোনো অর্ডার পাওয়া যায়নি</h5>
+                                <p>"নতুন অর্ডার" বাটনে ফোন বা ইনবক্সের অর্ডার তুলুন, অথবা ওয়েবসাইটের লিংক শেয়ার করুন।</p>
                             </td>
                         </tr>
                         {% endfor %}
@@ -159,14 +160,14 @@
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content rounded-4 border-0 shadow-lg">
       <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
-        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-box-seam-fill text-primary me-2"></i>Send Parcel</h5>
+        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-box-seam-fill text-primary me-2"></i>কুরিয়ারে পাঠান</h5>
         <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
       </div>
       <form method="POST" action="{% url 'send_to_courier' %}">
         {% csrf_token %}
         <input type="hidden" name="order_id" id="courierOrderId">
         <div class="modal-body px-4 pt-2 pb-4">
-          <p class="text-muted mb-3 small">Select delivery partner for: <strong id="courierCustomerName" class="text-dark"></strong></p>
+          <p class="text-muted mb-3 small">কোন কুরিয়ারে যাবে — <strong id="courierCustomerName" class="text-dark"></strong>-এর পার্সেল:</p>
 
           <div class="d-flex flex-column gap-2">
             <!-- Steadfast -->
@@ -203,7 +204,7 @@
           {% endif %}
         </div>
         <div class="modal-footer border-top-0 px-4 pb-4">
-          <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold w-100"><i class="bi bi-send-fill me-2"></i> Confirm & Send</button>
+          <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold w-100"><i class="bi bi-send-fill me-2"></i> পার্সেল বুক করুন</button>
         </div>
       </form>
     </div>
@@ -330,13 +331,14 @@
                 const message = this.getAttribute('data-msg');
 
                 Swal.fire({
-                    title: 'Are you sure?',
+                    title: 'নিশ্চিত?',
                     text: message,
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#0d6efd',
                     cancelButtonColor: '#dc3545',
-                    confirmButtonText: 'Yes, proceed!'
+                    confirmButtonText: 'হ্যাঁ, মুছে ফেলুন',
+                    cancelButtonText: 'না'
                 }).then((result) => {
                     if (result.isConfirmed) {
                         window.location.href = url;
@@ -351,7 +353,7 @@
 {% if page_obj.has_other_pages %}
 <div class="px-4 py-3 border-top d-flex justify-content-between align-items-center" style="background:#fafafa;">
   <span style="font-size:13px;color:#64748b;">
-    Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} orders
+    {{ page_obj.paginator.count }}টার মধ্যে {{ page_obj.start_index }}–{{ page_obj.end_index }} দেখানো হচ্ছে
   </span>
   <nav>
     <ul class="pagination pagination-sm mb-0 gap-1">

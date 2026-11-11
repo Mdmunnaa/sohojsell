@@ -11,6 +11,7 @@ from . import views_ledger
 from . import views_offers
 from . import views_landing
 from . import views_dues
+from . import views_demo
 
 def favicon(request):
     from django.shortcuts import redirect
@@ -24,6 +25,9 @@ urlpatterns = [
                                                   content_type='application/manifest+json'), name='webmanifest'),
     # Landing
     path('', views.landing_page, name='landing_page'),
+    # লাইভ ডেমো (পাসওয়ার্ড ছাড়া ডেমো দোকানে ঢোকা)
+    path('demo/', views_demo.demo_start, name='demo_start'),
+    path('demo/shop/', views_demo.demo_store, name='demo_store'),
 
     # নীতিমালা ও যোগাযোগ (সবার জন্য খোলা — Meta আর PayStation এগুলো দেখতে চায়)
     path('privacy-policy/', TemplateView.as_view(template_name='store/legal/privacy.html'), name='privacy_policy'),

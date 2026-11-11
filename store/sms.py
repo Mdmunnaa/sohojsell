@@ -288,6 +288,14 @@ def _background_allowed():
     return getattr(settings, 'SMS_BACKGROUND', True)
 
 
+def _sender_for(shop, sender):
+    """ডেমো দোকানের SMS গেটওয়েতে যায় না (কারো কাছে পৌঁছায় না), শুধু প্যানেলে "গেছে" দেখায়।"""
+    if sender is None and getattr(shop, 'is_demo', False):
+        from .demo import demo_sender
+        return demo_sender
+    return sender
+
+
 def send(shop, phones, message, audience, *, user=None, kind='manual', sender=None, background=None):
     """
     দোকানের ব্যালেন্স থেকে কেটে SMS পাঠায়। phones — যেকোনো রূপের নম্বর (এখানেই ঠিক করা হয়)।
@@ -295,6 +303,7 @@ def send(shop, phones, message, audience, *, user=None, kind='manual', sender=No
     যাতে পেইজ আটকে না থাকে; ইতিহাসে "পাঠানো হচ্ছে" দেখায়।
     """
     from .models import Shop, SmsLog
+    sender = _sender_for(shop, sender)
     message = clean_message(message)
     if not message:
         return SmsResult(False, error='মেসেজ লিখুন।')
@@ -382,6 +391,7 @@ def send_each(shop, pairs, audience, *, user=None, kind='manual', sender=None):
     একটাই SmsLog, খরচ আগে কাটে, যেগুলো যায়নি সেগুলোর খরচ ফেরত।
     """
     from .models import Shop, SmsLog
+    sender = _sender_for(shop, sender)
     cleaned = []
     for phone, message in pairs:
         phones = clean_phones([phone])

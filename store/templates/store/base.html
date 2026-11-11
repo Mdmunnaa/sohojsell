@@ -269,6 +269,15 @@
     }
 
     /* Page content */
+    .demo-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+      padding: 10px 24px; background: linear-gradient(90deg,#FEF3C7,#FDE68A); color:#78350F; font-size:13.5px; border-bottom:1px solid #FCD34D; }
+    .demo-bar-text { flex: 1 1 320px; min-width: 0; }
+    .demo-bar-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .demo-bar-link { color:#92400E; font-weight:600; text-decoration:none; white-space:nowrap; }
+    .demo-bar-link:hover { text-decoration:underline; }
+    .demo-bar-btn { background:#111827; color:#fff; padding:7px 14px; border-radius:999px; font-weight:700; text-decoration:none; white-space:nowrap; font-size:13px; }
+    .demo-bar-btn:hover { background:#000; color:#fff; }
+    @media (max-width: 768px) { .demo-bar { padding: 10px 16px; font-size: 12.5px; } }
     .page-content {
       flex: 1;
       padding: 26px 28px 48px;
@@ -517,6 +526,15 @@
       </div>
     </div>
 
+    {% if shop.is_demo %}
+    <div class="demo-bar">
+      <div class="demo-bar-text"><i class="bi bi-eye-fill"></i> <strong>লাইভ ডেমো</strong> — "{{ shop.name }}" একটা বানানো দোকান। যা খুশি করে দেখুন; রোজ রাতে সব আবার আগের মতো হয়ে যায়। সেটিংস, বিল আর মুছে ফেলা ডেমোতে বন্ধ।</div>
+      <div class="demo-bar-actions">
+        <a href="{{ shop.storefront_url }}" target="_blank" rel="noopener" class="demo-bar-link"><i class="bi bi-shop"></i> কাস্টমার যেভাবে দেখে</a>
+        <a href="{% url 'signup' %}" class="demo-bar-btn">নিজের দোকান খুলুন — ৩০ দিন ফ্রি</a>
+      </div>
+    </div>
+    {% endif %}
     <div class="page-content">
       {% block content %}{% endblock %}
     </div>

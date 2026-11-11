@@ -143,7 +143,7 @@ def run_auto_reminders(now=None):
     """
     now = now or timezone.now()
     sent = {}
-    for shop in Shop.objects.filter(due_reminder_days__gt=0, is_sms_active=True, sms_balance__gt=0):
+    for shop in Shop.objects.filter(due_reminder_days__gt=0, is_sms_active=True, sms_balance__gt=0, is_demo=False):
         cutoff = now - timedelta(days=shop.due_reminder_days)
         due_rows = [r for r in rows(shop) if not r['reminded_at'] or r['reminded_at'] <= cutoff]
         pairs = reminder_pairs(shop, [r['phone'] for r in due_rows], skip_recent=False, due_rows=due_rows)
