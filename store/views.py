@@ -26,7 +26,7 @@ from .plans import (
 from .forms import (ShopSetupForm, ProductForm, OrderCreateForm, SteadfastSettingsForm, PathaoSettingsForm,
                     RedxSettingsForm, PosSettingsForm)
 from .links import storefront_link
-from . import couriers, offers, order_flow, reviews, risk, sms, variants
+from . import couriers, offers, order_flow, reviews, risk, sf_lang, sms, variants
 from .themes import THEMES
 from django.urls import reverse
 
@@ -1192,7 +1192,8 @@ def storefront_home(request, shop_slug, category_id=None):
 
     if category:
         title = f'{category.name} — {shop.name}'
-        description = f'{shop.name}-এ {category.name}: {page_obj.paginator.count}টা প্রোডাক্ট। ঘরে বসে অর্ডার করুন।'
+        description = sf_lang.t('{shop}-এ {category}: {n}টা প্রোডাক্ট। ঘরে বসে অর্ডার করুন।', shop, shop=shop.name,
+                                category=category.name, n=page_obj.paginator.count)
         meta = seo.storefront_meta(request, shop, title=title, description=description,
                                    link_name='storefront_category', link_args=(category.id,), noindex=bool(search))
     else:
@@ -1240,11 +1241,11 @@ def storefront_product_detail(request, shop_slug, product_id):
 
     price = f'৳{product.price:.0f}'
     if product.discount_percent:
-        price += f' ({product.discount_percent}% ছাড়)'
+        price += sf_lang.t(' ({p}% ছাড়)', shop, p=str(product.discount_percent))   # দামের মতো ইংরেজি অঙ্ক
     checkout = _checkout_context(shop)
-    extra = 'ক্যাশ অন ডেলিভারি।' if checkout['cod_allowed'] else 'ঘরে বসে অর্ডার করুন।'
+    extra = sf_lang.t('ক্যাশ অন ডেলিভারি।' if checkout['cod_allowed'] else 'ঘরে বসে অর্ডার করুন।', shop)
     description = (f'{price} · ' + (product.description or '') if product.description
-                   else f'{price} · {shop.name} থেকে অর্ডার করুন। {extra}')
+                   else sf_lang.t('{price} · {shop} থেকে অর্ডার করুন। {extra}', shop, price=price, shop=shop.name, extra=extra))
     meta = seo.storefront_meta(
         request, shop, title=f'{product.name} — {shop.name}', description=description,
         image=product.image, image_size=(product.image_width, product.image_height),
@@ -1259,7 +1260,8 @@ def storefront_product_detail(request, shop_slug, product_id):
         review_msg = None
     product_url = request.build_absolute_uri(storefront_link(shop, 'storefront_product_detail', product.id,
                                                              request=request))
-    wa_text = f'আসসালামু আলাইকুম, আমি "{product.name}" (৳{product.price:.0f}) অর্ডার করতে চাই।\n{product_url}'
+    wa_text = sf_lang.t('আসসালামু আলাইকুম, আমি "{name}" ({price}) অর্ডার করতে চাই।', shop, name=product.name,
+                        price=f'৳{product.price:.0f}') + f'\n{product_url}'
     return render(request, 'store/storefront/product_detail.html', {
         'shop': shop,
         'meta': meta,
@@ -1313,7 +1315,7 @@ def _track_context(request, shop, order):
     from . import seo
     reached = [key for key, _l, _i in TRACK_STEPS].index(order.status) if order.status in (
         'Pending', 'Confirmed', 'Shipped', 'Delivered') else -1
-    steps = [{'label': label, 'icon': icon,
+    steps = [{'label': sf_lang.t(label, shop), 'icon': icon,
               'state': 'done' if index < reached or (index == reached == 3) else 'now' if index == reached else 'wait'}
              for index, (_key, label, icon) in enumerate(TRACK_STEPS)]
     courier = (order.courier_partner or '').strip()
@@ -1321,14 +1323,14 @@ def _track_context(request, shop, order):
     phone = order.customer.phone or ''
     return {
         'shop': shop, 'order': order, 'steps': steps, 'cancelled': order.status in order_flow.NOT_COUNTED,
-        'status_label': order_flow.STATUS_BN.get(order.status, order.status),
+        'status_label': sf_lang.status_label(order.status, shop),
         'items': list(order.items.select_related('product')),
         'courier': courier, 'tracking_code': order.steadfast_tracking_code or '',
         'courier_url': template.format(code=order.steadfast_tracking_code) if template and order.steadfast_tracking_code else '',
         'masked_phone': f'{phone[:3]}*****{phone[-3:]}' if len(phone) >= 8 else '',
         'order_day': timezone.localtime(order.created_at).date(),
-        'wa_text': f'আমার অর্ডার নং {order.id}',
-        'meta': seo.storefront_meta(request, shop, title=f'অর্ডার ট্র্যাক করুন — {shop.name}', noindex=True,
+        'wa_text': sf_lang.t('আমার অর্ডার নং {n}', shop, n=str(order.id)),
+        'meta': seo.storefront_meta(request, shop, title=sf_lang.t('অর্ডার ট্র্যাক করুন — {shop}', shop, shop=shop.name), noindex=True,
                                     link_name='storefront_track'),
     }
 
@@ -1348,11 +1350,11 @@ def storefront_track(request, shop_slug):
         if order is not None:
             return redirect(storefront_link(shop, 'storefront_track_order', order_flow.track_code(order),
                                             request=request))
-        error = 'এই অর্ডার নম্বর আর মোবাইল নম্বর মিলিয়ে কোনো অর্ডার পাওয়া যায়নি। নম্বর দুটো আবার দেখে নিন।'
+        error = sf_lang.t('এই অর্ডার নম্বর আর মোবাইল নম্বর মিলিয়ে কোনো অর্ডার পাওয়া যায়নি। নম্বর দুটো আবার দেখে নিন।', shop)
     return render(request, 'store/storefront/track.html', {
         'shop': shop, 'order': None, 'error': error, 'number': number, 'phone': phone,
-        'meta': seo.storefront_meta(request, shop, title=f'অর্ডার ট্র্যাক করুন — {shop.name}',
-                                    description=f'{shop.name}-এ দেওয়া অর্ডার এখন কোথায় আছে দেখুন।',
+        'meta': seo.storefront_meta(request, shop, title=sf_lang.t('অর্ডার ট্র্যাক করুন — {shop}', shop, shop=shop.name),
+                                    description=sf_lang.t('{shop}-এ দেওয়া অর্ডার এখন কোথায় আছে দেখুন।', shop, shop=shop.name),
                                     link_name='storefront_track'),
     })
 
@@ -1390,7 +1392,7 @@ def storefront_coupon_check(request, shop_slug):
     try:
         data = json.loads(request.body or b'{}')
     except ValueError:
-        return JsonResponse({'ok': False, 'error': 'তথ্য ঠিক নেই।'})
+        return JsonResponse({'ok': False, 'error': sf_lang.t('তথ্য ঠিক নেই।', shop)})
     subtotal, _chosen, _q = _cart_subtotal(shop, data.get('cart'))
     _zone, charge = delivery.charge_for(shop, data.get('zone'), subtotal)
     try:
@@ -1398,9 +1400,9 @@ def storefront_coupon_check(request, shop_slug):
     except offers.CouponError as exc:
         return JsonResponse({'ok': False, 'error': str(exc)})
     if coupon is None:
-        return JsonResponse({'ok': False, 'error': 'কুপন কোড লিখুন।'})
+        return JsonResponse({'ok': False, 'error': sf_lang.t('কুপন কোড লিখুন।', shop)})
     return JsonResponse({'ok': True, 'code': coupon.code, 'discount': float(discount),
-                         'delivery_off': float(delivery_off), 'text': offers.describe(coupon)})
+                         'delivery_off': float(delivery_off), 'text': offers.describe(coupon, lang=shop)})
 
 
 def storefront_checkout_draft(request, shop_slug):
@@ -1437,8 +1439,8 @@ def storefront_review_submit(request, shop_slug, product_id):
         request.session['review_msg'] = {'product': product.id, 'ok': False, 'text': str(exc)}
     else:
         request.session['review_msg'] = {'product': product.id, 'ok': True, 'text':
-                                         'ধন্যবাদ! আপনার রিভিউ ওয়েবসাইটে দেখানো হচ্ছে।' if review.is_approved
-                                         else 'ধন্যবাদ! দোকান দেখে নেওয়ার পর আপনার রিভিউ ওয়েবসাইটে দেখানো হবে।'}
+                                         sf_lang.t('ধন্যবাদ! আপনার রিভিউ ওয়েবসাইটে দেখানো হচ্ছে।' if review.is_approved
+                                                   else 'ধন্যবাদ! দোকান দেখে নেওয়ার পর আপনার রিভিউ ওয়েবসাইটে দেখানো হবে।', shop)}
     return redirect(back + '#reviews')
 
 
@@ -1473,7 +1475,7 @@ def storefront_place_order(request, shop_slug):
         return JsonResponse({'success': False, 'error': 'Invalid request'}, status=405)
     shop = get_object_or_404(Shop, slug=shop_slug)
     if not storefront_is_open(shop):
-        return JsonResponse({'success': False, 'error': 'এই দোকান এখন অর্ডার নিচ্ছে না।'})
+        return JsonResponse({'success': False, 'error': sf_lang.t('এই দোকান এখন অর্ডার নিচ্ছে না।', shop)})
 
     try:
         data = json.loads(request.body or b'{}')
@@ -1482,50 +1484,50 @@ def storefront_place_order(request, shop_slug):
         for item in cart_items:
             product_id, qty = int(item['id']), int(item['qty'])
             if qty < 1 or qty > 999 or product_id == 0:
-                return JsonResponse({'success': False, 'error': 'পরিমাণ ঠিক নেই।'})
+                return JsonResponse({'success': False, 'error': sf_lang.t('পরিমাণ ঠিক নেই।', shop)})
             quantities[product_id] = quantities.get(product_id, 0) + qty
     except (ValueError, TypeError, KeyError):
-        return JsonResponse({'success': False, 'error': 'অর্ডারের তথ্য ঠিক নেই, পেইজটা আবার খুলুন।'})
+        return JsonResponse({'success': False, 'error': sf_lang.t('অর্ডারের তথ্য ঠিক নেই, পেইজটা আবার খুলুন।', shop)})
     if not quantities:
-        return JsonResponse({'success': False, 'error': 'কার্ট খালি!'})
+        return JsonResponse({'success': False, 'error': sf_lang.t('কার্ট খালি!', shop)})
 
     name = (data.get('name') or '').strip()[:150]
     address = (data.get('address') or '').strip()[:500]
     note = (data.get('note') or '').strip()[:500]
     phone = _storefront_customer_phone(data.get('phone') or '')
     if not name or not address:
-        return JsonResponse({'success': False, 'error': 'নাম, মোবাইল নম্বর আর ঠিকানা দিন।'})
+        return JsonResponse({'success': False, 'error': sf_lang.t('নাম, মোবাইল নম্বর আর ঠিকানা দিন।', shop)})
     if not phone:
-        return JsonResponse({'success': False, 'error': 'সঠিক মোবাইল নম্বর দিন (০১ দিয়ে শুরু, ১১ সংখ্যা)।'})
+        return JsonResponse({'success': False, 'error': sf_lang.t('সঠিক মোবাইল নম্বর দিন (০১ দিয়ে শুরু, ১১ সংখ্যা)।', shop)})
 
     if risk.is_blocked(shop, phone):
         return JsonResponse({'success': False,
-                             'error': 'এই নম্বর থেকে এখন অর্ডার নেওয়া যাচ্ছে না। দোকানে সরাসরি যোগাযোগ করুন।'})
+                             'error': sf_lang.t('এই নম্বর থেকে এখন অর্ডার নেওয়া যাচ্ছে না। দোকানে সরাসরি যোগাযোগ করুন।', shop)})
 
     choices = shop_payments.checkout_choices(shop)
     choice = data.get('payment') or choices[0]
     if choice not in choices:
-        return JsonResponse({'success': False, 'error': 'পেমেন্টের ধরন বেছে নিন।'})
+        return JsonResponse({'success': False, 'error': sf_lang.t('পেমেন্টের ধরন বেছে নিন।', shop)})
 
     with transaction.atomic():
         # একসাথে অনেকে অর্ডার দিলেও স্টকের চেয়ে বেশি বিক্রি না হয়
         chosen = variants.resolve(shop, quantities.keys(), lock=True)
         if len(chosen) != len(quantities) or any(not item.product.is_active for item in chosen.values()):
-            return JsonResponse({'success': False, 'error': 'কার্টের একটা প্রোডাক্ট আর পাওয়া যাচ্ছে না। কার্ট দেখে আবার চেষ্টা করুন।'})
+            return JsonResponse({'success': False, 'error': sf_lang.t('কার্টের একটা প্রোডাক্ট আর পাওয়া যাচ্ছে না। কার্ট দেখে আবার চেষ্টা করুন।', shop)})
         subtotal = Decimal('0')
         for key, qty in quantities.items():
             item = chosen[key]
             if item.needs_choice:
                 return JsonResponse({'success': False,
-                                     'error': f"'{item.name}'-এর সাইজ/রং বেছে নিয়ে আবার কার্টে যোগ করুন।"})
+                                     'error': sf_lang.t("'{name}'-এর সাইজ/রং বেছে নিয়ে আবার কার্টে যোগ করুন।", shop, name=item.name)})
             if item.stock < qty:
                 return JsonResponse({'success': False,
-                                     'error': f"'{item.name}' স্টকে আছে মাত্র {item.stock}টা।"})
+                                     'error': sf_lang.t("'{name}' স্টকে আছে মাত্র {n}টা।", shop, name=item.name, n=item.stock)})
             subtotal += item.price * qty
 
         zone, delivery_charge = delivery.charge_for(shop, data.get('zone'), subtotal)
         if delivery_charge is None:
-            return JsonResponse({'success': False, 'error': 'ডেলিভারির এলাকা বেছে নিন।'})
+            return JsonResponse({'success': False, 'error': sf_lang.t('ডেলিভারির এলাকা বেছে নিন।', shop)})
         try:
             coupon, discount, delivery_off = offers.find(shop, data.get('coupon'), subtotal, delivery_charge)
         except offers.CouponError as exc:
@@ -1578,7 +1580,7 @@ def storefront_place_order(request, shop_slug):
         if not result.get('ok'):
             # গেটওয়ে কাজ না করলে অর্ডারটা বাতিল না করে রেখে দেওয়া হয়; কাস্টমার অর্ডার পেইজ থেকে আবার চেষ্টা করতে পারবে
             return JsonResponse({'success': True, 'order_id': sf_order.id, 'redirect': success_url,
-                                 'message': result.get('error')})
+                                 'message': sf_lang.t(result.get('error') or '', shop)})
         return JsonResponse({'success': True, 'order_id': sf_order.id, 'redirect': result['payment_url']})
 
     if shop.sms_on_received:
@@ -1614,7 +1616,7 @@ def storefront_payment_return(request, shop_slug):
         trx_id = valid_trx_id(request.GET.get('trx_id') or request.POST.get('trx_id'))
         status, _payment, msg = shop_payments.apply_successful(
             invoice, trx_id=trx_id, attempts=2, timeout=shop_payments.CALLBACK_VERIFY_TIMEOUT)
-    request.session['sf_payment_msg'] = {'order': payment.sf_order_id, 'status': status, 'message': msg}
+    request.session['sf_payment_msg'] = {'order': payment.sf_order_id, 'status': status, 'message': sf_lang.t(msg, shop)}
     return redirect(storefront_link(shop, 'storefront_order_success', payment.sf_order_id, request=request))
 
 
@@ -1639,7 +1641,7 @@ def storefront_payment_retry(request, shop_slug, order_id):
     result = _start_customer_payment(request, shop, order, sf_order, choice, last.amount)
     if result.get('ok'):
         return redirect(result['payment_url'])
-    request.session['sf_payment_msg'] = {'order': order_id, 'status': 'failed', 'message': result.get('error')}
+    request.session['sf_payment_msg'] = {'order': order_id, 'status': 'failed', 'message': sf_lang.t(result.get('error') or '', shop)}
     return redirect(storefront_link(shop, 'storefront_order_success', order_id, request=request))
 
 
@@ -1665,12 +1667,13 @@ def storefront_order_success(request, shop_slug, order_id):
     payment_pending = bool(main and main.online_payment_status == Order.ONLINE_PENDING
                            and main.status not in ('Cancelled', 'Returned'))
     if main and main.online_payment_status == Order.ONLINE_PAID:
-        payment_label = ('অনলাইনে পুরো টাকা পরিশোধিত' if not main.due_amount else
-                         f'অনলাইনে ৳{main.advance_paid:.0f} দেওয়া হয়েছে, বাকি ৳{main.due_amount:.0f} পণ্য হাতে পেয়ে')
+        payment_label = (sf_lang.t('অনলাইনে পুরো টাকা পরিশোধিত', shop) if not main.due_amount else
+                         sf_lang.t('অনলাইনে {paid} দেওয়া হয়েছে, বাকি {due} পণ্য হাতে পেয়ে', shop,
+                                   paid=f'৳{main.advance_paid:.0f}', due=f'৳{main.due_amount:.0f}'))
     elif payment_pending:
-        payment_label = 'অনলাইন পেমেন্ট এখনো হয়নি'
+        payment_label = sf_lang.t('অনলাইন পেমেন্ট এখনো হয়নি', shop)
     else:
-        payment_label = 'ক্যাশ অন ডেলিভারি'
+        payment_label = sf_lang.t('ক্যাশ অন ডেলিভারি', shop)
     return render(request, 'store/storefront/order_success.html', {
         'shop': shop, 'order': order, 'main_order': main, 'last_payment': last_payment,
         'payment_msg': payment_msg, 'payment_pending': payment_pending, 'payment_label': payment_label,

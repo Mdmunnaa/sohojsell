@@ -26,6 +26,12 @@
   .dm-table code { font-size: 13px; }
   .design-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
   @media (max-width: 640px) { .design-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .lang-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 10px; }
+  .lang-opt { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border: 1.5px solid #E2E8F0; border-radius: 14px; cursor: pointer; background: #fff; }
+  .lang-opt input { position: absolute; opacity: 0; pointer-events: none; }
+  .lang-opt:has(input:checked) { border-color: #0F172A; box-shadow: 0 0 0 3px rgba(15,23,42,.08); }
+  .lang-opt:has(input:focus-visible) { outline: 2px solid #3B82F6; outline-offset: 2px; }
+  .lang-big { font-size: 22px; font-weight: 800; line-height: 1.1; color: #0F172A; }
   .design-opt { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 1.5px solid #E2E8F0; border-radius: 14px; cursor: pointer; background: #fff; }
   .design-opt input { position: absolute; opacity: 0; pointer-events: none; }
   .design-opt:has(input:checked) { border-color: #0F172A; box-shadow: 0 0 0 3px rgba(15,23,42,.08); }
@@ -243,9 +249,25 @@
 
   {% elif active_tab == 'design' %}
     <h5 class="ws-section-title">ডিজাইন</h5>
-    <p class="ws-section-sub">ওয়েবসাইটের চেহারা, রঙ, উপরের ঘোষণা আর ছোট পরিচিতি লাইন। সেভ করে ওয়েবসাইট খুলে দেখুন।</p>
+    <p class="ws-section-sub">ওয়েবসাইটের ভাষা, চেহারা, রঙ, উপরের ঘোষণা আর ছোট পরিচিতি লাইন। সেভ করে ওয়েবসাইট খুলে দেখুন।</p>
     <form method="post">{% csrf_token %}
       <input type="hidden" name="section" value="design">
+      <label class="form-label">ওয়েবসাইটের ভাষা</label>
+      <div class="lang-grid mb-2">
+        <label class="lang-opt">
+          <input type="radio" name="{{ design_form.storefront_language.html_name }}" value="bn" {% if design_form.storefront_language.value != 'en' %}checked{% endif %}>
+          <span class="lang-big">অ</span>
+          <span class="theme-name">বাংলা</span>
+          <span class="theme-hint">"কার্টে যোগ করুন", "অর্ডার কনফার্ম করুন"</span>
+        </label>
+        <label class="lang-opt">
+          <input type="radio" name="{{ design_form.storefront_language.html_name }}" value="en" {% if design_form.storefront_language.value == 'en' %}checked{% endif %}>
+          <span class="lang-big">A</span>
+          <span class="theme-name">English</span>
+          <span class="theme-hint">"Add to cart", "Confirm order"</span>
+        </label>
+      </div>
+      <div class="ws-help mb-4">কাস্টমার যা দেখে — বাটন, চেকআউট, অর্ডার ট্র্যাকিং, ইনভয়েস — সব এই ভাষায় হবে, কাস্টমারের অর্ডারের SMS-ও। আপনার ড্যাশবোর্ড বাংলাই থাকবে। প্রোডাক্টের নাম, বিবরণ আর ব্যানারের লেখা আপনি যেভাবে লিখবেন সেভাবেই দেখাবে — ইংরেজি বাছলে এগুলোও ইংরেজিতে লিখুন। (ইংরেজি SMS-এ একটা SMS-এ ১৬০ অক্ষর ধরে, তাই খরচও কম।)</div>
       <label class="form-label">ডিজাইন (লেআউট)</label>
       <div class="design-grid mb-4">
         {% for value, dsn in design_options %}

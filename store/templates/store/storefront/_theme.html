@@ -6,7 +6,7 @@
   --brand: {{ t.primary }}; --brand-dark: {{ t.dark }}; --brand-light: {{ t.light }};
 }
 {% if d == 'minimal' %}
-/* ── মিনিমাল: সাদা পটভূমি, সরু রেখা, বড় ছবি, কম গোলাকার ── */
+{# মিনিমাল: সাদা পটভূমি, সরু রেখা, বড় ছবি, কম গোলাকার #}
 :root { --bg: #FFFFFF; --border: #EAECF0; --shadow-sm: none; --shadow-md: 0 12px 30px -12px rgba(15,23,42,.18); --glass: rgba(255,255,255,.96); }
 body { background: #fff; }
 .app-top-bar { box-shadow: none; border-bottom: 1px solid var(--border); }
@@ -44,7 +44,7 @@ body { background: #fff; }
 .announce-bar { background: var(--dark); }
 @media (min-width: 768px) { .product-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 28px 20px; } .prod-img-wrap { height: 300px; } .banner-slider { margin: 0 auto; } .banner-slide img { height: 380px; } }
 {% elif d == 'bold' %}
-/* ── বোল্ড: রঙিন হেডার, বড় বাটন, মোটা অক্ষর ── */
+{# বোল্ড: রঙিন হেডার, বড় বাটন, মোটা অক্ষর #}
 :root { --bg: #F4F5F9; --glass: {{ t.primary }}; }
 .app-top-bar { background: var(--orange); border-bottom: 0; box-shadow: 0 8px 24px rgba(var(--orange-rgb), .28); }
 .shop-logo-sf, .tk-logo { background: #fff; color: var(--orange); box-shadow: none; }
@@ -91,7 +91,7 @@ body { background: #fff; }
 .var-chip.on { background: var(--orange); border-color: var(--orange); }
 @media (min-width: 768px) { .trust-badges { max-width: 1240px; margin: 24px auto; } }
 {% elif d == 'soft' %}
-/* ── সফট: হালকা রঙের পটভূমি, বেশি গোলাকার, নরম ছায়া ── */
+{# সফট: হালকা রঙের পটভূমি, বেশি গোলাকার, নরম ছায়া #}
 :root { --bg: {{ t.light }}; --border: rgba(var(--orange-rgb), .14); --shadow-sm: 0 6px 18px -8px rgba(var(--orange-rgb), .25); --shadow-md: 0 18px 36px -12px rgba(var(--orange-rgb), .35); --glass: rgba(255,255,255,.9); }
 body { background: var(--orange-light); }
 .app-top-bar { background: rgba(255,255,255,.9); border-bottom: 0; box-shadow: 0 6px 24px -10px rgba(var(--orange-rgb), .3); }

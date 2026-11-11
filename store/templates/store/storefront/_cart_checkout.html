@@ -1,4 +1,4 @@
-{% load store_links %}
+{% load store_links sf_text %}
 {# কার্ট আর চেকআউট: হোম আর প্রোডাক্ট পেইজ দুই জায়গাতেই এটা। দাম-চার্জ এখানে শুধু দেখানোর জন্য; আসল হিসাব সার্ভারে। #}
 <style>
   .co-label { font-size: 12px; font-weight: 800; color: var(--muted); margin: 14px 0 8px; text-transform: none; }
@@ -18,6 +18,7 @@
   #checkout-box { max-height: 92vh; overflow-y: auto; }
   .co-coupon { display: flex; gap: 8px; margin-top: 4px; }
   .co-coupon .co-input { margin: 0; text-transform: uppercase; }
+  .co-coupon .co-input::placeholder { text-transform: none; }
   .co-coupon button { flex-shrink: 0; border: 0; border-radius: 12px; padding: 0 16px; font-weight: 800; font-size: 14px; background: var(--dark, #0F172A); color: #fff; cursor: pointer; font-family: inherit; }
   .co-coupon-msg { font-size: 12.5px; font-weight: 700; margin-top: 6px; display: none; }
   .co-coupon-msg.ok { display: block; color: #059669; }
@@ -40,36 +41,36 @@
   .co-wa { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 10px; padding: 12px; border-radius: 12px; border: 2px solid #25D366; color: #128C7E; background: #F0FDF4; font-weight: 800; font-size: 14px; text-decoration: none; }
 </style>
 
-<!-- কার্ট -->
+{# কার্ট #}
 <div id="cart-overlay" onclick="closeCart()"></div>
 <div id="cart-drawer">
   <div class="drawer-header">
-    <h5><i class="bi bi-bag-check-fill me-2 text-orange"></i>আমার কার্ট</h5>
-    <button class="close-btn" onclick="closeCart()" aria-label="বন্ধ করুন"><i class="bi bi-x-lg"></i></button>
+    <h5><i class="bi bi-bag-check-fill me-2 text-orange"></i>{% t "আমার কার্ট" %}</h5>
+    <button class="close-btn" onclick="closeCart()" aria-label="{% t "বন্ধ করুন" %}"><i class="bi bi-x-lg"></i></button>
   </div>
   <div class="drawer-items" id="drawer-items"></div>
   <div class="drawer-footer">
-    <div class="df-row"><span>প্রোডাক্টের দাম</span><span id="sf-subtotal">৳0</span></div>
-    <div class="df-row"><span>ডেলিভারি চার্জ</span><span id="sf-delivery">—</span></div>
-    <div class="df-total"><span>মোট</span><span id="sf-total">৳0</span></div>
-    <button class="checkout-btn" onclick="openCheckout()">অর্ডার করতে এগিয়ে যান →</button>
+    <div class="df-row"><span>{% t "প্রোডাক্টের দাম" %}</span><span id="sf-subtotal">৳0</span></div>
+    <div class="df-row"><span>{% t "ডেলিভারি চার্জ" %}</span><span id="sf-delivery">—</span></div>
+    <div class="df-total"><span>{% t "মোট" %}</span><span id="sf-total">৳0</span></div>
+    <button class="checkout-btn" onclick="openCheckout()">{% t "অর্ডার করতে এগিয়ে যান" %} →</button>
   </div>
 </div>
 
-<!-- চেকআউট -->
+{# চেকআউট #}
 <div id="checkout-modal">
   <div id="checkout-box">
-    <h4><i class="bi bi-truck me-2 text-orange"></i>অর্ডারের তথ্য</h4>
-    <div class="co-label" style="margin-top:6px;">আপনার অর্ডার</div>
+    <h4><i class="bi bi-truck me-2 text-orange"></i>{% t "অর্ডারের তথ্য" %}</h4>
+    <div class="co-label" style="margin-top:6px;">{% t "আপনার অর্ডার" %}</div>
     <div class="co-items" id="co-items"></div>
-    <div class="co-label">আপনার তথ্য</div>
-    <input type="text" id="co-name" class="co-input" placeholder="আপনার নাম *" autocomplete="name" maxlength="150">
-    <input type="tel" id="co-phone" class="co-input" placeholder="মোবাইল নম্বর * (01XXXXXXXXX)" autocomplete="tel" inputmode="tel" maxlength="20">
-    <textarea id="co-address" class="co-input" rows="2" placeholder="পুরো ঠিকানা * (বাসা, রোড, এলাকা, থানা, জেলা)" autocomplete="street-address" maxlength="500"></textarea>
-    <textarea id="co-note" class="co-input" rows="1" placeholder="কিছু বলার থাকলে (ঐচ্ছিক)" maxlength="500"></textarea>
+    <div class="co-label">{% t "আপনার তথ্য" %}</div>
+    <input type="text" id="co-name" class="co-input" placeholder="{% t "আপনার নাম *" %}" autocomplete="name" maxlength="150">
+    <input type="tel" id="co-phone" class="co-input" placeholder="{% t "মোবাইল নম্বর * (01XXXXXXXXX)" %}" autocomplete="tel" inputmode="tel" maxlength="20">
+    <textarea id="co-address" class="co-input" rows="2" placeholder="{% t "পুরো ঠিকানা * (বাসা, রোড, এলাকা, থানা, জেলা)" %}" autocomplete="street-address" maxlength="500"></textarea>
+    <textarea id="co-note" class="co-input" rows="1" placeholder="{% t "কিছু বলার থাকলে (ঐচ্ছিক)" %}" maxlength="500"></textarea>
 
     {% if delivery_zones %}
-    <div class="co-label">ডেলিভারি এলাকা</div>
+    <div class="co-label">{% t "ডেলিভারি এলাকা" %}</div>
     <div class="co-options">
       {% for z in delivery_zones %}
       <label class="co-opt">
@@ -81,22 +82,22 @@
     </div>
     {% endif %}
     {% if shop.free_delivery_min %}
-    <div class="co-free-note"><i class="bi bi-gift-fill"></i> ৳{{ shop.free_delivery_min|floatformat:0 }} বা তার বেশি অর্ডারে ডেলিভারি ফ্রি</div>
+    <div class="co-free-note"><i class="bi bi-gift-fill"></i> {% t "ডেলিভারি ফ্রি:" %} ৳{{ shop.free_delivery_min|floatformat:0 }} {% t "বা তার বেশি অর্ডারে" %}</div>
     {% endif %}
 
     {% if payment_choices|length > 1 or online_allowed %}
-    <div class="co-label">পেমেন্ট</div>
+    <div class="co-label">{% t "পেমেন্ট" %}</div>
     <div class="co-options">
       {% for choice in payment_choices %}
       <label class="co-opt">
         <input type="radio" name="co-pay" value="{{ choice }}" {% if forloop.first %}checked{% endif %} onchange="renderCart()">
         <span class="co-opt-main">
           {% if choice == 'cod' %}
-          <span class="co-opt-title">ক্যাশ অন ডেলিভারি</span><span class="co-opt-sub">পণ্য হাতে পেয়ে টাকা দিন</span>
+          <span class="co-opt-title">{% t "ক্যাশ অন ডেলিভারি" %}</span><span class="co-opt-sub">{% t "পণ্য হাতে পেয়ে টাকা দিন" %}</span>
           {% elif choice == 'advance' %}
-          <span class="co-opt-title">ডেলিভারি চার্জ এখন, বাকিটা পণ্য হাতে পেয়ে</span><span class="co-opt-sub">bKash, Nagad, Rocket বা কার্ডে</span>
+          <span class="co-opt-title">{% t "ডেলিভারি চার্জ এখন, বাকিটা পণ্য হাতে পেয়ে" %}</span><span class="co-opt-sub">{% t "bKash, Nagad, Rocket বা কার্ডে" %}</span>
           {% else %}
-          <span class="co-opt-title">পুরো টাকা এখন অনলাইনে</span><span class="co-opt-sub">bKash, Nagad, Rocket বা কার্ডে</span>
+          <span class="co-opt-title">{% t "পুরো টাকা এখন অনলাইনে" %}</span><span class="co-opt-sub">{% t "bKash, Nagad, Rocket বা কার্ডে" %}</span>
           {% endif %}
         </span>
       </label>
@@ -104,29 +105,29 @@
     </div>
     {% endif %}
 
-    <div class="co-label">কুপন কোড <span style="font-weight:600;">(থাকলে)</span></div>
+    <div class="co-label">{% t "কুপন কোড" %} <span style="font-weight:600;">{% t "(থাকলে)" %}</span></div>
     <div class="co-coupon" id="co-coupon-box">
-      <input type="text" id="co-coupon" class="co-input" placeholder="যেমন: EID20" maxlength="30" autocomplete="off" autocapitalize="characters">
-      <button type="button" id="co-coupon-btn" onclick="applyCoupon()">লাগান</button>
+      <input type="text" id="co-coupon" class="co-input" placeholder="{% t "যেমন: EID20" %}" maxlength="30" autocomplete="off" autocapitalize="characters">
+      <button type="button" id="co-coupon-btn" onclick="applyCoupon()">{% t "লাগান" %}</button>
     </div>
-    <div class="co-coupon-on" id="co-coupon-on"><span><i class="bi bi-ticket-perforated-fill"></i> <b id="co-coupon-code"></b> · <span id="co-coupon-text"></span></span><button type="button" onclick="removeCoupon()">বাদ দিন</button></div>
+    <div class="co-coupon-on" id="co-coupon-on"><span><i class="bi bi-ticket-perforated-fill"></i> <b id="co-coupon-code"></b> · <span id="co-coupon-text"></span></span><button type="button" onclick="removeCoupon()">{% t "বাদ দিন" %}</button></div>
     <div class="co-coupon-msg" id="co-coupon-msg"></div>
 
     <div class="co-summary">
-      <div class="row-line"><span>প্রোডাক্টের দাম</span><span id="co-subtotal">৳0</span></div>
-      <div class="row-line off" id="co-discount-row" style="display:none;"><span>কুপনে ছাড়</span><span id="co-discount">− ৳0</span></div>
-      <div class="row-line"><span>ডেলিভারি চার্জ</span><span id="co-delivery">৳0</span></div>
-      <div class="row-line total"><span>মোট</span><span id="co-total-display">৳0</span></div>
-      <div class="row-line now" id="co-now-row" style="display:none;"><span>এখন অনলাইনে দেবেন</span><span id="co-now">৳0</span></div>
-      <div class="row-line" id="co-later-row" style="display:none;"><span>পণ্য হাতে পেয়ে দেবেন</span><span id="co-later">৳0</span></div>
-      <div class="co-free-note" id="co-free-advance" style="display:none;">ডেলিভারি ফ্রি, তাই এখন কিছু দিতে হবে না। পুরো টাকা পণ্য হাতে পেয়ে দেবেন।</div>
+      <div class="row-line"><span>{% t "প্রোডাক্টের দাম" %}</span><span id="co-subtotal">৳0</span></div>
+      <div class="row-line off" id="co-discount-row" style="display:none;"><span>{% t "কুপনে ছাড়" %}</span><span id="co-discount">− ৳0</span></div>
+      <div class="row-line"><span>{% t "ডেলিভারি চার্জ" %}</span><span id="co-delivery">৳0</span></div>
+      <div class="row-line total"><span>{% t "মোট" %}</span><span id="co-total-display">৳0</span></div>
+      <div class="row-line now" id="co-now-row" style="display:none;"><span>{% t "এখন অনলাইনে দেবেন" %}</span><span id="co-now">৳0</span></div>
+      <div class="row-line" id="co-later-row" style="display:none;"><span>{% t "পণ্য হাতে পেয়ে দেবেন" %}</span><span id="co-later">৳0</span></div>
+      <div class="co-free-note" id="co-free-advance" style="display:none;">{% t "ডেলিভারি ফ্রি, তাই এখন কিছু দিতে হবে না। পুরো টাকা পণ্য হাতে পেয়ে দেবেন।" %}</div>
     </div>
 
     <button class="place-order-btn" id="place-order-btn" onclick="placeOrder()">
-      <i class="bi bi-check-circle-fill me-2"></i><span id="place-order-label">অর্ডার কনফার্ম করুন</span>
+      <i class="bi bi-check-circle-fill me-2"></i><span id="place-order-label">{% t "অর্ডার কনফার্ম করুন" %}</span>
     </button>
-    {% if shop.whatsapp_number %}<a class="co-wa" id="co-wa" href="#" target="_blank" rel="noopener" onclick="return whatsappOrder()"><i class="bi bi-whatsapp"></i> WhatsApp-এ অর্ডার পাঠান</a>{% endif %}
-    <button class="cancel-btn" onclick="document.getElementById('checkout-modal').classList.remove('show')">← কার্টে ফিরে যান</button>
+    {% if shop.whatsapp_number %}<a class="co-wa" id="co-wa" href="#" target="_blank" rel="noopener" onclick="return whatsappOrder()"><i class="bi bi-whatsapp"></i> {% t "WhatsApp-এ অর্ডার পাঠান" %}</a>{% endif %}
+    <button class="cancel-btn" onclick="document.getElementById('checkout-modal').classList.remove('show')">← {% t "কার্টে ফিরে যান" %}</button>
   </div>
 </div>
 
@@ -150,7 +151,7 @@ function escapeHtml(text) {
 
 function changeQty(id, delta) {
   id = String(id); if (!cart[id]) return;
-  if (delta > 0 && cart[id].qty >= cart[id].stock) { showToast('⚠️ স্টকে আর নেই'); return; }
+  if (delta > 0 && cart[id].qty >= cart[id].stock) { showToast('⚠️ {% tjs "স্টকে আর নেই" %}'); return; }
   cart[id].qty += delta;
   if (cart[id].qty <= 0) delete cart[id];
   saveCart(); if (typeof updateBtn === 'function') updateBtn(id); renderCart();
@@ -182,7 +183,7 @@ function renderCart() {
   const db = document.getElementById('desktop-cart-badge');
   if (db) { db.style.display = count > 0 ? 'inline' : 'none'; db.textContent = count; }
 
-  const deliveryText = n.keys.length ? (n.delivery === 0 ? 'ফ্রি' : money(n.delivery)) : '—';
+  const deliveryText = n.keys.length ? (n.delivery === 0 ? '{% tjs "ফ্রি" %}' : money(n.delivery)) : '—';
   document.getElementById('sf-subtotal').textContent = money(n.subtotal);
   document.getElementById('sf-delivery').textContent = deliveryText;
   document.getElementById('sf-total').textContent = money(n.total);
@@ -196,18 +197,18 @@ function renderCart() {
   document.getElementById('co-now').textContent = money(n.now);
   document.getElementById('co-free-advance').style.display = (n.pay === 'advance' && n.keys.length && n.delivery === 0) ? 'block' : 'none';
   document.getElementById('co-later').textContent = money(n.total - n.now);
-  document.getElementById('place-order-label').textContent = n.now > 0 ? (money(n.now) + ' পেমেন্ট করে অর্ডার করুন') : 'অর্ডার কনফার্ম করুন';
+  document.getElementById('place-order-label').textContent = n.now > 0 ? '{% tjs "{amount} পেমেন্ট করে অর্ডার করুন" %}'.replace('{amount}', money(n.now)) : '{% tjs "অর্ডার কনফার্ম করুন" %}';
 
   const container = document.getElementById('drawer-items');
   const coItems = document.getElementById('co-items');
   if (!n.keys.length) {
-    container.innerHTML = '<div class="text-center text-muted py-5"><i class="bi bi-bag-x" style="font-size:56px;display:block;margin-bottom:12px;color:#E2E8F0;"></i><h6 class="fw-bold">কার্ট খালি</h6></div>';
+    container.innerHTML = '<div class="text-center text-muted py-5"><i class="bi bi-bag-x" style="font-size:56px;display:block;margin-bottom:12px;color:#E2E8F0;"></i><h6 class="fw-bold">{% tjs "কার্ট খালি" %}</h6></div>';
     if (coItems) coItems.innerHTML = '';
     const modal = document.getElementById('checkout-modal');
-    if (modal && modal.classList.contains('show')) { modal.classList.remove('show'); showToast('কার্ট খালি'); }
+    if (modal && modal.classList.contains('show')) { modal.classList.remove('show'); showToast('{% tjs "কার্ট খালি" %}'); }
     return;
   }
-  /* চেকআউটেও কী অর্ডার হচ্ছে দেখায়, পরিমাণ বাড়ানো-কমানো যায় */
+  {# চেকআউটেও কী অর্ডার হচ্ছে দেখায়, পরিমাণ বাড়ানো-কমানো যায় #}
   if (coItems) coItems.innerHTML = n.keys.map(id => {
     const item = cart[id];
     const safeId = Number(id);
@@ -215,8 +216,8 @@ function renderCart() {
     return `<div class="co-item">
       <div class="co-item-img">${img}</div>
       <div class="co-item-info"><div class="co-item-name">${escapeHtml(item.name)}</div><div class="co-item-price">${money(item.price)} × ${Number(item.qty)} = ${money(item.price * item.qty)}</div></div>
-      <div class="co-qty"><button type="button" onclick="changeQty(${safeId},-1)" aria-label="কমান"${item.qty <= 1 ? ' disabled style="color:#CBD5E1;cursor:default;"' : ''}>−</button><span>${Number(item.qty)}</span><button type="button" onclick="changeQty(${safeId},1)" aria-label="বাড়ান">+</button></div>
-      <button type="button" class="co-item-del" onclick="removeItem(${safeId})" aria-label="বাদ দিন"><i class="bi bi-x-lg"></i></button>
+      <div class="co-qty"><button type="button" onclick="changeQty(${safeId},-1)" aria-label="{% tjs "কমান" %}"${item.qty <= 1 ? ' disabled style="color:#CBD5E1;cursor:default;"' : ''}>−</button><span>${Number(item.qty)}</span><button type="button" onclick="changeQty(${safeId},1)" aria-label="{% tjs "বাড়ান" %}">+</button></div>
+      <button type="button" class="co-item-del" onclick="removeItem(${safeId})" aria-label="{% tjs "বাদ দিন" %}"><i class="bi bi-x-lg"></i></button>
     </div>`;
   }).join('');
   container.innerHTML = n.keys.map(id => {
@@ -226,18 +227,18 @@ function renderCart() {
     return `<div class="cart-item-row">
       <div class="ci-img">${img}</div>
       <div class="ci-info"><div class="ci-name">${escapeHtml(item.name)}</div><div class="ci-price">${money(item.price * item.qty)}</div></div>
-      <div class="ci-qty-ctrl"><button onclick="changeQty(${safeId},-1)" aria-label="কমান">−</button><span>${Number(item.qty)}</span><button onclick="changeQty(${safeId},1)" aria-label="বাড়ান">+</button></div>
-      <button onclick="removeItem(${safeId})" aria-label="সরান" style="background:none;border:none;color:#FF3333;cursor:pointer;font-size:18px;padding:0 0 0 8px;"><i class="bi bi-trash3-fill"></i></button>
+      <div class="ci-qty-ctrl"><button onclick="changeQty(${safeId},-1)" aria-label="{% tjs "কমান" %}">−</button><span>${Number(item.qty)}</span><button onclick="changeQty(${safeId},1)" aria-label="{% tjs "বাড়ান" %}">+</button></div>
+      <button onclick="removeItem(${safeId})" aria-label="{% tjs "সরান" %}" style="background:none;border:none;color:#FF3333;cursor:pointer;font-size:18px;padding:0 0 0 8px;"><i class="bi bi-trash3-fill"></i></button>
     </div>`;
   }).join('');
 }
 
-/* ── কুপন ── */
+{# কুপন #}
 function cartPayload() { return Object.values(cart).map(i => ({ id: i.id, qty: i.qty })); }
 async function applyCoupon() {
   const input = document.getElementById('co-coupon'), msg = document.getElementById('co-coupon-msg'), btn = document.getElementById('co-coupon-btn');
   const code = input.value.trim().toUpperCase();
-  if (!code) { msg.className = 'co-coupon-msg bad'; msg.textContent = 'কুপন কোড লিখুন'; return; }
+  if (!code) { msg.className = 'co-coupon-msg bad'; msg.textContent = '{% tjs "কুপন কোড লিখুন" %}'; return; }
   const zone = document.querySelector('input[name="co-zone"]:checked');
   btn.disabled = true;
   try {
@@ -251,8 +252,8 @@ async function applyCoupon() {
       document.getElementById('co-coupon-on').classList.add('show');
       document.getElementById('co-coupon-box').style.display = 'none';
       msg.className = 'co-coupon-msg'; renderCart();
-    } else { coupon = null; msg.className = 'co-coupon-msg bad'; msg.textContent = data.error || 'কুপনটা নেওয়া যায়নি'; renderCart(); }
-  } catch (e) { msg.className = 'co-coupon-msg bad'; msg.textContent = 'ইন্টারনেট সংযোগ দেখুন'; }
+    } else { coupon = null; msg.className = 'co-coupon-msg bad'; msg.textContent = data.error || '{% tjs "কুপনটা নেওয়া যায়নি" %}'; renderCart(); }
+  } catch (e) { msg.className = 'co-coupon-msg bad'; msg.textContent = '{% tjs "ইন্টারনেট সংযোগ দেখুন" %}'; }
   btn.disabled = false;
 }
 function removeCoupon() {
@@ -265,7 +266,7 @@ function removeCoupon() {
 }
 document.getElementById('co-coupon').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyCoupon(); } });
 
-/* ── অসম্পূর্ণ অর্ডার: নম্বর লিখলেই কার্টটা দোকানে জমা থাকে ── */
+{# অসম্পূর্ণ অর্ডার: নম্বর লিখলেই কার্টটা দোকানে জমা থাকে #}
 let draftTimer, draftLast = '';
 function saveDraft() {
   const phone = document.getElementById('co-phone').value.trim();
@@ -277,14 +278,14 @@ function saveDraft() {
 }
 ['co-phone', 'co-name', 'co-address'].forEach(id => document.getElementById(id).addEventListener('input', () => { clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 1200); }));
 
-/* ── WhatsApp-এ অর্ডার: কার্টের তালিকা লিখে পাঠানো ── */
+{# WhatsApp-এ অর্ডার: কার্টের তালিকা লিখে পাঠানো #}
 function whatsappOrder() {
   const n = checkoutNumbers();
   if (!n.keys.length || !WA_NUMBER) return false;
   const lines = n.keys.map(k => `• ${cart[k].name} × ${cart[k].qty} = ${money(cart[k].price * cart[k].qty)}`);
   const name = document.getElementById('co-name').value.trim(), address = document.getElementById('co-address').value.trim();
-  const text = ['আসসালামু আলাইকুম, আমি অর্ডার করতে চাই:', ...lines, `মোট (প্রোডাক্ট): ${money(n.subtotal)}`,
-                name ? `নাম: ${name}` : '', address ? `ঠিকানা: ${address}` : ''].filter(Boolean).join('\n');
+  const text = ['{% tjs "আসসালামু আলাইকুম, আমি অর্ডার করতে চাই:" %}', ...lines, '{% tjs "মোট (প্রোডাক্ট):" %} ' + money(n.subtotal),
+                name ? '{% tjs "নাম:" %} ' + name : '', address ? '{% tjs "ঠিকানা:" %} ' + address : ''].filter(Boolean).join('\n');
   window.open('https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
   return false;
 }
@@ -292,7 +293,7 @@ function whatsappOrder() {
 function openCart() { document.getElementById('cart-overlay').classList.add('show'); document.getElementById('cart-drawer').classList.add('open'); }
 function closeCart() { document.getElementById('cart-overlay').classList.remove('show'); document.getElementById('cart-drawer').classList.remove('open'); }
 function openCheckout() {
-  if (!Object.keys(cart).length) { showToast('কার্ট খালি'); return; }
+  if (!Object.keys(cart).length) { showToast('{% tjs "কার্ট খালি" %}'); return; }
   closeCart(); renderCart();
   document.getElementById('checkout-modal').classList.add('show');
 }
@@ -308,13 +309,13 @@ async function placeOrder() {
   const phone = document.getElementById('co-phone').value.trim();
   const address = document.getElementById('co-address').value.trim();
   const note = document.getElementById('co-note').value.trim();
-  if (!name || !phone || !address) { showToast('⚠️ নাম, মোবাইল নম্বর আর ঠিকানা দিন'); return; }
+  if (!name || !phone || !address) { showToast('⚠️ {% tjs "নাম, মোবাইল নম্বর আর ঠিকানা দিন" %}'); return; }
   const n = checkoutNumbers();
   const zone = document.querySelector('input[name="co-zone"]:checked');
   const btn = document.getElementById('place-order-btn');
   const label = document.getElementById('place-order-label').textContent;
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>অপেক্ষা করুন...';
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>{% tjs "অপেক্ষা করুন..." %}';
   const restore = () => { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i><span id="place-order-label">' + escapeHtml(label) + '</span>'; };
   try {
     const res = await fetch(PLACE_ORDER_URL, {
@@ -329,11 +330,11 @@ async function placeOrder() {
       window.location.href = data.redirect;
     } else {
       if (data.coupon_error) removeCoupon();
-      showToast('❌ ' + (data.error || 'অর্ডার নেওয়া যায়নি, আবার চেষ্টা করুন'));
+      showToast('❌ ' + (data.error || '{% tjs "অর্ডার নেওয়া যায়নি, আবার চেষ্টা করুন" %}'));
       restore();
     }
   } catch (e) {
-    showToast('❌ ইন্টারনেট সংযোগ দেখুন, তারপর আবার চেষ্টা করুন');
+    showToast('❌ {% tjs "ইন্টারনেট সংযোগ দেখুন, তারপর আবার চেষ্টা করুন" %}');
     restore();
   }
 }

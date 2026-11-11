@@ -32,7 +32,7 @@ def due_list(request):
         'shop': shop, 'rows': rows, 'q': q, 'show': show,
         'summary': dues.summary(shop, dues.rows(shop) if (q or show) else rows),
         'today': timezone.localdate(), 'can_sms': _can_sms(request.user),
-        'sample_text': sms.due_reminder_text(shop, 'রহিম', 1250),
+        'sample_text': sms.due_reminder_text(shop, 'Rahim' if shop.storefront_language == 'en' else 'রহিম', 1250),
         'auto_choices': dues.AUTO_REMINDER_CHOICES,
         'methods': [('cash', 'নগদ'), ('bkash', 'bKash'), ('nagad', 'Nagad'), ('card', 'কার্ড'), ('bank', 'ব্যাংক')],
     })

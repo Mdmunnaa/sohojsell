@@ -1,1 +1,1 @@
-{% load bangla %}{# ৫টা তারা, avg অনুযায়ী ভরা (৪.৩ → ৪টা, ৪.৬ → ৫টা) #}<span class="stars" aria-label="{{ avg|bn }} তারা">{% for on in avg|star_flags %}<i class="bi bi-star-fill{% if not on %} off{% endif %}"></i>{% endfor %}</span>
+{% load bangla sf_text %}{# ৫টা তারা, avg অনুযায়ী ভরা (৪.৩ → ৪টা, ৪.৬ → ৫টা) #}<span class="stars" aria-label="{% t "{n} তারা" n=avg %}">{% for on in avg|star_flags %}<i class="bi bi-star-fill{% if not on %} off{% endif %}"></i>{% endfor %}</span>

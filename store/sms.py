@@ -438,10 +438,23 @@ def send_each(shop, pairs, audience, *, user=None, kind='manual', sender=None):
                      balance=balance, log_id=log.pk)
 
 
+def _english(shop):
+    """ওয়েবসাইট ইংরেজিতে হলে কাস্টমারের SMS-ও ইংরেজিতে (ইংরেজি SMS ১৬০ অক্ষরে এক ভাগ — খরচও কম)।"""
+    return getattr(shop, 'storefront_language', 'bn') == 'en'
+
+
 def due_reminder_text(shop, name, due):
     """বাকির তাগাদা, সম্ভব হলে ১টা SMS-এ।"""
-    amount = f'৳{bn_num(f"{due:,.0f}")}'
     first = _first_name(name)
+    if _english(shop):
+        amount = f'Tk {due:,.0f}'
+        options = []
+        if first:
+            options += [f'Dear {first}, you have a due of {amount} at {shop.name}. Please pay at your convenience. Thank you.',
+                        f'{first}, your due at {shop.name} is {amount}. Please pay. Thank you.']
+        options += [f'Your due at {shop.name} is {amount}. Please pay. Thank you.', f'Your due: {amount} - {shop.name}']
+        return _first_fitting(options)
+    amount = f'৳{bn_num(f"{due:,.0f}")}'
     options = []
     if first:
         options += [f'{first}, {shop.name}-এ আপনার বাকি আছে {amount}। সুবিধামতো পরিশোধ করে দেবেন। ধন্যবাদ।',
@@ -510,8 +523,15 @@ def _first_name(name):
 
 
 def order_received_text(shop, order):
-    number = bn_num(order.id)
     name = _first_name(order.customer.name)
+    if _english(shop):
+        number = order.id
+        options = [f'We have received your order #{number} and will contact you soon. - {shop.name}',
+                   f'Order #{number} received, we will contact you soon. - {shop.name}', f'Order #{number} received. - {shop.name}']
+        if name:
+            options.insert(0, f'Dear {name}, we have received your order #{number} and will contact you soon. - {shop.name}')
+        return _first_fitting(options)
+    number = bn_num(order.id)
     options = [f'আপনার অর্ডার নং {number} পেয়েছি, শীঘ্রই যোগাযোগ করব। - {shop.name}',
                f'অর্ডার নং {number} পেয়েছি, শীঘ্রই যোগাযোগ করব। - {shop.name}']
     if name:
@@ -520,6 +540,10 @@ def order_received_text(shop, order):
 
 
 def payment_received_text(shop, order, amount):
+    if _english(shop):
+        taka = f'{Decimal(amount):,.0f}'
+        return _first_fitting([f'We have received Tk {taka} for order #{order.id}. Thank you! - {shop.name}',
+                               f'Tk {taka} received for order #{order.id} - {shop.name}'])
     taka = bn_num(f'{Decimal(amount):,.0f}')
     number = bn_num(order.id)
     return _first_fitting([f'৳{taka} পেমেন্ট আর অর্ডার নং {number} পেয়েছি। ধন্যবাদ! - {shop.name}',
@@ -528,6 +552,8 @@ def payment_received_text(shop, order, amount):
 
 def status_text(shop, order, status, link=None):
     """অর্ডারের অবস্থা বদলালে কাস্টমারকে যা যায় (কনফার্ম / কুরিয়ারে / ডেলিভারি)। সম্ভব হলে ১টা SMS-এ।"""
+    if _english(shop):
+        return _status_text_en(shop, order.id, status, link)
     number = bn_num(order.id)
     if status == 'Confirmed':
         return _first_fitting([f'আপনার অর্ডার নং {number} কনফার্ম হয়েছে, শীঘ্রই পাঠানো হবে। - {shop.name}',
@@ -541,6 +567,22 @@ def status_text(shop, order, status, link=None):
     if status == 'Delivered':
         return _first_fitting([f'অর্ডার নং {number} ডেলিভারি হয়েছে। আমাদের সাথে থাকার জন্য ধন্যবাদ! - {shop.name}',
                                f'অর্ডার নং {number} ডেলিভারি হয়েছে। ধন্যবাদ! - {shop.name}'])
+    return ''
+
+
+def _status_text_en(shop, number, status, link):
+    if status == 'Confirmed':
+        return _first_fitting([f'Your order #{number} is confirmed and will be shipped soon. - {shop.name}',
+                               f'Order #{number} confirmed. - {shop.name}'])
+    if status == 'Shipped':
+        options = [f'Order #{number} has been handed to the courier. - {shop.name}', f'Order #{number} shipped. - {shop.name}']
+        if link:
+            options = [f'Order #{number} has been handed to the courier. Track: {link}',
+                       f'Order #{number} shipped: {link}'] + options
+        return _first_fitting(options)
+    if status == 'Delivered':
+        return _first_fitting([f'Order #{number} has been delivered. Thank you for shopping with us! - {shop.name}',
+                               f'Order #{number} delivered. Thank you! - {shop.name}'])
     return ''
 
 

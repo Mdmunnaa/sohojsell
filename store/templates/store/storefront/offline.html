@@ -1,12 +1,12 @@
-<!DOCTYPE html>
-<html lang="bn">
+{% load sf_text %}<!DOCTYPE html>
+<html lang="{% sf_lang_code %}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
 {% include 'store/partials/bn_digit_fix.html' %}
-<title>{{ shop.name }} — সাময়িক বন্ধ</title>
+<title>{{ shop.name }} — {% t "সাময়িক বন্ধ" %}</title>
 <style>
   body { font-family: 'Hind Siliguri', 'Segoe UI', sans-serif; margin: 0; padding: 16px; background: #f4f6f9; display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; }
   .box { background: #fff; border-radius: 20px; padding: 48px 36px; max-width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,.08); }
@@ -17,9 +17,9 @@
 <div class="box">
   <div style="font-size:60px;">🛑</div>
   <h2>{{ shop.name }}</h2>
-  <p style="color:#6c757d;">এই দোকানের অনলাইন স্টোর এখন সাময়িকভাবে বন্ধ আছে।<br>অর্ডার করতে সরাসরি যোগাযোগ করুন।</p>
+  <p style="color:#6c757d;">{% t "এই দোকানের অনলাইন স্টোর এখন সাময়িকভাবে বন্ধ আছে।" %}<br>{% t "অর্ডার করতে সরাসরি যোগাযোগ করুন।" %}</p>
   {% if shop.phone %}<p style="font-weight:700;"><a href="tel:{{ shop.phone }}" style="color:inherit;text-decoration:none;">📞 {{ shop.phone }}</a></p>{% endif %}
-  {% if shop.facebook_page_url %}<a href="{{ shop.facebook_page_url }}" style="color:#0d6efd;">Facebook পেইজ →</a>{% endif %}
+  {% if shop.facebook_page_url %}<a href="{{ shop.facebook_page_url }}" style="color:#0d6efd;">{% t "Facebook পেইজ" %} →</a>{% endif %}
 </div>
 </body>
 </html>

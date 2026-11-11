@@ -1,6 +1,6 @@
-{% load store_links bangla %}
+{% load store_links bangla sf_text %}
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="{% sf_lang_code %}">
 <head>
 {% include 'store/storefront/_head.html' %}
 <style>
@@ -237,7 +237,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 <!-- TOP BAR -->
 <div class="app-top-bar">
   <div class="top-bar-main">
-    <a href="{% shop_url 'storefront_home' shop %}" class="shop-home-link" aria-label="{{ shop.name }} — হোম">
+    <a href="{% shop_url 'storefront_home' shop %}" class="shop-home-link" aria-label="{{ shop.name }} — {% t "হোম" %}">
     {% if shop.logo %}
     <div class="shop-logo-sf"><img src="{{ shop.logo.url }}" alt="{{ shop.name }}"></div>
     {% else %}
@@ -245,20 +245,20 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
     {% endif %}
     <div style="flex-shrink:0;">
       <div class="shop-name-sf">{{ shop.name }}</div>
-      <div class="shop-meta-sf"><i class="bi bi-geo-alt-fill text-orange"></i> {{ shop.address|default:"অনলাইন শপ"|truncatechars:30 }}</div>
+      <div class="shop-meta-sf"><i class="bi bi-geo-alt-fill text-orange"></i> {% if shop.address %}{{ shop.address|truncatechars:30 }}{% else %}{% t "অনলাইন শপ" %}{% endif %}</div>
     </div>
     </a>
     <form method="GET" action="{% shop_url 'storefront_home' shop %}" class="search-form" role="search">
       <i class="bi bi-search"></i>
-      <input type="search" name="q" value="{{ search }}" placeholder="প্রোডাক্ট খুঁজুন..." class="search-input" aria-label="প্রোডাক্ট খুঁজুন">
+      <input type="search" name="q" value="{{ search }}" placeholder="{% t "প্রোডাক্ট খুঁজুন..." %}" class="search-input" aria-label="{% t "প্রোডাক্ট খুঁজুন" %}">
     </form>
     <button class="cart-top-btn" onclick="openCart()">
-      <i class="bi bi-cart3 fs-5"></i> কার্ট
+      <i class="bi bi-cart3 fs-5"></i> {% t "কার্ট" %}
       <span class="nav-badge" id="desktop-cart-badge" style="display:none; position:relative; top:0; right:0; left:4px;">0</span>
     </button>
   </div>
   <div class="cat-bar">
-    <a href="{% shop_url 'storefront_home' shop %}" class="cat-chip {% if not category %}active{% endif %}">সব প্রোডাক্ট</a>
+    <a href="{% shop_url 'storefront_home' shop %}" class="cat-chip {% if not category %}active{% endif %}">{% t "সব প্রোডাক্ট" %}</a>
     {% for cat in categories %}
     <a href="{% shop_url 'storefront_category' shop cat.id %}" class="cat-chip {% if category.id == cat.id %}active{% endif %}">{{ cat.name }}</a>
     {% endfor %}
@@ -279,7 +279,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
       <div class="banner-slide-default">
         <div>
           <h3>{{ shop.name }}</h3>
-          <p>{{ shop.storefront_tagline|default:"ঘরে বসে অর্ডার করুন, দরজায় পৌঁছে যাবে" }}</p>
+          <p>{% if shop.storefront_tagline %}{{ shop.storefront_tagline }}{% else %}{% t "ঘরে বসে অর্ডার করুন, দরজায় পৌঁছে যাবে" %}{% endif %}</p>
         </div>
       </div>
     </div>
@@ -291,7 +291,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 {% if sale_products %}
 <div class="flash-sale-wrap">
   <div class="flash-header">
-    <div class="flash-title"><i class="bi bi-lightning-charge-fill"></i> ছাড় চলছে</div>
+    <div class="flash-title"><i class="bi bi-lightning-charge-fill"></i> {% t "ছাড় চলছে" %}</div>
   </div>
   <div class="flash-scroll">
     {% for product in sale_products %}
@@ -314,7 +314,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 {% endif %}
 {% elif category %}
 <div class="cat-hero">
-  <div class="crumb"><a href="{% shop_url 'storefront_home' shop %}">হোম</a> › ক্যাটাগরি</div>
+  <div class="crumb"><a href="{% shop_url 'storefront_home' shop %}">{% t "হোম" %}</a> › {% t "ক্যাটাগরি" %}</div>
   <h1>{{ category.name }}</h1>
 </div>
 {% endif %}
@@ -322,17 +322,17 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 <!-- PRODUCTS -->
 <div class="section-header" id="products">
   <div class="section-title-sf">
-    {% if search %}"{{ search }}" খুঁজে{% elif category %}প্রোডাক্ট{% else %}সব প্রোডাক্ট{% endif %}
-    <span class="section-count">({{ total_count|bn }}টা)</span>
+    {% if search %}{% t '"{q}" খুঁজে' q=search %}{% elif category %}{% t "প্রোডাক্ট" %}{% else %}{% t "সব প্রোডাক্ট" %}{% endif %}
+    <span class="section-count">({% t "{n}টা" n=total_count %})</span>
   </div>
   {% if total_count > 1 %}
   <form method="GET" class="sort-form">
     {% if search %}<input type="hidden" name="q" value="{{ search }}">{% endif %}
-    <label for="sort-select">সাজান</label>
+    <label for="sort-select">{% t "সাজান" %}</label>
     <select name="sort" id="sort-select" onchange="this.form.submit()">
-      {% for key, label in sorts %}<option value="{{ key }}" {% if sort == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      {% for key, label in sorts %}<option value="{{ key }}" {% if sort == key %}selected{% endif %}>{% t label %}</option>{% endfor %}
     </select>
-    <noscript><button type="submit">ঠিক আছে</button></noscript>
+    <noscript><button type="submit">{% t "ঠিক আছে" %}</button></noscript>
   </form>
   {% endif %}
 </div>
@@ -342,41 +342,41 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
   {% if not products %}
   <div style="grid-column:1/-1; text-align:center; padding:60px 20px; color:var(--muted);">
     <i class="bi bi-search" style="font-size:48px; display:block; margin-bottom:12px; opacity:.3;"></i>
-    <h5 class="fw-bold">কোনো প্রোডাক্ট পাওয়া যায়নি</h5>
-    <a href="{% shop_url 'storefront_home' shop %}" style="color:var(--orange); font-weight:800; text-decoration:none;">সব প্রোডাক্ট দেখুন</a>
+    <h5 class="fw-bold">{% t "কোনো প্রোডাক্ট পাওয়া যায়নি" %}</h5>
+    <a href="{% shop_url 'storefront_home' shop %}" style="color:var(--orange); font-weight:800; text-decoration:none;">{% t "সব প্রোডাক্ট দেখুন" %}</a>
   </div>
   {% endif %}
 </div>
 
 {% if next_url %}
 <div class="load-more-wrap">
-  <a href="{{ next_url }}" class="load-more" id="loadMore"><span class="spinner-border" role="status" aria-hidden="true"></span> আরও দেখুন</a>
-  <div class="shown-count" id="shownCount">{{ total_count|bn }}টার মধ্যে <span id="shownNum">{{ page_obj.end_index|bn }}</span>টা দেখানো হচ্ছে</div>
+  <a href="{{ next_url }}" class="load-more" id="loadMore"><span class="spinner-border" role="status" aria-hidden="true"></span> {% t "আরও দেখুন" %}</a>
+  <div class="shown-count" id="shownCount">{% t "দেখানো হচ্ছে" %} <span id="shownNum">{% num page_obj.end_index %}</span> / {% num total_count %}</div>
 </div>
 {% endif %}
 
-<!-- TRUST BADGES: দোকানের আসল সেটিং থেকে -->
+{# TRUST BADGES: দোকানের আসল সেটিং থেকে #}
 <div class="trust-badges">
   <div class="trust-item">
     <div class="trust-icon"><i class="bi bi-truck"></i></div>
-    <div class="trust-title">হোম<br>ডেলিভারি</div>
+    <div class="trust-title">{% t "হোম" %}<br>{% t "ডেলিভারি" %}</div>
   </div>
   {% if cod_allowed %}
   <div class="trust-item">
     <div class="trust-icon"><i class="bi bi-cash-coin"></i></div>
-    <div class="trust-title">ক্যাশ অন<br>ডেলিভারি</div>
+    <div class="trust-title">{% t "ক্যাশ অন" %}<br>{% t "ডেলিভারি" %}</div>
   </div>
   {% endif %}
   {% if online_allowed %}
   <div class="trust-item">
     <div class="trust-icon"><i class="bi bi-shield-lock"></i></div>
-    <div class="trust-title">নিরাপদ অনলাইন<br>পেমেন্ট</div>
+    <div class="trust-title">{% t "নিরাপদ অনলাইন" %}<br>{% t "পেমেন্ট" %}</div>
   </div>
   {% endif %}
   {% if shop.return_policy %}
   <div class="trust-item" role="button" data-bs-toggle="modal" data-bs-target="#returnModal" style="cursor:pointer;">
     <div class="trust-icon"><i class="bi bi-arrow-counterclockwise"></i></div>
-    <div class="trust-title">রিটার্ন<br>পলিসি</div>
+    <div class="trust-title">{% t "রিটার্ন" %}<br>{% t "পলিসি" %}</div>
   </div>
   {% endif %}
 </div>
@@ -403,24 +403,24 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
   </div>
 
   <div class="policy-links">
-    <a href="{% shop_url 'storefront_track' shop %}"><i class="bi bi-geo-alt"></i> অর্ডার ট্র্যাক করুন</a>
-    {% if shop.return_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#returnModal">রিটার্ন পলিসি</a>{% endif %}
-    {% if shop.privacy_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">প্রাইভেসি পলিসি</a>{% endif %}
+    <a href="{% shop_url 'storefront_track' shop %}"><i class="bi bi-geo-alt"></i> {% t "অর্ডার ট্র্যাক করুন" %}</a>
+    {% if shop.return_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#returnModal">{% t "রিটার্ন পলিসি" %}</a>{% endif %}
+    {% if shop.privacy_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">{% t "প্রাইভেসি পলিসি" %}</a>{% endif %}
   </div>
 
-  <div class="copyright">© {% now "Y" %} {{ shop.name }} · {{ site.name }} দিয়ে তৈরি</div>
+  <div class="copyright">© {% now "Y" %} {{ shop.name }} · {% t "{site} দিয়ে তৈরি" site=site.name %}</div>
 </footer>
 
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
   <a href="{% shop_url 'storefront_home' shop %}" class="nav-item-sf active">
-    <i class="bi bi-house-fill"></i><span>হোম</span>
+    <i class="bi bi-house-fill"></i><span>{% t "হোম" %}</span>
   </a>
   <button class="nav-item-sf" onclick="scrollToProducts()">
-    <i class="bi bi-grid-fill"></i><span>প্রোডাক্ট</span>
+    <i class="bi bi-grid-fill"></i><span>{% t "প্রোডাক্ট" %}</span>
   </button>
   <button class="nav-item-sf" onclick="openCart()">
-    <i class="bi bi-cart-fill"></i><span>কার্ট</span>
+    <i class="bi bi-cart-fill"></i><span>{% t "কার্ট" %}</span>
     <div class="nav-badge" id="nav-cart-badge">0</div>
   </button>
   {% if shop.whatsapp_number %}
@@ -429,37 +429,37 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
   </a>
   {% elif shop.phone %}
   <a class="nav-item-sf" href="tel:{{ shop.phone }}">
-    <i class="bi bi-telephone-fill"></i><span>কল করুন</span>
+    <i class="bi bi-telephone-fill"></i><span>{% t "কল করুন" %}</span>
   </a>
   {% endif %}
 </div>
 {% if shop.whatsapp_number %}
-<a class="wa-float" href="https://wa.me/{{ shop.whatsapp_number }}" target="_blank" rel="noopener" aria-label="WhatsApp-এ মেসেজ দিন"><i class="bi bi-whatsapp"></i></a>
+<a class="wa-float" href="https://wa.me/{{ shop.whatsapp_number }}" target="_blank" rel="noopener" aria-label="{% t "WhatsApp-এ মেসেজ দিন" %}"><i class="bi bi-whatsapp"></i></a>
 {% endif %}
 
 {% include 'store/storefront/_cart_checkout.html' %}
 
 <!-- ================= MODALS ================= -->
-<!-- প্রাইভেসি পলিসির পপআপ -->
+{# প্রাইভেসি পলিসির পপআপ #}
 <div class="modal fade" id="privacyModal" tabindex="-1" aria-hidden="true" style="z-index: 999999;">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content rounded-4 border-0 shadow-lg">
       <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
-        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-shield-check text-success me-2"></i>প্রাইভেসি পলিসি</h5>
-        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="বন্ধ করুন"></button>
+        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-shield-check text-success me-2"></i>{% t "প্রাইভেসি পলিসি" %}</h5>
+        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="{% t "বন্ধ করুন" %}"></button>
       </div>
       <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.privacy_policy }}</div>
     </div>
   </div>
 </div>
 
-<!-- রিটার্ন পলিসির পপআপ -->
+{# রিটার্ন পলিসির পপআপ #}
 <div class="modal fade" id="returnModal" tabindex="-1" aria-hidden="true" style="z-index: 999999;">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content rounded-4 border-0 shadow-lg">
       <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
-        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-arrow-return-left text-warning me-2"></i>রিটার্ন ও রিফান্ড পলিসি</h5>
-        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="বন্ধ করুন"></button>
+        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-arrow-return-left text-warning me-2"></i>{% t "রিটার্ন ও রিফান্ড পলিসি" %}</h5>
+        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="{% t "বন্ধ করুন" %}"></button>
       </div>
       <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.return_policy }}</div>
     </div>
@@ -502,15 +502,15 @@ function goToProduct(url) { window.location.href = url; }
 
 function addToCart(id, name, price, stock, image) {
   id = String(id);
-  if (stock <= 0) { showToast('এটা এখন স্টকে নেই'); return; }
+  if (stock <= 0) { showToast('{% tjs "এটা এখন স্টকে নেই" %}'); return; }
   if (cart[id]) {
-    if (cart[id].qty >= stock) { showToast('⚠️ স্টকে আর নেই'); return; }
+    if (cart[id].qty >= stock) { showToast('⚠️ {% tjs "স্টকে আর নেই" %}'); return; }
     cart[id].qty++;
   } else {
     cart[id] = { id, name, price, qty: 1, stock, image };
   }
   saveCart(); updateBtn(id); renderCart();
-  showToast('🛒 কার্টে যোগ হয়েছে');
+  showToast('🛒 {% tjs "কার্টে যোগ হয়েছে" %}');
 }
 
 function updateBtn(id) {
@@ -533,13 +533,12 @@ function scrollToProducts() {
   if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 150, behavior: 'smooth' });
 }
 
-// ===== আরও দেখুন: পরের ২৪টা এই পেইজেই যোগ হয় =====
+{# আরও দেখুন: পরের ২৪টা এই পেইজেই যোগ হয় #}
 (function () {
   const btn = document.getElementById('loadMore');
   if (!btn) return;
   const grid = document.getElementById('productGrid');
   const shown = document.getElementById('shownNum');
-  const bn = n => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
   btn.addEventListener('click', function (e) {
     e.preventDefault();
     if (btn.classList.contains('loading')) return;
@@ -550,9 +549,9 @@ function scrollToProducts() {
       .then(([html, next]) => {
         grid.insertAdjacentHTML('beforeend', html);
         Object.keys(cart).forEach(id => updateBtn(id));
-        if (shown) shown.textContent = bn(grid.querySelectorAll('.prod-card').length);
+        if (shown) shown.textContent = sfNum(grid.querySelectorAll('.prod-card').length);
         if (next) { btn.setAttribute('href', next); btn.classList.remove('loading'); }
-        else { btn.remove(); const c = document.getElementById('shownCount'); if (c) c.textContent = 'সবগুলো প্রোডাক্ট দেখানো হয়েছে'; }
+        else { btn.remove(); const c = document.getElementById('shownCount'); if (c) c.textContent = '{% tjs "সবগুলো প্রোডাক্ট দেখানো হয়েছে" %}'; }
       })
       .catch(() => { window.location.href = btn.getAttribute('href'); });
   });

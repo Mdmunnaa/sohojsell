@@ -1,6 +1,6 @@
-{% load store_links bangla %}
+{% load store_links bangla sf_text %}
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="{% sf_lang_code %}">
 <head>
 {% include 'store/storefront/_head.html' %}
 <style>
@@ -70,7 +70,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .rating-line small { color: var(--muted); font-weight: 600; }
 .wa-order { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; padding: 13px; border-radius: 14px; border: 2px solid #25D366; background: #F0FDF4; color: #128C7E; font-weight: 800; font-size: 15px; text-decoration: none; }
 .wa-order:hover { background: #DCFCE7; color: #128C7E; }
-/* রিভিউ */
+{# রিভিউ #}
 .rv-top { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; margin-bottom: 16px; }
 .rv-big { text-align: center; }
 .rv-big b { display: block; font-size: 40px; font-weight: 900; color: var(--dark); line-height: 1; }
@@ -145,7 +145,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .bar-icon-btn i { font-size: 20px; }
 .btn-buy { flex: 1; height: 48px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; box-shadow: 0 4px 12px rgba(var(--orange-rgb),0.3); }
 
-/* পরিমাণ */
+{# পরিমাণ #}
 .qty-row { display: flex; align-items: center; gap: 14px; margin: 16px 0 0; padding-top: 16px; border-top: 1px solid #F1F5F9; }
 .qty-row .qty-label { font-size: 14px; font-weight: 800; color: var(--dark); min-width: 52px; }
 .qty-step { display: inline-flex; align-items: center; border: 1.5px solid var(--border); border-radius: 12px; background: #fff; overflow: hidden; }
@@ -314,7 +314,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
   </a>
   <div class="desk-actions">
     <button class="desk-cart-btn" onclick="openCart()">
-      <i class="bi bi-cart3 fs-5"></i> কার্ট <span id="desktop-cart-badge" style="display:none;background:var(--orange);color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:800;">0</span>
+      <i class="bi bi-cart3 fs-5"></i> {% t "কার্ট" %} <span id="desktop-cart-badge" style="display:none;background:var(--orange);color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:800;">0</span>
     </button>
   </div>
 </div>
@@ -324,25 +324,25 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 
   <!-- LEFT: IMAGE BOX -->
   <div class="prod-image-box">
-    <!-- MOBILE HEADER: ছবির ওপরেই থাকে, তাই অফারের লাইন ঢাকে না -->
+    {# MOBILE HEADER: ছবির ওপরেই থাকে, তাই অফারের লাইন ঢাকে না #}
     <div class="mob-header">
-      <a href="{% shop_url 'storefront_home' shop %}" class="mob-btn" aria-label="দোকানে ফিরুন"><i class="bi bi-chevron-left"></i></a>
+      <a href="{% shop_url 'storefront_home' shop %}" class="mob-btn" aria-label="{% t "দোকানে ফিরুন" %}"><i class="bi bi-chevron-left"></i></a>
       <div style="display:flex; gap:8px;">
-        <button class="mob-btn" onclick="shareProduct()" aria-label="শেয়ার করুন"><i class="bi bi-share"></i></button>
-        <button class="mob-btn" onclick="openCart()" aria-label="কার্ট"><i class="bi bi-cart3"></i><span class="mob-badge" id="mob-cart-badge">0</span></button>
+        <button class="mob-btn" onclick="shareProduct()" aria-label="{% t "শেয়ার করুন" %}"><i class="bi bi-share"></i></button>
+        <button class="mob-btn" onclick="openCart()" aria-label="{% t "কার্ট" %}"><i class="bi bi-cart3"></i><span class="mob-badge" id="mob-cart-badge">0</span></button>
       </div>
     </div>
     {% if product.image %}
       <img src="{{ product.image.url }}" alt="{{ product.name }}" onclick="openViewer()"{% if product.image_width %} width="{{ product.image_width }}" height="{{ product.image_height }}"{% endif %}>
-      <div class="zoom-hint"><i class="bi bi-zoom-in"></i> বড় করে দেখুন</div>
+      <div class="zoom-hint"><i class="bi bi-zoom-in"></i> {% t "বড় করে দেখুন" %}</div>
     {% else %}
       <div class="prod-placeholder"><i class="bi bi-image"></i></div>
     {% endif %}
 
     {% if product.stock_quantity == 0 %}
-      <div class="img-badge">স্টক শেষ</div>
+      <div class="img-badge">{% t "স্টক শেষ" %}</div>
     {% elif product.stock_quantity <= 5 %}
-      <div class="img-badge low">আর মাত্র {{ product.stock_quantity|bn }}টা আছে</div>
+      <div class="img-badge low">{% t "আর মাত্র {n}টা আছে" n=product.stock_quantity %}</div>
     {% endif %}
   </div>
 
@@ -356,21 +356,21 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
         <span style="font-size:13px;font-weight:800;background:#FF3333;color:#fff;padding:3px 8px;border-radius:6px;letter-spacing:0;vertical-align:middle;">-{{ product.discount_percent }}%</span>{% endif %}</div>
       <div class="prod-title-text">{{ product.name }}</div>
       {% if product.rating %}
-      <a class="rating-line" href="#reviews">{% include 'store/storefront/_stars.html' with avg=product.rating.avg %} {{ product.rating.avg|bn }} <small>({{ product.rating.count|bn }}টা রিভিউ)</small></a>
+      <a class="rating-line" href="#reviews">{% include 'store/storefront/_stars.html' with avg=product.rating.avg %} {% num product.rating.avg %} <small>({% t "{n}টা রিভিউ" n=product.rating.count %})</small></a>
       {% endif %}
 
       <div class="meta-row">
         {% if product.stock_quantity > 0 %}
-          <span class="meta-chip stock"><i class="bi bi-check-circle-fill"></i> স্টকে আছে</span>
+          <span class="meta-chip stock"><i class="bi bi-check-circle-fill"></i> {% t "স্টকে আছে" %}</span>
         {% else %}
-          <span class="meta-chip oos"><i class="bi bi-x-circle-fill"></i> স্টক শেষ</span>
+          <span class="meta-chip oos"><i class="bi bi-x-circle-fill"></i> {% t "স্টক শেষ" %}</span>
         {% endif %}
-        {% if product.sold_count %}<span class="meta-chip rating"><i class="bi bi-bag-check-fill"></i> {{ product.sold_count|bn }}টা বিক্রি হয়েছে</span>{% endif %}
+        {% if product.sold_count %}<span class="meta-chip rating"><i class="bi bi-bag-check-fill"></i> {% t "{n}টা বিক্রি হয়েছে" n=product.sold_count %}</span>{% endif %}
       </div>
 
       {% if variant_list %}
       <div class="var-wrap" id="var-wrap">
-        <div class="var-title">সাইজ / রং বেছে নিন <span id="var-picked"></span></div>
+        <div class="var-title">{% t "সাইজ / রং বেছে নিন" %} <span id="var-picked"></span></div>
         <div class="var-chips">
           {% for v in variant_list %}<button type="button" class="var-chip{% if v.stock <= 0 %} out{% endif %}" data-var="{{ v.id }}"{% if v.stock <= 0 %} disabled{% endif %}>{{ v.name }}</button>{% endfor %}
         </div>
@@ -379,56 +379,56 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 
       {% if product.stock_quantity > 0 %}
       <div class="qty-row">
-        <span class="qty-label">পরিমাণ</span>
-        <div class="qty-step" role="group" aria-label="পরিমাণ">
-          <button type="button" id="qty-minus" onclick="stepQty(-1)" aria-label="কমান">−</button>
-          <output id="qty-val" aria-live="polite">১</output>
-          <button type="button" id="qty-plus" onclick="stepQty(1)" aria-label="বাড়ান">+</button>
+        <span class="qty-label">{% t "পরিমাণ" %}</span>
+        <div class="qty-step" role="group" aria-label="{% t "পরিমাণ" %}">
+          <button type="button" id="qty-minus" onclick="stepQty(-1)" aria-label="{% t "কমান" %}">−</button>
+          <output id="qty-val" aria-live="polite">{% num 1 %}</output>
+          <button type="button" id="qty-plus" onclick="stepQty(1)" aria-label="{% t "বাড়ান" %}">+</button>
         </div>
         <span class="qty-left" id="qty-left"></span>
       </div>
       {% endif %}
 
       <div class="desk-btn-row">
-        <button class="desk-btn-add" onclick="addChosen()">কার্টে যোগ করুন</button>
-        <button class="desk-btn-buy" onclick="buyChosen()">এখনই কিনুন</button>
+        <button class="desk-btn-add" onclick="addChosen()">{% t "কার্টে যোগ করুন" %}</button>
+        <button class="desk-btn-buy" onclick="buyChosen()">{% t "এখনই কিনুন" %}</button>
       </div>
       {% if shop.whatsapp_number %}
-      <a class="wa-order" href="https://wa.me/{{ shop.whatsapp_number }}?text={{ wa_text|urlencode }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp-এ অর্ডার করুন</a>
+      <a class="wa-order" href="https://wa.me/{{ shop.whatsapp_number }}?text={{ wa_text|urlencode }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> {% t "WhatsApp-এ অর্ডার করুন" %}</a>
       {% endif %}
     </div>
 
-    <!-- ডেলিভারি আর পেমেন্ট: দোকানের আসল সেটিং থেকে -->
+    {# ডেলিভারি আর পেমেন্ট: দোকানের আসল সেটিং থেকে #}
     <div class="delivery-card">
-      <div class="card-title">ডেলিভারি ও পেমেন্ট</div>
+      <div class="card-title">{% t "ডেলিভারি ও পেমেন্ট" %}</div>
       {% for z in delivery_zones %}
       <div class="delivery-row">
         <div class="delivery-icon"><i class="bi bi-truck"></i></div>
-        <div class="delivery-info-text"><strong>{{ z.name }}</strong><span>ডেলিভারি চার্জ ৳{{ z.charge|floatformat:0 }}</span></div>
+        <div class="delivery-info-text"><strong>{{ z.name }}</strong><span>{% t "ডেলিভারি চার্জ" %} ৳{{ z.charge|floatformat:0 }}</span></div>
       </div>
       {% endfor %}
       {% if shop.free_delivery_min %}
       <div class="delivery-row">
         <div class="delivery-icon"><i class="bi bi-gift text-success"></i></div>
-        <div class="delivery-info-text"><strong>ফ্রি ডেলিভারি</strong><span>৳{{ shop.free_delivery_min|floatformat:0 }} বা তার বেশি অর্ডারে</span></div>
+        <div class="delivery-info-text"><strong>{% t "ফ্রি ডেলিভারি" %}</strong><span>৳{{ shop.free_delivery_min|floatformat:0 }} {% t "বা তার বেশি অর্ডারে" %}</span></div>
       </div>
       {% endif %}
       {% if cod_allowed %}
       <div class="delivery-row">
         <div class="delivery-icon"><i class="bi bi-cash-coin text-success"></i></div>
-        <div class="delivery-info-text"><strong>ক্যাশ অন ডেলিভারি</strong><span>পণ্য হাতে পেয়ে টাকা দিন</span></div>
+        <div class="delivery-info-text"><strong>{% t "ক্যাশ অন ডেলিভারি" %}</strong><span>{% t "পণ্য হাতে পেয়ে টাকা দিন" %}</span></div>
       </div>
       {% endif %}
       {% if online_allowed %}
       <div class="delivery-row">
         <div class="delivery-icon"><i class="bi bi-shield-lock text-primary"></i></div>
-        <div class="delivery-info-text"><strong>অনলাইন পেমেন্ট</strong><span>bKash, Nagad, Rocket বা কার্ড</span></div>
+        <div class="delivery-info-text"><strong>{% t "অনলাইন পেমেন্ট" %}</strong><span>{% t "bKash, Nagad, Rocket বা কার্ড" %}</span></div>
       </div>
       {% endif %}
       {% if shop.return_policy %}
       <div class="delivery-row" role="button" data-bs-toggle="modal" data-bs-target="#returnModal" style="cursor:pointer;">
         <div class="delivery-icon"><i class="bi bi-arrow-counterclockwise"></i></div>
-        <div class="delivery-info-text"><strong>রিটার্ন পলিসি</strong><span>বিস্তারিত দেখতে চাপুন</span></div>
+        <div class="delivery-info-text"><strong>{% t "রিটার্ন পলিসি" %}</strong><span>{% t "বিস্তারিত দেখতে চাপুন" %}</span></div>
       </div>
       {% endif %}
     </div>
@@ -436,7 +436,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
     <!-- DESCRIPTION -->
     {% if product.description %}
     <div class="desc-card">
-      <div class="card-title">বিস্তারিত</div>
+      <div class="card-title">{% t "বিস্তারিত" %}</div>
       <div class="desc-text">{{ product.description }}</div>
     </div>
     {% endif %}
@@ -444,37 +444,37 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
     <!-- REVIEWS -->
     {% if shop.reviews_enabled or review_list %}
     <div class="desc-card" id="reviews">
-      <div class="card-title">কাস্টমারের রিভিউ{% if product.rating %} <span style="font-size:13px;color:var(--muted);font-weight:700;">({{ product.rating.count|bn }}টা)</span>{% endif %}</div>
+      <div class="card-title">{% t "কাস্টমারের রিভিউ" %}{% if product.rating %} <span style="font-size:13px;color:var(--muted);font-weight:700;">({% num product.rating.count %})</span>{% endif %}</div>
       {% if product.rating %}
       <div class="rv-top">
-        <div class="rv-big"><b>{{ product.rating.avg|bn }}</b>{% include 'store/storefront/_stars.html' with avg=product.rating.avg %}<small>৫-এর মধ্যে</small></div>
-        <div class="rv-bars">{% for bar in review_bars %}<div class="rv-bar"><span>{{ bar.star|bn }} <i class="bi bi-star-fill" style="font-size:10px;color:#F59E0B;display:inline;height:auto;background:none;"></i></span><i><b style="width:{{ bar.pct }}%;"></b></i><span>{{ bar.count|bn }}</span></div>{% endfor %}</div>
+        <div class="rv-big"><b>{% num product.rating.avg %}</b>{% include 'store/storefront/_stars.html' with avg=product.rating.avg %}<small>{% t "৫-এর মধ্যে" %}</small></div>
+        <div class="rv-bars">{% for bar in review_bars %}<div class="rv-bar"><span>{% num bar.star %} <i class="bi bi-star-fill" style="font-size:10px;color:#F59E0B;display:inline;height:auto;background:none;"></i></span><i><b style="width:{{ bar.pct }}%;"></b></i><span>{% num bar.count %}</span></div>{% endfor %}</div>
       </div>
       {% endif %}
       {% for r in review_list %}
       <div class="rv-item">
-        <div class="rv-head">{% include 'store/storefront/_stars.html' with avg=r.rating %}<span class="rv-name">{{ r.name }}</span>{% if r.verified %}<span class="rv-verified"><i class="bi bi-patch-check-fill"></i> যাচাই করা ক্রেতা</span>{% endif %}<span class="rv-date">{{ r.created_at|bn_day }}</span></div>
+        <div class="rv-head">{% include 'store/storefront/_stars.html' with avg=r.rating %}<span class="rv-name">{{ r.name }}</span>{% if r.verified %}<span class="rv-verified"><i class="bi bi-patch-check-fill"></i> {% t "যাচাই করা ক্রেতা" %}</span>{% endif %}<span class="rv-date">{% sf_date r.created_at %}</span></div>
         {% if r.text %}<div class="rv-text">{{ r.text }}</div>{% endif %}
-        {% if r.image %}<a href="{{ r.image.url }}" target="_blank" rel="noopener"><img class="rv-img" src="{{ r.image.url }}" alt="রিভিউর ছবি" loading="lazy"></a>{% endif %}
+        {% if r.image %}<a href="{{ r.image.url }}" target="_blank" rel="noopener"><img class="rv-img" src="{{ r.image.url }}" alt="{% t "রিভিউর ছবি" %}" loading="lazy"></a>{% endif %}
       </div>
       {% empty %}
-      <div class="rv-empty">এখনো কোনো রিভিউ নেই।{% if shop.reviews_enabled %} আপনিই প্রথম রিভিউ দিন।{% endif %}</div>
+      <div class="rv-empty">{% t "এখনো কোনো রিভিউ নেই।" %}{% if shop.reviews_enabled %} {% t "আপনিই প্রথম রিভিউ দিন।" %}{% endif %}</div>
       {% endfor %}
       {% if shop.reviews_enabled %}
       <form class="rv-form" method="post" action="{% shop_url 'storefront_review' shop product.id %}" enctype="multipart/form-data" id="review-form">
         {% csrf_token %}
-        <h5>আপনার রিভিউ দিন</h5>
+        <h5>{% t "আপনার রিভিউ দিন" %}</h5>
         {% if review_msg %}<div class="rv-msg {% if review_msg.ok %}ok{% else %}bad{% endif %}">{{ review_msg.text }}</div>{% endif %}
-        <div class="rv-pick" aria-label="তারা দিন">
-          {% for n in "54321" %}<input type="radio" name="rating" id="star{{ n }}" value="{{ n }}"{% if n == "5" %} checked{% endif %}><label for="star{{ n }}" title="{{ n|bn }} তারা"><i class="bi bi-star-fill"></i></label>{% endfor %}
+        <div class="rv-pick" aria-label="{% t "তারা দিন" %}">
+          {% for n in "54321" %}<input type="radio" name="rating" id="star{{ n }}" value="{{ n }}"{% if n == "5" %} checked{% endif %}><label for="star{{ n }}" title="{% t "{n} তারা" n=n %}"><i class="bi bi-star-fill"></i></label>{% endfor %}
         </div>
         <div class="rv-row2">
-          <input class="rv-input" type="text" name="name" placeholder="আপনার নাম *" maxlength="80" required>
-          <input class="rv-input" type="tel" name="phone" placeholder="মোবাইল নম্বর * (দেখানো হবে না)" maxlength="20" inputmode="tel" required>
+          <input class="rv-input" type="text" name="name" placeholder="{% t "আপনার নাম *" %}" maxlength="80" required>
+          <input class="rv-input" type="tel" name="phone" placeholder="{% t "মোবাইল নম্বর * (দেখানো হবে না)" %}" maxlength="20" inputmode="tel" required>
         </div>
-        <textarea class="rv-input" name="text" rows="3" maxlength="1000" placeholder="প্রোডাক্টটা কেমন লাগল? (ঐচ্ছিক)"></textarea>
-        <div class="rv-file"><label><i class="bi bi-camera"></i> ছবি দিতে চাইলে: <input type="file" name="image" accept="image/*"></label></div>
-        <button class="rv-submit" type="submit"><i class="bi bi-send-fill"></i> রিভিউ জমা দিন</button>
+        <textarea class="rv-input" name="text" rows="3" maxlength="1000" placeholder="{% t "প্রোডাক্টটা কেমন লাগল? (ঐচ্ছিক)" %}"></textarea>
+        <div class="rv-file"><label><i class="bi bi-camera"></i> {% t "ছবি দিতে চাইলে:" %} <input type="file" name="image" accept="image/*"></label></div>
+        <button class="rv-submit" type="submit"><i class="bi bi-send-fill"></i> {% t "রিভিউ জমা দিন" %}</button>
       </form>
       {% endif %}
     </div>
@@ -483,7 +483,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
     <!-- RELATED PRODUCTS -->
     {% if related_products %}
     <div class="related-section">
-      <div class="card-title" style="padding:0 20px;">একই রকম আরও প্রোডাক্ট</div>
+      <div class="card-title" style="padding:0 20px;">{% t "একই রকম আরও প্রোডাক্ট" %}</div>
       <div class="related-grid">
         {% for rp in related_products %}
         <a href="{% shop_url 'storefront_product_detail' shop rp.id %}" class="rel-card">
@@ -492,7 +492,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
           </div>
           <div class="rel-body">
             <div class="rel-name">{{ rp.name }}</div>
-            {% if rp.rating %}<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:2px;">{% include 'store/storefront/_stars.html' with avg=rp.rating.avg %} {{ rp.rating.avg|bn }}</div>{% endif %}
+            {% if rp.rating %}<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:2px;">{% include 'store/storefront/_stars.html' with avg=rp.rating.avg %} {% num rp.rating.avg %}</div>{% endif %}
             <div class="rel-price">৳{{ rp.price|floatformat:0 }}{% if rp.discount_percent %} <span style="font-size:11px;font-weight:600;color:var(--muted);text-decoration:line-through;">৳{{ rp.compare_price|floatformat:0 }}</span>{% endif %}</div>
           </div>
         </a>
@@ -524,12 +524,12 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 
       {% if shop.return_policy or shop.privacy_policy %}
       <div class="policy-links">
-        {% if shop.return_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#returnModal">রিটার্ন পলিসি</a>{% endif %}
-        {% if shop.privacy_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">প্রাইভেসি পলিসি</a>{% endif %}
+        {% if shop.return_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#returnModal">{% t "রিটার্ন পলিসি" %}</a>{% endif %}
+        {% if shop.privacy_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">{% t "প্রাইভেসি পলিসি" %}</a>{% endif %}
       </div>
       {% endif %}
 
-      <div class="copyright">© {% now "Y" %} {{ shop.name }} · {{ site.name }} দিয়ে তৈরি</div>
+      <div class="copyright">© {% now "Y" %} {{ shop.name }} · {% t "{site} দিয়ে তৈরি" site=site.name %}</div>
     </footer>
 
   </div>
@@ -539,12 +539,12 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 {% include 'store/storefront/_cart_checkout.html' %}
 
 <!-- ================= MODALS ================= -->
-<!-- প্রাইভেসি পলিসির পপআপ -->
+{# প্রাইভেসি পলিসির পপআপ #}
 <div class="modal fade" id="privacyModal" tabindex="-1" aria-hidden="true" style="z-index: 999999;">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content rounded-4 border-0 shadow-lg">
       <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
-        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-shield-check text-success me-2"></i>প্রাইভেসি পলিসি</h5>
+        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-shield-check text-success me-2"></i>{% t "প্রাইভেসি পলিসি" %}</h5>
         <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.privacy_policy }}</div>
@@ -552,12 +552,12 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
   </div>
 </div>
 
-<!-- রিটার্ন পলিসির পপআপ -->
+{# রিটার্ন পলিসির পপআপ #}
 <div class="modal fade" id="returnModal" tabindex="-1" aria-hidden="true" style="z-index: 999999;">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content rounded-4 border-0 shadow-lg">
       <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
-        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-arrow-return-left text-warning me-2"></i>রিটার্ন ও রিফান্ড পলিসি</h5>
+        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-arrow-return-left text-warning me-2"></i>{% t "রিটার্ন ও রিফান্ড পলিসি" %}</h5>
         <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.return_policy }}</div>
@@ -568,10 +568,10 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 <div class="toast-sf" id="toast-sf"></div>
 
 {% if product.image %}
-<!-- ছবি বড় করে দেখা: দুই আঙুলে আরও জুম করা যায় -->
+{# ছবি বড় করে দেখা: দুই আঙুলে আরও জুম করা যায় #}
 <div id="imgViewer" role="dialog" aria-label="{{ product.name }}" onclick="if(event.target===this)closeViewer()">
   <img src="{{ product.image.url }}" alt="{{ product.name }}">
-  <button type="button" onclick="closeViewer()" aria-label="বন্ধ করুন"><i class="bi bi-x-lg"></i></button>
+  <button type="button" onclick="closeViewer()" aria-label="{% t "বন্ধ করুন" %}"><i class="bi bi-x-lg"></i></button>
 </div>
 {% endif %}
 
@@ -582,14 +582,14 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 <script>
 
 
-/* সাইজ/রং: কার্টে প্রতিটা আলাদা জিনিস, নম্বর ঋণাত্মক (store/variants.py) */
+{# সাইজ/রং: কার্টে প্রতিটা আলাদা জিনিস, নম্বর ঋণাত্মক (store/variants.py) #}
 const BASE = { id: {{ product.id }}, name: '{{ product.name|escapejs }}', price: {{ product.price }}, stock: {{ product.stock_quantity }}, image: '{{ product.thumb_url|escapejs }}' };
 const VARIANTS = JSON.parse(document.getElementById('variant-list').textContent);
 let picked = null;
 function chosenItem() {
   if (!VARIANTS.length) return BASE;
   if (!picked) {
-    showToast('আগে সাইজ/রং বেছে নিন');
+    showToast('{% tjs "আগে সাইজ/রং বেছে নিন" %}');
     const w = document.getElementById('var-wrap'); w.classList.add('shake'); setTimeout(() => w.classList.remove('shake'), 500);
     w.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return null;
@@ -597,12 +597,12 @@ function chosenItem() {
   return { id: picked.id, name: `${BASE.name} (${picked.name})`, price: picked.price, stock: picked.stock, image: BASE.image };
 }
 let chosenQty = 1;
-const toBn = n => String(n).replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+const toBn = n => sfNum(n);
 function currentStock() { return VARIANTS.length ? (picked ? picked.stock : Math.max(0, ...VARIANTS.map(v => v.stock))) : BASE.stock; }
 function stepQty(delta) {
   const max = Math.max(1, currentStock());
   chosenQty = Math.min(max, Math.max(1, chosenQty + delta));
-  if (delta > 0 && chosenQty === max && currentStock() > 0 && (picked || !VARIANTS.length)) showToast(`স্টকে আছে ${toBn(max)}টা`);
+  if (delta > 0 && chosenQty === max && currentStock() > 0 && (picked || !VARIANTS.length)) showToast('{% tjs "স্টকে আছে {n}টা" %}'.replace('{n}', toBn(max)));
   renderQty();
 }
 function renderQty() {
@@ -614,7 +614,7 @@ function renderQty() {
   document.getElementById('qty-plus').disabled = chosenQty >= max;
   const left = document.getElementById('qty-left');
   const stock = currentStock();
-  left.textContent = (picked || !VARIANTS.length) && stock > 0 && stock <= 10 ? `আর মাত্র ${toBn(stock)}টা আছে` : '';
+  left.textContent = (picked || !VARIANTS.length) && stock > 0 && stock <= 10 ? '{% tjs "আর মাত্র {n}টা আছে" %}'.replace('{n}', toBn(stock)) : '';
 }
 function addChosen() { const i = chosenItem(); if (i) addToCart(i.id, i.name, i.price, i.stock, i.image, chosenQty); }
 function buyChosen() { const i = chosenItem(); if (i) buyNow(i.id, i.name, i.price, i.stock, i.image, chosenQty); }
@@ -626,10 +626,10 @@ document.querySelectorAll('.var-chip').forEach(chip => chip.addEventListener('cl
   renderQty();
 }));
 
-/* "এখনই কিনুন": কার্টে এই জিনিসের পরিমাণ ঠিক যতটা বেছেছে ততটা করে সরাসরি অর্ডারের ফর্ম */
+{# "এখনই কিনুন": কার্টে এই জিনিসের পরিমাণ ঠিক যতটা বেছেছে ততটা করে সরাসরি অর্ডারের ফর্ম #}
 function buyNow(id, name, price, stock, image, qty) {
   id = String(id);
-  if (stock <= 0) { showToast('এটা এখন স্টকে নেই'); return; }
+  if (stock <= 0) { showToast('{% tjs "এটা এখন স্টকে নেই" %}'); return; }
   qty = Math.min(Math.max(1, qty || 1), stock);
   cart[id] = { id, name, price, qty, stock, image };
   saveCart(); renderCart();
@@ -639,20 +639,21 @@ function buyNow(id, name, price, stock, image, qty) {
 function addToCart(id, name, price, stock, image, qty) {
   id = String(id);
   qty = Math.max(1, qty || 1);
-  if (stock <= 0) { showToast('এটা এখন স্টকে নেই'); return; }
+  if (stock <= 0) { showToast('{% tjs "এটা এখন স্টকে নেই" %}'); return; }
   const have = cart[id] ? cart[id].qty : 0;
-  if (have >= stock) { showToast('⚠️ স্টকে আর নেই'); return; }
+  if (have >= stock) { showToast('⚠️ {% tjs "স্টকে আর নেই" %}'); return; }
   const add = Math.min(qty, stock - have);
   if (cart[id]) cart[id].qty += add; else cart[id] = { id, name, price, qty: add, stock, image };
   saveCart(); renderCart();
-  showToast(add < qty ? `⚠️ স্টকে ছিল, ${toBn(add)}টা যোগ হলো` : `🛒 ${add > 1 ? toBn(add) + 'টা ' : ''}কার্টে যোগ হয়েছে`);
+  showToast(add < qty ? '⚠️ ' + '{% tjs "স্টকে ছিল, {n}টা যোগ হলো" %}'.replace('{n}', toBn(add))
+    : '🛒 ' + (add > 1 ? '{% tjs "{n}টা কার্টে যোগ হয়েছে" %}'.replace('{n}', toBn(add)) : '{% tjs "কার্টে যোগ হয়েছে" %}'));
 }
 
 let toastTimer; function showToast(msg) { const t = document.getElementById('toast-sf'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500); }
 function openViewer() { const v = document.getElementById('imgViewer'); if (v) { v.classList.add('show'); document.body.style.overflow = 'hidden'; } }
 function closeViewer() { const v = document.getElementById('imgViewer'); if (v) { v.classList.remove('show'); document.body.style.overflow = ''; } }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeViewer(); });
-function shareProduct() { if(navigator.share){ navigator.share({title: '{{ product.name|escapejs }}', url: window.location.href}); } else { navigator.clipboard.writeText(window.location.href).then(()=>showToast('লিংক কপি হয়েছে')); } }
+function shareProduct() { if(navigator.share){ navigator.share({title: '{{ product.name|escapejs }}', url: window.location.href}); } else { navigator.clipboard.writeText(window.location.href).then(()=>showToast('{% tjs "লিংক কপি হয়েছে" %}')); } }
 
 window.onload = () => { renderCart(); renderQty(); };
 </script>

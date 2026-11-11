@@ -7,6 +7,7 @@ import re
 from urllib.parse import quote
 
 from .links import storefront_link
+from .sf_lang import t as sf_t
 
 
 def clean_text(text, limit=160):
@@ -50,7 +51,8 @@ def storefront_meta(request, shop, *, title, description='', image=None, image_s
     return {
         'title': title,
         'description': clean_text(description or shop.storefront_tagline
-                                  or f'{shop.name}-এর অনলাইন শপ। পছন্দের প্রোডাক্ট বেছে ঘরে বসে অর্ডার করুন।'),
+                                  or sf_t('{shop}-এর অনলাইন শপ। পছন্দের প্রোডাক্ট বেছে ঘরে বসে অর্ডার করুন।', shop,
+                                          shop=shop.name)),
         'url': url,
         'image': image_url,
         'image_width': image_size[0] if image_size and all(image_size) else None,

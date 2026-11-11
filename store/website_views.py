@@ -94,6 +94,11 @@ def website_settings(request):
             form = form_class(request.POST, request.FILES, instance=shop)
             if form.is_valid():
                 form.save()
+                if section == 'design' and 'storefront_language' in form.changed_data:
+                    delivery.match_default_zone_names(shop)
+                    ok_message = ('ওয়েবসাইট এখন ইংরেজিতে — কাস্টমার সব লেখা ইংরেজিতে দেখবে, অর্ডারের SMS-ও ইংরেজিতে যাবে। '
+                                  'প্রোডাক্টের নাম, বিবরণ, ব্যানারের লেখা নিজে ইংরেজিতে লিখে নিন।'
+                                  if shop.storefront_language == 'en' else 'ওয়েবসাইট এখন বাংলায়।')
                 if section == 'payment':
                     ok_message = ('অনলাইন পেমেন্ট চালু — কাস্টমার এখন অনলাইনে টাকা দিতে পারবে।'
                                   if shop.payment_rule != shop.PAYMENT_COD

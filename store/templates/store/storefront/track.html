@@ -1,6 +1,6 @@
-{% load store_links bangla %}
+{% load store_links bangla sf_text %}
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="{% sf_lang_code %}">
 <head>
 {% include 'store/storefront/_head.html' %}
 <style>
@@ -59,9 +59,9 @@ body { margin: 0; background: var(--bg); color: var(--ink2); min-height: 100vh; 
 <body>
 <header class="tk-top">
   <div class="tk-top-in">
-    <a class="tk-logo" href="{% shop_url 'storefront_home' shop %}" aria-label="{{ shop.name }} — হোম">{% if shop.logo %}<img src="{{ shop.logo.url }}" alt="">{% else %}{{ shop.name|slice:":1"|upper }}{% endif %}</a>
-    <a class="tk-shop" href="{% shop_url 'storefront_home' shop %}">{{ shop.name }}<small>অর্ডার ট্র্যাক করুন</small></a>
-    <a class="tk-home" href="{% shop_url 'storefront_home' shop %}"><i class="bi bi-shop"></i> দোকানে যান</a>
+    <a class="tk-logo" href="{% shop_url 'storefront_home' shop %}" aria-label="{{ shop.name }} — {% t "হোম" %}">{% if shop.logo %}<img src="{{ shop.logo.url }}" alt="">{% else %}{{ shop.name|slice:":1"|upper }}{% endif %}</a>
+    <a class="tk-shop" href="{% shop_url 'storefront_home' shop %}">{{ shop.name }}<small>{% t "অর্ডার ট্র্যাক করুন" %}</small></a>
+    <a class="tk-home" href="{% shop_url 'storefront_home' shop %}"><i class="bi bi-shop"></i> {% t "দোকানে যান" %}</a>
   </div>
 </header>
 
@@ -69,16 +69,16 @@ body { margin: 0; background: var(--bg); color: var(--ink2); min-height: 100vh; 
 {% if order %}
   <section class="tk-card">
     <div class="tk-head">
-      <div class="tk-no">অর্ডার নম্বর<b>{{ order.id|bn }}</b>{{ order_day|bn_day }}{% if masked_phone %} · {{ masked_phone }}{% endif %}</div>
+      <div class="tk-no">{% t "অর্ডার নম্বর" %}<b>{% num order.id %}</b>{% sf_date order_day %}{% if masked_phone %} · {{ masked_phone }}{% endif %}</div>
       <span class="tk-status {% if cancelled %}bad{% elif order.status == 'Delivered' %}done{% endif %}"><i class="bi {% if cancelled %}bi-x-circle-fill{% elif order.status == 'Delivered' %}bi-check-circle-fill{% else %}bi-clock-history{% endif %}"></i> {{ status_label }}</span>
     </div>
     {% if cancelled %}
-    <div class="tk-err" style="margin-top: 16px;">{% if order.status == 'Returned' %}এই অর্ডারটা ফেরত এসেছে।{% else %}এই অর্ডারটা বাতিল করা হয়েছে।{% endif %} কোনো প্রশ্ন থাকলে দোকানে যোগাযোগ করুন।</div>
+    <div class="tk-err" style="margin-top: 16px;">{% if order.status == 'Returned' %}{% t "এই অর্ডারটা ফেরত এসেছে।" %}{% else %}{% t "এই অর্ডারটা বাতিল করা হয়েছে।" %}{% endif %} {% t "কোনো প্রশ্ন থাকলে দোকানে যোগাযোগ করুন।" %}</div>
     {% else %}
     <ol class="tk-steps">
       {% for step in steps %}
       <li class="tk-step {{ step.state }}"><span class="tk-dot"><i class="bi {% if step.state == 'done' %}bi-check-lg{% else %}{{ step.icon }}{% endif %}"></i></span>
-        <span><b>{{ step.label }}</b>{% if step.state == 'now' %}<small>এখন এই অবস্থায় আছে</small>{% endif %}</span></li>
+        <span><b>{{ step.label }}</b>{% if step.state == 'now' %}<small>{% t "এখন এই অবস্থায় আছে" %}</small>{% endif %}</span></li>
       {% endfor %}
     </ol>
     {% endif %}
@@ -86,48 +86,48 @@ body { margin: 0; background: var(--bg); color: var(--ink2); min-height: 100vh; 
 
   {% if tracking_code and not cancelled %}
   <section class="tk-card">
-    <h2><i class="bi bi-truck"></i> কুরিয়ার</h2>
+    <h2><i class="bi bi-truck"></i> {% t "কুরিয়ার" %}</h2>
     <div class="tk-courier">
-      <span>{{ courier|default:"কুরিয়ার" }}</span><span class="tk-code">{{ tracking_code }}</span>
+      <span>{% if courier %}{{ courier }}{% else %}{% t "কুরিয়ার" %}{% endif %}</span><span class="tk-code">{{ tracking_code }}</span>
     </div>
-    {% if courier_url %}<a class="tk-btn line" href="{{ courier_url }}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> কুরিয়ারের সাইটে পার্সেল দেখুন</a>{% endif %}
+    {% if courier_url %}<a class="tk-btn line" href="{{ courier_url }}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> {% t "কুরিয়ারের সাইটে পার্সেল দেখুন" %}</a>{% endif %}
   </section>
   {% endif %}
 
   <section class="tk-card">
-    <h2><i class="bi bi-bag"></i> যা অর্ডার করেছেন</h2>
+    <h2><i class="bi bi-bag"></i> {% t "যা অর্ডার করেছেন" %}</h2>
     {% for item in items %}
-    <div class="tk-row"><span>{{ item.display_name }} × {{ item.quantity|bn }}</span><b>{{ item.get_total|taka }}</b></div>
+    <div class="tk-row"><span>{{ item.display_name }} × {% num item.quantity %}</span><b>{% sf_taka item.get_total %}</b></div>
     {% endfor %}
-    <div class="tk-row"><span>ডেলিভারি চার্জ</span><b>{% if order.delivery_charge %}{{ order.delivery_charge|taka }}{% else %}ফ্রি{% endif %}</b></div>
-    {% if order.discount %}<div class="tk-row"><span>ছাড়</span><b>− {{ order.discount|taka }}</b></div>{% endif %}
-    <div class="tk-row tk-total"><span>মোট</span><b>{{ order.total_amount|taka }}</b></div>
-    {% if order.advance_paid %}<div class="tk-row"><span>আগে দেওয়া হয়েছে</span><b>{{ order.advance_paid|taka }}</b></div>{% endif %}
-    {% if not cancelled and order.status != 'Delivered' %}<div class="tk-row"><span>পণ্য হাতে পেয়ে দিতে হবে</span><b>{{ order.due_amount|taka }}</b></div>{% endif %}
+    <div class="tk-row"><span>{% t "ডেলিভারি চার্জ" %}</span><b>{% if order.delivery_charge %}{% sf_taka order.delivery_charge %}{% else %}{% t "ফ্রি" %}{% endif %}</b></div>
+    {% if order.discount %}<div class="tk-row"><span>{% t "ছাড়" %}</span><b>− {% sf_taka order.discount %}</b></div>{% endif %}
+    <div class="tk-row tk-total"><span>{% t "মোট" %}</span><b>{% sf_taka order.total_amount %}</b></div>
+    {% if order.advance_paid %}<div class="tk-row"><span>{% t "আগে দেওয়া হয়েছে" %}</span><b>{% sf_taka order.advance_paid %}</b></div>{% endif %}
+    {% if not cancelled and order.status != 'Delivered' %}<div class="tk-row"><span>{% t "পণ্য হাতে পেয়ে দিতে হবে" %}</span><b>{% sf_taka order.due_amount %}</b></div>{% endif %}
   </section>
 
   {% if shop.phone or shop.whatsapp_number %}
   <section class="tk-card">
-    <h2><i class="bi bi-headset"></i> দোকানে যোগাযোগ</h2>
-    {% if shop.phone %}<a class="tk-btn line" style="margin-top: 0;" href="tel:{{ shop.phone }}"><i class="bi bi-telephone-fill"></i> কল করুন {{ shop.phone }}</a>{% endif %}
-    {% if shop.whatsapp_number %}<a class="tk-btn line" style="margin-top: 10px;" href="https://wa.me/{{ shop.whatsapp_number }}?text={{ wa_text|urlencode }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp" style="color:#25D366;"></i> WhatsApp-এ লিখুন</a>{% endif %}
+    <h2><i class="bi bi-headset"></i> {% t "দোকানে যোগাযোগ" %}</h2>
+    {% if shop.phone %}<a class="tk-btn line" style="margin-top: 0;" href="tel:{{ shop.phone }}"><i class="bi bi-telephone-fill"></i> {% t "কল করুন" %} {{ shop.phone }}</a>{% endif %}
+    {% if shop.whatsapp_number %}<a class="tk-btn line" style="margin-top: 10px;" href="https://wa.me/{{ shop.whatsapp_number }}?text={{ wa_text|urlencode }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp" style="color:#25D366;"></i> {% t "WhatsApp-এ লিখুন" %}</a>{% endif %}
   </section>
   {% endif %}
 {% else %}
   <section class="tk-card">
-    <h1>আপনার অর্ডার কোথায়?</h1>
-    <p class="tk-sub">অর্ডার নম্বর আর যে মোবাইল নম্বর দিয়ে অর্ডার করেছেন সেটা দিন।</p>
+    <h1>{% t "আপনার অর্ডার কোথায়?" %}</h1>
+    <p class="tk-sub">{% t "অর্ডার নম্বর আর যে মোবাইল নম্বর দিয়ে অর্ডার করেছেন সেটা দিন।" %}</p>
     {% if error %}<div class="tk-err" role="alert">{{ error }}</div>{% endif %}
     <form method="get" autocomplete="off">
-      <label class="tk-label" for="tk-order">অর্ডার নম্বর</label>
-      <input class="tk-input" type="text" inputmode="numeric" id="tk-order" name="order" value="{{ number }}" placeholder="যেমন: 1024" required>
-      <label class="tk-label" for="tk-phone">মোবাইল নম্বর</label>
+      <label class="tk-label" for="tk-order">{% t "অর্ডার নম্বর" %}</label>
+      <input class="tk-input" type="text" inputmode="numeric" id="tk-order" name="order" value="{{ number }}" placeholder="{% t "যেমন: 1024" %}" required>
+      <label class="tk-label" for="tk-phone">{% t "মোবাইল নম্বর" %}</label>
       <input class="tk-input" type="tel" id="tk-phone" name="phone" value="{{ phone }}" placeholder="01XXXXXXXXX" required>
-      <button class="tk-btn" type="submit"><i class="bi bi-search"></i> অর্ডার খুঁজুন</button>
+      <button class="tk-btn" type="submit"><i class="bi bi-search"></i> {% t "অর্ডার খুঁজুন" %}</button>
     </form>
   </section>
 {% endif %}
-  <div class="tk-foot">© {% now "Y" %} {{ shop.name }} · {{ site.name }} দিয়ে তৈরি</div>
+  <div class="tk-foot">© {% now "Y" %} {{ shop.name }} · {% t "{site} দিয়ে তৈরি" site=site.name %}</div>
 </main>
 </body>
 </html>

@@ -6,6 +6,21 @@
 from decimal import Decimal
 
 DEFAULT_ZONES = [('ঢাকা সিটির ভিতরে', Decimal('60')), ('ঢাকার বাইরে', Decimal('120'))]
+# ইংরেজি ওয়েবসাইটের দোকানে নতুন এলাকা এই নামে (সেলার পরে বদলাতে পারে)
+DEFAULT_ZONE_NAMES_EN = {'ঢাকা সিটির ভিতরে': 'Inside Dhaka', 'ঢাকার বাইরে': 'Outside Dhaka'}
+
+
+def default_zone_name(name, shop):
+    return DEFAULT_ZONE_NAMES_EN.get(name, name) if getattr(shop, 'storefront_language', 'bn') == 'en' else name
+
+
+def match_default_zone_names(shop):
+    """ভাষা বদলালে: সেলার যে এলাকার নাম বদলায়নি (আগের ভাষার সাধারণ নাম) সেগুলো নতুন ভাষায়।"""
+    from .models import DeliveryZone
+    english = getattr(shop, 'storefront_language', 'bn') == 'en'
+    for bn_name, en_name in DEFAULT_ZONE_NAMES_EN.items():
+        old, new = (bn_name, en_name) if english else (en_name, bn_name)
+        DeliveryZone.objects.filter(shop=shop, name=old).update(name=new)
 
 
 def zones_for(shop):
@@ -15,7 +30,7 @@ def zones_for(shop):
     if zones or DeliveryZone.objects.filter(shop=shop).exists():
         return zones
     DeliveryZone.objects.bulk_create([
-        DeliveryZone(shop=shop, name=name, charge=charge, sort_order=i)
+        DeliveryZone(shop=shop, name=default_zone_name(name, shop), charge=charge, sort_order=i)
         for i, (name, charge) in enumerate(DEFAULT_ZONES)
     ])
     return list(DeliveryZone.objects.filter(shop=shop, is_active=True))

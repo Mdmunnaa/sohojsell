@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
-<title>দোকান পাওয়া যায়নি</title>
+<title>দোকান পাওয়া যায়নি · Shop not found</title>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
 {% include 'store/partials/bn_digit_fix.html' %}
 <style>
@@ -20,7 +20,8 @@
   <div style="font-size:56px;">🔍</div>
   <h2>এই ঠিকানায় কোনো দোকান নেই</h2>
   <p style="color:#6c757d;"><code>{{ subdomain }}</code> নামে কোনো দোকান খুঁজে পাওয়া যায়নি। ঠিকানার বানান আরেকবার দেখে নিন।</p>
-  <a class="btn" href="{{ main_url }}">{{ site.name }}-এ যান</a>
+  <p style="color:#6c757d;font-size:14px;">No shop was found at <code>{{ subdomain }}</code>. Please check the address.</p>
+  <a class="btn" href="{{ main_url }}">{{ site.name }}-এ যান · Go to {{ site.name }}</a>
 </div>
 </body>
 </html>

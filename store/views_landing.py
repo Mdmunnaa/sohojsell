@@ -10,7 +10,7 @@ from django.utils.text import slugify
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
-from . import reviews, seo
+from . import reviews, seo, sf_lang
 from .links import storefront_link
 from .models import LandingPage, Product, Shop
 
@@ -18,6 +18,7 @@ LOGIN = '/accounts/login/'
 MAX_PAGES = 30
 FIELDS = ('headline', 'subheadline', 'bullets', 'offer_text', 'cta_text', 'slug')
 DEFAULT_BULLETS = ['ক্যাশ অন ডেলিভারি — পণ্য হাতে পেয়ে টাকা দিন', 'সারা বাংলাদেশে ডেলিভারি', 'পণ্যে সমস্যা থাকলে ফেরত নেওয়া হয়']
+DEFAULT_CTA = 'এখনই অর্ডার করুন'
 
 
 class LandingError(ValueError):
@@ -44,21 +45,22 @@ def _clean(shop, post, exclude_id=None):
         'subheadline': ' '.join(str(post.get('subheadline', '')).split())[:200],
         'bullets': '\n'.join(line.strip() for line in str(post.get('bullets', '')).splitlines() if line.strip())[:2000],
         'offer_text': ' '.join(str(post.get('offer_text', '')).split())[:120],
-        'cta_text': (' '.join(str(post.get('cta_text', '')).split())[:40] or 'এখনই অর্ডার করুন'),
+        'cta_text': (' '.join(str(post.get('cta_text', '')).split())[:40] or sf_lang.t(DEFAULT_CTA, shop)),
         'show_reviews': post.get('show_reviews') == 'on',
         'show_stock': post.get('show_stock') == 'on',
         'is_active': post.get('is_active', 'on') == 'on',
     }
 
 
-def _form_from(page=None, post=None):
+def _form_from(page=None, post=None, shop=None):
+    """নতুন পেজের শুরুর লেখা দোকানের ওয়েবসাইটের ভাষায় (ইংরেজি দোকানে ইংরেজি)।"""
     if post is not None:
         return {key: post.get(key, '') for key in FIELDS} | {
             'product': post.get('product', ''), 'show_reviews': post.get('show_reviews') == 'on',
             'show_stock': post.get('show_stock') == 'on', 'is_active': post.get('is_active', 'on') == 'on'}
     if page is None:
-        return {'product': '', 'headline': '', 'subheadline': '', 'bullets': '\n'.join(DEFAULT_BULLETS),
-                'offer_text': '', 'cta_text': 'এখনই অর্ডার করুন', 'slug': '', 'show_reviews': True,
+        return {'product': '', 'headline': '', 'subheadline': '', 'bullets': '\n'.join(sf_lang.t(b, shop) for b in DEFAULT_BULLETS),
+                'offer_text': '', 'cta_text': sf_lang.t(DEFAULT_CTA, shop), 'slug': '', 'show_reviews': True,
                 'show_stock': True, 'is_active': True}
     return {key: getattr(page, key) for key in FIELDS} | {
         'product': page.product_id, 'show_reviews': page.show_reviews, 'show_stock': page.show_stock,
@@ -102,7 +104,7 @@ def landing_edit(request, page_id=None):
                 messages.success(request, 'ল্যান্ডিং পেজ সেভ হয়েছে।')
             return redirect('landing_list')
     else:
-        form = _form_from(page)
+        form = _form_from(page, shop=shop)
         if page is None and request.GET.get('product', '').isdigit():
             form['product'] = int(request.GET['product'])
     return render(request, 'store/landing_edit.html', {
@@ -155,5 +157,5 @@ def storefront_landing(request, shop_slug, slug):
         'payment_choices': shop_payments.checkout_choices(shop),
         'place_order_url': storefront_link(shop, 'storefront_place_order', request=request),
         'product_ld': seo.product_ld(request, shop, product, meta, product.rating),
-        'wa_text': f'আসসালামু আলাইকুম, আমি "{product.name}" অর্ডার করতে চাই।',
+        'wa_text': sf_lang.t('আসসালামু আলাইকুম, আমি "{name}" অর্ডার করতে চাই।', shop, name=product.name),
     })

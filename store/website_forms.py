@@ -76,9 +76,10 @@ class StoreProfileForm(forms.ModelForm):
 class StoreDesignForm(forms.ModelForm):
     class Meta:
         model = Shop
-        fields = ['storefront_design', 'storefront_theme', 'storefront_color', 'storefront_tagline',
+        fields = ['storefront_language', 'storefront_design', 'storefront_theme', 'storefront_color', 'storefront_tagline',
                   'announcement_text', 'show_sold_count']
         widgets = {
+            'storefront_language': forms.RadioSelect,
             'storefront_design': forms.RadioSelect,
             'storefront_theme': forms.RadioSelect,
             'storefront_color': forms.TextInput,
@@ -92,6 +93,12 @@ class StoreDesignForm(forms.ModelForm):
         self.fields['storefront_theme'].required = False
         self.fields['storefront_design'].required = False
         self.fields['storefront_color'].required = False
+        self.fields['storefront_language'].required = False
+
+    def clean_storefront_language(self):
+        """কাস্টমার-দিকের ওয়েবসাইট (আর কাস্টমারের SMS) কোন ভাষায়। পুরোনো ফর্মে না থাকলে আগেরটাই।"""
+        value = self.cleaned_data.get('storefront_language')
+        return value if value in ('bn', 'en') else (self.instance.storefront_language or 'bn')
 
     def clean_storefront_theme(self):
         from .themes import DEFAULT_THEME

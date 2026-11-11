@@ -5,6 +5,7 @@ SellPunch টেস্ট: পাবলিক পেইজ, নীতিমা�
 PayStation-এর নেটওয়ার্ক কল নকল (mock) করা হয়েছে, তাই ইন্টারনেট লাগে না।
 """
 import json
+import re
 import os
 from datetime import timedelta
 from decimal import Decimal
@@ -1195,7 +1196,7 @@ class StorefrontThemeTests(ShopTestMixin, TestCase):
         self.assertEqual(len(pale['rgb'].split(',')), 3)
         html = self.client.get('/shop/dshop/', HTTP_HOST='localhost').content.decode()
         self.assertIn('--orange: #16A34A', html)
-        self.assertIn('/* ── মিনিমাল', html)
+        self.assertIn('.shop-name-sf { letter-spacing: 0; text-transform: uppercase', html)   # মিনিমাল ডিজাইনের CSS
 
     def test_unknown_theme_rejected(self):
         _user, shop = self.make_shop(slug='themeshop2')
@@ -2247,7 +2248,7 @@ class VariantTests(ShopTestMixin, TestCase):
                 'zone': zones_for(self.shop)[0].id}),
                 content_type='application/json').json()
         self.assertIn('সাইজ/রং', place([{'id': self.shirt.id, 'qty': 1}])['error'])
-        self.assertIn('স্টকে আছে মাত্র 2টা', place([{'id': -self.xl.id, 'qty': 3}])['error'])
+        self.assertIn('স্টকে আছে মাত্র ২টা', place([{'id': -self.xl.id, 'qty': 3}])['error'])
         done = place([{'id': -self.xl.id, 'qty': 1}, {'id': -self.m.id, 'qty': 2}])
         self.assertTrue(done['success'], done)
         order = Order.objects.get(source='storefront')
@@ -3256,3 +3257,173 @@ class StorefrontOrderUiTests(TestCase):
         self.assertEqual(sorted(OrderItem.objects.filter(order__shop=self.shop).values_list('quantity', flat=True)), [2, 3])
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock_quantity, 5)
+
+
+class StorefrontEnglishTests(TestCase):
+    """
+    ইংরেজি দোকান: কাস্টমার যা যা দেখে তার কোথাও বাংলা অক্ষর থাকা চলবে না (সেলারের নিজের লেখা এখানে ইংরেজি)।
+    নতুন বাংলা লেখা যোগ করে store/sf_en.py-তে ইংরেজি দিতে ভুলে গেলে এই টেস্ট কোন পাতায় কী বাকি দেখিয়ে দেয়।
+    """
+    BN_RUN = re.compile(r'[\u0980-\u09F2\u09F4-\u09FF][\u0980-\u09FF\s,।?!\-–—:;"\'()/]*')   # ৳ (টাকার চিহ্ন) বাদে
+
+    def setUp(self):
+        from .models import Category, Coupon, LandingPage, Product, ProductReview, ProductVariant
+        user = User.objects.create_user(phone_number='01788800001', password='Test-pass-123')
+        self.shop = Shop.objects.create(
+            user=user, name='Urban Threads', phone='01788800001', address='Gulshan 1, Dhaka', slug='urban',
+            storefront_language='en', announcement_text='Free delivery over 2000 Tk', storefront_tagline='Everyday cotton',
+            return_policy='Exchange within 3 days.', privacy_policy='We only use your phone for delivery.',
+            free_delivery_min=2000, reviews_enabled=True, reviews_auto_approve=True, show_sold_count=True,
+            whatsapp_number='01788800001', facebook_page_url='https://facebook.com/urban')
+        cat = Category.objects.create(shop=self.shop, name='T-Shirts')
+        self.tee = Product.objects.create(shop=self.shop, category=cat, name='Cotton Tee', price=450, compare_price=550,
+                                          cost_price=250, stock_quantity=4, description='Soft cotton.', has_variants=True)
+        ProductVariant.objects.create(product=self.tee, name='M', stock_quantity=1)
+        ProductVariant.objects.create(product=self.tee, name='L', stock_quantity=3)
+        self.cap = Product.objects.create(shop=self.shop, category=cat, name='Black Cap', price=350, stock_quantity=20)
+        self.gone = Product.objects.create(shop=self.shop, category=cat, name='Old Jacket', price=900, stock_quantity=0)
+        ProductReview.objects.create(shop=self.shop, product=self.cap, name='Rafi', phone='01811112222', rating=5,
+                                     text='Great cap', verified=True, is_approved=True)
+        Coupon.objects.create(shop=self.shop, code='SAVE10', kind=Coupon.PERCENT, value=10, min_order=1000)
+        self.landing = LandingPage.objects.create(shop=self.shop, product=self.cap, slug='cap', headline='The cap',
+                                                  bullets='Cash on delivery\nFast shipping', cta_text='Order now')
+
+    # ---------------------------------------------------------------- সাহায্যকারী
+    def _bangla(self, text):
+        text = re.sub(r'<!--.*?-->', ' ', text, flags=re.S)                      # HTML মন্তব্য কাস্টমার দেখে না
+        text = re.sub(r'/\*.*?\*/', ' ', text, flags=re.S)
+        text = re.sub(r'(?m)^\s*//.*$|\s//\s.*$', ' ', text)                     # JS মন্তব্য
+        return sorted({m.group(0).strip() for m in self.BN_RUN.finditer(text)} - {''})
+
+    def _check(self, label, text, found):
+        runs = self._bangla(text)
+        if runs:
+            found.append(f'{label}: ' + ' | '.join(runs[:40]))
+
+    def _post_json(self, url, data):
+        return self.client.post(url, json.dumps(data), content_type='application/json')
+
+    def _order(self, **extra):
+        from store import delivery
+        zone = delivery.zones_for(self.shop)[0].id
+        data = {'cart': [{'id': self.cap.id, 'qty': 1}], 'name': 'Nadia', 'phone': '01812345678',
+                'address': 'Banani, Dhaka', 'payment': 'cod', 'zone': zone} | extra
+        return self._post_json(reverse('storefront_place_order', args=[self.shop.slug]), data)
+
+    # ---------------------------------------------------------------- টেস্ট
+    def test_every_customer_page_is_english(self):
+        from store.models import StorefrontOrder
+        slug, found = self.shop.slug, []
+        pages = [
+            ('home', reverse('storefront_home', args=[slug])),
+            ('category', reverse('storefront_category', args=[slug, self.tee.category_id])),
+            ('search', reverse('storefront_home', args=[slug]) + '?q=zzz'),
+            ('product variants', reverse('storefront_product_detail', args=[slug, self.tee.id])),
+            ('product', reverse('storefront_product_detail', args=[slug, self.cap.id])),
+            ('product out of stock', reverse('storefront_product_detail', args=[slug, self.gone.id])),
+            ('landing', reverse('storefront_landing', args=[slug, 'cap'])),
+            ('track', reverse('storefront_track', args=[slug])),
+            ('track not found', reverse('storefront_track', args=[slug]) + '?order=999&phone=01812345678'),
+        ]
+        for label, url in pages:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200, label)
+            self._check(label, response.content.decode(), found)
+            self.assertIn('lang="en"', response.content.decode(), label)
+
+        response = self._order()
+        self.assertTrue(response.json()['success'], response.json())
+        sf = StorefrontOrder.objects.get(shop=self.shop)
+        self._check('order success', self.client.get(reverse('storefront_order_success', args=[slug, sf.id])).content.decode(), found)
+        from store import order_flow
+        for status in ('Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'):
+            order_flow.set_status(sf.order, status) if status != 'Pending' else None
+            code = order_flow.track_code(sf.order)
+            self._check(f'tracking {status}', self.client.get(reverse('storefront_track_order', args=[slug, code])).content.decode(), found)
+
+        # দোকান বন্ধ থাকলে
+        Shop.objects.filter(pk=self.shop.pk).update(is_locked=True, valid_until=timezone.localdate() - timedelta(days=30))
+        self._check('offline', self.client.get(reverse('storefront_home', args=[slug])).content.decode(), found)
+        self.assertFalse(found, '\n' + '\n'.join(found))
+
+    def test_messages_are_english(self):
+        slug, found = self.shop.slug, []
+        coupon = reverse('storefront_coupon_check', args=[slug])
+        small, big = [{'id': self.cap.id, 'qty': 1}], [{'id': self.cap.id, 'qty': 3}]
+        for label, data in (('coupon empty', {'code': '', 'cart': small}), ('coupon wrong', {'code': 'NOPE', 'cart': small}),
+                            ('coupon min', {'code': 'SAVE10', 'cart': small}), ('coupon ok', {'code': 'SAVE10', 'cart': big})):
+            body = self._post_json(coupon, data).json()
+            self.assertEqual(body['ok'], label == 'coupon ok', (label, body))
+            self._check(label, json.dumps(body, ensure_ascii=False), found)
+        for label, extra in (('no name', {'name': ''}), ('bad phone', {'phone': '123'}), ('no zone', {'zone': None}),
+                             ('empty cart', {'cart': []}), ('too many', {'cart': [{'id': self.cap.id, 'qty': 99}]}),
+                             ('no variant', {'cart': [{'id': self.tee.id, 'qty': 1}]}), ('bad payment', {'payment': 'x'})):
+            body = self._order(**extra).json()
+            self.assertFalse(body['success'], label)
+            self._check(f'order {label}', body['error'], found)
+        review = reverse('storefront_review', args=[slug, self.cap.id])
+        for label, data in (('review no name', {'name': '', 'phone': '01812345678', 'rating': 5}),
+                            ('review bad phone', {'name': 'A', 'phone': '1', 'rating': 5}),
+                            ('review no stars', {'name': 'A', 'phone': '01812345678', 'rating': 0}),
+                            ('review ok', {'name': 'A', 'phone': '01812345679', 'rating': 5, 'text': 'Nice'})):
+            response = self.client.post(review, data, follow=True)       # বার্তাটা ফিরে প্রোডাক্ট পেইজে দেখায়
+            self._check(label, response.content.decode(), found)
+        self.assertFalse(found, '\n' + '\n'.join(found))
+
+    def test_every_template_text_has_english(self):
+        """টেমপ্লেটে {% t "..." %} দিয়ে নতুন বাংলা লেখা যোগ হলে store/sf_en.py-তে ইংরেজিও থাকতে হবে।"""
+        import unicodedata
+        from pathlib import Path
+        from store.sf_lang import EN_TEXT
+        tag = re.compile(r"""\{%\s*(?:t|tjs)\s+(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')""")
+        missing = []
+        for path in sorted((Path(__file__).parent / 'templates' / 'store' / 'storefront').glob('*.html')):
+            for match in tag.finditer(path.read_text(encoding='utf-8')):
+                text = unicodedata.normalize('NFC', match.group(1) if match.group(1) is not None else match.group(2))
+                if re.search('[\u0980-\u09FF]', text) and text not in EN_TEXT:
+                    missing.append(f'{path.name}: {text}')
+        self.assertFalse(missing, '\nstore/sf_en.py-তে ইংরেজি নেই:\n' + '\n'.join(missing))
+
+    def test_customer_sms_are_english(self):
+        from store import sms
+        from store.models import Customer
+        customer = Customer.objects.create(shop=self.shop, name='Nadia Islam', phone='01812345678', address='Dhaka')
+        order = Order.objects.create(shop=self.shop, customer=customer, source='storefront', total_amount=450,
+                                     delivery_charge=60, advance_paid=450)
+        texts = [sms.order_received_text(self.shop, order), sms.due_reminder_text(self.shop, 'Nadia Islam', 1200)]
+        texts += [sms.status_text(self.shop, order, status) for status in ('Confirmed', 'Shipped', 'Delivered')]
+        if hasattr(sms, 'payment_received_text'):
+            texts.append(sms.payment_received_text(self.shop, order, 450))
+        for text in texts:
+            self.assertFalse(self._bangla(text), text)
+            self.assertEqual(sms.segments(text), 1, text)          # ইংরেজি SMS এক ভাগে (১৬০ অক্ষর)
+
+    def test_language_switch_in_website_settings(self):
+        """ওয়েবসাইট → ডিজাইনে ভাষা বদলালে: দোকানের ভাষা বদলায়, সাধারণ ডেলিভারি এলাকার নামও।"""
+        from store import delivery
+        from store.models import DeliveryZone
+        Shop.objects.filter(pk=self.shop.pk).update(storefront_language='bn')
+        self.shop.refresh_from_db()
+        delivery.zones_for(self.shop)
+        DeliveryZone.objects.create(shop=self.shop, name='সাভার', charge=80)
+        self.client.force_login(self.shop.user)
+        design = {'section': 'design', 'storefront_design': 'classic', 'storefront_theme': 'orange', 'color_mode': 'theme'}
+        response = self.client.post(reverse('website_settings'), design | {'storefront_language': 'en'}, follow=True)
+        self.assertContains(response, 'ওয়েবসাইট এখন ইংরেজিতে')                    # সেলারের দিক বাংলাই
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.storefront_language, 'en')
+        names = set(DeliveryZone.objects.filter(shop=self.shop).values_list('name', flat=True))
+        self.assertEqual(names, {'Inside Dhaka', 'Outside Dhaka', 'সাভার'})      # সেলারের নিজের নাম যেমন ছিল
+        self.client.post(reverse('website_settings'), design | {'storefront_language': 'bn'})
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.storefront_language, 'bn')
+        self.assertIn('ঢাকা সিটির ভিতরে', set(DeliveryZone.objects.filter(shop=self.shop).values_list('name', flat=True)))
+        self.client.post(reverse('website_settings'), design)                    # ভাষা না পাঠালে আগেরটাই থাকে
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.storefront_language, 'bn')
+
+    def test_bangla_shop_unchanged(self):
+        Shop.objects.filter(pk=self.shop.pk).update(storefront_language='bn')
+        html = self.client.get(reverse('storefront_home', args=[self.shop.slug])).content.decode()
+        self.assertIn('lang="bn"', html)
+        self.assertIn('সব প্রোডাক্ট', html)

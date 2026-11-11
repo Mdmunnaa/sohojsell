@@ -21,25 +21,27 @@ def has_bought(shop, phone, product):
 
 def submit(shop, product, *, name, phone, rating, text, image=None):
     from accounts.forms import normalize_bd_mobile
+
+    from .sf_lang import t           # কাস্টমার দেখে — দোকানের ভাষায়
     if not shop.reviews_enabled:
-        raise ReviewError('এই দোকানে এখন রিভিউ নেওয়া হচ্ছে না।')
+        raise ReviewError(t('এই দোকানে এখন রিভিউ নেওয়া হচ্ছে না।', shop))
     name = ' '.join(str(name or '').split())[:80]
     if len(name) < 2:
-        raise ReviewError('আপনার নাম লিখুন।')
+        raise ReviewError(t('আপনার নাম লিখুন।', shop))
     phone = normalize_bd_mobile(str(phone or ''))
     if not phone:
-        raise ReviewError('সঠিক মোবাইল নম্বর দিন (০১ দিয়ে শুরু, ১১ সংখ্যা)।')
+        raise ReviewError(t('সঠিক মোবাইল নম্বর দিন (০১ দিয়ে শুরু, ১১ সংখ্যা)।', shop))
     try:
         rating = int(str(rating or '').translate(BN_TO_EN))
     except ValueError:
         rating = 0
     if not 1 <= rating <= 5:
-        raise ReviewError('১ থেকে ৫ তারা দিন।')
+        raise ReviewError(t('১ থেকে ৫ তারা দিন।', shop))
     text = ' '.join(str(text or '').split())[:1000]
     if ProductReview.objects.filter(shop=shop, product=product, phone=phone).exists():
-        raise ReviewError('এই নম্বর থেকে এই প্রোডাক্টে আগেই রিভিউ দেওয়া হয়েছে।')
+        raise ReviewError(t('এই নম্বর থেকে এই প্রোডাক্টে আগেই রিভিউ দেওয়া হয়েছে।', shop))
     if image is not None and image.size > MAX_IMAGE_BYTES:
-        raise ReviewError('ছবিটা ৫ MB-এর ছোট হতে হবে।')
+        raise ReviewError(t('ছবিটা ৫ MB-এর ছোট হতে হবে।', shop))
     review = ProductReview(shop=shop, product=product, name=name, phone=phone, rating=rating, text=text,
                            verified=has_bought(shop, phone, product), is_approved=shop.reviews_auto_approve)
     if image is not None:

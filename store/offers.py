@@ -106,18 +106,19 @@ def status_of(coupon, today=None):
     return 'live', 'চালু'
 
 
-def describe(coupon):
-    from .dashboard import bn_num
+def describe(coupon, lang='bn'):
+    """কুপনের এক লাইনের বিবরণ। lang: সেলারের পাতায় বাংলা; চেকআউটে দোকানের ভাষা (দোকান দিলেও চলে)।"""
+    from .sf_lang import num, t
     if coupon.kind == Coupon.FREE_DELIVERY:
-        text = 'ফ্রি ডেলিভারি'
+        text = t('ফ্রি ডেলিভারি', lang)
     elif coupon.kind == Coupon.AMOUNT:
-        text = f'৳{bn_num(f"{coupon.value:,.0f}")} ছাড়'
+        text = t('{amount} ছাড়', lang, amount='৳' + num(f'{coupon.value:,.0f}', lang))
     else:
-        text = f'{bn_num(f"{coupon.value.normalize():f}")}% ছাড়'
+        text = t('{p}% ছাড়', lang, p=num(f'{coupon.value.normalize():f}', lang))
         if coupon.max_discount:
-            text += f' (সর্বোচ্চ ৳{bn_num(f"{coupon.max_discount:,.0f}")})'
+            text += t(' (সর্বোচ্চ {amount})', lang, amount='৳' + num(f'{coupon.max_discount:,.0f}', lang))
     if coupon.min_order:
-        text += f' · কমপক্ষে ৳{bn_num(f"{coupon.min_order:,.0f}")} অর্ডারে'
+        text += t(' · কমপক্ষে {amount} অর্ডারে', lang, amount='৳' + num(f'{coupon.min_order:,.0f}', lang))
     return text
 
 
@@ -131,18 +132,19 @@ def find(shop, code, subtotal, delivery_charge, today=None):
         return None, ZERO, ZERO
     coupon = Coupon.objects.filter(shop=shop, code=code).first()
     today = today or timezone.localdate()
+    from .sf_lang import num, t        # কাস্টমার দেখে — দোকানের ভাষায়
     if coupon is None or not coupon.is_active:
-        raise CouponError('এই কুপন কোডটা ঠিক নেই।')
+        raise CouponError(t('এই কুপন কোডটা ঠিক নেই।', shop))
     if coupon.starts_on and coupon.starts_on > today:
-        raise CouponError('এই কুপন এখনো চালু হয়নি।')
+        raise CouponError(t('এই কুপন এখনো চালু হয়নি।', shop))
     if coupon.ends_on and coupon.ends_on < today:
-        raise CouponError('এই কুপনের মেয়াদ শেষ।')
+        raise CouponError(t('এই কুপনের মেয়াদ শেষ।', shop))
     if coupon.usage_limit is not None and coupon.used_count >= coupon.usage_limit:
-        raise CouponError('এই কুপন আর ব্যবহার করা যাচ্ছে না।')
+        raise CouponError(t('এই কুপন আর ব্যবহার করা যাচ্ছে না।', shop))
     subtotal, delivery_charge = Decimal(subtotal), Decimal(delivery_charge or 0)
     if subtotal < coupon.min_order:
-        from .dashboard import bn_num
-        raise CouponError(f'এই কুপন কমপক্ষে ৳{bn_num(f"{coupon.min_order:,.0f}")} টাকার অর্ডারে চলে।')
+        raise CouponError(t('এই কুপন কমপক্ষে {amount} টাকার অর্ডারে চলে।', shop,
+                            amount='৳' + num(f'{coupon.min_order:,.0f}', shop)))
     if coupon.kind == Coupon.FREE_DELIVERY:
         return coupon, ZERO, delivery_charge
     if coupon.kind == Coupon.AMOUNT:

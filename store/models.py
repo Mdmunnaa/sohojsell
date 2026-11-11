@@ -118,6 +118,9 @@ class Shop(models.Model):
     valid_until = models.DateField(null=True, blank=True, help_text='Plan valid until this date')
     is_locked = models.BooleanField(default=False, help_text='Account locked due to expired subscription')
     is_paid = models.BooleanField(default=False)
+    # কাস্টমার যা দেখে (ওয়েবসাইট, চেকআউট, ট্র্যাকিং, কাস্টমারের SMS) সেটা কোন ভাষায় — store/sf_lang.py
+    storefront_language = models.CharField(max_length=2, default='bn',
+                                           choices=[('bn', 'বাংলা'), ('en', 'English')])
     # লাইভ ডেমো দোকান (store/demo.py): যে কেউ /demo/ থেকে ঢুকে দেখতে পারে, রোজ নিজে থেকে আগের মতো হয়
     is_demo = models.BooleanField(default=False, editable=False)
     demo_reset_at = models.DateTimeField(null=True, blank=True, editable=False)

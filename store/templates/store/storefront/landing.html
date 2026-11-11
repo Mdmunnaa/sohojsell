@@ -1,6 +1,6 @@
-{% load store_links bangla %}
+{% load store_links bangla sf_text %}
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="{% sf_lang_code %}">
 <head>
 {% include 'store/storefront/_head.html' %}
 <style>
@@ -51,7 +51,7 @@ img { max-width: 100%; }
 .rv-name { font-weight: 800; color: var(--dark); font-size: 14px; }
 .rv-verified { font-size: 11px; font-weight: 800; color: #166534; background: #DCFCE7; border-radius: 999px; padding: 2px 8px; }
 .rv-text { font-size: 14px; line-height: 1.7; }
-/* অর্ডার ফর্ম */
+{# অর্ডার ফর্ম #}
 .lp-form { scroll-margin-top: 70px; }
 .lp-form .f-label { display: block; font-size: 13px; font-weight: 800; color: var(--dark); margin: 12px 0 6px; }
 .lp-input { width: 100%; border: 1.5px solid var(--border); background: #F8FAFC; border-radius: 12px; padding: 12px 14px; font-size: 16px; font-weight: 600; color: var(--dark); min-height: 48px; font-family: inherit; }
@@ -97,7 +97,7 @@ textarea.lp-input { min-height: 72px; resize: vertical; }
 <body>
 <header class="lp-top">
   <div class="lp-top-in">
-    <a class="lp-logo" href="{% shop_url 'storefront_home' shop %}" aria-label="{{ shop.name }} — হোম">{% if shop.logo %}<img src="{{ shop.logo.url }}" alt="">{% else %}{{ shop.name|slice:":1"|upper }}{% endif %}</a>
+    <a class="lp-logo" href="{% shop_url 'storefront_home' shop %}" aria-label="{{ shop.name }} — {% t "হোম" %}">{% if shop.logo %}<img src="{{ shop.logo.url }}" alt="">{% else %}{{ shop.name|slice:":1"|upper }}{% endif %}</a>
     <a class="lp-shop" href="{% shop_url 'storefront_home' shop %}">{{ shop.name }}</a>
     {% if shop.phone %}<a class="lp-call" href="tel:{{ shop.phone }}"><i class="bi bi-telephone-fill"></i> {{ shop.phone }}</a>{% endif %}
   </div>
@@ -110,16 +110,16 @@ textarea.lp-input { min-height: 72px; resize: vertical; }
       {% if page.offer_text %}<div class="lp-offer"><i class="bi bi-lightning-charge-fill"></i> {{ page.offer_text }}</div>{% endif %}
       <h1 class="lp-h1">{{ page.headline }}</h1>
       {% if page.subheadline %}<p class="lp-sub">{{ page.subheadline }}</p>{% endif %}
-      {% if product.rating %}<div class="lp-rating">{% include 'store/storefront/_stars.html' with avg=product.rating.avg %} {{ product.rating.avg|bn }} <small>({{ product.rating.count|bn }}টা রিভিউ)</small></div>{% endif %}
-      <div class="lp-price"><b id="lp-price">{{ product.price|taka }}</b>{% if product.discount_percent %}<s>{{ product.compare_price|taka }}</s><span class="save">{{ product.discount_percent|bn }}% ছাড়</span>{% endif %}</div>
+      {% if product.rating %}<div class="lp-rating">{% include 'store/storefront/_stars.html' with avg=product.rating.avg %} {% num product.rating.avg %} <small>({% t "{n}টা রিভিউ" n=product.rating.count %})</small></div>{% endif %}
+      <div class="lp-price"><b id="lp-price">{% sf_taka product.price %}</b>{% if product.discount_percent %}<s>{% sf_taka product.compare_price %}</s><span class="save">{% t "{p}% ছাড়" p=product.discount_percent %}</span>{% endif %}</div>
       {% if bullets %}<ul class="lp-bullets">{% for b in bullets %}<li><i class="bi bi-check-circle-fill"></i><span>{{ b }}</span></li>{% endfor %}</ul>{% endif %}
-      {% if page.show_stock %}{% if product.stock_quantity <= 0 %}<div class="lp-stock">এখন স্টকে নেই — কল দিয়ে জেনে নিন</div>{% elif product.stock_quantity <= 10 %}<div class="lp-stock"><i class="bi bi-hourglass-split"></i> মাত্র {{ product.stock_quantity|bn }}টা বাকি আছে</div>{% else %}<div class="lp-stock ok"><i class="bi bi-check2-circle"></i> স্টকে আছে, আজই পাঠানো হবে</div>{% endif %}{% endif %}
+      {% if page.show_stock %}{% if product.stock_quantity <= 0 %}<div class="lp-stock">{% t "এখন স্টকে নেই — কল দিয়ে জেনে নিন" %}</div>{% elif product.stock_quantity <= 10 %}<div class="lp-stock"><i class="bi bi-hourglass-split"></i> {% t "মাত্র {n}টা বাকি আছে" n=product.stock_quantity %}</div>{% else %}<div class="lp-stock ok"><i class="bi bi-check2-circle"></i> {% t "স্টকে আছে, আজই পাঠানো হবে" %}</div>{% endif %}{% endif %}
       <a class="lp-cta" href="#order" onclick="goOrder(event)"><i class="bi bi-bag-check-fill"></i> {{ page.cta_text }}</a>
-      {% if shop.whatsapp_number %}<a class="lp-wa" href="https://wa.me/{{ shop.whatsapp_number }}?text={{ wa_text|urlencode }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp-এ অর্ডার করুন</a>{% endif %}
+      {% if shop.whatsapp_number %}<a class="lp-wa" href="https://wa.me/{{ shop.whatsapp_number }}?text={{ wa_text|urlencode }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> {% t "WhatsApp-এ অর্ডার করুন" %}</a>{% endif %}
       <div class="lp-trust">
-        <div><i class="bi bi-cash-coin"></i>ক্যাশ অন ডেলিভারি</div>
-        <div><i class="bi bi-truck"></i>সারা দেশে ডেলিভারি</div>
-        <div><i class="bi bi-shield-check"></i>আসল পণ্যের নিশ্চয়তা</div>
+        <div><i class="bi bi-cash-coin"></i>{% t "ক্যাশ অন ডেলিভারি" %}</div>
+        <div><i class="bi bi-truck"></i>{% t "সারা দেশে ডেলিভারি" %}</div>
+        <div><i class="bi bi-shield-check"></i>{% t "আসল পণ্যের নিশ্চয়তা" %}</div>
       </div>
     </div>
   </section>
@@ -127,64 +127,64 @@ textarea.lp-input { min-height: 72px; resize: vertical; }
   <div class="lp-main">
     <div>
       {% if product.description %}
-      <section class="lp-card"><h2><i class="bi bi-info-circle-fill"></i> বিস্তারিত</h2><div class="lp-desc">{{ product.description }}</div></section>
+      <section class="lp-card"><h2><i class="bi bi-info-circle-fill"></i> {% t "বিস্তারিত" %}</h2><div class="lp-desc">{{ product.description }}</div></section>
       {% endif %}
       {% if review_list %}
       <section class="lp-card">
-        <h2><i class="bi bi-star-fill"></i> কাস্টমাররা যা বলছেন</h2>
+        <h2><i class="bi bi-star-fill"></i> {% t "কাস্টমাররা যা বলছেন" %}</h2>
         {% for r in review_list %}
-        <div class="rv-item"><div class="rv-head">{% include 'store/storefront/_stars.html' with avg=r.rating %}<span class="rv-name">{{ r.name }}</span>{% if r.verified %}<span class="rv-verified"><i class="bi bi-patch-check-fill"></i> যাচাই করা ক্রেতা</span>{% endif %}</div>{% if r.text %}<div class="rv-text">{{ r.text }}</div>{% endif %}</div>
+        <div class="rv-item"><div class="rv-head">{% include 'store/storefront/_stars.html' with avg=r.rating %}<span class="rv-name">{{ r.name }}</span>{% if r.verified %}<span class="rv-verified"><i class="bi bi-patch-check-fill"></i> {% t "যাচাই করা ক্রেতা" %}</span>{% endif %}</div>{% if r.text %}<div class="rv-text">{{ r.text }}</div>{% endif %}</div>
         {% endfor %}
       </section>
       {% endif %}
     </div>
 
     <section class="lp-card lp-form" id="order">
-      <h2><i class="bi bi-bag-check-fill"></i> অর্ডার করতে ফর্মটা পূরণ করুন</h2>
-      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">নাম, মোবাইল নম্বর আর ঠিকানা দিলেই হবে। পণ্য হাতে পেয়ে টাকা দেবেন।</p>
+      <h2><i class="bi bi-bag-check-fill"></i> {% t "অর্ডার করতে ফর্মটা পূরণ করুন" %}</h2>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">{% t "নাম, মোবাইল নম্বর আর ঠিকানা দিলেই হবে। পণ্য হাতে পেয়ে টাকা দেবেন।" %}</p>
       {% if variant_list %}
-      <span class="f-label">সাইজ / রং</span>
+      <span class="f-label">{% t "সাইজ / রং" %}</span>
       <div class="lp-chips" id="lp-variants">{% for v in variant_list %}<button type="button" class="lp-chip{% if v.stock <= 0 %} out{% endif %}" data-id="{{ v.id }}" data-price="{{ v.price }}" data-stock="{{ v.stock }}"{% if v.stock <= 0 %} disabled{% endif %}>{{ v.name }}</button>{% endfor %}</div>
       {% endif %}
-      <span class="f-label">পরিমাণ</span>
-      <div class="lp-qty"><button type="button" onclick="setQty(-1)" aria-label="কমান">−</button><span id="lp-qty">১</span><button type="button" onclick="setQty(1)" aria-label="বাড়ান">+</button></div>
-      <label class="f-label" for="lp-name">আপনার নাম</label>
-      <input class="lp-input" id="lp-name" type="text" placeholder="পুরো নাম" autocomplete="name" maxlength="150">
-      <label class="f-label" for="lp-phone">মোবাইল নম্বর</label>
+      <span class="f-label">{% t "পরিমাণ" %}</span>
+      <div class="lp-qty"><button type="button" onclick="setQty(-1)" aria-label="{% t "কমান" %}">−</button><span id="lp-qty">{% num 1 %}</span><button type="button" onclick="setQty(1)" aria-label="{% t "বাড়ান" %}">+</button></div>
+      <label class="f-label" for="lp-name">{% t "আপনার নাম" %}</label>
+      <input class="lp-input" id="lp-name" type="text" placeholder="{% t "পুরো নাম" %}" autocomplete="name" maxlength="150">
+      <label class="f-label" for="lp-phone">{% t "মোবাইল নম্বর" %}</label>
       <input class="lp-input" id="lp-phone" type="tel" placeholder="01XXXXXXXXX" autocomplete="tel" inputmode="tel" maxlength="20">
-      <label class="f-label" for="lp-address">পুরো ঠিকানা</label>
-      <textarea class="lp-input" id="lp-address" placeholder="বাসা/রোড, এলাকা, থানা, জেলা" autocomplete="street-address" maxlength="500"></textarea>
+      <label class="f-label" for="lp-address">{% t "পুরো ঠিকানা" %}</label>
+      <textarea class="lp-input" id="lp-address" placeholder="{% t "বাসা/রোড, এলাকা, থানা, জেলা" %}" autocomplete="street-address" maxlength="500"></textarea>
       {% if zones %}
-      <span class="f-label">ডেলিভারি এলাকা</span>
-      <div class="lp-opts">{% for z in zones %}<label class="lp-opt"><input type="radio" name="lp-zone" value="{{ z.id }}" data-charge="{{ z.charge|floatformat:0 }}"{% if forloop.first %} checked{% endif %} onchange="renderSum()"><b>{{ z.name }}</b><span class="pr">{{ z.charge|taka }}</span></label>{% endfor %}</div>
-      {% if free_delivery_min %}<div style="font-size:12.5px;color:#166534;font-weight:700;margin-top:6px;"><i class="bi bi-gift-fill"></i> {{ free_delivery_min|taka }} বা তার বেশি অর্ডারে ডেলিভারি ফ্রি</div>{% endif %}
+      <span class="f-label">{% t "ডেলিভারি এলাকা" %}</span>
+      <div class="lp-opts">{% for z in zones %}<label class="lp-opt"><input type="radio" name="lp-zone" value="{{ z.id }}" data-charge="{{ z.charge|floatformat:0 }}"{% if forloop.first %} checked{% endif %} onchange="renderSum()"><b>{{ z.name }}</b><span class="pr">{% sf_taka z.charge %}</span></label>{% endfor %}</div>
+      {% if free_delivery_min %}<div style="font-size:12.5px;color:#166534;font-weight:700;margin-top:6px;"><i class="bi bi-gift-fill"></i> {% t "ডেলিভারি ফ্রি:" %} {% sf_taka free_delivery_min %} {% t "বা তার বেশি অর্ডারে" %}</div>{% endif %}
       {% endif %}
       {% if payment_choices|length > 1 %}
-      <span class="f-label">পেমেন্ট</span>
-      <div class="lp-opts">{% for choice in payment_choices %}<label class="lp-opt"><input type="radio" name="lp-pay" value="{{ choice }}"{% if forloop.first %} checked{% endif %}><span><b>{% if choice == 'cod' %}ক্যাশ অন ডেলিভারি{% elif choice == 'advance' %}ডেলিভারি চার্জ এখন, বাকিটা হাতে পেয়ে{% else %}পুরো টাকা এখন অনলাইনে{% endif %}</b><small>{% if choice == 'cod' %}পণ্য হাতে পেয়ে টাকা দিন{% else %}bKash, Nagad, Rocket বা কার্ডে{% endif %}</small></span></label>{% endfor %}</div>
+      <span class="f-label">{% t "পেমেন্ট" %}</span>
+      <div class="lp-opts">{% for choice in payment_choices %}<label class="lp-opt"><input type="radio" name="lp-pay" value="{{ choice }}"{% if forloop.first %} checked{% endif %}><span><b>{% if choice == 'cod' %}{% t "ক্যাশ অন ডেলিভারি" %}{% elif choice == 'advance' %}{% t "ডেলিভারি চার্জ এখন, বাকিটা পণ্য হাতে পেয়ে" %}{% else %}{% t "পুরো টাকা এখন অনলাইনে" %}{% endif %}</b><small>{% if choice == 'cod' %}{% t "পণ্য হাতে পেয়ে টাকা দিন" %}{% else %}{% t "bKash, Nagad, Rocket বা কার্ডে" %}{% endif %}</small></span></label>{% endfor %}</div>
       {% else %}<input type="hidden" name="lp-pay" value="{{ payment_choices.0 }}" checked>{% endif %}
       <div class="lp-sum">
-        <div class="row2"><span>পণ্যের দাম</span><span id="s-sub">৳০</span></div>
-        <div class="row2"><span>ডেলিভারি চার্জ</span><span id="s-del">৳০</span></div>
-        <div class="row2 total"><span>মোট</span><span id="s-total">৳০</span></div>
+        <div class="row2"><span>{% t "পণ্যের দাম" %}</span><span id="s-sub">৳{% num 0 %}</span></div>
+        <div class="row2"><span>{% t "ডেলিভারি চার্জ" %}</span><span id="s-del">৳{% num 0 %}</span></div>
+        <div class="row2 total"><span>{% t "মোট" %}</span><span id="s-total">৳{% num 0 %}</span></div>
       </div>
       <div class="lp-err" id="lp-err" role="alert"></div>
       <button class="lp-cta" type="button" id="lp-submit" onclick="placeOrder()" style="margin-top:14px;"><i class="bi bi-check-circle-fill"></i> <span>{{ page.cta_text }}</span></button>
-      <div style="text-align:center;font-size:12px;color:var(--muted);margin-top:8px;"><i class="bi bi-lock-fill"></i> আপনার তথ্য শুধু ডেলিভারির কাজে ব্যবহার হবে</div>
+      <div style="text-align:center;font-size:12px;color:var(--muted);margin-top:8px;"><i class="bi bi-lock-fill"></i> {% t "আপনার তথ্য শুধু ডেলিভারির কাজে ব্যবহার হবে" %}</div>
     </section>
   </div>
 
-  <div class="lp-foot">© {% now "Y" %} {{ shop.name }} · <a href="{% shop_url 'storefront_home' shop %}">পুরো দোকান দেখুন</a> · <a href="{% shop_url 'storefront_track' shop %}">অর্ডার ট্র্যাক করুন</a></div>
+  <div class="lp-foot">© {% now "Y" %} {{ shop.name }} · <a href="{% shop_url 'storefront_home' shop %}">{% t "পুরো দোকান দেখুন" %}</a> · <a href="{% shop_url 'storefront_track' shop %}">{% t "অর্ডার ট্র্যাক করুন" %}</a></div>
 </main>
 
-<div class="lp-bar"><b id="bar-price">{{ product.price|taka }}</b><a class="lp-cta" href="#order" onclick="goOrder(event)"><i class="bi bi-bag-check-fill"></i> {{ page.cta_text }}</a></div>
+<div class="lp-bar"><b id="bar-price">{% sf_taka product.price %}</b><a class="lp-cta" href="#order" onclick="goOrder(event)"><i class="bi bi-bag-check-fill"></i> {{ page.cta_text }}</a></div>
 
 <script>
 const PRODUCT = { id: {{ product.id }}, price: {{ product.price }}, stock: {{ product.stock_quantity }}, hasVariants: {% if variant_list %}true{% else %}false{% endif %} };
 const FREE_MIN = {% if free_delivery_min %}{{ free_delivery_min|floatformat:0 }}{% else %}null{% endif %};
 const PLACE_URL = '{{ place_order_url }}', LANDING = '{{ page.slug|escapejs }}';
 let picked = null, qty = 1;
-const toBn = s => String(s).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+const toBn = s => sfNum(s);
 const money = n => '৳' + toBn(Math.round(n).toLocaleString('en-IN'));
 function goOrder(e) { e.preventDefault(); document.getElementById('order').scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => (picked || !PRODUCT.hasVariants ? document.getElementById('lp-name') : document.querySelector('.lp-chip:not(.out)')).focus(), 500); }
 function current() { return picked ? { id: picked.id, price: picked.price, stock: picked.stock } : PRODUCT; }
@@ -194,7 +194,7 @@ function renderSum() {
   let del = zone ? Number(zone.dataset.charge) : 0;
   if (FREE_MIN !== null && sub >= FREE_MIN) del = 0;
   document.getElementById('s-sub').textContent = money(sub);
-  document.getElementById('s-del').textContent = del ? money(del) : 'ফ্রি';
+  document.getElementById('s-del').textContent = del ? money(del) : '{% tjs "ফ্রি" %}';
   document.getElementById('s-total').textContent = money(sub + del);
   document.getElementById('lp-price').textContent = money(c.price);
   document.getElementById('bar-price').textContent = money(c.price);
@@ -208,19 +208,19 @@ function fail(text) { const e = document.getElementById('lp-err'); e.textContent
 async function placeOrder() {
   const name = document.getElementById('lp-name').value.trim(), phone = document.getElementById('lp-phone').value.trim(), address = document.getElementById('lp-address').value.trim();
   document.getElementById('lp-err').classList.remove('show');
-  if (PRODUCT.hasVariants && !picked) return fail('আগে সাইজ/রং বেছে নিন।');
-  if (name.length < 2) return fail('আপনার নাম লিখুন।');
-  if (phone.replace(/\D/g, '').length < 11) return fail('সঠিক মোবাইল নম্বর দিন (১১ সংখ্যা)।');
-  if (address.length < 5) return fail('পুরো ঠিকানা লিখুন, যাতে ডেলিভারি ম্যান খুঁজে পায়।');
+  if (PRODUCT.hasVariants && !picked) return fail('{% tjs "আগে সাইজ/রং বেছে নিন।" %}');
+  if (name.length < 2) return fail('{% tjs "আপনার নাম লিখুন।" %}');
+  if (phone.replace(/\D/g, '').length < 11) return fail('{% tjs "সঠিক মোবাইল নম্বর দিন (১১ সংখ্যা)।" %}');
+  if (address.length < 5) return fail('{% tjs "পুরো ঠিকানা লিখুন, যাতে ডেলিভারি ম্যান খুঁজে পায়।" %}');
   const zone = document.querySelector('input[name="lp-zone"]:checked'), pay = document.querySelector('input[name="lp-pay"]:checked');
-  const btn = document.getElementById('lp-submit'); btn.disabled = true; btn.querySelector('span').textContent = 'অর্ডার হচ্ছে...';
+  const btn = document.getElementById('lp-submit'); btn.disabled = true; btn.querySelector('span').textContent = '{% tjs "অর্ডার হচ্ছে..." %}';
   try {
     const res = await fetch(PLACE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') || '' },
       body: JSON.stringify({ cart: [{ id: current().id, qty }], name, phone, address, zone: zone ? zone.value : null, payment: pay ? pay.value : 'cod', landing: LANDING }) });
     const data = await res.json().catch(() => ({}));
     if (data.success && data.redirect) { window.location.href = data.redirect; return; }
-    fail(data.error || 'অর্ডার নেওয়া যায়নি, আবার চেষ্টা করুন বা কল দিন।');
-  } catch (e) { fail('ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।'); }
+    fail(data.error || '{% tjs "অর্ডার নেওয়া যায়নি, আবার চেষ্টা করুন বা কল দিন।" %}');
+  } catch (e) { fail('{% tjs "ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।" %}'); }
   btn.disabled = false; btn.querySelector('span').textContent = '{{ page.cta_text|escapejs }}';
 }
 renderSum();
