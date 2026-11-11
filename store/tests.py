@@ -3162,3 +3162,9 @@ class HealthWarningTests(TestCase):
             html = self.client.get(reverse('master_dashboard')).content.decode()
         self.assertIn('সার্ভারের সেটিংসে সমস্যা', html)
         self.assertIn('Sohojsell api', html)
+
+
+class HealthzTests(TestCase):
+    def test_healthz_is_instant_and_public(self):
+        response = self.client.get('/healthz/')
+        self.assertEqual((response.status_code, response.content), (200, b'ok'))
