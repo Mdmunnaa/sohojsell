@@ -22,7 +22,7 @@ from .models import Shop
 PASSTHROUGH_PREFIXES = ('/static/', '/media/', '/favicon.ico')     # robots.txt দোকানের নিজের (store/seo.py)
 OLD_SHOP_PATH_RE = re.compile(r'^/shop/(?P<slug>[a-z0-9-]+)(?P<rest>/.*)?$')
 # এই সাবডোমেইনগুলো দোকান না, মূল সাইট হিসেবেই চলবে
-MAIN_SUBDOMAINS = {'www'}
+MAIN_SUBDOMAINS = {'www', 'cf'}   # cf.sellpunch.com: Cloudflare-এ সরাসরি ঢোকার ঠিকানা, সবসময় মূল সাইট
 
 
 def _with_query(request, path):

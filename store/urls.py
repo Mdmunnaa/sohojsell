@@ -4,6 +4,7 @@ from django.views.generic import RedirectView
 
 from . import website_views
 from . import views
+from . import views_cron
 from . import payment_views
 from . import views_pos
 from . import views_sms
@@ -28,6 +29,7 @@ urlpatterns = [
     path('en/', views.landing_page_en, name='landing_page_en'),
     path('robots.txt', views.site_robots, name='site_robots'),
     path('sitemap.xml', views.site_sitemap, name='site_sitemap'),
+    path('internal/cron/daily/', views_cron.cron_daily, name='cron_daily'),   # Cloudflare cron, দিনে একবার
     # লাইভ ডেমো (পাসওয়ার্ড ছাড়া ডেমো দোকানে ঢোকা)
     path('demo/', views_demo.demo_start, name='demo_start'),
     path('demo/shop/', views_demo.demo_store, name='demo_store'),

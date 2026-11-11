@@ -97,7 +97,8 @@ def robots_txt(shop, request):
 # ---------------------------------------------------------------- মূল সাইট (sellpunch.com) — দোকানের না
 MAIN_PRIVATE_PATHS = ('/accounts/', '/admin/', '/saas-master/', '/demo/', '/dashboard/', '/setup-shop/', '/pos/',
                       '/orders/', '/products/', '/customers/', '/reports/', '/dues/', '/website/', '/sms/', '/offers/',
-                      '/landing/', '/purchases/', '/settings/', '/billing/', '/payment/', '/staff/', '/facebook/')
+                      '/landing/', '/purchases/', '/settings/', '/billing/', '/payment/', '/staff/', '/facebook/',
+                      '/internal/')
 MAIN_PUBLIC_PAGES = ('contact', 'privacy_policy', 'terms', 'refund_policy')
 
 

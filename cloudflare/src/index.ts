@@ -6,6 +6,7 @@
  *   সব কন্টেইনারে environment variable হিসেবে যায়।
  * - /static/ ফাইল Cloudflare-এর cache-এ রাখে, তাই সেগুলোর জন্য কন্টেইনার খাটে না।
  * - KEEP_WARM = "true" হলে প্রতি ৫ মিনিটে একবার সাড়া নেয়, তাই সার্ভার ঘুমায় না।
+ * - দিনে একবার (সকাল ১০টা, বাংলাদেশ) /internal/cron/daily/ — বাকির অটো-তাগাদা। Secrets-এ CRON_SECRET লাগে।
  */
 import { Container, getContainer } from '@cloudflare/containers';
 
@@ -29,6 +30,9 @@ export class SellPunchApp extends Container<Env> {
 	pingEndpoint = 'localhost/healthz/';
 	envVars = appEnv(this.env);
 }
+
+// wrangler.jsonc-এর triggers.crons-এর সাথে হুবহু মিলতে হবে
+const DAILY_CRON = '0 4 * * *'; // ০৪:০০ UTC = সকাল ১০টা বাংলাদেশ
 
 /** সব ট্রাফিক একটা কন্টেইনারে। পরে বেশি লাগলে getRandom(env.APP, N) দিয়ে ভাগ করা যাবে। */
 function app(env: Env) {
@@ -62,10 +66,30 @@ export default {
 		return response;
 	},
 
-	async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+	async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
 		const vars = env as unknown as Record<string, string | undefined>;
-		if ((vars.KEEP_WARM ?? 'true') !== 'true') return;
 		const host = vars.PRIMARY_HOST || 'localhost';
+
+		if (controller.cron === DAILY_CRON) {
+			const secret = vars.CRON_SECRET;
+			if (!secret) {
+				console.log('daily cron: Secrets-এ CRON_SECRET নেই, তাই বাদ');
+				return;
+			}
+			ctx.waitUntil(
+				app(env)
+					.fetch(
+						new Request(`https://${host}/internal/cron/daily/`, {
+							method: 'POST',
+							headers: { 'X-Forwarded-Proto': 'https', 'X-Cron-Secret': secret },
+						}),
+					)
+					.then(async (res) => console.log('daily cron', res.status, await res.text())),
+			);
+			return;
+		}
+
+		if ((vars.KEEP_WARM ?? 'true') !== 'true') return;
 		ctx.waitUntil(
 			app(env)
 				.fetch(new Request(`https://${host}/healthz/`, { headers: { 'X-Forwarded-Proto': 'https' } }))

@@ -317,6 +317,8 @@ FACEBOOK_WEBHOOK_VERIFY_TOKEN = os.environ.get('FACEBOOK_WEBHOOK_VERIFY_TOKEN', 
 FACEBOOK_APP_SECRET = os.environ.get('FACEBOOK_APP_SECRET', '')
 # বাইরে পাঠানো লিংকের জন্য সাইটের ঠিকানা (খালি থাকলে Render-এর ঠিকানা)
 SITE_URL = os.environ.get('SITE_URL', '').rstrip('/')
+# দিনে একবারের কাজের (বাকির অটো-তাগাদা) গোপন চাবি — Cloudflare-এর Secrets-এ CRON_SECRET (store/views_cron.py)
+CRON_SECRET = os.environ.get('CRON_SECRET', '').strip()
 
 # কুরিয়ারের API ঠিকানা। টেস্টের সময় sandbox বসানো যায়:
 # PATHAO_BASE_URL=https://courier-api-sandbox.pathao.com, REDX_BASE_URL=https://sandbox.redx.com.bd/v1.0.0-beta

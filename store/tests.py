@@ -3467,6 +3467,14 @@ class HomepageSeoTests(TestCase):
         self.assertIn('<link rel="canonical" href="https://sellpunch.com/en/">', html)
         self.assertIn('Sitemap: https://sellpunch.com/sitemap.xml', self.client.get('/robots.txt', HTTP_HOST='sellpunch.com').content.decode())
 
+    @override_settings(STORE_BASE_DOMAIN='sellpunch.com', PRIMARY_HOST='sellpunch.com')
+    def test_cf_subdomain_is_always_main_site(self):
+        """cf.sellpunch.com = Cloudflare-এ সরাসরি ঢোকার ঠিকানা; কখনো "দোকান পাওয়া যায়নি" না।"""
+        response = self.client.get('/', HTTP_HOST='cf.sellpunch.com')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'hreflang="en"')
+        self.assertEqual(self.client.get('/', HTTP_HOST='nosuchshop.sellpunch.com').status_code, 404)
+
     def test_robots_and_sitemap(self):
         robots = self.client.get('/robots.txt')
         self.assertEqual(robots['Content-Type'], 'text/plain')
@@ -3492,3 +3500,31 @@ class HomepageSeoTests(TestCase):
         Shop.objects.create(user=user, name='S', phone='01799900001', address='Dhaka')
         self.client.force_login(user)
         self.assertRedirects(self.client.get('/en/'), reverse('dashboard'), fetch_redirect_response=False)
+
+
+class DailyCronTests(TestCase):
+    """Cloudflare-এর দৈনিক cron → /internal/cron/daily/ (বাকির অটো-তাগাদা)। গোপন চাবি ছাড়া কেউ চালাতে পারে না।"""
+    url = '/internal/cron/daily/'
+
+    def test_hidden_without_secret(self):
+        with override_settings(CRON_SECRET=''):
+            self.assertEqual(self.client.post(self.url, HTTP_X_CRON_SECRET='').status_code, 404)
+        with override_settings(CRON_SECRET='s3cret-value'):
+            self.assertEqual(self.client.post(self.url).status_code, 404)
+            self.assertEqual(self.client.post(self.url, HTTP_X_CRON_SECRET='wrong').status_code, 404)
+            self.assertEqual(self.client.get(self.url, HTTP_X_CRON_SECRET='s3cret-value').status_code, 405)
+
+    @override_settings(CRON_SECRET='s3cret-value')
+    def test_runs_due_reminders(self):
+        from unittest import mock
+        with mock.patch('store.dues.run_auto_reminders', return_value={7: 3, 9: 2}) as run:
+            response = self.client.post(self.url, HTTP_X_CRON_SECRET='s3cret-value')
+        run.assert_called_once()
+        self.assertEqual(response.json(), {'due_reminders': {'shops': 2, 'sms': 5}})
+        with mock.patch('store.dues.run_auto_reminders', side_effect=RuntimeError('gateway down')):
+            response = self.client.post(self.url, HTTP_X_CRON_SECRET='s3cret-value')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('gateway down', response.json()['due_reminders']['error'])
+
+    def test_robots_hides_internal(self):
+        self.assertIn('Disallow: /internal/', self.client.get('/robots.txt').content.decode())
