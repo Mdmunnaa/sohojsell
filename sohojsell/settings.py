@@ -165,10 +165,23 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # R2-এর ৪টা তথ্য দেওয়া থাকলে প্রোডাক্টের ছবি, লোগো, ব্যানার Cloudflare R2-তে যাবে।
 # না থাকলে (লোকালে) আগের মতো media/ ফোল্ডারে।
-R2_ACCOUNT_ID = os.environ.get('R2_ACCOUNT_ID', '')
-R2_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID', '')
-R2_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY', '')
-R2_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME', '')
+# Cloudflare-এর পাতা থেকে পুরো ঠিকানা (https://<account>.r2.cloudflarestorage.com/<bucket>) কপি করে
+# বসিয়ে দিলেও যেন চলে — শুধু দরকারি অংশটা নেওয়া হয়
+def _r2_account_id(raw):
+    import re
+    match = re.search(r'([0-9a-f]{32})', raw.strip().lower())
+    return match.group(1) if match else raw.strip()
+
+
+def _r2_bucket(raw):
+    raw = raw.strip().replace('https://', '').replace('http://', '').strip('/')
+    return raw.split('/')[-1].strip() if '/' in raw else raw
+
+
+R2_ACCOUNT_ID = _r2_account_id(os.environ.get('R2_ACCOUNT_ID', ''))
+R2_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID', '').strip()
+R2_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY', '').strip()
+R2_BUCKET_NAME = _r2_bucket(os.environ.get('R2_BUCKET_NAME', ''))
 # ছবির পাবলিক ঠিকানা, যেমন media.sohojsell.com বা pub-xxxx.r2.dev (https:// ছাড়া)
 R2_PUBLIC_DOMAIN = os.environ.get('R2_PUBLIC_DOMAIN', '').replace('https://', '').strip('/')
 USE_R2 = all([R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME])

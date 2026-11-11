@@ -3148,17 +3148,32 @@ class DemoShopTests(TestCase):
 class HealthWarningTests(TestCase):
     def test_bad_bucket_name_is_reported(self):
         from store import health
-        with override_settings(USE_R2=True, R2_BUCKET_NAME='Sohojsell api', R2_PUBLIC_DOMAIN='pub.r2.dev'):
+        account = '0c5dc12c8f2cb73f93d85be7d218f5c7'
+        with override_settings(USE_R2=True, R2_BUCKET_NAME='Sohojsell api', R2_PUBLIC_DOMAIN='pub.r2.dev', R2_ACCOUNT_ID=account):
             texts = health.warnings()
         self.assertEqual(len(texts), 1)
         self.assertIn('R2_BUCKET_NAME', texts[0])
-        with override_settings(USE_R2=True, R2_BUCKET_NAME='sohojsell-media', R2_PUBLIC_DOMAIN='pub.r2.dev'):
+        with override_settings(USE_R2=True, R2_BUCKET_NAME='sohojsell-media', R2_PUBLIC_DOMAIN='pub.r2.dev', R2_ACCOUNT_ID=account):
             self.assertEqual(health.warnings(), [])
+
+    def test_pasted_urls_are_normalized(self):
+        from sohojsell.settings import _r2_account_id, _r2_bucket
+        self.assertEqual(_r2_account_id('https://0c5dc12c8f2cb73f93d85be7d218f5c7.r2.cloudflarestorage.com/sohojsell-media'),
+                         '0c5dc12c8f2cb73f93d85be7d218f5c7')
+        self.assertEqual(_r2_account_id(' 0c5dc12c8f2cb73f93d85be7d218f5c7 '), '0c5dc12c8f2cb73f93d85be7d218f5c7')
+        self.assertEqual(_r2_bucket('https://0c5dc12c8f2cb73f93d85be7d218f5c7.r2.cloudflarestorage.com/sohojsell-media'),
+                         'sohojsell-media')
+        self.assertEqual(_r2_bucket('sohojsell-media'), 'sohojsell-media')
+        from store import health
+        with override_settings(USE_R2=True, R2_BUCKET_NAME='sohojsell-media', R2_PUBLIC_DOMAIN='pub.r2.dev',
+                               R2_ACCOUNT_ID='https://x.r2.cloudflarestorage.com'):
+            self.assertIn('R2_ACCOUNT_ID', health.warnings()[0])
 
     def test_master_dashboard_shows_warning(self):
         admin = User.objects.create_superuser(phone_number='01799999992', password='Test-pass-123')
         self.client.force_login(admin)
-        with override_settings(USE_R2=True, R2_BUCKET_NAME='Sohojsell api', R2_PUBLIC_DOMAIN='pub.r2.dev'):
+        with override_settings(USE_R2=True, R2_BUCKET_NAME='Sohojsell api', R2_PUBLIC_DOMAIN='pub.r2.dev',
+                               R2_ACCOUNT_ID='0c5dc12c8f2cb73f93d85be7d218f5c7'):
             html = self.client.get(reverse('master_dashboard')).content.decode()
         self.assertIn('সার্ভারের সেটিংসে সমস্যা', html)
         self.assertIn('Sohojsell api', html)

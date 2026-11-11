@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.checks import Warning, register
 
 BUCKET_RE = re.compile(r'^[a-zA-Z0-9.\-_]{1,255}$')
+ACCOUNT_RE = re.compile(r'^[0-9a-f]{32}$')
 
 
 def warnings():
@@ -18,6 +19,10 @@ def warnings():
         if not BUCKET_RE.match(bucket):
             found.append(f'Render-এর R2_BUCKET_NAME ভুল: "{bucket}" — এটা bucket-এর নাম না (নামে স্পেস/বড় হাতের অক্ষর চলে না)। '
                          'Cloudflare R2 → Buckets-এ যে নামটা আছে সেটা দিন। ঠিক না করা পর্যন্ত প্রোডাক্টের ছবি আপলোড আর ডেমো দোকান কাজ করবে না।')
+        account = getattr(settings, 'R2_ACCOUNT_ID', '')
+        if not ACCOUNT_RE.match(account):
+            found.append(f'Render-এর R2_ACCOUNT_ID ভুল: "{account}" — Cloudflare R2-র ৩২ অক্ষরের Account ID দিন '
+                         '(R2 পাতার ডান পাশে "Account ID"), পুরো লিংক না।')
         if not getattr(settings, 'R2_PUBLIC_DOMAIN', ''):
             found.append('R2_PUBLIC_DOMAIN দেওয়া নেই — ছবির লিংক সাময়িক (signed) হবে, Facebook-এ শেয়ার করলে ছবি দেখাবে না।')
     elif getattr(settings, 'IS_PRODUCTION', False):
