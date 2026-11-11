@@ -1,0 +1,423 @@
+{% load static %}<!DOCTYPE html>
+{# ইংরেজি হোমপেজ (/en/) — বাংলাটা store/landing.html। চেহারা একই (partials/landing_style.html); লেখা আলাদা, তাই নতুন সেকশন যোগ করলে দুটোতেই দিন। #}
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ site.name }} — POS Software &amp; Online Store Builder for Bangladesh</title>
+<meta name="description" content="All-in-one POS software and e-commerce website builder for small businesses in Bangladesh. Online store, in-store billing, Steadfast/Pathao/RedX courier booking, SMS and profit reports. 30 days free.">
+<meta property="og:title" content="{{ site.name }} — POS Software &amp; Online Store Builder for Bangladesh">
+<meta property="og:description" content="Online store, POS billing, courier booking, customer SMS, due tracking and profit reports — in one place. 30 days free, no card needed.">
+{% include 'store/partials/landing_seo.html' %}
+{% include 'store/partials/brand_head.html' %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Hind+Siliguri:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+{% include 'store/partials/landing_style.html' %}
+</head>
+<body>
+
+<!-- ================= NAV ================= -->
+<nav class="nav">
+  <div class="wrap nav-in">
+    <a href="{% url 'landing_page_en' %}" aria-label="{{ site.name }}"><img src="{% static 'brand/sellpunch-logo.svg' %}" alt="{{ site.name }}" style="height:34px;width:auto"></a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div class="nav-cta">
+      <a href="/" class="nav-lang" hreflang="bn" lang="bn"><i class="bi bi-globe2"></i> বাংলা</a>
+      <a href="{% url 'login' %}" class="btn btn-sm nav-login" style="color:var(--ink2)">Log in</a>
+      <a href="{% url 'demo_start' %}" class="btn btn-sm btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> Live demo</a>
+      <a href="{% url 'signup' %}" class="btn btn-sm btn-brand">Start free</a>
+      <button class="nav-burger" onclick="toggleMenu()" aria-label="Menu"><i class="bi bi-list" id="ham-icon"></i></button>
+    </div>
+  </div>
+  <div class="mob-menu" id="mob-menu">
+    <a href="#features" onclick="toggleMenu()">Features</a>
+    <a href="#how" onclick="toggleMenu()">How it works</a>
+    <a href="#pricing" onclick="toggleMenu()">Pricing</a>
+    <a href="#faq" onclick="toggleMenu()">FAQ</a>
+    <a href="{% url 'demo_start' %}">Try the live demo</a>
+    <a href="{% url 'login' %}">Log in</a>
+    <a href="/" hreflang="bn" lang="bn"><i class="bi bi-globe2"></i> বাংলা</a>
+    <a href="{% url 'signup' %}" class="btn btn-brand">Start your {{ trial_days }}-day free trial</a>
+  </div>
+</nav>
+
+<!-- ================= HERO ================= -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="pill"><span class="dot"></span> Built for small businesses in Bangladesh</span>
+      <h1>The all-in-one <em>POS &amp; online store</em> software for Bangladesh</h1>
+      <p class="lead">Your own e-commerce website, a POS for your counter, one-click courier booking, customer SMS, due tracking and profit reports. Made for Facebook sellers and shop owners who are tired of juggling notebooks, Excel and inbox messages.</p>
+      <div class="hero-cta">
+        <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> Start {{ trial_days }} days free</a>
+        <a href="{% url 'demo_start' %}" class="btn btn-lg btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> See the live demo</a>
+      </div>
+      <div class="hero-notes">
+        <span><i class="bi bi-check-circle-fill"></i> No card needed</span>
+        <span><i class="bi bi-check-circle-fill"></i> Set up in 5 minutes</span>
+        <span><i class="bi bi-check-circle-fill"></i> Runs on your phone</span>
+      </div>
+    </div>
+    <div class="hero-shot">
+      <div class="frame">
+        <div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/dashboard</i></div>
+        <img src="{% static 'landing/dashboard.webp' %}" alt="{{ site.name }} seller dashboard (in Bangla) — today's sales, profit and new orders" width="1800" height="1125" fetchpriority="high">
+      </div>
+      <div class="phone hero-phone"><img src="{% static 'landing/shop-phone-en.webp' %}" alt="An online store built with {{ site.name }}, in English, on a phone" width="780" height="1688" loading="lazy"></div>
+      <div class="hero-badge"><div class="ic"><i class="bi bi-bag-check-fill"></i></div><div><b>New order received</b>SMS sent to the customer</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= INTEGRATIONS ================= -->
+<div class="strip">
+  <div class="wrap strip-in">
+    <span class="lbl">Works with:</span>
+    <span class="ch"><i class="bi bi-truck"></i> Steadfast</span>
+    <span class="ch"><i class="bi bi-bicycle"></i> Pathao</span>
+    <span class="ch"><i class="bi bi-box-seam"></i> RedX</span>
+    <span class="ch"><i class="bi bi-phone"></i> bKash · Nagad</span>
+    <span class="ch"><i class="bi bi-facebook"></i> Facebook Pages</span>
+    <span class="ch"><i class="bi bi-whatsapp"></i> WhatsApp</span>
+    <span class="ch"><i class="bi bi-chat-dots"></i> SMS</span>
+  </div>
+</div>
+
+<!-- ================= WHO ================= -->
+<section id="who">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">Who it's for</span>
+      <h2>For sellers who keep their business in four different places</h2>
+      <p>Orders in the inbox, stock in a notebook, dues in your head, profit in Excel. {{ site.name }} puts all of it in one place — with a dashboard in Bangla that you and your staff can use from day one.</p>
+    </div>
+    <div class="who">
+      <div class="card">
+        <div class="ic red"><i class="bi bi-facebook"></i></div>
+        <h3>Facebook &amp; f-commerce sellers</h3>
+        <p>Taking orders in Messenger, sending parcels by courier, remembering who has paid?</p>
+        <ul><li>A link to your own online store instead of typing orders</li><li>Book the courier in one click</li><li>Spot fake orders from numbers that returned parcels before</li></ul>
+      </div>
+      <div class="card">
+        <div class="ic green"><i class="bi bi-shop"></i></div>
+        <h3>Shops &amp; showrooms</h3>
+        <p>Counter sales, credit customers and stock are hard to keep in your head.</p>
+        <ul><li>Billing with barcode scanning and receipt printing</li><li>A due book with reminder SMS</li><li>Cash count at the end of the day</li></ul>
+      </div>
+      <div class="card">
+        <div class="ic blue"><i class="bi bi-stars"></i></div>
+        <h3>Growing brands</h3>
+        <p>Your own store, without marketplace commission or depending on someone else's platform.</p>
+        <ul><li>Your own domain (www.yourshop.com)</li><li>Your design, your colors</li><li>Your customer list stays with you</li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEATURES ================= -->
+<section id="features" class="bg">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">Features</span>
+      <h2>From the first sale to the final profit — every step in one place</h2>
+      <p>The screenshots below come from our live demo shop. You can log in and try everything yourself.</p>
+    </div>
+
+    <div class="feat">
+      <div class="feat-text">
+        <span class="kicker">E-commerce website</span>
+        <h3>Your own online store in 5 minutes — no coding</h3>
+        <p>Add product photos and prices and your store goes live at <b>yourshop.{{ site.store_domain }}</b>. Share the link on Facebook and customers place orders themselves.</p>
+        <ul>
+          <li><i class="ic red bi bi-palette-fill"></i><span><b>4 designs, 6 color themes</b> — or use your own brand color</span></li>
+          <li><i class="ic blue bi bi-translate"></i><span><b>English or Bangla</b> — your customers see the store in the language you choose, including checkout and SMS</span></li>
+          <li><i class="ic green bi bi-cash-stack"></i><span><b>Cash on delivery</b> or advance payment with bKash/Nagad — you set the rules</span></li>
+          <li><i class="ic blue bi bi-whatsapp"></i><span><b>WhatsApp ordering</b>, coupon codes, customer reviews, free-delivery threshold</span></li>
+          <li><i class="ic amber bi bi-google"></i><span><b>Built-in SEO</b> — sitemap, product rich results and share previews, automatically</span></li>
+        </ul>
+        <a href="{% url 'demo_store' %}" class="feat-link">See the demo store as a customer <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <div class="feat-shot">
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>demo.{{ site.store_domain }}</i></div><img src="{% static 'landing/shop-en.webp' %}" alt="Online store home page — banner, categories and products" width="1800" height="1125" loading="lazy"></div>
+        <div class="designs">
+          <figure><img src="{% static 'landing/design-classic-en.webp' %}" alt="Classic store design" loading="lazy"><figcaption>Classic</figcaption></figure>
+          <figure><img src="{% static 'landing/design-minimal-en.webp' %}" alt="Minimal store design" loading="lazy"><figcaption>Minimal</figcaption></figure>
+          <figure><img src="{% static 'landing/design-bold-en.webp' %}" alt="Bold store design" loading="lazy"><figcaption>Bold</figcaption></figure>
+          <figure><img src="{% static 'landing/design-soft-en.webp' %}" alt="Soft store design" loading="lazy"><figcaption>Soft</figcaption></figure>
+        </div>
+      </div>
+    </div>
+
+    <div class="feat rev">
+      <div class="feat-text">
+        <span class="kicker">POS billing</span>
+        <h3>Point of sale for your counter — barcode, receipt, credit</h3>
+        <p>Works on a phone, tablet or computer. Every sale reduces stock automatically, and your website shows the same stock.</p>
+        <ul>
+          <li><i class="ic red bi bi-upc-scan"></i><span><b>Search by barcode or name</b>; separate stock for each size and color (variants)</span></li>
+          <li><i class="ic green bi bi-wallet2"></i><span><b>Cash, bKash, card</b> — or a mix; discounts, VAT and change calculated for you</span></li>
+          <li><i class="ic blue bi bi-printer"></i><span><b>Receipt printing</b> on POS printers or A4, plus barcode stickers</span></li>
+          <li><i class="ic amber bi bi-people"></i><span><b>Staff accounts</b> — a cashier sees the POS, not your reports</span></li>
+        </ul>
+      </div>
+      <div class="feat-shot">
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/pos</i></div><img src="{% static 'landing/pos.webp' %}" alt="POS screen (in Bangla) — products, bill and payment" width="1800" height="1125" loading="lazy"></div>
+        <div class="phone"><img src="{% static 'landing/pos-phone.webp' %}" alt="POS on a phone" width="780" height="1688" loading="lazy"></div>
+      </div>
+    </div>
+
+    <div class="feat">
+      <div class="feat-text">
+        <span class="kicker">Orders &amp; delivery</span>
+        <h3>Website, phone and shop orders — in one list</h3>
+        <p>Change an order's status and the rest happens on its own: stock, customer SMS and courier tracking. Nothing to remember.</p>
+        <ul>
+          <li><i class="ic red bi bi-truck"></i><span><b>One-click courier booking</b> with Steadfast, Pathao or RedX — tracking code added automatically</span></li>
+          <li><i class="ic green bi bi-chat-left-text"></i><span><b>Automatic customer SMS</b> when an order is received, confirmed or shipped — you choose which</span></li>
+          <li><i class="ic blue bi bi-geo"></i><span><b>Order tracking page</b> — customers check where their order is</span></li>
+          <li><i class="ic amber bi bi-shield-exclamation"></i><span><b>Fake order warning</b> — numbers that returned parcels before are flagged next to the order</span></li>
+        </ul>
+      </div>
+      <div class="feat-shot">
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/orders</i></div><img src="{% static 'landing/orders.webp' %}" alt="Order list (in Bangla) — status, courier and risk" width="1800" height="1125" loading="lazy"></div>
+        <div class="phone"><img src="{% static 'landing/track-phone-en.webp' %}" alt="Customer order tracking page in English" width="780" height="1688" loading="lazy"></div>
+      </div>
+    </div>
+
+    <div class="feat rev">
+      <div class="feat-text">
+        <span class="kicker">Reports</span>
+        <h3>Profit or loss — at a glance</h3>
+        <p>Sales numbers can look good while the business loses money. Subtract purchase cost, expenses and returns to see the real picture.</p>
+        <ul>
+          <li><i class="ic red bi bi-graph-up-arrow"></i><span><b>Today, this week, this month</b> — compared with the previous period</span></li>
+          <li><i class="ic green bi bi-calculator"></i><span><b>Net profit</b> = sales − cost − expenses; see which products earn the most</span></li>
+          <li><i class="ic blue bi bi-receipt"></i><span><b>Expenses and purchases</b> — rent, salaries, ad boosts; supplier dues</span></li>
+          <li><i class="ic amber bi bi-file-earmark-excel"></i><span><b>Excel export</b> — orders, products, customers and expenses on separate sheets</span></li>
+        </ul>
+      </div>
+      <div class="feat-shot">
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/reports</i></div><img src="{% static 'landing/reports.webp' %}" alt="Business reports (in Bangla) — sales, profit and expenses" width="1800" height="1125" loading="lazy"></div>
+      </div>
+    </div>
+
+    <div class="feat">
+      <div class="feat-text">
+        <span class="kicker">Due book</span>
+        <h3>Who owes you, how much, and since when</h3>
+        <p>Selling on credit at the shop? Just note the name and number. All dues are on one page, and a payment is recorded in one click.</p>
+        <ul>
+          <li><i class="ic red bi bi-journal-text"></i><span><b>How long</b> each customer has owed, and whether the promised date has passed</span></li>
+          <li><i class="ic green bi bi-send"></i><span><b>Reminder SMS</b> — to one customer or everyone, with their name and amount</span></li>
+          <li><i class="ic blue bi bi-alarm"></i><span><b>Automatic reminders</b> every 7, 15 or 30 days, if you turn them on</span></li>
+        </ul>
+      </div>
+      <div class="feat-shot">
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/dues</i></div><img src="{% static 'landing/dues.webp' %}" alt="Due book (in Bangla) — who owes how much, reminder SMS" width="1800" height="1125" loading="lazy"></div>
+      </div>
+    </div>
+
+    <div class="feat rev">
+      <div class="feat-text">
+        <span class="kicker">Marketing</span>
+        <h3>Bring customers back — SMS, offers, landing pages</h3>
+        <p>New customers cost you ad money; an SMS to an old customer costs a few paisa.</p>
+        <ul>
+          <li><i class="ic red bi bi-megaphone"></i><span><b>Bulk SMS</b> to all customers or last month's buyers — new collection, offers</span></li>
+          <li><i class="ic green bi bi-ticket-perforated"></i><span><b>Coupon codes</b> — fixed or % discount, free delivery, usage limits</span></li>
+          <li><i class="ic blue bi bi-cart-x"></i><span><b>Abandoned checkouts</b> — numbers of customers who left without ordering, so you can call them</span></li>
+          <li><i class="ic amber bi bi-layout-text-window"></i><span><b>Single-product landing pages</b> for Facebook ads, with views and orders counted</span></li>
+        </ul>
+      </div>
+      <div class="feat-shot">
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/sms</i></div><img src="{% static 'landing/sms.webp' %}" alt="SMS panel (in Bangla) — send SMS to customers" width="1800" height="1125" loading="lazy"></div>
+        <div class="phone"><img src="{% static 'landing/landing-phone-en.webp' %}" alt="Single-product landing page in English" width="780" height="1688" loading="lazy"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ALL FEATURES ================= -->
+<section id="all">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">And more</span>
+      <h2>Small things you will use every day</h2>
+    </div>
+    <div class="grid4">
+      <div class="fcell"><i class="bi bi-grid-3x3-gap"></i><b>Sizes &amp; colors (variants)</b><span>M/L/XL or red/blue — each with its own price and stock</span></div>
+      <div class="fcell"><i class="bi bi-upc"></i><b>Barcode printing</b><span>Print stickers, stick them on products, scan to sell</span></div>
+      <div class="fcell"><i class="bi bi-person-badge"></i><b>Staff &amp; permissions</b><span>Decide who uses the POS and who sees reports</span></div>
+      <div class="fcell"><i class="bi bi-facebook"></i><b>Orders from Facebook comments</b><span>Connect your Page for automatic replies and order links</span></div>
+      <div class="fcell"><i class="bi bi-globe2"></i><b>Custom domain</b><span>www.yourshop.com — add the DNS records and you are live (Premium)</span></div>
+      <div class="fcell"><i class="bi bi-star-half"></i><b>Customer reviews</b><span>Reviews from verified buyers, shown after your approval</span></div>
+      <div class="fcell"><i class="bi bi-geo-alt"></i><b>Delivery charge by area</b><span>Inside/outside Dhaka rates, free above an amount you set</span></div>
+      <div class="fcell"><i class="bi bi-file-earmark-pdf"></i><b>Invoices &amp; receipts</b><span>PDF invoices and POS receipts with your logo and return policy</span></div>
+      <div class="fcell"><i class="bi bi-box-arrow-in-down"></i><b>Purchase book</b><span>Suppliers, cost price and dues — stock and average cost update themselves</span></div>
+      <div class="fcell"><i class="bi bi-cash-coin"></i><b>Expense tracking</b><span>Rent, salaries, boosts, packaging — all counted in your profit</span></div>
+      <div class="fcell"><i class="bi bi-arrow-counterclockwise"></i><b>Returns &amp; cancellations</b><span>Returned items go back into stock and out of your sales, automatically</span></div>
+      <div class="fcell"><i class="bi bi-phone"></i><b>Everything on mobile</b><span>No app to install — it all works in your phone's browser</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOW ================= -->
+<section id="how" class="bg">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">How it works</span>
+      <h2>Start today, take your first order today</h2>
+      <p>No technical skills needed. If you can use Facebook, you can use {{ site.name }}.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Sign up with your mobile number</h3><p>Enter your shop name and address. {{ trial_days }} days free — no card or bKash needed.</p></div>
+      <div class="step"><div class="n">2</div><h3>Add products and your logo</h3><p>Photos, prices, stock — and sizes or colors if you have them. A banner makes your store look even better.</p></div>
+      <div class="step"><div class="n">3</div><h3>Share your link and start selling</h3><p>Put the store link on your Facebook Page and open the POS at your shop. You'll hear about every order on the dashboard and by SMS.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRICING ================= -->
+<section id="pricing">
+  <div class="wrap" id="pricing-wrap">
+    <div class="sec-head">
+      <span class="kicker">Pricing</span>
+      <h2>Less than one Facebook boost</h2>
+      <p>Every plan includes the website, POS, orders, courier booking, SMS panel, reports and due book. Plans differ only in products, staff and extras.</p>
+      <div class="toggle" role="group" aria-label="Monthly or yearly">
+        <button type="button" class="on" id="tg-m" onclick="setBilling('m')">Monthly</button>
+        <button type="button" id="tg-y" onclick="setBilling('y')">Yearly <span class="save">2 months free</span></button>
+      </div>
+    </div>
+    <div class="plans">
+      {% for plan in plans %}
+      <div class="plan{% if plan.popular %} pop{% endif %}">
+        {% if plan.popular %}<span class="tag">Most popular</span>{% endif %}
+        <div class="nm">{{ plan.key }}</div>
+        <div class="tl">{{ plan.tagline }}</div>
+        <div class="pr"><b>৳<span class="price-m">{{ plan.month }}</span><span class="price-y">{{ plan.year_per_month }}</span></b><em>/month</em></div>
+        <div class="sub"><span class="price-m">Billed monthly, cancel anytime</span><span class="price-y">৳{{ plan.year }} billed once a year</span></div>
+        <ul>
+          <li><i class="bi bi-check-circle-fill"></i>{% if plan.products %}Up to {{ plan.products }} products{% else %}Unlimited products{% endif %}</li>
+          <li><i class="bi bi-check-circle-fill"></i>{{ plan.staff }} staff account{{ plan.staff|pluralize }}</li>
+          <li><i class="bi bi-check-circle-fill"></i>Website + POS + orders + courier</li>
+          <li><i class="bi bi-check-circle-fill"></i>SMS panel, reports, due book, coupons</li>
+          <li{% if not plan.facebook %} class="no"{% endif %}><i class="bi bi-{% if plan.facebook %}check-circle-fill{% else %}dash-circle{% endif %}"></i>Orders from Facebook comments</li>
+          <li{% if not plan.custom_domain %} class="no"{% endif %}><i class="bi bi-{% if plan.custom_domain %}check-circle-fill{% else %}dash-circle{% endif %}"></i>Custom domain (www.yourshop.com)</li>
+        </ul>
+        <a href="{% url 'signup' %}" class="btn {% if plan.popular %}btn-brand{% else %}btn-dark{% endif %}">Start {{ trial_days }} days free</a>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="plan-notes">
+      <span><i class="bi bi-gift"></i> All Standard features during the {{ trial_days }}-day free trial</span>
+      <span><i class="bi bi-phone"></i> Pay by bKash, Nagad or card</span>
+      {% if sms_rate %}<span><i class="bi bi-chat-dots"></i> SMS billed separately, pay as you go — ৳{{ sms_rate|floatformat:2 }} per SMS</span>{% endif %}
+      <span><i class="bi bi-x-circle"></i> No hidden fees or commission</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DEMO ================= -->
+<section class="bg" style="padding-top:0">
+  <div class="wrap">
+    <div class="demo">
+      <div>
+        <span class="kicker" style="background:rgba(255,255,255,.12);color:#fff">Live demo</span>
+        <h2>Try it yourself before you sign up</h2>
+        <p>"Fashion Point" is a demo shop with three months of sales, customers, dues and expenses. No password needed — do anything you like; everything resets every night.</p>
+        <div class="cta">
+          <a href="{% url 'demo_start' %}" class="btn btn-lg btn-white"><i class="bi bi-speedometer2" style="color:var(--brand)"></i> Seller dashboard</a>
+          <a href="{% url 'demo_store' %}" class="btn btn-lg btn-ghost-w"><i class="bi bi-shop"></i> Customer view</a>
+        </div>
+        <div class="demo-facts">
+          <span>30 products</span><span>600+ orders</span><span>POS &amp; website</span><span>Due book</span><span>Reports</span>
+        </div>
+      </div>
+      <div class="shot">
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/demo</i></div><img src="{% static 'landing/reports-chart.webp' %}" alt="Demo shop profit and loss report" width="1800" height="1125" loading="lazy"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">FAQ</span>
+      <h2>Questions sellers ask us</h2>
+    </div>
+    <div class="faq">
+      <details open><summary>Is {{ site.name }} in English?</summary><p>Your online store can be fully in English — product pages, cart, checkout, order tracking, invoices and the customer SMS. You choose English or Bangla in Website → Design. The seller dashboard (POS, orders, reports) is in Bangla, so shop owners and staff across Bangladesh can use it without training.</p></details>
+      <details><summary>Do I need technical skills?</summary><p>No. Everything works from your phone. Adding products, checking orders and billing at the POS is no harder than using Facebook. If you get stuck, we're on WhatsApp.</p></details>
+      <details><summary>Do I need to buy a domain or hosting?</summary><p>No. Your store goes live at <b>yourshop.{{ site.store_domain }}</b> as soon as you sign up — hosting is included. If you want your own domain (www.yourshop.com) later, you can add it on the Premium plan.</p></details>
+      <details><summary>How do customers pay?</summary><p>Cash on delivery is the most common — the courier collects the money and pays you. You can also take advance payment with bKash, Nagad or card (the full amount, or just the delivery charge).</p></details>
+      <details><summary>How does courier booking work?</summary><p>Add the API key from your Steadfast, Pathao or RedX merchant account in settings. Then book a parcel with one click from the order; the tracking code is saved to the order and the customer can follow it on the tracking page.</p></details>
+      <details><summary>How much does SMS cost?</summary><p>SMS is separate from your plan — you buy only what you need{% if sms_rate %}, at ৳{{ sms_rate|floatformat:2 }} per SMS{% endif %}. Each automatic order SMS can be turned on or off, so nothing is wasted. English SMS fit 160 characters in one message, so they cost less than Bangla.</p></details>
+      <details><summary>What happens after the {{ trial_days }}-day trial?</summary><p>Pick a plan and pay by bKash, Nagad or card, and you continue with all your data. If you don't, the dashboard pauses but your website stays open for 7 more days so no customer order is lost. We never take a card up front, so you are never charged automatically.</p></details>
+      <details><summary>Is my data safe?</summary><p>Your shop's data is visible only from your account, and you can give staff access to just the parts they need. Every page runs on HTTPS. You can download your customers and orders to Excel at any time.</p></details>
+      <details><summary>Who do I contact for help?</summary><p>{% if site.whatsapp_url %}Message us on <a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener" style="color:var(--brand);font-weight:700">WhatsApp</a>{% if site.phone %} ({{ site.phone }}){% endif %}{% else %}Call or WhatsApp us at the number on our <a href="{% url 'contact' %}" style="color:var(--brand);font-weight:700">contact page</a>{% endif %} — in English or Bangla.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<div class="final">
+  <div class="wrap">
+    <h2>Open your store today</h2>
+    <p>{{ trial_days }} days free. No card needed. Not for you? Just don't renew.</p>
+    <div class="cta">
+      <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> Create a free account</a>
+      <a href="{% url 'demo_start' %}" class="btn btn-lg btn-out">Try the demo first</a>
+    </div>
+  </div>
+</div>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div class="ft">
+      <div>
+        <img src="{% static 'brand/sellpunch-logo.svg' %}" alt="{{ site.name }}" style="height:32px;width:auto">
+        <p>POS and e-commerce software for small businesses in Bangladesh — online store, billing, orders, SMS, due book and reports in one place.</p>
+        <div class="soc">
+          {% if site.facebook_url %}<a href="{{ site.facebook_url }}" target="_blank" rel="noopener" aria-label="Facebook"><i class="bi bi-facebook"></i></a>{% endif %}
+          {% if site.whatsapp_url %}<a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener" aria-label="WhatsApp"><i class="bi bi-whatsapp"></i></a>{% endif %}
+          {% if site.email %}<a href="mailto:{{ site.email }}" aria-label="Email"><i class="bi bi-envelope"></i></a>{% endif %}
+        </div>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <div class="lk"><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="{% url 'demo_start' %}">Live demo</a><a href="{% url 'signup' %}">Start free</a><a href="{% url 'login' %}">Log in</a></div>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <div class="lk">
+          {% if site.phone %}<a href="tel:{{ site.phone }}"><i class="bi bi-telephone"></i> {{ site.phone }}</a>{% endif %}
+          {% if site.whatsapp_url %}<a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp us</a>{% endif %}
+          {% if site.email %}<a href="mailto:{{ site.email }}"><i class="bi bi-envelope"></i> {{ site.email }}</a>{% endif %}
+          <a href="{% url 'contact' %}">Contact page</a>
+        </div>
+      </div>
+      <div>
+        <h4>Policies</h4>
+        <div class="lk"><a href="{% url 'privacy_policy' %}">Privacy policy</a><a href="{% url 'terms' %}">Terms of use</a><a href="{% url 'refund_policy' %}">Refund policy</a><a href="{% url 'data_deletion' %}">Data deletion</a></div>
+      </div>
+    </div>
+    <div class="fb">
+      <span>© {% now "Y" %} {{ site.name }}{% if site.legal_name %} · {{ site.legal_name }}{% endif %}{% if site.address %} · {{ site.address }}{% endif %}</span>
+      <span><a href="/" hreflang="bn" lang="bn" style="font-weight:700">বাংলা</a> · Made in Bangladesh 🇧🇩</span>
+    </div>
+  </div>
+</footer>
+
+{% include 'store/partials/landing_script.html' %}
+</body>
+</html>

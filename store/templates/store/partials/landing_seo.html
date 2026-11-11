@@ -1,0 +1,22 @@
+{% load static %}{# হোমপেজের (বাংলা / ইংরেজি) Google আর শেয়ারের তথ্য। home_seo আসে views._home থেকে। #}
+<link rel="canonical" href="{{ home_seo.canonical }}">
+<link rel="alternate" hreflang="bn" href="{{ home_seo.url_bn }}">
+<link rel="alternate" hreflang="en" href="{{ home_seo.url_en }}">
+<link rel="alternate" hreflang="x-default" href="{{ home_seo.url_bn }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ site.name }}">
+<meta property="og:url" content="{{ home_seo.canonical }}">
+<meta property="og:image" content="{{ home_seo.base }}{% static 'landing/dashboard.webp' %}">
+<meta property="og:image:width" content="1800">
+<meta property="og:image:height" content="1125">
+{% if home_seo.lang == 'en' %}<meta property="og:locale" content="en_US"><meta property="og:locale:alternate" content="bn_BD">{% else %}<meta property="og:locale" content="bn_BD"><meta property="og:locale:alternate" content="en_US">{% endif %}
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+ {"@type":"Organization","@id":"{{ home_seo.base }}/#org","name":"{{ site.name }}","url":"{{ home_seo.url_bn }}","logo":"{{ home_seo.base }}{% static 'brand/apple-touch-icon.png' %}"{% if site.facebook_url %},"sameAs":["{{ site.facebook_url }}"]{% endif %}{% if site.email or site.phone %},"contactPoint":{"@type":"ContactPoint","contactType":"customer support","areaServed":"BD","availableLanguage":["bn","en"]{% if site.phone %},"telephone":"{{ site.phone }}"{% endif %}{% if site.email %},"email":"{{ site.email }}"{% endif %}}{% endif %}},
+ {"@type":"WebSite","@id":"{{ home_seo.base }}/#website","name":"{{ site.name }}","url":"{{ home_seo.url_bn }}","publisher":{"@id":"{{ home_seo.base }}/#org"},"inLanguage":["bn","en"]},
+ {"@type":"SoftwareApplication","name":"{{ site.name }}","url":"{{ home_seo.canonical }}","applicationCategory":"BusinessApplication","applicationSubCategory":"Point of Sale, E-commerce","operatingSystem":"Web, Android, iOS","inLanguage":"{{ home_seo.lang }}","areaServed":"BD","publisher":{"@id":"{{ home_seo.base }}/#org"},
+  "description":"{% if home_seo.lang == 'en' %}POS, e-commerce website builder, courier booking, customer SMS, due tracking and profit reports for small businesses in Bangladesh.{% else %}বাংলাদেশের ছোট ব্যবসার জন্য ওয়েবসাইট, POS, অর্ডার, কুরিয়ার, SMS, বাকির খাতা আর রিপোর্ট — এক সফটওয়্যারে।{% endif %}",
+  "offers":[{% for plan in plans %}{"@type":"Offer","name":"{{ plan.key }}","price":"{{ plan.month }}","priceCurrency":"BDT"}{% if not forloop.last %},{% endif %}{% endfor %}]}
+]}
+</script>

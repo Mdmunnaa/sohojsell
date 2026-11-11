@@ -36,21 +36,36 @@ BN_TO_EN_DIGITS = str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789')
 # ============================================================
 # LANDING PAGE
 # ============================================================
+HOME_PLAN_TEXT = {      # প্যাকেজের ছোট পরিচয়: বাংলা, ইংরেজি হোমপেজের জন্য
+    'Basic': ('একা চালানো ছোট দোকান', 'For a small shop run by one person'),
+    'Standard': ('বাড়তে থাকা অনলাইন ব্যবসা', 'For a growing online business'),
+    'Premium': ('ব্র্যান্ড আর একাধিক দোকান', 'For brands and bigger shops'),
+}
+
+
 def landing_page(request):
+    return _home(request, 'bn')
+
+
+def landing_page_en(request):
+    """ইংরেজি হোমপেজ (/en/) — যারা Google-এ "pos software bangladesh"-এর মতো ইংরেজিতে খোঁজে।"""
+    return _home(request, 'en')
+
+
+def _home(request, lang):
     if request.user.is_authenticated:
         if request.user.is_superuser:
             return redirect('master_dashboard')
         return redirect('dashboard')
+    from . import seo
     from .payments import PLAN_PRICES, PLAN_YEAR_PRICES
     from .plans import PLAN_LIMITS
     from .sms import sms_rate
     plans = []
-    for key, tagline, pitch in (('Basic', 'একা চালানো ছোট দোকান', 'ওয়েবসাইট, POS, অর্ডার, SMS — সব মূল সুবিধা'),
-                                ('Standard', 'বাড়তে থাকা অনলাইন ব্যবসা', 'Facebook কমেন্ট থেকে অর্ডার, ৩ জন স্টাফ'),
-                                ('Premium', 'ব্র্যান্ড আর একাধিক দোকান', 'নিজের ডোমেইন (www.yourshop.com), সীমাহীন প্রোডাক্ট')):
+    for key in ('Basic', 'Standard', 'Premium'):
         limits = PLAN_LIMITS[key]
         plans.append({
-            'key': key, 'tagline': tagline, 'pitch': pitch, 'popular': key == 'Standard',
+            'key': key, 'tagline': HOME_PLAN_TEXT[key][1 if lang == 'en' else 0], 'popular': key == 'Standard',
             'month': int(PLAN_PRICES[key]), 'year': int(PLAN_YEAR_PRICES[key]),
             'year_per_month': int(PLAN_YEAR_PRICES[key] / 12),
             'products': limits['products'], 'staff': limits['staff'], 'facebook': limits['facebook'],
@@ -60,7 +75,22 @@ def landing_page(request):
         rate = sms_rate()
     except Exception:    # noqa: BLE001 — ডেটাবেস ছাড়া হোমপেজ আটকাবে না
         rate = None
-    return render(request, 'store/landing.html', {'plans': plans, 'sms_rate': rate, 'trial_days': 30})
+    base = seo.main_site_url(request)
+    home_seo = {'base': base, 'url_bn': base + '/', 'url_en': base + reverse('landing_page_en'), 'lang': lang}
+    home_seo['canonical'] = home_seo['url_en'] if lang == 'en' else home_seo['url_bn']
+    template = 'store/landing_en.html' if lang == 'en' else 'store/landing.html'
+    return render(request, template, {'plans': plans, 'sms_rate': rate, 'trial_days': 30, 'home_seo': home_seo})
+
+
+def site_robots(request):
+    """মূল সাইটের robots.txt (দোকানগুলোর নিজেরটা আলাদা — store/seo.py)।"""
+    from . import seo
+    return HttpResponse(seo.main_robots_txt(request), content_type='text/plain')
+
+
+def site_sitemap(request):
+    from . import seo
+    return HttpResponse(seo.main_sitemap_xml(request), content_type='application/xml')
 
 
 # ============================================================

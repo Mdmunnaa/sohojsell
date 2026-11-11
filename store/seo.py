@@ -94,6 +94,46 @@ def robots_txt(shop, request):
             'Disallow: /checkout-draft/\n' + f'Sitemap: {sitemap}\n')
 
 
+# ---------------------------------------------------------------- মূল সাইট (sellpunch.com) — দোকানের না
+MAIN_PRIVATE_PATHS = ('/accounts/', '/admin/', '/saas-master/', '/demo/', '/dashboard/', '/setup-shop/', '/pos/',
+                      '/orders/', '/products/', '/customers/', '/reports/', '/dues/', '/website/', '/sms/', '/offers/',
+                      '/landing/', '/purchases/', '/settings/', '/billing/', '/payment/', '/staff/', '/facebook/')
+MAIN_PUBLIC_PAGES = ('contact', 'privacy_policy', 'terms', 'refund_policy')
+
+
+def main_site_url(request):
+    """মূল সাইটের আসল ঠিকানা (https://sellpunch.com) — onrender.com থেকে খুললেও Google যেন এটাই ধরে।"""
+    from django.conf import settings
+    base = getattr(settings, 'STORE_BASE_DOMAIN', '')
+    if base:
+        return f'https://{base}'
+    return (getattr(settings, 'SITE_URL', '') or request.build_absolute_uri('/')).rstrip('/')
+
+
+def main_robots_txt(request):
+    """লগইনের পেছনের পাতা আর ডেমো (ঢুকলেই লগইন হয়) Google ঘুরবে না; সাইনআপ পাতা খোলা।"""
+    lines = ['User-agent: *', 'Allow: /', 'Allow: /accounts/signup/']
+    lines += [f'Disallow: {path}' for path in MAIN_PRIVATE_PATHS]
+    lines.append(f'Sitemap: {main_site_url(request)}/sitemap.xml')
+    return '\n'.join(lines) + '\n'
+
+
+def main_sitemap_xml(request):
+    """হোমপেজ (বাংলা + ইংরেজি, একে অপরের hreflang সহ) আর নীতিমালার পাতা।"""
+    from django.urls import reverse
+    from django.utils.html import escape
+    base = main_site_url(request)
+    home_bn, home_en = base + '/', base + reverse('landing_page_en')
+    alternates = ''.join(f'<xhtml:link rel="alternate" hreflang="{lang}" href="{escape(url)}"/>'
+                         for lang, url in (('bn', home_bn), ('en', home_en), ('x-default', home_bn)))
+    rows = [f'<url><loc>{escape(url)}</loc>{alternates}<changefreq>weekly</changefreq><priority>1.0</priority></url>'
+            for url in (home_bn, home_en)]
+    rows += [f'<url><loc>{escape(base + reverse(name))}</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>'
+             for name in MAIN_PUBLIC_PAGES]
+    return ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+            'xmlns:xhtml="http://www.w3.org/1999/xhtml">' + ''.join(rows) + '</urlset>')
+
+
 def product_ld(request, shop, product, meta, rating=None):
     """Google-এর প্রোডাক্ট কার্ড (দাম, স্টক, রেটিং) — product_detail পেইজে JSON-LD।"""
     import json

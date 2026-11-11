@@ -25,6 +25,9 @@ urlpatterns = [
                                                   content_type='application/manifest+json'), name='webmanifest'),
     # Landing
     path('', views.landing_page, name='landing_page'),
+    path('en/', views.landing_page_en, name='landing_page_en'),
+    path('robots.txt', views.site_robots, name='site_robots'),
+    path('sitemap.xml', views.site_sitemap, name='site_sitemap'),
     # লাইভ ডেমো (পাসওয়ার্ড ছাড়া ডেমো দোকানে ঢোকা)
     path('demo/', views_demo.demo_start, name='demo_start'),
     path('demo/shop/', views_demo.demo_store, name='demo_store'),

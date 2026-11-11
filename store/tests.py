@@ -3427,3 +3427,68 @@ class StorefrontEnglishTests(TestCase):
         html = self.client.get(reverse('storefront_home', args=[self.shop.slug])).content.decode()
         self.assertIn('lang="bn"', html)
         self.assertIn('সব প্রোডাক্ট', html)
+
+
+class HomepageSeoTests(TestCase):
+    """SellPunch-এর নিজের হোমপেজ: বাংলা (/) আর ইংরেজি (/en/), hreflang, canonical, robots.txt, sitemap.xml।"""
+    BN = re.compile(r'[ঀ-৲৴-৿][ঀ-৿\s]*')
+
+    def test_english_homepage(self):
+        response = self.client.get(reverse('landing_page_en'))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('<html lang="en">', html)
+        self.assertIn('POS Software &amp; Online Store Builder for Bangladesh', html)
+        self.assertIn('<link rel="canonical" href="http://testserver/en/">', html)
+        self.assertIn('hreflang="bn" href="http://testserver/"', html)
+        self.assertIn('hreflang="x-default" href="http://testserver/"', html)
+        self.assertIn('<meta property="og:locale" content="en_US">', html)
+        # বাংলা শুধু "বাংলা" লিংকে (বাংলা হোমপেজে ফেরার জন্য)
+        visible = re.sub(r'<!--.*?-->', ' ', html, flags=re.S)
+        self.assertEqual({m.group(0).strip() for m in self.BN.finditer(visible)}, {'বাংলা'})
+        # যে ছবিগুলো দেখায় সব আছে (না থাকলে প্রোডাকশনে collectstatic-এর পর পাতা ভাঙবে)
+        from django.contrib.staticfiles import finders
+        for path in set(re.findall(r'/static/(landing/[\w.-]+)', html)):
+            self.assertTrue(finders.find(path), path)
+
+    def test_bangla_homepage_links_to_english(self):
+        html = self.client.get(reverse('landing_page')).content.decode()
+        self.assertIn('<link rel="canonical" href="http://testserver/">', html)
+        self.assertIn('hreflang="en" href="http://testserver/en/"', html)
+        self.assertIn(f'href="{reverse("landing_page_en")}"', html)
+        for page in ('/', '/en/'):
+            data = re.search(r'<script type="application/ld\+json">(.*?)</script>', self.client.get(page).content.decode(), re.S)
+            graph = json.loads(data.group(1))['@graph']
+            self.assertEqual([item['@type'] for item in graph], ['Organization', 'WebSite', 'SoftwareApplication'])
+
+    @override_settings(STORE_BASE_DOMAIN='sellpunch.com', ALLOWED_HOSTS=['sohojsell.onrender.com', 'sellpunch.com'])
+    def test_canonical_is_main_domain_even_on_render_host(self):
+        html = self.client.get('/en/', HTTP_HOST='sohojsell.onrender.com').content.decode()
+        self.assertIn('<link rel="canonical" href="https://sellpunch.com/en/">', html)
+        self.assertIn('Sitemap: https://sellpunch.com/sitemap.xml', self.client.get('/robots.txt', HTTP_HOST='sellpunch.com').content.decode())
+
+    def test_robots_and_sitemap(self):
+        robots = self.client.get('/robots.txt')
+        self.assertEqual(robots['Content-Type'], 'text/plain')
+        text = robots.content.decode()
+        for line in ('Allow: /', 'Allow: /accounts/signup/', 'Disallow: /demo/', 'Disallow: /dashboard/',
+                     'Sitemap: http://testserver/sitemap.xml'):
+            self.assertIn(line, text)
+        response = self.client.get('/sitemap.xml')
+        self.assertEqual(response['Content-Type'], 'application/xml')
+        from xml.etree import ElementTree
+        root = ElementTree.fromstring(response.content)
+        ns = {'s': 'http://www.sitemaps.org/schemas/sitemap/0.9', 'x': 'http://www.w3.org/1999/xhtml'}
+        locs = [el.text for el in root.findall('s:url/s:loc', ns)]
+        self.assertEqual(locs[:2], ['http://testserver/', 'http://testserver/en/'])
+        self.assertIn('http://testserver/privacy-policy/', locs)
+        first = root.find('s:url', ns)
+        self.assertEqual({link.get('hreflang') for link in first.findall('x:link', ns)}, {'bn', 'en', 'x-default'})
+        for path in locs:                                      # sitemap-এর সব পাতা খোলে
+            self.assertEqual(self.client.get(path.replace('http://testserver', '')).status_code, 200, path)
+
+    def test_logged_in_seller_goes_to_dashboard(self):
+        user = User.objects.create_user(phone_number='01799900001', password='Test-pass-123')
+        Shop.objects.create(user=user, name='S', phone='01799900001', address='Dhaka')
+        self.client.force_login(user)
+        self.assertRedirects(self.client.get('/en/'), reverse('dashboard'), fetch_redirect_response=False)

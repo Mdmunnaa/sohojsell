@@ -1,0 +1,11 @@
+<script>
+function toggleMenu(){
+  const m=document.getElementById('mob-menu'),ic=document.getElementById('ham-icon');
+  const open=m.classList.toggle('open');ic.className=open?'bi bi-x-lg':'bi bi-list';
+}
+function setBilling(kind){
+  document.getElementById('pricing-wrap').classList.toggle('yearly',kind==='y');
+  document.getElementById('tg-m').classList.toggle('on',kind==='m');
+  document.getElementById('tg-y').classList.toggle('on',kind==='y');
+}
+</script>
