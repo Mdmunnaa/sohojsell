@@ -45,7 +45,7 @@
 <div id="cart-overlay" onclick="closeCart()"></div>
 <div id="cart-drawer">
   <div class="drawer-header">
-    <h5><i class="bi bi-bag-check-fill me-2 text-orange"></i>{% t "আমার কার্ট" %}</h5>
+    <h2><i class="bi bi-bag-check-fill me-2 text-orange"></i>{% t "আমার কার্ট" %}</h2>
     <button class="close-btn" onclick="closeCart()" aria-label="{% t "বন্ধ করুন" %}"><i class="bi bi-x-lg"></i></button>
   </div>
   <div class="drawer-items" id="drawer-items"></div>
@@ -60,7 +60,7 @@
 {# চেকআউট #}
 <div id="checkout-modal">
   <div id="checkout-box">
-    <h4><i class="bi bi-truck me-2 text-orange"></i>{% t "অর্ডারের তথ্য" %}</h4>
+    <h2><i class="bi bi-truck me-2 text-orange"></i>{% t "অর্ডারের তথ্য" %}</h2>
     <div class="co-label" style="margin-top:6px;">{% t "আপনার অর্ডার" %}</div>
     <div class="co-items" id="co-items"></div>
     <div class="co-label">{% t "আপনার তথ্য" %}</div>
@@ -136,7 +136,7 @@ const SHOP_ID = '{{ shop.id }}';
 const PLACE_ORDER_URL = '{% shop_url "storefront_place_order" shop %}';
 const COUPON_URL = '{% shop_url "storefront_coupon_check" shop %}';
 const DRAFT_URL = '{% shop_url "storefront_checkout_draft" shop %}';
-const WA_NUMBER = '{{ shop.whatsapp_number }}';
+const WA_NUMBER = '{{ shop.whatsapp_number|wa_number }}';
 let coupon = null;   // {code, discount, delivery_off, text}
 const FREE_DELIVERY_MIN = {% if shop.free_delivery_min %}{{ shop.free_delivery_min|floatformat:0 }}{% else %}null{% endif %};
 const FALLBACK_DELIVERY = {{ fallback_delivery|default:0|floatformat:0 }};
@@ -182,6 +182,7 @@ function renderCart() {
   ['nav-cart-badge', 'mob-cart-badge'].forEach(id => { const b = document.getElementById(id); if (b) { b.style.display = count > 0 ? 'flex' : 'none'; b.textContent = count; } });
   const db = document.getElementById('desktop-cart-badge');
   if (db) { db.style.display = count > 0 ? 'inline' : 'none'; db.textContent = count; }
+  if (window.renderFloatCart) window.renderFloatCart(count, n.subtotal);
 
   const deliveryText = n.keys.length ? (n.delivery === 0 ? '{% tjs "ফ্রি" %}' : money(n.delivery)) : '—';
   document.getElementById('sf-subtotal').textContent = money(n.subtotal);
@@ -202,7 +203,7 @@ function renderCart() {
   const container = document.getElementById('drawer-items');
   const coItems = document.getElementById('co-items');
   if (!n.keys.length) {
-    container.innerHTML = '<div class="text-center text-muted py-5"><i class="bi bi-bag-x" style="font-size:56px;display:block;margin-bottom:12px;color:#E2E8F0;"></i><h6 class="fw-bold">{% tjs "কার্ট খালি" %}</h6></div>';
+    container.innerHTML = '<div class="text-center text-muted py-5"><i class="bi bi-bag-x" style="font-size:56px;display:block;margin-bottom:12px;color:#E2E8F0;"></i><p class="fw-bold" style="font-size:16px;margin:0;">{% tjs "কার্ট খালি" %}</p></div>';
     if (coItems) coItems.innerHTML = '';
     const modal = document.getElementById('checkout-modal');
     if (modal && modal.classList.contains('show')) { modal.classList.remove('show'); showToast('{% tjs "কার্ট খালি" %}'); }

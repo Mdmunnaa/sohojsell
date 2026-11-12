@@ -1,0 +1,123 @@
+{% load store_links sf_text %}{% comment %}
+মোবাইলের নিচের মেনু (বাংলাদেশের পরিচিত অনলাইন শপের মতো): ক্যাটাগরি · WhatsApp · হোম (মাঝে উঁচু গোল) · সব প্রোডাক্ট · কল।
+সাথে ডান পাশে ভাসমান কার্ট (কয়টা পণ্য, মোট কত) আর WhatsApp বাটন, আর ক্যাটাগরির তালিকা নিচ থেকে খোলে।
+হোম আর প্রোডাক্ট পাতা দুটোতেই বসে; লাগে: shop, categories। কার্টের সংখ্যা _cart_checkout.html-এর renderCart() বসায়।
+{% endcomment %}
+<style>
+.sf-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 990; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: end; background: #fff; border-top: 1px solid #E5E7EB; box-shadow: 0 -6px 24px rgba(15, 23, 42, .08); padding: 0 4px env(safe-area-inset-bottom); }
+.sf-nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 64px; background: none; border: 0; padding: 0; color: #111827; font: inherit; font-size: 12px; font-weight: 700; line-height: 1.1; text-decoration: none; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; }
+.sf-nav-item i { font-size: 23px; line-height: 1; }
+.sf-nav-item:active { opacity: .7; }
+.sf-nav-item .nav-badge { position: absolute; top: 6px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--dark); color: #fff; font-size: 10px; font-weight: 800; display: none; align-items: center; justify-content: center; border: 2px solid #fff; }
+.sf-nav-home { height: 64px; }
+.sf-nav-home .ring { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); width: 70px; height: 70px; border-radius: 50%; background: var(--orange); color: #fff; border: 5px solid #fff; box-shadow: 0 8px 20px rgba(var(--orange-rgb), .35); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; font-weight: 800; }
+.sf-nav-home .ring i { font-size: 24px; }
+
+.fcart { position: fixed; right: 0; bottom: calc(82px + env(safe-area-inset-bottom)); z-index: 989; width: 82px; border: 0; padding: 0; border-radius: 16px 0 0 16px; overflow: hidden; background: var(--orange); color: #fff; font: inherit; cursor: pointer; box-shadow: 0 10px 26px rgba(15, 23, 42, .22); text-align: center; }
+.fcart[hidden] { display: none; }
+.fcart-top { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px 8px; font-size: 12.5px; font-weight: 700; }
+.fcart-top i { font-size: 24px; line-height: 1; }
+.fcart-total { display: block; background: var(--dark); padding: 7px 4px; font-size: 14px; font-weight: 800; white-space: nowrap; }
+.wa-fab { position: fixed; right: 14px; bottom: calc(82px + env(safe-area-inset-bottom)); z-index: 989; width: 56px; height: 56px; border-radius: 50%; background: #25D366; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 30px; text-decoration: none; box-shadow: 0 8px 22px rgba(37, 211, 102, .45); border: 3px solid #fff; }
+.wa-fab:hover { color: #fff; }
+.fcart:not([hidden]) ~ .wa-fab { bottom: calc(190px + env(safe-area-inset-bottom)); }
+
+.cat-sheet-bg { position: fixed; inset: 0; z-index: 9990; background: rgba(15, 23, 42, .55); opacity: 0; transition: opacity .2s; }
+.cat-sheet-bg.show { opacity: 1; }
+.cat-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9991; max-height: 78vh; overflow-y: auto; background: #fff; border-radius: 22px 22px 0 0; padding: 8px 0 calc(16px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform .25s cubic-bezier(.25, 1, .5, 1); }
+.cat-sheet.show { transform: none; }
+.cat-sheet[hidden], .cat-sheet-bg[hidden] { display: none; }
+.cs-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px 12px; border-bottom: 1px solid #F1F5F9; }
+.cs-head b { font-size: 18px; font-weight: 800; color: var(--dark); }
+.cs-x { width: 38px; height: 38px; border-radius: 50%; border: 0; background: #F1F5F9; color: var(--dark); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.cs-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 20px; color: var(--dark); text-decoration: none; font-size: 16px; font-weight: 700; border-bottom: 1px solid #F8FAFC; }
+.cs-link i { color: #94A3B8; font-size: 14px; }
+.cs-link.on { color: var(--orange-dark); }
+.cs-link.muted { color: var(--muted); font-weight: 600; }
+
+@media (max-width: 767.98px) {
+  body { padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important; }
+  .toast-sf { bottom: calc(96px + env(safe-area-inset-bottom)) !important; }
+}
+@media (min-width: 768px) {
+  .sf-nav { display: none; }
+  .fcart { bottom: 24px; }
+  .wa-fab { right: 24px; bottom: 24px; }
+  .fcart:not([hidden]) ~ .wa-fab { bottom: 132px; }
+  .cat-sheet { left: 50%; right: auto; width: 440px; transform: translate(-50%, 100%); }
+  .cat-sheet.show { transform: translate(-50%, 0); }
+}
+{% if shop.design == 'bold' %}
+.sf-nav { background: var(--dark); border-top: 0; }
+.sf-nav-item { color: #fff; }
+.sf-nav-home .ring { border-color: var(--dark); }
+.sf-nav-item .nav-badge { background: var(--orange); border-color: var(--dark); }
+{% elif shop.design == 'minimal' %}
+.sf-nav { box-shadow: none; }
+.sf-nav-home .ring { background: var(--dark); box-shadow: 0 6px 16px rgba(15, 23, 42, .25); }
+.fcart { background: var(--dark); border-radius: 6px 0 0 6px; }
+.fcart-total { background: #000; }
+{% elif shop.design == 'soft' %}
+.sf-nav { border-radius: 24px 24px 0 0; border-top: 0; box-shadow: 0 -10px 30px -12px rgba(var(--orange-rgb), .35); }
+{% endif %}
+</style>
+
+<nav class="sf-nav" aria-label="{% t "মেনু" %}">
+  <button type="button" class="sf-nav-item" onclick="openCats()"><i class="bi bi-grid"></i><span>{% t "ক্যাটাগরি" %}</span></button>
+  {% if shop.whatsapp_number %}
+  <a class="sf-nav-item" href="https://wa.me/{{ shop.whatsapp_number|wa_number }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i><span>WhatsApp</span></a>
+  {% else %}
+  <button type="button" class="sf-nav-item" onclick="openCart()"><i class="bi bi-cart3"></i><span>{% t "কার্ট" %}</span><b class="nav-badge" id="nav-cart-badge">0</b></button>
+  {% endif %}
+  <a class="sf-nav-item sf-nav-home" href="{% shop_url 'storefront_home' shop %}"><span class="ring"><i class="bi bi-house-door-fill"></i>{% t "হোম" %}</span></a>
+  <a class="sf-nav-item" href="{% shop_url 'storefront_home' shop %}#products"><i class="bi bi-shop"></i><span>{% t "সব প্রোডাক্ট" %}</span></a>
+  {% if shop.phone %}
+  <a class="sf-nav-item" href="tel:{{ shop.phone }}"><i class="bi bi-telephone"></i><span>{% t "কল" %}</span></a>
+  {% else %}
+  <a class="sf-nav-item" href="{% shop_url 'storefront_track' shop %}"><i class="bi bi-truck"></i><span>{% t "ট্র্যাক" %}</span></a>
+  {% endif %}
+</nav>
+
+<button type="button" class="fcart" id="float-cart" onclick="openCart()" hidden aria-label="{% t "কার্ট" %}">
+  <span class="fcart-top"><i class="bi bi-cart3"></i><span id="fc-count"></span></span>
+  <span class="fcart-total" id="fc-total"></span>
+</button>
+{% if shop.whatsapp_number %}
+<a class="wa-fab" href="https://wa.me/{{ shop.whatsapp_number|wa_number }}" target="_blank" rel="noopener" aria-label="{% t "WhatsApp-এ মেসেজ দিন" %}"><i class="bi bi-whatsapp"></i></a>
+{% endif %}
+
+<div class="cat-sheet-bg" id="catSheetBg" hidden onclick="closeCats()"></div>
+<div class="cat-sheet" id="catSheet" role="dialog" aria-modal="true" aria-labelledby="catSheetTitle" hidden>
+  <div class="cs-head"><b id="catSheetTitle">{% t "ক্যাটাগরি" %}</b><button type="button" class="cs-x" onclick="closeCats()" aria-label="{% t "বন্ধ করুন" %}"><i class="bi bi-x-lg"></i></button></div>
+  <a class="cs-link{% if not category and not product %} on{% endif %}" href="{% shop_url 'storefront_home' shop %}#products">{% t "সব প্রোডাক্ট" %}<i class="bi bi-chevron-right"></i></a>
+  {% for cat in categories %}
+  <a class="cs-link{% if category.id == cat.id or product.category_id == cat.id %} on{% endif %}" href="{% shop_url 'storefront_category' shop cat.id %}">{{ cat.name }}<i class="bi bi-chevron-right"></i></a>
+  {% endfor %}
+  <a class="cs-link muted" href="{% shop_url 'storefront_track' shop %}">{% t "অর্ডার ট্র্যাক করুন" %}<i class="bi bi-truck"></i></a>
+</div>
+<script>
+(function () {
+  var sheet = document.getElementById('catSheet'), bg = document.getElementById('catSheetBg');
+  window.openCats = function () {
+    sheet.hidden = false; bg.hidden = false;
+    requestAnimationFrame(function () { sheet.classList.add('show'); bg.classList.add('show'); });
+    document.body.style.overflow = 'hidden';
+    var first = sheet.querySelector('.cs-x'); if (first) first.focus();
+  };
+  window.closeCats = function () {
+    sheet.classList.remove('show'); bg.classList.remove('show');
+    document.body.style.overflow = '';
+    setTimeout(function () { sheet.hidden = true; bg.hidden = true; }, 250);
+  };
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !sheet.hidden) closeCats(); });
+  {# ভাসমান কার্ট: renderCart() প্রতিবার এটা ডাকে #}
+  window.renderFloatCart = function (count, subtotal) {
+    var box = document.getElementById('float-cart'); if (!box) return;
+    box.hidden = count <= 0;
+    if (count <= 0) return;
+    var label = window.SF_LANG === 'en' ? (count === 1 ? '1 item' : count + ' items') : '{% tjs "{n}টা পণ্য" %}'.replace('{n}', sfNum(count));
+    document.getElementById('fc-count').textContent = label;
+    document.getElementById('fc-total').textContent = '৳' + Math.round(subtotal).toLocaleString('en-IN');
+  };
+})();
+</script>

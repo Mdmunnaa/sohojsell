@@ -59,3 +59,25 @@ def sf_taka(context, value):
     """{% sf_taka order.total_amount %} → বাংলায় ৳১,২৫০, ইংরেজিতে ৳1,250"""
     from .bangla import taka
     return sf_lang.num(taka(value), _lang(context))
+
+
+def _bd_digits(value):
+    """'8801712345678', '+880 1712-345678', '01712345678' → '01712345678' (না মিললে খালি)।"""
+    digits = ''.join(ch for ch in str(value or '') if ch.isdigit())
+    if digits.startswith('880'):
+        digits = digits[2:]
+    return digits if len(digits) == 11 and digits.startswith('01') else ''
+
+
+@register.filter
+def wa_number(value):
+    """wa.me লিংকের নম্বর: 8801XXXXXXXXX (দোকানের সেটিংসে যেভাবেই রাখা থাকুক)।"""
+    local = _bd_digits(value)
+    return '88' + local if local else ''.join(ch for ch in str(value or '') if ch.isdigit())
+
+
+@register.filter
+def bd_phone(value):
+    """দেখানোর জন্য: 01712-345678।"""
+    local = _bd_digits(value)
+    return f'{local[:5]}-{local[5:]}' if local else value

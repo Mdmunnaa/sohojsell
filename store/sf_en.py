@@ -313,4 +313,17 @@ EN_TEXT = {
     'পেমেন্ট গেটওয়ে এই মুহূর্তে সাড়া দিচ্ছে না। একটু পরে চেষ্টা করুন।': 'The payment gateway is not responding. Please try again shortly.',
     'পেমেন্ট গেটওয়ে থেকে অপ্রত্যাশিত উত্তর এসেছে।': 'Unexpected response from the payment gateway.',
     'পেমেন্ট শুরু করা যায়নি।': 'Could not start the payment.',
+
+    # মোবাইলের নিচের মেনু, ভাসমান কার্ট আর নতুন প্রোডাক্ট পাতা
+    'মেনু': 'Menu',
+    'কল': 'Call',
+    'ট্র্যাক': 'Track',
+    '{n}টা পণ্য': '{n} items',
+    'রিভিউ দেখুন': 'See reviews',
+    'এখনো রিভিউ নেই': 'No reviews yet',
+    'প্রথম রিভিউ দিন': 'Write the first review',
+    'সাইজ / রং:': 'Size / Colour:',
+    'পরিমাণ:': 'Quantity:',
+    'অর্ডার করুন': 'Order Now',
+    'কল করে অর্ডার': 'Order by phone',
 }

@@ -1068,8 +1068,7 @@ def storefront_home(request, shop_slug, category_id=None):
         title = shop.name + (f' — {shop.storefront_tagline}' if shop.storefront_tagline else '')
         meta = seo.storefront_meta(request, shop, title=title, noindex=bool(search or page_obj.number > 1))
 
-    categories = (Category.objects.filter(shop=shop, product__is_active=True, product__stock_quantity__gt=0)
-                  .distinct().order_by('name'))
+    categories = _storefront_categories(shop)
 
     return render(request, 'store/storefront/home.html', {
         **card_context,
@@ -1088,6 +1087,12 @@ def storefront_home(request, shop_slug, category_id=None):
         'is_landing': is_landing,
         **_checkout_context(shop),
     })
+
+
+def _storefront_categories(shop):
+    """যেসব ক্যাটাগরিতে বিক্রির মতো প্রোডাক্ট আছে — ওয়েবসাইটের ক্যাটাগরি বার আর নিচের মেনুর তালিকা।"""
+    return list(Category.objects.filter(shop=shop, product__is_active=True, product__stock_quantity__gt=0)
+                .distinct().order_by('name'))
 
 
 @ensure_csrf_cookie
@@ -1146,6 +1151,7 @@ def storefront_product_detail(request, shop_slug, product_id):
             + [(product.name, storefront_link(shop, 'storefront_product_detail', product.id, request=request))]),
         'wa_text': wa_text,
         'related_products': related_products,
+        'categories': _storefront_categories(shop),
         **checkout,
     })
 

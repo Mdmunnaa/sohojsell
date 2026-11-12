@@ -15,11 +15,14 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; -webkit-tap-highlight-color: transparent; padding-bottom: 0; color: var(--text); }
 
-/* MOBILE HEADER */
-.mob-header { position: absolute; top: 0; left: 0; right: 0; padding: 12px 16px; z-index: 5; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
-.mob-btn { width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); color: var(--dark); border: 1px solid rgba(0,0,0,0.05); box-shadow: var(--shadow-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; pointer-events: all; text-decoration: none; transition: 0.2s; position: relative; }
-.mob-btn:active { transform: scale(0.95); }
-.mob-badge { position: absolute; top: -2px; right: -2px; background: #D92D20; color: #fff; font-size: 10px; font-weight: 900; width: 18px; height: 18px; border-radius: 9px; display: none; align-items: center; justify-content: center; border: 2px solid #fff; }
+/* MOBILE HEADER: মেনু · দোকানের লোগো · কার্ট */
+.pd-top { position: sticky; top: 0; z-index: 50; display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px; align-items: center; height: 66px; padding: 0 8px; background: #fff; box-shadow: 0 2px 14px rgba(15,23,42,.07); }
+.pd-icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border: 0; background: none; color: var(--dark); font-size: 28px; cursor: pointer; position: relative; text-decoration: none; border-radius: 12px; -webkit-tap-highlight-color: transparent; }
+.pd-icon:active { background: rgba(15,23,42,.06); }
+.pd-brand { justify-self: center; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; text-decoration: none; color: var(--dark); font-weight: 800; font-size: 19px; }
+.pd-brand img { width: 150px; height: 46px; object-fit: contain; }
+.pd-brand span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mob-badge { position: absolute; top: 2px; right: 0; background: var(--dark); color: #fff; font-size: 11px; font-weight: 800; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; display: none; align-items: center; justify-content: center; border: 2px solid #fff; }
 
 /* DESKTOP HEADER */
 .desk-header { display: none; position: sticky; top: 0; background: var(--glass); backdrop-filter: blur(12px); padding: 0 24px; box-shadow: var(--shadow-sm); z-index: 100; height: 70px; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.3); }
@@ -30,9 +33,9 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .desk-cart-btn:hover { transform: translateY(-2px); }
 
 /* PRODUCT IMAGE */
-.prod-image-box { background: #fff; width: 100%; height: clamp(320px, 60vw, 450px); position: relative; overflow: hidden; border-bottom-left-radius: 24px; border-bottom-right-radius: 24px; box-shadow: var(--shadow-sm); padding: 20px; }
+.prod-image-box { background: #fff; height: clamp(300px, 88vw, 450px); position: relative; overflow: hidden; margin: 12px 12px 0; border-radius: 22px; border: 1.5px solid rgba(var(--orange-rgb), .22); padding: 16px; }
 .prod-image-box img { width: 100%; height: 100%; object-fit: contain; cursor: zoom-in; }
-.zoom-hint { position: absolute; bottom: 14px; right: 14px; background: rgba(15,23,42,.65); color: #fff; font-size: 11.5px; font-weight: 700; padding: 5px 10px; border-radius: 999px; pointer-events: none; }
+.zoom-hint { position: absolute; bottom: 12px; right: 12px; background: rgba(15,23,42,.65); color: #fff; font-size: 11.5px; font-weight: 700; padding: 5px 10px; border-radius: 999px; pointer-events: none; }
 #imgViewer { position: fixed; inset: 0; background: #0B0B0F; z-index: 100000; display: none; align-items: center; justify-content: center; touch-action: pinch-zoom; }
 #imgViewer.show { display: flex; }
 #imgViewer img { max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -42,34 +45,42 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .footer-contact { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
 .footer-contact a { color: var(--dark); font-weight: 700; text-decoration: none; }
 .prod-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 80px; color: #E8EAF0; }
-.img-badge { position: absolute; bottom: 16px; left: 0; background: #D92D20; color: #fff; font-size: 12px; font-weight: 900; padding: 6px 16px 6px 12px; border-radius: 0 20px 20px 0; box-shadow: 0 4px 10px rgba(255,51,51,0.3); }
+.img-badge { position: absolute; top: 16px; left: 0; background: #D92D20; color: #fff; font-size: 12px; font-weight: 900; padding: 6px 16px 6px 12px; border-radius: 0 20px 20px 0; box-shadow: 0 4px 10px rgba(255,51,51,0.3); }
 .img-badge.low { background: #FF8C00; }
-.img-share { position: absolute; top: 16px; right: 16px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--dark); box-shadow: var(--shadow-sm); transition: 0.2s; }
+.img-share { position: absolute; top: 12px; right: 12px; width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,0.92); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--dark); box-shadow: var(--shadow-sm); transition: 0.2s; }
 .img-share:active { transform: scale(0.9); }
 
-/* INFO CARD */
-.info-card { background: #fff; padding: 24px 20px; margin: 12px; border-radius: 20px; box-shadow: var(--shadow-sm); }
-.price-main { font-size: 32px; font-weight: 900; color: var(--orange); line-height: 1; letter-spacing: -1px; margin-bottom: 8px; }
-.prod-title-text { font-size: 18px; font-weight: 800; color: var(--dark); line-height: 1.4; margin-bottom: 16px; }
-.meta-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.meta-chip { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; padding: 6px 14px; border-radius: 24px; }
+/* INFO CARD: হালকা রঙের কার্ড, বড় নাম, দাম গোল ঘরে, বড় বাটন */
+.info-card { background: linear-gradient(165deg, var(--orange-light) 0%, #fff 62%); padding: 22px 18px; margin: 12px; border-radius: 24px; border: 1.5px solid rgba(var(--orange-rgb), .22); }
+.pd-title { font-size: 24px; font-weight: 800; color: var(--dark); line-height: 1.35; margin: 0 0 14px; letter-spacing: -.01em; }
+.pd-price-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin-bottom: 16px; }
+.pd-old { font-size: 24px; font-weight: 700; color: #94A3B8; text-decoration: line-through; text-decoration-thickness: 2px; }
+.pd-now { display: inline-flex; align-items: center; padding: 8px 22px; border-radius: 999px; background: rgba(var(--orange-rgb), .12); border: 1.5px solid rgba(var(--orange-rgb), .4); color: var(--dark); font-size: 27px; font-weight: 800; line-height: 1.15; letter-spacing: -.01em; }
+.pd-off { font-size: 13px; font-weight: 800; background: #D92D20; color: #fff; padding: 4px 10px; border-radius: 999px; }
+.pd-rate { display: block; background: #fff; border: 1px solid var(--border); border-radius: 18px; padding: 14px 18px; margin-bottom: 16px; text-decoration: none; color: var(--muted); }
+.pd-rate-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 15px; font-weight: 600; }
+.pd-rate-top .stars { font-size: 19px; gap: 4px; }
+.pd-rate-top b { color: var(--dark); }
+.pd-rate-link { display: inline-block; margin-top: 8px; font-size: 15px; font-weight: 800; color: var(--orange-dark); padding-bottom: 3px; border-bottom: 3px solid var(--orange); }
+.meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.meta-chip { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 800; padding: 6px 14px; border-radius: 24px; }
 .meta-chip.stock { background: #E8F5E9; color: #166534; }
-.var-wrap { margin: 18px 0 0; padding-top: 16px; border-top: 1px solid #F1F5F9; }
-.var-title { font-size: 14px; font-weight: 800; color: var(--dark); margin-bottom: 10px; }
-.var-title span { color: var(--orange); font-weight: 800; }
-.var-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.var-chip { border: 1.5px solid #E2E8F0; background: #fff; border-radius: 10px; padding: 8px 16px; font-weight: 800; font-size: 14px; color: #0F172A; cursor: pointer; min-height: 40px; min-width: 52px; }
-.var-chip.on { border-color: #0F172A; background: #0F172A; color: #fff; }
-.var-chip.out { color: #94A3B8; text-decoration: line-through; cursor: not-allowed; background: #F8FAFC; }
+.var-wrap { margin: 20px 0 0; }
+.var-title { font-size: 16px; font-weight: 700; color: var(--muted); margin-bottom: 12px; }
+.var-title span { color: var(--dark); font-weight: 800; }
+.var-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.var-chip { border: 1.5px solid #EEF0F4; background: #fff; border-radius: 999px; padding: 0 18px; font-weight: 800; font-size: 18px; color: var(--dark); cursor: pointer; min-height: 58px; min-width: 58px; box-shadow: 0 4px 12px rgba(15,23,42,.06); font-family: inherit; }
+.var-chip.on { border-color: var(--orange); background: var(--orange); color: #fff; box-shadow: 0 6px 16px rgba(var(--orange-rgb), .35); }
+.var-chip.out { color: #94A3B8; text-decoration: line-through; cursor: not-allowed; background: #F8FAFC; box-shadow: none; }
 .var-wrap.shake { animation: varShake .45s; }
 @keyframes varShake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 .meta-chip.oos { background: #FEF2F2; color: #DC2626; }
 .stars { display: inline-flex; gap: 1px; color: #F59E0B; font-size: 13px; vertical-align: middle; }
 .stars i.off { color: #D1D5DB; }
-.rating-line { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--dark); margin-bottom: 10px; text-decoration: none; }
-.rating-line small { color: var(--muted); font-weight: 600; }
-.wa-order { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; padding: 13px; border-radius: 14px; border: 2px solid #25D366; background: #F0FDF4; color: #0B7065; font-weight: 800; font-size: 15px; text-decoration: none; }
-.wa-order:hover { background: #DCFCE7; color: #0B7065; }
+.wa-order { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; min-height: 58px; padding: 8px 14px; border-radius: 18px; background: #111827; color: #fff; font-weight: 800; font-size: 18px; text-decoration: none; flex-wrap: wrap; }
+.wa-order i { color: #25D366; font-size: 24px; line-height: 1; }
+.wa-order.call i { color: #fff; font-size: 20px; }
+.wa-order:hover { background: #000; color: #fff; }
 {# রিভিউ #}
 .rv-top { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; margin-bottom: 16px; }
 .rv-big { text-align: center; }
@@ -88,7 +99,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .rv-text { font-size: 14px; color: var(--text); line-height: 1.7; white-space: pre-wrap; }
 .rv-img { margin-top: 8px; width: 96px; height: 96px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border); cursor: zoom-in; }
 .rv-form { margin-top: 16px; border-top: 2px dashed var(--border); padding-top: 16px; }
-.rv-form h5 { font-size: 15px; font-weight: 800; color: var(--dark); margin-bottom: 10px; }
+.rv-form h2 { font-size: 15px; font-weight: 800; color: var(--dark); margin-bottom: 10px; }
 .rv-pick { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; margin-bottom: 10px; }
 .rv-pick input { position: absolute; opacity: 0; pointer-events: none; }
 .rv-pick label { font-size: 30px; color: #D1D5DB; cursor: pointer; line-height: 1; }
@@ -97,6 +108,8 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .rv-input:focus { outline: 0; border-color: var(--orange); background: #fff; }
 .rv-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .rv-file { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.rv-file label { display: block; }
+.rv-file input { display: block; max-width: 100%; margin-top: 4px; }
 .rv-submit { width: 100%; padding: 13px; border: 0; border-radius: 12px; background: var(--dark); color: #fff; font-weight: 800; font-size: 15px; cursor: pointer; font-family: inherit; }
 .rv-msg { border-radius: 12px; padding: 11px 13px; font-size: 13.5px; font-weight: 700; margin-bottom: 12px; }
 .rv-msg.ok { background: #ECFDF5; color: #065F46; }
@@ -134,34 +147,29 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 
 /* FOOTER */
 .site-footer { background: transparent; padding: 20px 20px 40px; text-align: center; }
-.site-footer h4 { font-weight: 900; color: var(--dark); margin-bottom: 8px; font-size: 18px; }
+.site-footer h2 { font-weight: 900; color: var(--dark); margin-bottom: 8px; font-size: 18px; }
 .social-links { display: flex; justify-content: center; gap: 12px; margin-bottom: 16px; }
 .social-links a { width: 36px; height: 36px; border-radius: 50%; background: #fff; color: var(--dark); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); text-decoration: none; }
 .copyright { font-size: 12px; color: var(--muted); font-weight: 600; }
 
-/* BOTTOM ACTIONS (Glass) */
-.bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: flex; align-items: center; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); gap: 12px; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); z-index: 1000; border-top: 1px solid rgba(255,255,255,0.4); }
-.bar-icon-btn { width: 48px; height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--dark); text-decoration: none; background: #fff; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
-.bar-icon-btn i { font-size: 20px; }
-.btn-buy { flex: 1; height: 48px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; box-shadow: 0 4px 12px rgba(var(--orange-rgb),0.3); }
-
-{# পরিমাণ #}
-.qty-row { display: flex; align-items: center; gap: 14px; margin: 16px 0 0; padding-top: 16px; border-top: 1px solid #F1F5F9; }
-.qty-row .qty-label { font-size: 14px; font-weight: 800; color: var(--dark); min-width: 52px; }
-.qty-step { display: inline-flex; align-items: center; border: 1.5px solid var(--border); border-radius: 12px; background: #fff; overflow: hidden; }
-.qty-step button { width: 40px; height: 40px; border: 0; background: #F8FAFC; font-size: 20px; font-weight: 800; color: var(--dark); cursor: pointer; line-height: 1; }
-.qty-step button:active { background: #E2E8F0; }
+{# পরিমাণ: বড় গোল − ১ + #}
+.qty-row { margin: 20px 0 0; }
+.qty-line { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.qty-step { display: inline-flex; align-items: stretch; border: 1.5px solid #E5E7EB; border-radius: 999px; background: #fff; overflow: hidden; box-shadow: 0 4px 12px rgba(15,23,42,.05); }
+.qty-step button { width: 60px; height: 56px; border: 0; background: #fff; font-size: 28px; font-weight: 600; color: var(--dark); cursor: pointer; line-height: 1; font-family: inherit; }
+.qty-step button:active { background: #F1F5F9; }
 .qty-step button:disabled { color: #CBD5E1; cursor: default; }
-.qty-step output { min-width: 46px; text-align: center; font-size: 16px; font-weight: 900; color: var(--dark); }
-.qty-row .qty-left { font-size: 12px; color: var(--muted); font-weight: 600; }
+.qty-step output { min-width: 66px; display: flex; align-items: center; justify-content: center; border-left: 1.5px solid #E5E7EB; border-right: 1.5px solid #E5E7EB; font-size: 20px; font-weight: 800; color: var(--dark); }
+.qty-left { font-size: 13px; color: var(--muted); font-weight: 700; }
 
-/* DESKTOP ACTIONS */
-.desk-btn-row { display: flex; gap: 10px; margin-top: 18px; }
-.desk-btn-add, .desk-btn-buy { flex: 1; padding: 14px 10px; border: none; border-radius: 14px; font-size: 15px; font-weight: 900; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; cursor: pointer; transition: 0.2s; white-space: nowrap; }
-.desk-btn-add { background: #F8FAFC; color: var(--dark); border: 2px solid var(--border); }
-.desk-btn-buy { background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; box-shadow: 0 8px 20px rgba(var(--orange-rgb),0.25); }
-.desk-btn-add:hover { background: #E2E8F0; }
-.desk-btn-buy:hover { transform: translateY(-2px); }
+/* কার্টে যোগ (কালো) + অর্ডার করুন (দোকানের রং), পাশাপাশি */
+.desk-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 22px; }
+.desk-btn-add, .desk-btn-buy { min-height: 58px; padding: 0 10px; border: none; border-radius: 18px; font-size: 17px; font-weight: 800; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; cursor: pointer; transition: transform .15s, background .15s; white-space: nowrap; }
+.desk-btn-add { background: #111827; color: #fff; }
+.desk-btn-buy { background: var(--orange); color: #fff; box-shadow: 0 8px 20px rgba(var(--orange-rgb),0.3); }
+.desk-btn-add:hover { background: #000; }
+.desk-btn-buy:hover { background: var(--orange-dark); }
+.desk-btn-add:active, .desk-btn-buy:active { transform: scale(.98); }
 
 /* CART DRAWER & MODAL */
 #cart-overlay, #checkout-modal { position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); z-index: 9998; opacity: 0; visibility: hidden; transition: 0.3s; }
@@ -169,7 +177,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 #cart-drawer { position: fixed; right: 0; top: 0; bottom: 0; width: 100%; max-width: 400px; background: #fff; z-index: 9999; display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.25,1,0.5,1); }
 #cart-drawer.open { transform: translateX(0); }
 .drawer-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-.drawer-header h5 { font-weight: 900; margin: 0; font-size: 18px; color: var(--dark); }
+.drawer-header h2 { font-weight: 900; margin: 0; font-size: 18px; color: var(--dark); }
 .close-btn { background: #F1F5F9; width: 32px; height: 32px; border-radius: 50%; border: none; font-size: 16px; cursor: pointer; color: var(--dark); display: flex; justify-content: center; align-items: center; transition: 0.2s; }
 .close-btn:hover { background: #E2E8F0; }
 .drawer-items { flex: 1; overflow-y: auto; padding: 16px; }
@@ -191,7 +199,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 #checkout-box { background: #fff; border-radius: 24px 24px 0 0; width: 100%; max-width: 500px; padding: 28px 24px; animation: slideUp 0.4s cubic-bezier(0.25,1,0.5,1); max-height: 90vh; overflow-y: auto; z-index: 99999; position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); }
 @keyframes slideUp{from{bottom:-100%}to{bottom:0}}
 @media(min-width:768px){#checkout-modal{display:none; align-items:center; justify-content:center;} #checkout-modal.show{display:flex;} #checkout-box{border-radius:24px; position:relative; bottom:auto; left:auto; transform:none; animation:popIn 0.3s ease;} @keyframes popIn{from{transform:scale(0.9);opacity:0}to{transform:scale(1);opacity:1}}}
-#checkout-box h4 { font-size: 20px; font-weight: 900; margin-bottom: 20px; color: var(--dark); }
+#checkout-box h2 { font-size: 20px; font-weight: 900; margin-bottom: 20px; color: var(--dark); }
 .co-input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 600; margin-bottom: 12px; outline: none; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; background: #F8FAFC; transition: 0.2s; }
 .co-input:focus { border-color: var(--orange); background: #fff; box-shadow: 0 0 0 4px rgba(var(--orange-rgb),0.1); }
 .co-total-row { background: var(--orange-light); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; margin: 16px 0; border: 1px dashed var(--orange); }
@@ -207,7 +215,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 @media (min-width: 768px) {
   body { padding-bottom: 0; }
   .product-layout { margin-top: 10px; }
-  .mob-header, .bottom-bar { display: none; }
+  .pd-top { display: none; }
   .desk-header { display: flex; }
 
   /* GRID LAYOUT FOR DESKTOP */
@@ -246,12 +254,10 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
   .info-card, .delivery-card, .desc-card, .related-section, .trust-badges {
     margin: 0; /* Remove mobile margins */
     border-radius: 20px;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
   }
-
-  .desk-btn-row { display: flex; }
-  .desk-btn-add, .desk-btn-buy { padding: 16px; font-size: 16px; }
+  .delivery-card, .desc-card, .related-section, .trust-badges { border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+  .info-card { padding: 28px 26px; }
+  .pd-title { font-size: 28px; }
   .related-grid { grid-template-columns: repeat(3, 1fr); padding: 0 20px 20px; }
   .rel-img { height: 160px; }
   .toast-pop { bottom: 28px; }
@@ -285,7 +291,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
     }
     #checkout-modal { display: none; align-items: flex-end; justify-content: center; }
     #checkout-modal.show { display: flex; }
-    #checkout-box h4 { font-size: 18px; font-weight: 800; margin-bottom: 18px; color: var(--dark); }
+    #checkout-box h2 { font-size: 18px; font-weight: 800; margin-bottom: 18px; color: var(--dark); }
     @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @media (min-width: 768px) {
       #checkout-box { border-radius: 22px; max-width: 480px; align-self: center; }
@@ -319,19 +325,19 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
   </div>
 </div>
 
+{# MOBILE HEADER: মেনু (ক্যাটাগরি) · দোকানের লোগো · কার্ট #}
+<header class="pd-top">
+  <button type="button" class="pd-icon" onclick="openCats()" aria-label="{% t "ক্যাটাগরি" %}"><i class="bi bi-list"></i></button>
+  <a class="pd-brand" href="{% shop_url 'storefront_home' shop %}" aria-label="{% t "দোকানে ফিরুন" %}">{% if shop.logo %}<img src="{{ shop.logo.url }}" alt="{{ shop.name }}" width="150" height="46">{% else %}<span>{{ shop.name }}</span>{% endif %}</a>
+  <button type="button" class="pd-icon" onclick="openCart()" aria-label="{% t "কার্ট" %}"><i class="bi bi-cart3"></i><span class="mob-badge" id="mob-cart-badge">0</span></button>
+</header>
+
 <!-- PRODUCT LAYOUT -->
 <div class="product-layout">
 
   <!-- LEFT: IMAGE BOX -->
   <div class="prod-image-box">
-    {# MOBILE HEADER: ছবির ওপরেই থাকে, তাই অফারের লাইন ঢাকে না #}
-    <div class="mob-header">
-      <a href="{% shop_url 'storefront_home' shop %}" class="mob-btn" aria-label="{% t "দোকানে ফিরুন" %}"><i class="bi bi-chevron-left"></i></a>
-      <div style="display:flex; gap:8px;">
-        <button class="mob-btn" onclick="shareProduct()" aria-label="{% t "শেয়ার করুন" %}"><i class="bi bi-share"></i></button>
-        <button class="mob-btn" onclick="openCart()" aria-label="{% t "কার্ট" %}"><i class="bi bi-cart3"></i><span class="mob-badge" id="mob-cart-badge">0</span></button>
-      </div>
-    </div>
+    <button type="button" class="img-share" onclick="shareProduct()" aria-label="{% t "শেয়ার করুন" %}"><i class="bi bi-share"></i></button>
     {% if product.image %}
       <img src="{{ product.image.url }}" alt="{{ product.name }}" onclick="openViewer()"{% if product.image_width %} width="{{ product.image_width }}" height="{{ product.image_height }}"{% endif %}>
       <div class="zoom-hint"><i class="bi bi-zoom-in"></i> {% t "বড় করে দেখুন" %}</div>
@@ -351,12 +357,22 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 
     <!-- INFO CARD -->
     <div class="info-card">
-      <div class="price-main"><span id="price-now">৳{{ product.price|floatformat:0 }}</span>{% if product.discount_percent %}
-        <span style="font-size:16px;font-weight:600;color:var(--muted);text-decoration:line-through;letter-spacing:0;">৳{{ product.compare_price|floatformat:0 }}</span>
-        <span style="font-size:13px;font-weight:800;background:#D92D20;color:#fff;padding:3px 8px;border-radius:6px;letter-spacing:0;vertical-align:middle;">-{{ product.discount_percent }}%</span>{% endif %}</div>
-      <div class="prod-title-text">{{ product.name }}</div>
+      <h1 class="pd-title">{{ product.name }}</h1>
+      <div class="pd-price-row">
+        {% if product.discount_percent %}<span class="pd-old">৳{{ product.compare_price|floatformat:0 }}</span>{% endif %}
+        <span class="pd-now" id="price-now">৳{{ product.price|floatformat:0 }}</span>
+        {% if product.discount_percent %}<span class="pd-off">-{{ product.discount_percent }}%</span>{% endif %}
+      </div>
       {% if product.rating %}
-      <a class="rating-line" href="#reviews">{% include 'store/storefront/_stars.html' with avg=product.rating.avg %} {% num product.rating.avg %} <small>({% t "{n}টা রিভিউ" n=product.rating.count %})</small></a>
+      <a class="pd-rate" href="#reviews">
+        <span class="pd-rate-top"><span>{% t "{n}টা রিভিউ" n=product.rating.count %}</span>{% include 'store/storefront/_stars.html' with avg=product.rating.avg %}<b>{% num product.rating.avg %}/{% num 5 %}</b></span>
+        <span class="pd-rate-link">{% t "রিভিউ দেখুন" %}</span>
+      </a>
+      {% elif shop.reviews_enabled %}
+      <a class="pd-rate" href="#review-form">
+        <span class="pd-rate-top"><span>{% t "এখনো রিভিউ নেই" %}</span>{% include 'store/storefront/_stars.html' with avg=0 %}</span>
+        <span class="pd-rate-link">{% t "প্রথম রিভিউ দিন" %}</span>
+      </a>
       {% endif %}
 
       <div class="meta-row">
@@ -370,7 +386,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 
       {% if variant_list %}
       <div class="var-wrap" id="var-wrap">
-        <div class="var-title">{% t "সাইজ / রং বেছে নিন" %} <span id="var-picked"></span></div>
+        <div class="var-title">{% t "সাইজ / রং:" %} <span id="var-picked"></span></div>
         <div class="var-chips">
           {% for v in variant_list %}<button type="button" class="var-chip{% if v.stock <= 0 %} out{% endif %}" data-var="{{ v.id }}"{% if v.stock <= 0 %} disabled{% endif %}>{{ v.name }}</button>{% endfor %}
         </div>
@@ -379,22 +395,26 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 
       {% if product.stock_quantity > 0 %}
       <div class="qty-row">
-        <span class="qty-label">{% t "পরিমাণ" %}</span>
-        <div class="qty-step" role="group" aria-label="{% t "পরিমাণ" %}">
-          <button type="button" id="qty-minus" onclick="stepQty(-1)" aria-label="{% t "কমান" %}">−</button>
-          <output id="qty-val" aria-live="polite">{% num 1 %}</output>
-          <button type="button" id="qty-plus" onclick="stepQty(1)" aria-label="{% t "বাড়ান" %}">+</button>
+        <div class="var-title">{% t "পরিমাণ:" %}</div>
+        <div class="qty-line">
+          <div class="qty-step" role="group" aria-label="{% t "পরিমাণ" %}">
+            <button type="button" id="qty-minus" onclick="stepQty(-1)" aria-label="{% t "কমান" %}">−</button>
+            <output id="qty-val" aria-live="polite">{% num 1 %}</output>
+            <button type="button" id="qty-plus" onclick="stepQty(1)" aria-label="{% t "বাড়ান" %}">+</button>
+          </div>
+          <span class="qty-left" id="qty-left"></span>
         </div>
-        <span class="qty-left" id="qty-left"></span>
       </div>
       {% endif %}
 
       <div class="desk-btn-row">
         <button class="desk-btn-add" onclick="addChosen()">{% t "কার্টে যোগ করুন" %}</button>
-        <button class="desk-btn-buy" onclick="buyChosen()">{% t "এখনই কিনুন" %}</button>
+        <button class="desk-btn-buy" onclick="buyChosen()">{% t "অর্ডার করুন" %}</button>
       </div>
       {% if shop.whatsapp_number %}
-      <a class="wa-order" href="https://wa.me/{{ shop.whatsapp_number }}?text={{ wa_text|urlencode }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> {% t "WhatsApp-এ অর্ডার করুন" %}</a>
+      <a class="wa-order" href="https://wa.me/{{ shop.whatsapp_number|wa_number }}?text={{ wa_text|urlencode }}" target="_blank" rel="noopener"><span>WhatsApp</span><i class="bi bi-whatsapp"></i><span>{{ shop.whatsapp_number|bd_phone }}</span></a>
+      {% elif shop.phone %}
+      <a class="wa-order call" href="tel:{{ shop.phone }}"><i class="bi bi-telephone-fill"></i><span>{% t "কল করে অর্ডার" %}</span><span>{{ shop.phone|bd_phone }}</span></a>
       {% endif %}
     </div>
 
@@ -463,7 +483,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
       {% if shop.reviews_enabled %}
       <form class="rv-form" method="post" action="{% shop_url 'storefront_review' shop product.id %}" enctype="multipart/form-data" id="review-form">
         {% csrf_token %}
-        <h5>{% t "আপনার রিভিউ দিন" %}</h5>
+        <h2>{% t "আপনার রিভিউ দিন" %}</h2>
         {% if review_msg %}<div class="rv-msg {% if review_msg.ok %}ok{% else %}bad{% endif %}">{{ review_msg.text }}</div>{% endif %}
         <div class="rv-pick" aria-label="{% t "তারা দিন" %}">
           {% for n in "54321" %}<input type="radio" name="rating" id="star{{ n }}" value="{{ n }}"{% if n == "5" %} checked{% endif %}><label for="star{{ n }}" title="{% t "{n} তারা" n=n %}"><i class="bi bi-star-fill"></i></label>{% endfor %}
@@ -503,7 +523,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 
     <!-- FOOTER (UPDATED) -->
     <footer class="site-footer">
-      <h4>{{ shop.name }}</h4>
+      <h2>{{ shop.name }}</h2>
       <div class="footer-contact">
         {% if shop.address %}<span><i class="bi bi-geo-alt"></i> {{ shop.address }}</span>{% endif %}
         {% if shop.phone %}<a href="tel:{{ shop.phone }}"><i class="bi bi-telephone"></i> {{ shop.phone }}</a>{% endif %}
@@ -536,6 +556,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 </div>
 
 
+{% include 'store/storefront/_mobile_nav.html' %}
 {% include 'store/storefront/_cart_checkout.html' %}
 
 <!-- ================= MODALS ================= -->
@@ -544,7 +565,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content rounded-4 border-0 shadow-lg">
       <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
-        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-shield-check text-success me-2"></i>{% t "প্রাইভেসি পলিসি" %}</h5>
+        <h2 class="modal-title fw-bolder text-dark" style="font-size:1.15rem"><i class="bi bi-shield-check text-success me-2"></i>{% t "প্রাইভেসি পলিসি" %}</h2>
         <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.privacy_policy }}</div>
@@ -557,7 +578,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content rounded-4 border-0 shadow-lg">
       <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
-        <h5 class="modal-title fw-bolder text-dark"><i class="bi bi-arrow-return-left text-warning me-2"></i>{% t "রিটার্ন ও রিফান্ড পলিসি" %}</h5>
+        <h2 class="modal-title fw-bolder text-dark" style="font-size:1.15rem"><i class="bi bi-arrow-return-left text-warning me-2"></i>{% t "রিটার্ন ও রিফান্ড পলিসি" %}</h2>
         <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body px-4 pb-4 pt-3 text-muted" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">{{ shop.return_policy }}</div>
@@ -621,7 +642,7 @@ function buyChosen() { const i = chosenItem(); if (i) buyNow(i.id, i.name, i.pri
 document.querySelectorAll('.var-chip').forEach(chip => chip.addEventListener('click', () => {
   picked = VARIANTS.find(v => v.id === Number(chip.dataset.var));
   document.querySelectorAll('.var-chip').forEach(c => c.classList.toggle('on', c === chip));
-  document.getElementById('var-picked').textContent = '· ' + picked.name;
+  document.getElementById('var-picked').textContent = picked.name;
   document.getElementById('price-now').textContent = '৳' + Math.round(picked.price).toLocaleString('en-IN');
   renderQty();
 }));

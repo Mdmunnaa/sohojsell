@@ -2237,7 +2237,7 @@ class VariantTests(ShopTestMixin, TestCase):
     def test_storefront_order_takes_variant_stock(self):
         self.client.logout()
         page = self.client.get(f'/shop/vshop/product/{self.shirt.id}/').content.decode()
-        self.assertIn('সাইজ / রং বেছে নিন', page)
+        self.assertIn('সাইজ / রং:', page)
         self.assertIn('লাল / XL', page)
 
         from .delivery import zones_for
@@ -2707,7 +2707,8 @@ class OffersReviewsSeoTests(ShopTestMixin, TestCase):
         page = self.client.get(f'/shop/ofshop/product/{self.shirt.id}/', HTTP_HOST='localhost').content.decode()
         self.assertNotIn('ভালো কাপড়', page)                                             # অনুমোদনের আগে দেখায় না
         self.assertIn('আপনার রিভিউ দিন', page)
-        self.assertIn('WhatsApp-এ অর্ডার করুন', page)
+        self.assertIn('href="https://wa.me/8801711111111?text=', page)                  # WhatsApp-এ অর্ডার
+        self.assertIn('01711-111111', page)
         self.assertIn('"@type": "Product"', page)
         self.client.force_login(self.user)
         self.assertIn('অপেক্ষায় ২', self.client.get(reverse('review_list')).content.decode())
@@ -3882,3 +3883,46 @@ class MasterHQTests(TestCase):
         self.assertIn('এখন যা করতে হবে', html)
         self.assertIn('sellpunch-wordmark-white', html)
         self.assertEqual(self.client.get(reverse('recharge_sms')).status_code, 302)
+
+
+class StorefrontMobileNavTests(TestCase):
+    """দোকানের ওয়েবসাইট: নিচের মেনু (ক্যাটাগরি · WhatsApp · হোম · সব প্রোডাক্ট · কল), ভাসমান কার্ট, ক্যাটাগরির তালিকা।"""
+
+    def setUp(self):
+        from .models import Category, Product
+        user = User.objects.create_user(phone_number='01790000001', password='Seller-pass-1')
+        self.shop = Shop.objects.create(user=user, name='Nav Shop', slug='navshop', phone='01790000001',
+                                        whatsapp_number='01790000002', address='Dhaka')
+        self.cat = Category.objects.create(shop=self.shop, name='জুতা')
+        self.product = Product.objects.create(shop=self.shop, name='কেডস', price=900, stock_quantity=5,
+                                              category=self.cat, compare_price=1200)
+
+    def test_bottom_menu_on_home_and_product(self):
+        for url in ('/shop/navshop/', f'/shop/navshop/product/{self.product.id}/'):
+            html = self.client.get(url).content.decode()
+            self.assertIn('class="sf-nav"', html)
+            self.assertIn('id="float-cart"', html)
+            self.assertIn('https://wa.me/8801790000002', html)          # 01... রাখা নম্বরও ঠিক লিংকে যায়
+            self.assertIn('href="tel:01790000001"', html)
+            self.assertIn(f'/shop/navshop/category/{self.cat.id}/', html)  # ক্যাটাগরির তালিকা
+            self.assertNotIn('class="bottom-nav"', html)
+
+    def test_product_page_layout(self):
+        html = self.client.get(f'/shop/navshop/product/{self.product.id}/').content.decode()
+        self.assertIn('<h1 class="pd-title">কেডস</h1>', html)
+        self.assertIn('class="pd-old">৳1200', html)
+        self.assertIn('id="price-now">৳900', html)
+        self.assertIn('অর্ডার করুন', html)
+        self.assertIn('01790-000002', html)                              # WhatsApp নম্বর দেখায়
+
+    def test_without_whatsapp_cart_takes_its_place(self):
+        Shop.objects.filter(pk=self.shop.pk).update(whatsapp_number='')
+        html = self.client.get('/shop/navshop/').content.decode()
+        self.assertIn('id="nav-cart-badge"', html)
+        self.assertNotIn('class="wa-fab"', html)
+
+    def test_english_shop_menu(self):
+        Shop.objects.filter(pk=self.shop.pk).update(storefront_language='en')
+        html = self.client.get(f'/shop/navshop/product/{self.product.id}/').content.decode()
+        self.assertIn('Order Now', html)
+        self.assertIn('Categories', html)
