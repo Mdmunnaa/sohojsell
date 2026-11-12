@@ -3947,6 +3947,13 @@ class ReviewFormLookTests(TestCase):
         self.assertIn('নম্বর কাউকে দেখানো হবে না', html)
         self.assertIn('name="rating"', html)
 
+    def test_description_comes_before_delivery(self):
+        self.product.description = 'হাতে বোনা সুতির শাড়ি।'
+        self.product.save()
+        html = self.client.get(f'/shop/reviewshop/product/{self.product.id}/').content.decode()
+        self.assertLess(html.index('হাতে বোনা সুতির শাড়ি।'), html.index('class="delivery-card"'))
+        self.assertLess(html.index('class="delivery-card"'), html.index('id="reviews"'))
+
     def test_english(self):
         Shop.objects.filter(pk=self.shop.pk).update(storefront_language='en')
         html = self.client.get(f'/shop/reviewshop/product/{self.product.id}/').content.decode()

@@ -453,6 +453,14 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
       {% endif %}
     </div>
 
+    <!-- DESCRIPTION: দাম/বাটনের ঠিক পরে — ক্রেতা এটাই আগে পড়ে -->
+    {% if product.description %}
+    <div class="desc-card">
+      <div class="card-title">{% t "বিস্তারিত" %}</div>
+      <div class="desc-text">{{ product.description }}</div>
+    </div>
+    {% endif %}
+
     {# ডেলিভারি আর পেমেন্ট: দোকানের আসল সেটিং থেকে #}
     <div class="delivery-card">
       <div class="card-title">{% t "ডেলিভারি ও পেমেন্ট" %}</div>
@@ -487,14 +495,6 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
       </div>
       {% endif %}
     </div>
-
-    <!-- DESCRIPTION -->
-    {% if product.description %}
-    <div class="desc-card">
-      <div class="card-title">{% t "বিস্তারিত" %}</div>
-      <div class="desc-text">{{ product.description }}</div>
-    </div>
-    {% endif %}
 
     <!-- REVIEWS -->
     {% if shop.reviews_enabled or review_list %}
