@@ -326,4 +326,23 @@ EN_TEXT = {
     'পরিমাণ:': 'Quantity:',
     'অর্ডার করুন': 'Order Now',
     'কল করে অর্ডার': 'Order by phone',
+
+    # রিভিউর ফর্ম
+    'আপনার মতামত অন্য ক্রেতাদের সঠিক জিনিস বাছতে সাহায্য করে।': 'Your review helps other shoppers choose the right product.',
+    'প্রোডাক্টটা কেমন লাগল?': 'How did you like the product?',
+    'দারুণ!': 'Excellent!',
+    'ভালো': 'Good',
+    'মোটামুটি': 'Okay',
+    'ভালো না': 'Not good',
+    'খুব খারাপ': 'Very bad',
+    'যেমন: রহিম আহমেদ': 'e.g. Rahim Ahmed',
+    'নম্বর কাউকে দেখানো হবে না': 'Your number is never shown',
+    'আপনার মতামত': 'Your review',
+    'ঐচ্ছিক': 'optional',
+    'কোয়ালিটি, সাইজ, ডেলিভারি কেমন ছিল লিখুন...': 'How were the quality, size and delivery?',
+    'ছবি': 'Photo',
+    'ছবি যোগ করুন': 'Add a photo',
+    'হাতে পাওয়া প্রোডাক্টের ছবি, ৫ MB পর্যন্ত': 'A photo of what you received, up to 5 MB',
+    'ছবি বাদ দিন': 'Remove photo',
+    'দোকান দেখে নেওয়ার পর রিভিউ সবাই দেখতে পাবে।': 'Your review appears once the shop has checked it.',
 }

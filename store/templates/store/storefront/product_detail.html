@@ -98,24 +98,59 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .rv-date { font-size: 12px; color: var(--muted); margin-left: auto; }
 .rv-text { font-size: 14px; color: var(--text); line-height: 1.7; white-space: pre-wrap; }
 .rv-img { margin-top: 8px; width: 96px; height: 96px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border); cursor: zoom-in; }
-.rv-form { margin-top: 16px; border-top: 2px dashed var(--border); padding-top: 16px; }
-.rv-form h2 { font-size: 15px; font-weight: 800; color: var(--dark); margin-bottom: 10px; }
-.rv-pick { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; margin-bottom: 10px; }
+.rv-form { margin-top: 18px; padding: 20px 16px 18px; border-radius: 22px; border: 1.5px solid rgba(var(--orange-rgb), .2); background: linear-gradient(170deg, var(--orange-light) 0%, #fff 55%); }
+.rv-form-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.rv-form-icon { width: 46px; height: 46px; flex: none; border-radius: 14px; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 6px 14px rgba(var(--orange-rgb), .3); }
+.rv-form h2 { font-size: 19px; font-weight: 800; color: var(--dark); margin: 0; line-height: 1.3; }
+.rv-form-head p { margin: 2px 0 0; font-size: 13px; color: var(--muted); font-weight: 600; line-height: 1.5; }
+{# তারা: বড়, মাঝখানে, নিচে কথায় ("দারুণ!") #}
+.rv-rate-box { background: #fff; border: 1px solid var(--border); border-radius: 18px; padding: 14px 12px 12px; text-align: center; margin-bottom: 16px; }
+.rv-rate-q { font-size: 14px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+.rv-pick { display: inline-flex; flex-direction: row-reverse; justify-content: center; gap: 6px; border: 0; padding: 0; margin: 0; }
 .rv-pick input { position: absolute; opacity: 0; pointer-events: none; }
-.rv-pick label { font-size: 30px; color: #D1D5DB; cursor: pointer; line-height: 1; }
+.rv-pick label { font-size: 38px; color: #E2E8F0; cursor: pointer; line-height: 1; transition: transform .12s, color .12s; -webkit-tap-highlight-color: transparent; }
+.rv-pick label:active { transform: scale(.88); }
 .rv-pick input:checked ~ label, .rv-pick label:hover, .rv-pick label:hover ~ label { color: #F59E0B; }
-.rv-input { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 600; margin-bottom: 10px; background: #F8FAFC; font-family: inherit; }
-.rv-input:focus { outline: 0; border-color: var(--orange); background: #fff; }
-.rv-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.rv-file { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
-.rv-file label { display: block; }
-.rv-file input { display: block; max-width: 100%; margin-top: 4px; }
-.rv-submit { width: 100%; padding: 13px; border: 0; border-radius: 12px; background: var(--dark); color: #fff; font-weight: 800; font-size: 15px; cursor: pointer; font-family: inherit; }
+.rv-pick input:focus-visible + label { outline: 2px solid var(--orange); outline-offset: 3px; border-radius: 6px; }
+.rv-rate-word { margin-top: 6px; display: inline-block; font-size: 13.5px; font-weight: 800; color: #B45309; background: #FEF3C7; padding: 3px 12px; border-radius: 999px; }
+{# ঘরগুলো: উপরে লেবেল, মোবাইলে একটার নিচে আরেকটা #}
+.rv-grid { display: grid; grid-template-columns: 1fr; gap: 0 12px; }
+.rv-field { display: block; margin-bottom: 14px; }
+.rv-label { display: block; font-size: 14px; font-weight: 800; color: var(--dark); margin-bottom: 6px; }
+.rv-label b { color: #D92D20; }
+.rv-label em { font-style: normal; font-weight: 600; color: var(--muted); font-size: 12.5px; }
+.rv-box { display: flex; align-items: center; gap: 10px; background: #fff; border: 1.5px solid #E2E8F0; border-radius: 14px; padding: 0 14px; transition: border-color .15s, box-shadow .15s; }
+.rv-box:focus-within { border-color: var(--orange); box-shadow: 0 0 0 4px rgba(var(--orange-rgb), .12); }
+.rv-box > i { color: #94A3B8; font-size: 17px; }
+.rv-box input, .rv-box textarea { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; padding: 14px 0; font-size: 15.5px; font-weight: 600; color: var(--dark); font-family: inherit; }
+.rv-box textarea { min-height: 104px; resize: vertical; line-height: 1.6; padding-top: 12px; }
+.rv-box.area { align-items: flex-start; }
+.rv-box.area > i { margin-top: 15px; }
+.rv-box input::placeholder, .rv-box textarea::placeholder { color: #A0AEC0; font-weight: 500; }
+.rv-hint { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 5px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.rv-hint i { color: #16A34A; }
+{# ছবি: নিজের বাটন (ব্রাউজারের ইংরেজি "Choose file" না), বাছলে ছোট ছবি দেখায় #}
+.rv-upload { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 2px dashed rgba(var(--orange-rgb), .45); border-radius: 16px; background: #fff; cursor: pointer; transition: background .15s; }
+.rv-upload:hover { background: rgba(var(--orange-rgb), .05); }
+.rv-upload input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.rv-upload:focus-within { outline: 2px solid var(--orange); outline-offset: 2px; }
+.rv-up-ic { width: 48px; height: 48px; flex: none; border-radius: 12px; background: rgba(var(--orange-rgb), .1); color: var(--orange-dark); display: flex; align-items: center; justify-content: center; font-size: 22px; overflow: hidden; }
+.rv-up-ic img { width: 100%; height: 100%; object-fit: cover; }
+.rv-up-txt { flex: 1; min-width: 0; }
+.rv-up-txt b { display: block; font-size: 14.5px; font-weight: 800; color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rv-up-txt small { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+.rv-up-x { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; background: #F1F5F9; color: var(--dark); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
+.rv-up-x[hidden] { display: none; }
+.rv-submit { width: 100%; min-height: 56px; margin-top: 4px; border: 0; border-radius: 16px; background: var(--orange); color: #fff; font-weight: 800; font-size: 17px; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 8px 20px rgba(var(--orange-rgb), .3); transition: transform .12s, background .15s; }
+.rv-submit:hover { background: var(--orange-dark); }
+.rv-submit:active { transform: scale(.98); }
+.rv-submit:disabled { opacity: .7; cursor: wait; }
+.rv-note { margin: 10px 0 0; text-align: center; font-size: 12px; color: var(--muted); font-weight: 600; }
+@media (min-width: 560px) { .rv-grid { grid-template-columns: 1fr 1fr; } .rv-form { padding: 24px 22px 20px; } }
 .rv-msg { border-radius: 12px; padding: 11px 13px; font-size: 13.5px; font-weight: 700; margin-bottom: 12px; }
 .rv-msg.ok { background: #ECFDF5; color: #065F46; }
 .rv-msg.bad { background: #FEF2F2; color: #991B1B; }
 .rv-empty { color: var(--muted); font-size: 13.5px; padding: 6px 0 2px; }
-@media (max-width: 400px) { .rv-row2 { grid-template-columns: 1fr; } }
 .meta-chip.rating { background: #FEF3C7; color: #B45309; }
 
 /* DELIVERY INFO */
@@ -483,19 +518,64 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
       {% if shop.reviews_enabled %}
       <form class="rv-form" method="post" action="{% shop_url 'storefront_review' shop product.id %}" enctype="multipart/form-data" id="review-form">
         {% csrf_token %}
-        <h2>{% t "আপনার রিভিউ দিন" %}</h2>
-        {% if review_msg %}<div class="rv-msg {% if review_msg.ok %}ok{% else %}bad{% endif %}">{{ review_msg.text }}</div>{% endif %}
-        <div class="rv-pick" aria-label="{% t "তারা দিন" %}">
-          {% for n in "54321" %}<input type="radio" name="rating" id="star{{ n }}" value="{{ n }}"{% if n == "5" %} checked{% endif %}><label for="star{{ n }}" title="{% t "{n} তারা" n=n %}"><i class="bi bi-star-fill"></i></label>{% endfor %}
+        <div class="rv-form-head">
+          <span class="rv-form-icon" aria-hidden="true"><i class="bi bi-pencil-square"></i></span>
+          <div><h2>{% t "আপনার রিভিউ দিন" %}</h2><p>{% t "আপনার মতামত অন্য ক্রেতাদের সঠিক জিনিস বাছতে সাহায্য করে।" %}</p></div>
         </div>
-        <div class="rv-row2">
-          <input class="rv-input" type="text" name="name" placeholder="{% t "আপনার নাম *" %}" maxlength="80" required>
-          <input class="rv-input" type="tel" name="phone" placeholder="{% t "মোবাইল নম্বর * (দেখানো হবে না)" %}" maxlength="20" inputmode="tel" required>
+        {% if review_msg %}<div class="rv-msg {% if review_msg.ok %}ok{% else %}bad{% endif %}" role="status">{{ review_msg.text }}</div>{% endif %}
+        <div class="rv-rate-box">
+          <div class="rv-rate-q" id="rvRateQ">{% t "প্রোডাক্টটা কেমন লাগল?" %}</div>
+          <fieldset class="rv-pick" aria-labelledby="rvRateQ">
+            {% for n in "54321" %}<input type="radio" name="rating" id="star{{ n }}" value="{{ n }}"{% if n == "5" %} checked{% endif %}><label for="star{{ n }}" title="{% t "{n} তারা" n=n %}"><i class="bi bi-star-fill"></i></label>{% endfor %}
+          </fieldset>
+          <div><span class="rv-rate-word" id="rvWord" aria-live="polite">{% t "দারুণ!" %}</span></div>
         </div>
-        <textarea class="rv-input" name="text" rows="3" maxlength="1000" placeholder="{% t "প্রোডাক্টটা কেমন লাগল? (ঐচ্ছিক)" %}"></textarea>
-        <div class="rv-file"><label><i class="bi bi-camera"></i> {% t "ছবি দিতে চাইলে:" %} <input type="file" name="image" accept="image/*"></label></div>
+        <div class="rv-grid">
+          <label class="rv-field"><span class="rv-label">{% t "আপনার নাম" %} <b>*</b></span>
+            <span class="rv-box"><i class="bi bi-person"></i><input type="text" name="name" placeholder="{% t "যেমন: রহিম আহমেদ" %}" maxlength="80" autocomplete="name" required></span>
+          </label>
+          <label class="rv-field"><span class="rv-label">{% t "মোবাইল নম্বর" %} <b>*</b></span>
+            <span class="rv-box"><i class="bi bi-phone"></i><input type="tel" name="phone" placeholder="01XXXXXXXXX" maxlength="20" inputmode="tel" autocomplete="tel" required></span>
+            <span class="rv-hint"><span><i class="bi bi-shield-check"></i> {% t "নম্বর কাউকে দেখানো হবে না" %}</span></span>
+          </label>
+        </div>
+        <label class="rv-field"><span class="rv-label">{% t "আপনার মতামত" %} <em>({% t "ঐচ্ছিক" %})</em></span>
+          <span class="rv-box area"><i class="bi bi-chat-left-text"></i><textarea name="text" rows="3" maxlength="1000" id="rvText" placeholder="{% t "কোয়ালিটি, সাইজ, ডেলিভারি কেমন ছিল লিখুন..." %}"></textarea></span>
+          <span class="rv-hint"><span></span><span id="rvCount">{% num 0 %}/{% num 1000 %}</span></span>
+        </label>
+        <div class="rv-field"><span class="rv-label">{% t "ছবি" %} <em>({% t "ঐচ্ছিক" %})</em></span>
+          <label class="rv-upload">
+            <input type="file" name="image" accept="image/*" id="rvImage">
+            <span class="rv-up-ic" id="rvUpIc"><i class="bi bi-camera"></i></span>
+            <span class="rv-up-txt"><b id="rvUpName">{% t "ছবি যোগ করুন" %}</b><small>{% t "হাতে পাওয়া প্রোডাক্টের ছবি, ৫ MB পর্যন্ত" %}</small></span>
+            <button type="button" class="rv-up-x" id="rvUpX" hidden aria-label="{% t "ছবি বাদ দিন" %}"><i class="bi bi-x-lg"></i></button>
+          </label>
+        </div>
         <button class="rv-submit" type="submit"><i class="bi bi-send-fill"></i> {% t "রিভিউ জমা দিন" %}</button>
+        {% if not shop.reviews_auto_approve %}<p class="rv-note">{% t "দোকান দেখে নেওয়ার পর রিভিউ সবাই দেখতে পাবে।" %}</p>{% endif %}
       </form>
+      <script>
+      (function () {
+        var form = document.getElementById('review-form'); if (!form) return;
+        var words = { '5': '{% tjs "দারুণ!" %}', '4': '{% tjs "ভালো" %}', '3': '{% tjs "মোটামুটি" %}', '2': '{% tjs "ভালো না" %}', '1': '{% tjs "খুব খারাপ" %}' };
+        var word = document.getElementById('rvWord');
+        form.querySelectorAll('input[name="rating"]').forEach(function (r) {
+          r.addEventListener('change', function () { word.textContent = words[r.value]; });
+        });
+        var text = document.getElementById('rvText'), count = document.getElementById('rvCount');
+        text.addEventListener('input', function () { count.textContent = sfNum(text.value.length) + '/' + sfNum(1000); });
+        var file = document.getElementById('rvImage'), ic = document.getElementById('rvUpIc'), nm = document.getElementById('rvUpName'), x = document.getElementById('rvUpX');
+        var emptyIc = ic.innerHTML, emptyName = nm.textContent;
+        function reset() { file.value = ''; ic.innerHTML = emptyIc; nm.textContent = emptyName; x.hidden = true; }
+        file.addEventListener('change', function () {
+          var f = file.files && file.files[0]; if (!f) { reset(); return; }
+          var img = document.createElement('img'); img.alt = ''; img.src = URL.createObjectURL(f);
+          ic.innerHTML = ''; ic.appendChild(img); nm.textContent = f.name; x.hidden = false;
+        });
+        x.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); reset(); });
+        form.addEventListener('submit', function () { var b = form.querySelector('.rv-submit'); setTimeout(function () { b.disabled = true; }, 0); });
+      })();
+      </script>
       {% endif %}
     </div>
     {% endif %}

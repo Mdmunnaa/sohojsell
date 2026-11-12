@@ -3926,3 +3926,30 @@ class StorefrontMobileNavTests(TestCase):
         html = self.client.get(f'/shop/navshop/product/{self.product.id}/').content.decode()
         self.assertIn('Order Now', html)
         self.assertIn('Categories', html)
+
+
+class ReviewFormLookTests(TestCase):
+    """রিভিউর ফর্ম: তারার নিচে কথায় মান, আলাদা লেবেলসহ ঘর, নিজের ছবি বাটন (ব্রাউজারের ইংরেজি "Choose file" না)।"""
+
+    def setUp(self):
+        from .models import Product
+        user = User.objects.create_user(phone_number='01791000001', password='Seller-pass-1')
+        self.shop = Shop.objects.create(user=user, name='Review Shop', slug='reviewshop', phone='01791000001',
+                                        address='Dhaka', reviews_enabled=True)
+        self.product = Product.objects.create(shop=self.shop, name='শাড়ি', price=1500, stock_quantity=3)
+
+    def test_form_parts(self):
+        html = self.client.get(f'/shop/reviewshop/product/{self.product.id}/').content.decode()
+        self.assertIn('id="rvWord"', html)
+        self.assertIn('দারুণ!', html)
+        self.assertIn('class="rv-upload"', html)
+        self.assertIn('ছবি যোগ করুন', html)
+        self.assertIn('নম্বর কাউকে দেখানো হবে না', html)
+        self.assertIn('name="rating"', html)
+
+    def test_english(self):
+        Shop.objects.filter(pk=self.shop.pk).update(storefront_language='en')
+        html = self.client.get(f'/shop/reviewshop/product/{self.product.id}/').content.decode()
+        self.assertIn('Add a photo', html)
+        self.assertIn('How did you like the product?', html)
+        self.assertNotIn('ছবি যোগ করুন', html)
