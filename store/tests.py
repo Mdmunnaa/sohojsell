@@ -4191,3 +4191,111 @@ class BackupScriptTests(TestCase):
         self.assertEqual(rc.compare(counts, counts), [])
         broken = dict(counts, store_order=4)
         self.assertEqual(len(rc.compare(counts, broken)), 1)
+
+
+@override_settings(SMS_GATEWAY_CLIENT_ID='client', SMS_GATEWAY_API_KEY='key')
+class RetentionTests(TestCase):
+    """৯০ দিনের নিয়ম (store/retention.py): মেয়াদ শেষে তারিখ দেখানো, ৭/৩০/৬০/৮০ দিনে SMS, Master HQ থেকে নিয়ম মেনে মোছা।"""
+
+    def setUp(self):
+        self.today = timezone.localdate()
+        self.owner = User.objects.create_user(phone_number='01794000001', password='Seller-pass-1')
+        self.shop = Shop.objects.create(user=self.owner, name='Old Shop', slug='oldshop', phone='01794000009',
+                                        address='Savar')
+        self.admin = User.objects.create_superuser(phone_number='01700000121', password='Admin-pass-121')
+
+    def _ended(self, days_ago, shop=None):
+        shop = shop or self.shop
+        Shop.objects.filter(pk=shop.pk).update(subscription_plan='Basic',
+                                               valid_until=self.today - timedelta(days=days_ago))
+        shop.refresh_from_db()
+        return shop
+
+    def test_deletion_notice_dates(self):
+        from . import retention
+        self.assertIsNone(retention.deletion_notice(self.shop))                 # ট্রায়াল চলছে
+        self._ended(10)
+        notice = retention.deletion_notice(self.shop)
+        self.assertEqual(notice['date'], self.today - timedelta(days=10) + timedelta(days=90))
+        self.assertEqual((notice['days_left'], notice['overdue_days']), (80, 10))
+        Shop.objects.filter(pk=self.shop.pk).update(subscription_plan='Free',
+                                                    trial_ends_at=timezone.now() - timedelta(days=3))
+        self.shop.refresh_from_db()
+        self.assertEqual(retention.deletion_notice(self.shop)['overdue_days'], 3)
+
+    def test_warnings_go_once_per_stage(self):
+        from . import retention
+        self._ended(8)
+        with mock.patch('store.sms.notify') as notify:
+            self.assertEqual(retention.send_expiry_warnings(), 1)
+            self.assertEqual(retention.send_expiry_warnings(), 0)              # একই ধাপ দুবার না
+        phones = sorted(call.args[0] for call in notify.call_args_list)
+        self.assertEqual(len(phones), 2)                                        # মালিকের নম্বর আর দোকানের ফোন
+        self.assertIn('মুছে যাবে', notify.call_args_list[0].args[1])
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.expiry_warn_stage, 7)
+        self._ended(85)                                                         # দেরিতে চালু: শুধু সর্বশেষ ধাপ
+        with mock.patch('store.sms.notify') as notify:
+            self.assertEqual(retention.send_expiry_warnings(), 1)
+        self.assertIn('শেষ সতর্কবার্তা', notify.call_args_list[0].args[1])
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.expiry_warn_stage, 80)
+
+    def test_no_gateway_no_claim(self):
+        from . import retention
+        self._ended(40)
+        with override_settings(SMS_GATEWAY_CLIENT_ID='', SMS_GATEWAY_API_KEY=''), mock.patch('store.sms.notify') as notify:
+            self.assertEqual(retention.send_expiry_warnings(), 0)
+        notify.assert_not_called()
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.expiry_warn_stage, 0)
+
+    def test_hq_purge_only_after_final_notice(self):
+        from .models import HQAuditLog
+        self._ended(95)
+        upcoming = Shop.objects.create(user=User.objects.create_user(phone_number='01794000002', password='x-Pass-12'),
+                                       name='Soon Shop', slug='soonshop')
+        self._ended(70, upcoming)
+        self.client.force_login(self.admin)
+        page = self.client.get(reverse('hq_unpaid')).content.decode()
+        self.assertIn('Old Shop', page)
+        self.assertIn('Soon Shop', page)
+        self.assertIn('শেষ সতর্কবার্তা (SMS) যায়নি', page)
+        self.assertIn('৯০ দিন বিল দেয়নি', self.client.get(reverse('master_dashboard')).content.decode())
+        self.client.post(reverse('hq_unpaid'), {'shop_id': self.shop.pk, 'confirm': 'oldshop'})
+        self.assertTrue(Shop.objects.filter(pk=self.shop.pk).exists())         # SMS ছাড়া মোছা যায় না
+        Shop.objects.filter(pk=self.shop.pk).update(expiry_warn_end=self.shop.valid_until, expiry_warn_stage=80,
+                                                    expiry_warn_sent_on=self.today - timedelta(days=3))
+        self.client.post(reverse('hq_unpaid'), {'shop_id': self.shop.pk, 'confirm': 'oldshop'})
+        self.assertTrue(Shop.objects.filter(pk=self.shop.pk).exists())         # শেষ SMS-এর ৭ দিন হয়নি
+        Shop.objects.filter(pk=self.shop.pk).update(expiry_warn_sent_on=self.today - timedelta(days=8))
+        self.client.post(reverse('hq_unpaid'), {'shop_id': self.shop.pk, 'confirm': 'wrong'})
+        self.assertTrue(Shop.objects.filter(pk=self.shop.pk).exists())
+        self.client.post(reverse('hq_unpaid'), {'shop_id': upcoming.pk, 'confirm': 'soonshop'})
+        self.assertTrue(Shop.objects.filter(pk=upcoming.pk).exists())          # এখনো যোগ্য না
+        self.client.post(reverse('hq_unpaid'), {'shop_id': self.shop.pk, 'confirm': 'OldShop'})
+        self.assertFalse(Shop.objects.filter(pk=self.shop.pk).exists())
+        self.assertFalse(User.objects.filter(phone_number='01794000001').exists())
+        self.assertTrue(HQAuditLog.objects.filter(action='purge', shop_label='Old Shop').exists())
+
+    def test_billing_page_shows_date_and_export(self):
+        self._ended(10)
+        self.client.force_login(self.owner)
+        html = self.client.get(reverse('billing')).content.decode()
+        self.assertIn('পর্যন্ত আপনার সব তথ্য রাখা আছে', html)
+        self.assertIn('আর ৮০ দিন', html)
+        self.assertIn(reverse('export_all_data'), html)
+
+    def test_policies_and_tested_claims(self):
+        for name in ('terms', 'privacy_policy', 'refund_policy', 'data_deletion', 'security'):
+            self.assertIn('৯০ দিন', self.client.get(reverse(name)).content.decode().replace('<strong>', '').replace('</strong>', ''), name)
+        self.assertIn('id="data-deletion"', self.client.get(reverse('terms')).content.decode())
+        self.assertIn('পরীক্ষিত কুরিয়ার ও পেমেন্ট', self.client.get(reverse('security')).content.decode())
+        self.assertIn('আসল অ্যাকাউন্টে পরীক্ষিত', self.client.get('/').content.decode())
+
+    @override_settings(CRON_SECRET='cron-secret')
+    def test_daily_cron_sends_warnings(self):
+        self._ended(31)
+        with mock.patch('store.sms.notify'), mock.patch('django.core.management.call_command'):
+            data = self.client.post(reverse('cron_daily'), HTTP_X_CRON_SECRET='cron-secret').json()
+        self.assertEqual(data['expiry_warnings'], 1)

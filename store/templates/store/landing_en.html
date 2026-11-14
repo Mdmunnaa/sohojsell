@@ -84,6 +84,7 @@
     <span class="ch"><i class="bi bi-facebook"></i> Facebook Pages</span>
     <span class="ch"><i class="bi bi-whatsapp"></i> WhatsApp</span>
     <span class="ch"><i class="bi bi-chat-dots"></i> SMS</span>
+    <span class="tested"><i class="bi bi-patch-check-fill"></i> Couriers and payments tested on live accounts</span>
   </div>
 </div>
 
@@ -176,7 +177,7 @@
         <h3>Website, phone and shop orders — in one list</h3>
         <p>Change an order's status and the rest happens on its own: stock, customer SMS and courier tracking. Nothing to remember.</p>
         <ul>
-          <li><i class="ic red bi bi-truck"></i><span><b>One-click courier booking</b> with Steadfast, Pathao or RedX — tracking code added automatically</span></li>
+          <li><i class="ic red bi bi-truck"></i><span><b>One-click courier booking</b> with Steadfast, Pathao or RedX — tracking code added automatically; all three tested on live accounts</span></li>
           <li><i class="ic green bi bi-chat-left-text"></i><span><b>Automatic customer SMS</b> when an order is received, confirmed or shipped — you choose which</span></li>
           <li><i class="ic blue bi bi-geo"></i><span><b>Order tracking page</b> — customers check where their order is</span></li>
           <li><i class="ic amber bi bi-shield-exclamation"></i><span><b>Fake order warning</b> — numbers that returned parcels before are flagged next to the order</span></li>
@@ -356,10 +357,10 @@
       <details open><summary>Is {{ site.name }} in English?</summary><p>Your online store can be fully in English — product pages, cart, checkout, order tracking, invoices and the customer SMS. You choose English or Bangla in Website → Design. The seller dashboard (POS, orders, reports) is in Bangla, so shop owners and staff across Bangladesh can use it without training.</p></details>
       <details><summary>Do I need technical skills?</summary><p>No. Everything works from your phone. Adding products, checking orders and billing at the POS is no harder than using Facebook. If you get stuck, we're on WhatsApp.</p></details>
       <details><summary>Do I need to buy a domain or hosting?</summary><p>No. Your store goes live at <b>yourshop.{{ site.store_domain }}</b> as soon as you sign up — hosting is included. If you want your own domain (www.yourshop.com) later, you can add it on the Premium plan.</p></details>
-      <details><summary>How do customers pay?</summary><p>Cash on delivery is the most common — the courier collects the money and pays you. You can also take advance payment with bKash, Nagad or card (the full amount, or just the delivery charge).</p></details>
-      <details><summary>How does courier booking work?</summary><p>Add the API key from your Steadfast, Pathao or RedX merchant account in settings. Then book a parcel with one click from the order; the tracking code is saved to the order and the customer can follow it on the tracking page.</p></details>
+      <details><summary>How do customers pay?</summary><p>Cash on delivery is the most common — the courier collects the money and pays you. You can also take advance payment with bKash, Nagad or card (the full amount, or just the delivery charge). Online payments run through the PayStation gateway, tested with real transactions.</p></details>
+      <details><summary>How does courier booking work?</summary><p>Add the API key from your Steadfast, Pathao or RedX merchant account in settings. Then book a parcel with one click from the order; the tracking code is saved to the order and the customer can follow it on the tracking page. All three couriers are tested by booking real parcels from live merchant accounts.</p></details>
       <details><summary>How much does SMS cost?</summary><p>SMS is separate from your plan — you buy only what you need{% if sms_rate %}, at ৳{{ sms_rate|floatformat:2 }} per SMS{% endif %}. Each automatic order SMS can be turned on or off, so nothing is wasted. English SMS fit 160 characters in one message, so they cost less than Bangla.</p></details>
-      <details><summary>What happens after the {{ trial_days }}-day trial?</summary><p>Pick a plan and pay by bKash, Nagad or card, and you continue with all your data. If you don't, the dashboard pauses but your website stays open for 7 more days so no customer order is lost. We never take a card up front, so you are never charged automatically.</p></details>
+      <details><summary>What happens after the {{ trial_days }}-day trial?</summary><p>Pick a plan and pay by bKash, Nagad or card, and you continue with all your data. If you don't, the dashboard pauses but your website stays open for 7 more days so no customer order is lost. We never take a card up front, so you are never charged automatically. After your plan ends, all your data is kept for 90 days — pay within that time and everything comes back, and you can download all your data to Excel at any time.</p></details>
       <details><summary>Is my data safe?</summary><p>Your shop's data is visible only from your account, and you can give staff access to just the parts they need. Every page runs on HTTPS. You can download your customers and orders to Excel at any time.</p></details>
       <details><summary>Who do I contact for help?</summary><p>{% if site.whatsapp_url %}Message us on <a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener" style="color:var(--brand);font-weight:700">WhatsApp</a>{% if site.phone %} ({{ site.phone }}){% endif %}{% else %}Call or WhatsApp us at the number on our <a href="{% url 'contact' %}" style="color:var(--brand);font-weight:700">contact page</a>{% endif %} — in English or Bangla.</p></details>
     </div>

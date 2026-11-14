@@ -19,7 +19,7 @@ from datetime import timedelta
 import random
 
 from .models import Shop, Product, Category, Order, OrderItem, Customer, MasterSetting, Banner
-from . import backups
+from . import backups, retention
 from .plans import (
     can_add_staff, has_custom_domain, has_facebook, plan_label, product_limit, products_remaining,
     staff_limit, storefront_closes_on, storefront_is_open, upgrade_message,
@@ -620,6 +620,7 @@ def security_page(request):
         'backup_test': backups.trust_line(),
         'status_page': getattr(dj_settings, 'STATUS_PAGE_URL', ''),
         'grace_days_bn': str(STOREFRONT_GRACE_DAYS).translate(str.maketrans('0123456789', '০১২৩৪৫৬৭৮৯')),
+        'deletion_days_bn': str(retention.DATA_DELETION_DAYS).translate(str.maketrans('0123456789', '০১২৩৪৫৬৭৮৯')),
     })
 
 
@@ -1835,6 +1836,8 @@ def billing_page(request):
         'online_payment_available': online_payment_available(shop),
         'storefront_open': storefront_is_open(shop),
         'storefront_closes_on': storefront_closes_on(shop),
+        'deletion': retention.deletion_notice(shop),           # মেয়াদ শেষ: কবে সব তথ্য মুছে যাবে (৯০ দিনের নিয়ম)
+        'is_owner': shop.user_id == request.user.id,
         'paystation_sandbox': paystation.current_environment() == 'sandbox',
         'online_payments': shop.online_payments.all()[:10],
     })

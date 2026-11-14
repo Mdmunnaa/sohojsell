@@ -265,6 +265,7 @@ dialog.dlg::backdrop { background: rgba(8, 15, 30, .55); }
     <a href="{% url 'master_dashboard' %}" class="{% if active == 'dashboard' %}on{% endif %}"><i class="bi bi-speedometer2"></i>ড্যাশবোর্ড</a>
     <div class="grp">দোকান</div>
     <a href="{% url 'manage_shops' %}" class="{% if active == 'shops' %}on{% endif %}"><i class="bi bi-shop"></i>সব দোকান{% if nav.domains %}<span class="count" title="ডোমেইন চালুর অপেক্ষায়">{{ nav.domains }}</span>{% endif %}</a>
+    <a href="{% url 'hq_unpaid' %}" class="{% if active == 'unpaid' %}on{% endif %}"><i class="bi bi-calendar-x"></i>বকেয়া ও মুছে ফেলা{% if nav.unpaid %}<span class="count" title="মোছার যোগ্য">{{ nav.unpaid }}</span>{% endif %}</a>
     <a href="{% url 'all_users' %}" class="{% if active == 'users' %}on{% endif %}"><i class="bi bi-people"></i>ইউজার খুঁজুন</a>
     <div class="grp">টাকা</div>
     <a href="{% url 'master_billing' %}" class="{% if active == 'payments' %}on{% endif %}"><i class="bi bi-receipt"></i>পেমেন্টের খাতা{% if nav.legacy %}<span class="count">{{ nav.legacy }}</span>{% endif %}</a>

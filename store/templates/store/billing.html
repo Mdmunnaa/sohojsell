@@ -1,5 +1,5 @@
 {% extends 'store/base.html' %}
-{% load static %}
+{% load static bangla %}
 {% block title %}Billing & Plans{% endblock %}
 {% block page_title %}প্যাকেজ ও বিল{% endblock %}
 {% block content %}
@@ -17,6 +17,23 @@
       </p>
   </div>
 </div>
+{% endif %}
+
+{% if deletion %}
+<!-- ৯০ দিনের নিয়ম (store/retention.py): কবে পর্যন্ত তথ্য থাকবে -->
+<div class="keep-box rounded-4 shadow-sm p-4 mb-4 d-flex flex-wrap align-items-center gap-3">
+  <div class="keep-ic flex-shrink-0"><i class="bi bi-database-down"></i></div>
+  <div style="flex: 1 1 300px">
+    <div class="fw-bold mb-1">{{ deletion.date|bn_day }} পর্যন্ত আপনার সব তথ্য রাখা আছে{% if deletion.days_left %} (আর {{ deletion.days_left|bn }} দিন){% endif %}</div>
+    <div class="small">মেয়াদ শেষের পর ৯০ দিন তথ্য রাখা হয়। এর মধ্যে বিল দিলে সব আগের মতো ফিরে আসবে। না দিলে এই তারিখের পর দোকান, প্রোডাক্ট, অর্ডার, কাস্টমার আর হিসাব — সব মুছে ফেলা হবে; তার আগে SMS-এ কয়েকবার জানানো হবে।</div>
+  </div>
+  {% if is_owner %}<a class="btn btn-dark rounded-pill px-3 fw-semibold" href="{% url 'export_all_data' %}"><i class="bi bi-download me-1"></i>সব ডাটা নামান</a>{% endif %}
+</div>
+<style>
+.keep-box { background: #fff7ed; color: #7c2d12; border: 1px solid #fed7aa; }
+.keep-box .small { color: #9a3412; line-height: 1.7; }
+.keep-ic { width: 48px; height: 48px; border-radius: 14px; background: #ffedd5; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #c2410c; }
+</style>
 {% endif %}
 
 <!-- CURRENT STATUS -->

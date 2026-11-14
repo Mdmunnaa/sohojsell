@@ -22,7 +22,7 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from . import hq
+from . import hq, retention
 from .hq import superuser_required
 from .models import (HQAuditLog, MasterSetting, OnlinePayment, Order, PaymentRequest, PlatformNotice, Product,
                      Shop, SmsLog, StaffProfile)
@@ -178,6 +178,7 @@ def shop_detail(request, shop_id):
         'end': end, 'days_left': (end - day).days if end else None,
         'days_over': (day - end).days if end and end < day else 0,
         'closes_on': storefront_closes_on(shop),
+        'deletion': retention.deletion_notice(shop, day), 'deletion_days': retention.DATA_DELETION_DAYS,
         'numbers': numbers, 'paid_total': paid_total,
         'n_products': Product.objects.filter(shop=shop).count(),
         'n_customers': shop.customers.count(),
@@ -371,18 +372,49 @@ def shop_action(request, shop_id):
         if shop.user.is_superuser:
             messages.error(request, 'এই দোকান একজন সুপারইউজারের — Django Admin থেকে আলাদা করুন।')
             return redirect(here)
-        label = f'{shop.name} ({shop.slug}, {shop.user.phone_number})'
-        with transaction.atomic():
-            staff_ids = list(StaffProfile.objects.filter(shop=shop).values_list('user_id', flat=True))
-            hq.log_action(request, 'delete', shop, label, shop_label=shop.name)
-            User.objects.filter(pk__in=staff_ids, is_superuser=False).delete()
-            shop.user.delete()                 # দোকান আর তার সব ডাটা CASCADE-এ মুছে যায়
+        label = hq.purge_shop(request, shop, 'delete')
         messages.success(request, f'{label} মুছে ফেলা হয়েছে।')
         return redirect('manage_shops')
 
     else:
         messages.error(request, 'অজানা কাজ।')
     return redirect(here)
+
+
+# ============================================================
+# বকেয়া ও মুছে ফেলা (৯০ দিনের নিয়ম, store/retention.py)
+# ============================================================
+@superuser_required
+def unpaid(request):
+    """
+    মেয়াদ শেষের ৯০ দিন পরেও বিল না দেওয়া দোকান — সাবডোমেইন হুবহু লিখে নিশ্চিত করে মোছা।
+    শেষ সতর্কবার্তার (৮০ দিনের SMS) ৭ দিন পরের আগে মোছা যায় না; নিচে আগামী ৩০ দিনে যোগ্য হবে এমন দোকান — ফোন করার তালিকা।
+    """
+    from . import retention, sms
+    eligible, upcoming = retention.overdue_shops()
+    if request.method == 'POST':
+        row = next((r for r in eligible if str(r['shop'].pk) == request.POST.get('shop_id')), None)
+        if row is None:
+            messages.error(request, 'এই দোকান এখন মোছার তালিকায় নেই (হয়তো বিল দিয়েছে)।')
+        elif row['blocker']:
+            messages.error(request, row['blocker'])
+        else:
+            shop = row['shop']
+            expected = (shop.slug or str(shop.pk)).lower()
+            if (request.POST.get('confirm') or '').strip().lower() != expected:
+                messages.error(request, f'নিশ্চিত করতে "{expected}" হুবহু লিখুন — কিছু মোছা হয়নি।')
+            elif shop.user.is_superuser:
+                messages.error(request, 'এই দোকান একজন সুপারইউজারের — Django Admin থেকে আলাদা করুন।')
+            else:
+                label = hq.purge_shop(request, shop, 'purge',
+                                      f'মেয়াদ শেষ {row["end"]:%d-%m-%Y}, {row["overdue_days"]} দিন বিল নেই')
+                messages.success(request, f'{label} — সব তথ্য আর অ্যাকাউন্ট মুছে ফেলা হয়েছে।')
+        return redirect('hq_unpaid')
+    return render(request, 'store/hq/unpaid.html', {
+        'active': 'unpaid', 'eligible': eligible, 'upcoming': upcoming,
+        'deletion_days': retention.DATA_DELETION_DAYS, 'window_days': retention.UPCOMING_WINDOW_DAYS,
+        'sms_ready': sms.gateway_ready(),
+    })
 
 
 # ============================================================

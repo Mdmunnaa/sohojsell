@@ -72,6 +72,7 @@
           <dt>প্যাকেজ</dt><dd>{% if shop.subscription_plan == 'Free' %}ফ্রি ট্রায়াল (Standard-এর সব সুবিধা){% else %}{{ shop.subscription_plan }}{% endif %}</dd>
           <dt>মেয়াদ শেষ</dt><dd>{% if end %}{{ end|date:"d M Y" }} — {% if days_left < 0 %}<span class="st st-locked">{{ days_over }} দিন আগে শেষ</span>{% elif days_left == 0 %}<span class="st st-warn">আজ শেষ</span>{% else %}<span class="st {% if days_left <= 7 %}st-warn{% else %}st-ok{% endif %}">আর {{ days_left }} দিন</span>{% endif %}{% else %}<span class="faint">তারিখ নেই</span>{% endif %}</dd>
           <dt>ওয়েবসাইট বন্ধ হবে</dt><dd>{% if shop.is_suspended %}বন্ধ করা আছে{% elif closes_on %}{{ closes_on|date:"d M Y" }} (মেয়াদের ৭ দিন পর){% else %}<span class="faint">-</span>{% endif %}</dd>
+          {% if deletion %}<dt>তথ্য মোছার তারিখ</dt><dd><a href="{% url 'hq_unpaid' %}">{{ deletion.date|date:"d M Y" }}</a> ({{ deletion_days }} দিনের নিয়ম{% if shop.expiry_warn_stage and shop.expiry_warn_sent_on %}; শেষ SMS {{ shop.expiry_warn_stage }} দিনের, {{ shop.expiry_warn_sent_on|date:"d M" }}{% endif %})</dd>{% endif %}
           <dt>ড্যাশবোর্ড</dt><dd>{% if shop.is_locked %}<span class="st st-locked">লক</span> সেলার শুধু বিলিং পাতা দেখছে{% else %}<span class="st st-ok">খোলা</span>{% endif %}</dd>
           <dt>পেইড হয়েছে কখনো</dt><dd>{% if shop.is_paid %}হ্যাঁ{% else %}না{% endif %}</dd>
         </dl>

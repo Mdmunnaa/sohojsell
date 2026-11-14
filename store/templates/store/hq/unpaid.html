@@ -1,0 +1,57 @@
+{% extends 'store/hq/base.html' %}
+{% load hq_tags %}
+{% block title %}বকেয়া ও মুছে ফেলা{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>বকেয়া ও মুছে ফেলা</h1>
+    <p class="sub">নিয়ম (শর্তাবলি §৩): মেয়াদ শেষের পর টানা {{ deletion_days|hq_num }} দিন বিল না দিলে দোকানের সব তথ্য, মালিক আর স্টাফের অ্যাকাউন্ট মুছে ফেলা হয়। মালিক ৭, ৩০, ৬০ আর ৮০তম দিনে SMS পান; শেষটার ৭ দিন পরে তবেই মোছা যায়। মোছা ফেরত আনা যায় শুধু ব্যাকআপ থেকে — তাই আগে একবার ফোন করে নিন।</p>
+  </div>
+</div>
+
+{% if not sms_ready %}
+<div class="callout bad"><b>SMS গেটওয়ে চালু নেই।</b> সতর্কবার্তা যাচ্ছে না, তাই নিয়ম অনুযায়ী কোনো দোকান মোছা যাবে না। সিস্টেম সেটিংসে SMS-এর চাবি বসান।</div>
+{% endif %}
+
+<section class="panel flush">
+  <div class="panel-head"><h2 style="color: var(--bad)">মোছার যোগ্য ({{ eligible|length|hq_num }})</h2></div>
+  <div class="tbl-wrap"><table class="tbl stack">
+    <tbody>
+    {% for r in eligible %}
+      <tr>
+        <td style="min-width: 240px"><a class="strong" href="{% url 'hq_shop' r.shop.pk %}">{{ r.shop.name }}</a> <span class="meta">· {{ r.shop.slug }}</span>
+          <div class="meta">মালিক <a href="tel:{{ r.shop.user.phone_number }}">{{ r.shop.user.phone_number }}</a> · মেয়াদ শেষ {{ r.end|date:"d M Y" }} · <b style="color: var(--bad)">{{ r.overdue_days|hq_num }} দিন বিল নেই</b></div>
+          {% if r.blocker %}<div class="meta" style="color: var(--amber-ink, var(--ink))">{{ r.blocker }}</div>
+          {% else %}<div class="meta">শেষ সতর্কবার্তা গেছে {{ r.shop.expiry_warn_sent_on|date:"d M Y" }}</div>{% endif %}</td>
+        <td>{% if not r.blocker %}
+          <form method="post" class="btn-row" style="justify-content: flex-end" data-confirm="{{ r.shop.name }}-এর সব তথ্য আর অ্যাকাউন্ট স্থায়ীভাবে মুছে ফেলবেন?">{% csrf_token %}<input type="hidden" name="shop_id" value="{{ r.shop.pk }}">
+            <input class="input" type="text" name="confirm" placeholder="নিশ্চিত করতে লিখুন: {{ r.shop.slug|default:r.shop.pk }}" autocomplete="off" required style="width: 250px; min-height: 34px" aria-label="নিশ্চিত করার লেখা">
+            <button class="btn btn-sm btn-danger" type="submit"><i class="bi bi-trash3"></i>সব মুছে ফেলুন</button></form>
+        {% endif %}</td>
+      </tr>
+    {% empty %}
+      <tr><td><div class="empty"><b>কেউ নেই</b>এই মুহূর্তে কোনো দোকান {{ deletion_days|hq_num }} দিন বিল ছাড়া নেই।</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+<section class="panel flush">
+  <div class="panel-head"><h2>আগামী {{ window_days|hq_num }} দিনে মোছার যোগ্য হবে ({{ upcoming|length|hq_num }})</h2><span class="hint">ফোন করার তালিকা — মনে করিয়ে দিলে অনেকেই বিল দেয়</span></div>
+  <div class="tbl-wrap"><table class="tbl stack">
+    <thead><tr><th>দোকান</th><th>মালিক</th><th>মেয়াদ শেষ</th><th class="num">বিল নেই</th><th>শেষ SMS</th><th>মোছার তারিখ</th></tr></thead>
+    <tbody>
+    {% for r in upcoming %}
+      <tr><td><a class="strong" href="{% url 'hq_shop' r.shop.pk %}">{{ r.shop.name }}</a><div class="meta">{{ r.shop.slug }}</div></td>
+        <td class="nowrap" data-label="মালিক:"><a href="tel:{{ r.shop.user.phone_number }}">{{ r.shop.user.phone_number }}</a></td>
+        <td class="nowrap" data-label="মেয়াদ শেষ:">{{ r.end|date:"d M Y" }}</td>
+        <td class="num" data-label="বিল নেই:">{{ r.overdue_days|hq_num }} দিন</td>
+        <td class="nowrap meta" data-label="শেষ SMS:">{% if r.shop.expiry_warn_end == r.end and r.shop.expiry_warn_stage %}{{ r.shop.expiry_warn_stage|hq_num }} দিনের, {{ r.shop.expiry_warn_sent_on|date:"d M" }}{% else %}-{% endif %}</td>
+        <td class="nowrap" data-label="মোছার তারিখ:" style="font-weight: 600">{{ r.delete_on|date:"d M Y" }}</td></tr>
+    {% empty %}
+      <tr><td colspan="6"><div class="empty"><b>কেউ নেই</b></div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

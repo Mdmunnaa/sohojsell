@@ -5,7 +5,7 @@
 """
 from django.core.management.base import BaseCommand
 
-from store import dues
+from store import dues, retention
 
 
 class Command(BaseCommand):
@@ -15,3 +15,5 @@ class Command(BaseCommand):
         sent = dues.run_auto_reminders()
         total = sum(sent.values())
         self.stdout.write(f'{len(sent)} shop(s), {total} reminder SMS sent')
+        warned = retention.send_expiry_warnings()          # মেয়াদ শেষের পর মোছার সতর্কবার্তা (store/retention.py)
+        self.stdout.write(f'{warned} shop(s) got an expiry warning')

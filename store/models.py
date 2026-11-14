@@ -118,6 +118,10 @@ class Shop(models.Model):
     valid_until = models.DateField(null=True, blank=True, help_text='Plan valid until this date')
     is_locked = models.BooleanField(default=False, help_text='Account locked due to expired subscription')
     is_paid = models.BooleanField(default=False)
+    # মেয়াদ শেষের পর মোছার সতর্কবার্তা (store/retention.py): কোন মেয়াদের জন্য, কোন ধাপ (৭/৩০/৬০/৮০ দিন), কবে গেছে
+    expiry_warn_end = models.DateField(null=True, blank=True, editable=False)
+    expiry_warn_stage = models.PositiveSmallIntegerField(default=0, editable=False)
+    expiry_warn_sent_on = models.DateField(null=True, blank=True, editable=False)
     # কাস্টমার যা দেখে (ওয়েবসাইট, চেকআউট, ট্র্যাকিং, কাস্টমারের SMS) সেটা কোন ভাষায় — store/sf_lang.py
     storefront_language = models.CharField(max_length=2, default='bn',
                                            choices=[('bn', 'বাংলা'), ('en', 'English')])
@@ -1074,6 +1078,7 @@ class HQAuditLog(models.Model):
         'note': 'নোট লেখা',
         'domain_live': 'ডোমেইন চালু',
         'delete': 'দোকান মুছে ফেলা',
+        'purge': '৯০ দিন বিল নেই — মোছা',
         'payment_recheck': 'পেমেন্ট আবার যাচাই',
         'payment_manual': 'পেমেন্ট হাতে সম্পন্ন',
         'payment_legacy': 'পুরনো পেমেন্ট অনুমোদন/বাতিল',

@@ -134,6 +134,7 @@ urlpatterns = [
     path('saas-master/shops/', hq_views.shops, name='manage_shops'),
     path('saas-master/shops/<int:shop_id>/', hq_views.shop_detail, name='hq_shop'),
     path('saas-master/shops/<int:shop_id>/action/', hq_views.shop_action, name='hq_shop_action'),
+    path('saas-master/unpaid/', hq_views.unpaid, name='hq_unpaid'),          # ৯০ দিনের নিয়ম
     path('saas-master/users/', hq_views.users, name='all_users'),
     path('saas-master/users/<int:user_id>/action/', hq_views.user_action, name='hq_user_action'),
     path('saas-master/users/<int:user_id>/login/', hq_views.login_as, name='hq_login_as'),

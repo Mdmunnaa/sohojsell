@@ -29,6 +29,12 @@ def cron_daily(request):
         logger.exception('daily cron: due reminders failed')
         result['due_reminders'] = {'error': str(exc)[:200]}
     try:
+        from . import retention
+        result['expiry_warnings'] = retention.send_expiry_warnings()    # মেয়াদ শেষে ৭/৩০/৬০/৮০ দিনে মোছার সতর্কবার্তা
+    except Exception as exc:    # noqa: BLE001
+        logger.exception('daily cron: expiry warnings failed')
+        result['expiry_warnings'] = {'error': str(exc)[:200]}
+    try:
         from django.core.management import call_command
         call_command('optimize_images', limit=200)   # পুরনো প্রোডাক্টের ছবি ছোট করা (দোকানের পাতা দ্রুত খোলে)
         result['optimize_images'] = 'ok'

@@ -176,9 +176,11 @@ def attention():
         n=Count('pk'), amount=Sum('amount'))
     setting = MasterSetting.objects.order_by('pk').first()
     from . import backups
+    from . import retention
     mixups = list(Shop.objects.filter(user__staff_profile__isnull=False).values_list('pk', flat=True)[:50])
     return {
         'backup': backups.hq_status()['warning'],
+        'deletion_eligible': retention.eligible_count(day),     # মেয়াদ শেষের ৯০ দিন পরেও বিল দেয়নি
         # পুরনো একটা বাগে স্টাফ সেটিংস সেভ করলে দোকানের মালিকানা স্টাফের নামে চলে যেত — এমন দোকান ঠিক করতে হবে
         'owner_mixups': len(mixups), 'owner_mixup_first': mixups[0] if mixups else None,
         'signups_closed': bool(setting and not setting.signups_open),
@@ -198,7 +200,9 @@ def nav_counts():
     """বাঁ পাশের মেনুর হলুদ সংখ্যা — যেখানে কাজ জমে আছে।"""
     from . import domains
     from .models import PaymentRequest, SettlementRequest
+    from . import retention
     return {
+        'unpaid': retention.eligible_count(),
         'settle': SettlementRequest.objects.filter(status=SettlementRequest.PENDING).count(),
         'domains': domains.pending_for_master().count(),
         'legacy': PaymentRequest.objects.filter(status='Pending').count(),
@@ -226,6 +230,23 @@ def log_action(request, action, shop=None, detail='', shop_label=None):
         ip = None
     HQAuditLog.objects.create(actor=user, actor_label=(getattr(user, 'phone_number', '') or '')[:64], action=action,
                               shop=shop, shop_label=(label or '')[:200], detail=(detail or '')[:2000], ip=ip)
+
+
+def purge_shop(request, shop, action='delete', detail=''):
+    """
+    দোকান, তার সব তথ্য (CASCADE), মালিক আর স্টাফের অ্যাকাউন্ট মুছে ফেলে — ফেরত আনা যায় শুধু ব্যাকআপ থেকে
+    (deploy/BACKUP_RESTORE.md)। খাতায় নাম থেকে যায়। ফেরত: খাতার লেবেল।
+    """
+    from django.contrib.auth import get_user_model
+    from django.db import transaction
+    from .models import StaffProfile
+    label = f'{shop.name} ({shop.slug}, {shop.user.phone_number})'
+    with transaction.atomic():
+        staff_ids = list(StaffProfile.objects.filter(shop=shop).values_list('user_id', flat=True))
+        log_action(request, action, shop, f'{label} — {detail}' if detail else label, shop_label=shop.name)
+        get_user_model().objects.filter(pk__in=staff_ids, is_superuser=False).delete()
+        shop.user.delete()                 # দোকান আর তার সব ডাটা CASCADE-এ মুছে যায়
+    return label
 
 
 # ---------------------------------------------------------------------------------------------
