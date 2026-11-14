@@ -22,6 +22,7 @@ def site_info(request):
             'facebook_url': settings.FACEBOOK_PAGE_URL,
             'policy_updated_on': settings.POLICY_UPDATED_ON,
             'store_domain': settings.STORE_BASE_DOMAIN or 'sellpunch.com',
+            'fb_domain_verification': getattr(settings, 'FACEBOOK_DOMAIN_VERIFICATION', ''),
         }
     }
 

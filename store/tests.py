@@ -4299,3 +4299,14 @@ class RetentionTests(TestCase):
         with mock.patch('store.sms.notify'), mock.patch('django.core.management.call_command'):
             data = self.client.post(reverse('cron_daily'), HTTP_X_CRON_SECRET='cron-secret').json()
         self.assertEqual(data['expiry_warnings'], 1)
+
+
+class MetaDomainVerificationTests(TestCase):
+    """Meta (Edumi portfolio) sellpunch.com যাচাই করে হোমপেজের <head>-এর meta-tag দেখে।"""
+
+    def test_homepages_carry_tag_in_head(self):
+        for url in ('/', reverse('landing_page_en')):
+            html = self.client.get(url).content.decode()
+            tag = '<meta name="facebook-domain-verification" content="7rh5vwevehlcj3rluhleivo9nd4n83">'
+            self.assertIn(tag, html, url)
+            self.assertLess(html.index(tag), html.index('</head>'), url)

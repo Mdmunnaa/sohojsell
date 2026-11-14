@@ -1,5 +1,6 @@
 {% load static %}{# হোমপেজের (বাংলা / ইংরেজি) Google আর শেয়ারের তথ্য। home_seo আসে views._home থেকে। #}
 <link rel="canonical" href="{{ home_seo.canonical }}">
+{% if site.fb_domain_verification %}<meta name="facebook-domain-verification" content="{{ site.fb_domain_verification }}">{% endif %}
 <link rel="alternate" hreflang="bn" href="{{ home_seo.url_bn }}">
 <link rel="alternate" hreflang="en" href="{{ home_seo.url_en }}">
 <link rel="alternate" hreflang="x-default" href="{{ home_seo.url_bn }}">

@@ -321,6 +321,9 @@ FACEBOOK_GRAPH_VERSION = 'v25.0'
 # App Secret না দিলে Django Admin-এর Facebook Social App থেকে নেওয়া হয়।
 FACEBOOK_WEBHOOK_VERIFY_TOKEN = os.environ.get('FACEBOOK_WEBHOOK_VERIFY_TOKEN', '')
 FACEBOOK_APP_SECRET = os.environ.get('FACEBOOK_APP_SECRET', '')
+# Meta Business portfolio (Edumi) → Brand safety → Domains → sellpunch.com → "Add a meta-tag"-এর content।
+# হোমপেজের <head>-এ বসে (partials/landing_seo.html)। ডোমেইন আবার যোগ করলে নতুন কোড env-এ দিন।
+FACEBOOK_DOMAIN_VERIFICATION = (os.environ.get('FACEBOOK_DOMAIN_VERIFICATION') or '7rh5vwevehlcj3rluhleivo9nd4n83').strip()
 # বাইরে পাঠানো লিংকের জন্য সাইটের ঠিকানা (খালি থাকলে Render-এর ঠিকানা)
 SITE_URL = os.environ.get('SITE_URL', '').rstrip('/')
 # দিনে একবারের কাজের (বাকির অটো-তাগাদা) গোপন চাবি — Cloudflare-এর Secrets-এ CRON_SECRET (store/views_cron.py)
