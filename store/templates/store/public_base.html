@@ -133,7 +133,7 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
         </a>
         <p class="ss-footer-desc">বাংলাদেশের উদ্যোক্তাদের জন্য তৈরি স্মার্ট বিজনেস প্ল্যাটফর্ম।</p>
         <div class="ss-footer-contact">
-          {% if site.phone %}<a href="tel:{{ site.phone }}"><i class="bi bi-telephone me-2"></i>{{ site.phone }}</a>{% endif %}
+          {% if site.phone %}<a href="tel:{{ site.phone_tel }}"><i class="bi bi-telephone me-2"></i>{{ site.phone }}</a>{% endif %}
           {% if site.email %}<a href="mailto:{{ site.email }}"><i class="bi bi-envelope me-2"></i>{{ site.email }}</a>{% endif %}
           {% if site.facebook_url %}<a href="{{ site.facebook_url }}" target="_blank" rel="noopener"><i class="bi bi-facebook me-2"></i>Facebook পেইজ</a>{% endif %}
         </div>
@@ -149,6 +149,7 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
         <div class="ss-footer-title">Support</div>
         <div class="ss-footer-links">
           <a href="{% url 'contact' %}">যোগাযোগ</a>
+          <a href="{% url 'about' %}">আমাদের সম্পর্কে</a>
           {% if site.whatsapp_url %}<a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener">WhatsApp সাপোর্ট</a>{% endif %}
         </div>
       </div>
@@ -163,7 +164,7 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
       </div>
     </div>
     <div class="ss-footer-bottom">
-      <span>© {% now "Y" %} {{ site.name }}{% if site.legal_name %} · {{ site.legal_name }}{% endif %}</span>
+      <span>© {% now "Y" %} {{ site.name }} — {{ company.name_bn }}-এর একটি পণ্য · <a href="{% url 'about' %}">ট্রেড লাইসেন্স আইডি {{ company.licence_id }}</a></span>
       <span>Made in Bangladesh</span>
     </div>
   </div>

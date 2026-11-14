@@ -7,7 +7,7 @@ import requests
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.template.loader import get_template
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from decimal import Decimal
@@ -1770,6 +1770,17 @@ def staff_list(request):
 
 
 from .models import PaymentRequest
+
+
+@login_required(login_url='/accounts/login/')
+def billing_receipt(request, invoice):
+    """প্যাকেজ বা SMS কেনার রসিদ — প্রদানকারী এডুমি (Edumi), SellPunch নামে (store/company.py)। প্রিন্ট বা PDF করা যায়।"""
+    from .models import OnlinePayment
+    shop = getattr(request.user, 'shop', None)
+    if shop is None:
+        raise Http404
+    payment = get_object_or_404(OnlinePayment, shop=shop, invoice_number=invoice, status=OnlinePayment.STATUS_COMPLETED)
+    return render(request, 'store/billing_receipt.html', {'payment': payment, 'shop': shop})
 
 
 @login_required(login_url='/accounts/login/')

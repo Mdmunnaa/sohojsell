@@ -4,13 +4,18 @@ from django.core.cache import cache
 
 def site_info(request):
     """পাবলিক পেইজের footer, যোগাযোগ আর নীতিমালায় ব্যবসার তথ্য (settings / env থেকে)।"""
+    from .company import company_context
     whatsapp = ''.join(ch for ch in settings.SUPPORT_WHATSAPP if ch.isdigit())
+    phone = settings.SUPPORT_PHONE
     return {
+        'company': company_context(),
         'site': {
             'name': settings.SITE_NAME,
             'name_bn': getattr(settings, 'SITE_NAME_BN', ''),
-            'phone': settings.SUPPORT_PHONE,
+            'phone': phone,
+            'phone_tel': ('+' if phone.strip().startswith('+') else '') + ''.join(ch for ch in phone if ch.isdigit()),
             'email': settings.SUPPORT_EMAIL,
+            'info_email': getattr(settings, 'INFO_EMAIL', ''),
             'whatsapp_url': f'https://wa.me/{whatsapp}' if whatsapp else '',
             'legal_name': settings.BUSINESS_LEGAL_NAME,
             'address': settings.BUSINESS_ADDRESS,

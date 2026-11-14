@@ -1,0 +1,84 @@
+{% extends 'store/public_base.html' %}
+{% block title %}আমাদের সম্পর্কে | {{ site.name }} — {{ company.name_bn }}-এর একটি পণ্য{% endblock %}
+{% block meta_description %}{{ site.name }} বানিয়েছে ও চালায় {{ company.name_bn }} — ট্রেড লাইসেন্সধারী একক মালিকানাধীন আইটি প্রতিষ্ঠান (লাইসেন্স আইডি {{ company.licence_id }}), {{ company.address_bn }}।{% endblock %}
+
+{% block extra_css %}
+<style>
+.ab-wrap{max-width:960px;margin:40px auto 0;padding:0 16px}
+.ab-head{margin-bottom:26px}
+.ab-head .kicker{font-size:13px;font-weight:700;color:var(--brand-dark);letter-spacing:.02em;margin-bottom:6px}
+.ab-head h1{font-size:clamp(26px,3.4vw,36px);font-weight:800;line-height:1.25;margin:0 0 10px}
+.ab-head p{font-size:16.5px;line-height:1.8;color:var(--ink2);max-width:62ch;margin:0}
+.ab-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:28px 30px;box-shadow:0 2px 16px rgba(13,13,26,.05);margin-bottom:20px}
+.ab-card h2{font-size:20px;font-weight:800;margin:0 0 12px}
+.ab-card p,.ab-card li{font-size:15.5px;line-height:1.85;color:var(--ink2)}
+.ab-card ul{padding-left:20px;margin:0}
+.ab-id{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:28px;align-items:start}
+.ab-facts{display:grid;grid-template-columns:max-content 1fr;gap:9px 18px;margin:0;font-size:15px}
+.ab-facts dt{color:var(--muted);font-weight:600}
+.ab-facts dd{margin:0;color:var(--ink);font-weight:600;overflow-wrap:anywhere}
+.ab-facts code{font-size:14px;background:var(--bg);padding:2px 8px;border-radius:6px;color:var(--ink)}
+.ab-note{font-size:14px;color:var(--muted);line-height:1.75;margin-top:12px}
+.ab-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.ab-item{border:1px solid var(--border);border-radius:14px;padding:18px}
+.ab-item i{font-size:22px;color:var(--brand-dark)}
+.ab-item h3{font-size:16px;font-weight:800;margin:10px 0 6px}
+.ab-item p{font-size:14.5px;line-height:1.7;margin:0}
+.ab-en{background:var(--bg)}
+.ab-en code{color:var(--ink);background:#fff}
+@media(max-width:768px){.ab-id,.ab-grid{grid-template-columns:minmax(0,1fr)}.ab-card{padding:22px 18px}.ab-facts{grid-template-columns:minmax(0,1fr);gap:2px}.ab-facts dd{margin-bottom:10px}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ab-wrap">
+  <header class="ab-head">
+    <div class="kicker">আমাদের সম্পর্কে</div>
+    <h1>{{ site.name }} — {{ company.name_bn }}-এর একটি পণ্য</h1>
+    <p>{{ site.name }} বাংলাদেশের ছোট ব্যবসার জন্য বানানো — Facebook সেলার, অনলাইন শপ আর পাড়ার দোকান যেন খাতা, Excel আর ইনবক্স ছাড়াই এক জায়গায় বিক্রি, স্টক, বাকি আর লাভের হিসাব রাখতে পারে, পুরোটা বাংলায়।</p>
+  </header>
+
+  <section class="ab-card" aria-labelledby="who">
+    <div class="ab-id">
+      <div>
+        <h2 id="who">আমরা কে</h2>
+        <p>{{ site.name }} বানিয়েছে ও চালায় <strong>{{ company.name_bn }}</strong>, বাংলাদেশের একটি নিবন্ধিত আইটি প্রতিষ্ঠান। একই প্রতিষ্ঠান শিক্ষা প্রতিষ্ঠানের সফটওয়্যার <a href="{{ company.website }}" target="_blank" rel="noopener">Edumi</a>-ও চালায়।</p>
+        <p class="ab-note">একক মালিকানাধীন প্রতিষ্ঠানের জন্য RJSC নিবন্ধন প্রযোজ্য নয় — আইনি পরিচয় ইউনিয়ন পরিষদের দেওয়া এই ট্রেড লাইসেন্স। যাচাই করতে লাইসেন্স আইডি দিয়ে {{ company.issuer_bn }}-এ খোঁজ নিতে পারেন। লাইসেন্সের কপি চাইলে <a href="mailto:{{ site.info_email|default:site.email }}">{{ site.info_email|default:site.email }}</a>-এ লিখুন।</p>
+      </div>
+      <dl class="ab-facts">
+        <dt>প্রতিষ্ঠান</dt><dd>{{ company.name_bn }}</dd>
+        <dt>ধরন</dt><dd>{{ company.kind_bn }}</dd>
+        <dt>মালিক</dt><dd>{{ company.owner_bn }}</dd>
+        <dt>ট্রেড লাইসেন্স নং</dt><dd><code>{{ company.licence_no }}</code></dd>
+        <dt>লাইসেন্স আইডি</dt><dd><code>{{ company.licence_id }}</code></dd>
+        <dt>ইস্যু করেছে</dt><dd>{{ company.issuer_bn }}</dd>
+        {% if company.valid_until %}<dt>মেয়াদ</dt><dd>{{ company.valid_until_bn }} পর্যন্ত (প্রতি বছর নবায়ন)</dd>{% endif %}
+        <dt>ঠিকানা</dt><dd>{{ company.address_bn }}</dd>
+        {% if site.phone %}<dt>হেল্পলাইন</dt><dd><a href="tel:{{ site.phone_tel }}">{{ site.phone }}</a></dd>{% endif %}
+        {% if site.email %}<dt>সাপোর্ট</dt><dd><a href="mailto:{{ site.email }}">{{ site.email }}</a></dd>{% endif %}
+        {% if site.info_email %}<dt>অন্যান্য কাজে</dt><dd><a href="mailto:{{ site.info_email }}">{{ site.info_email }}</a></dd>{% endif %}
+      </dl>
+    </div>
+  </section>
+
+  <section class="ab-card" aria-labelledby="why">
+    <h2 id="why">কেন {{ site.name }}</h2>
+    <div class="ab-grid">
+      <div class="ab-item"><i class="bi bi-translate" aria-hidden="true"></i><h3>পুরোটা বাংলায়</h3><p>ড্যাশবোর্ড, রসিদ, SMS সব বাংলায় — দোকানের ওয়েবসাইট চাইলে ইংরেজিতেও।</p></div>
+      <div class="ab-item"><i class="bi bi-shop" aria-hidden="true"></i><h3>এক জায়গায় সব</h3><p>ওয়েবসাইট, POS, অর্ডার, কুরিয়ার, বাকির খাতা আর লাভের রিপোর্ট — একই স্টক থেকে।</p></div>
+      <div class="ab-item"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i><h3>ডাটা আপনার</h3><p>অর্ডার, প্রোডাক্ট, কাস্টমার যেকোনো সময় Excel-এ নামিয়ে নিজের কাছে রাখতে পারেন।</p></div>
+    </div>
+  </section>
+
+  <section class="ab-card" aria-labelledby="contact">
+    <h2 id="contact">যোগাযোগ</h2>
+    {% include 'store/legal/_contact_box.html' %}
+  </section>
+
+  <section class="ab-card ab-en" id="english" lang="en" aria-labelledby="en-title">
+    <h2 id="en-title">About {{ site.name }} (in English)</h2>
+    <p>{{ site.name }} is a product of <strong>{{ company.name_en }}</strong>, an {{ company.kind_en }} registered in Bangladesh under trade licence ID <code>{{ company.licence_id }}</code>, issued by {{ company.issuer_en }}. Owner: {{ company.owner_en }}. Registered address: {{ company.address_en }}.</p>
+    <p class="mb-0">Support: {% if site.phone %}{{ site.phone }} · {% endif %}{{ site.email }}{% if site.info_email %} · General enquiries: {{ site.info_email }}{% endif %}</p>
+  </section>
+</div>
+{% endblock %}

@@ -3608,7 +3608,7 @@ class SpeedTests(ShopTestMixin, TestCase):
 
 class NoEmojiTests(TestCase):
     """ওয়েবসাইট, ড্যাশবোর্ড, মেসেজ — কোথাও ইমোজি না (দেখতে কৃত্রিম লাগে); দরকারে আইকন বা SellPunch লোগো।"""
-    EMOJI = re.compile('[\U0001F000-\U0001FAFF☀-⛿✀-➿⭐⭕️]')
+    EMOJI = re.compile('[\U0001F000-\U0001FAFF☀-⛿✀-➿⭐⭕️⌚⌛⏩-⏺]')
     ALLOWED = set('✓✗')   # সাধারণ টিক/ক্রস চিহ্ন (ইমোজি না)
 
     def test_no_emoji_in_templates_or_messages(self):
@@ -3960,3 +3960,63 @@ class ReviewFormLookTests(TestCase):
         self.assertIn('Add a photo', html)
         self.assertIn('How did you like the product?', html)
         self.assertNotIn('ছবি যোগ করুন', html)
+
+
+class CompanyIdentityTests(TestCase):
+    """SellPunch = এডুমি (Edumi)-এর পণ্য: ট্রেড লাইসেন্স, ঠিকানা, যোগাযোগ সব পাবলিক পাতায় এক রকম (Meta যাচাইয়েও মিলতে হয়)।"""
+
+    LICENCE = '16-0223-01249-00000048'
+
+    def test_contact_and_legal_pages(self):
+        html = self.client.get(reverse('contact')).content.decode()
+        for text in (self.LICENCE, 'মেঘনা, বাহাদুরপুর, পাংশা, রাজবাড়ী', 'support@sellpunch.com', 'info@sellpunch.com',
+                     '+880 9658-614453', 'href="tel:+8809658614453"', 'এডুমি (Edumi)-এর একটি পণ্য'):
+            self.assertIn(text, html)
+        self.assertNotIn('শিগগিরই যোগ করা হবে', html)
+        for name in ('privacy_policy', 'terms', 'refund_policy', 'data_deletion'):
+            self.assertIn('এই পাতায় "আমরা" মানে এডুমি (Edumi)', self.client.get(reverse(name)).content.decode(), name)
+        self.assertNotIn('লেনদেন নম্বর জমা দিয়ে', self.client.get(reverse('terms')).content.decode())
+
+    def test_homepage_footers_and_schema(self):
+        bn = self.client.get('/').content.decode()
+        self.assertIn('এডুমি (Edumi)-এর একটি পণ্য', bn)
+        self.assertIn(f'ট্রেড লাইসেন্স আইডি {self.LICENCE}', bn)
+        self.assertIn('"parentOrganization":{"@type":"Organization"', bn)
+        self.assertIn('"legalName":"Edumi"', bn)
+        en = self.client.get('/en/').content.decode()
+        self.assertIn('a product of Edumi', en)
+        self.assertIn('Meghna, Bahadurpur, Pangsha, Rajbari 7721', en)
+
+    def test_about_page(self):
+        response = self.client.get('/about/')
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        for text in ('মোঃ মুন্না মিয়া', '00000048', '০১ নং বাহাদুরপুর ইউনিয়ন পরিষদ', 'id="english"', 'Md. Munna Mia',
+                     '৩০ জুন ২০২৭'):
+            self.assertIn(text, html)
+        self.assertIn('/about/', self.client.get('/sitemap.xml').content.decode())
+
+    @override_settings(SUPPORT_PHONE='01700000000', SUPPORT_EMAIL='help@example.com')
+    def test_env_can_override_contacts(self):
+        html = self.client.get(reverse('contact')).content.decode()
+        self.assertIn('help@example.com', html)
+        self.assertIn('href="tel:01700000000"', html)
+
+    def test_receipt_only_for_own_completed_payment(self):
+        user = User.objects.create_user(phone_number='01792000001', password='Seller-pass-1')
+        shop = Shop.objects.create(user=user, name='Rasid Shop', slug='rasidshop', phone='01792000001', address='Savar')
+        done = OnlinePayment.objects.create(shop=shop, kind='plan', plan_name='Standard', days=30, amount=Decimal('999'),
+                                            invoice_number='SS-9-AAAAAAAAAAAA', status='Completed', trx_id='TRX9',
+                                            payment_method='bKash', completed_at=timezone.now())
+        pending = OnlinePayment.objects.create(shop=shop, kind='sms', plan_name='SMS', sms_count=250, amount=Decimal('100'),
+                                               invoice_number='SS-9-BBBBBBBBBBBB')
+        other = User.objects.create_user(phone_number='01792000002', password='Seller-pass-1')
+        Shop.objects.create(user=other, name='Other', slug='othershop', phone='01792000002', address='Dhaka')
+        self.client.force_login(user)
+        html = self.client.get(reverse('billing_receipt', args=[done.invoice_number])).content.decode()
+        for text in ('পেমেন্টের রসিদ', 'Rasid Shop', '৳999.00', 'TRX9', self.LICENCE, 'Standard প্যাকেজ — ৩০ দিন'):
+            self.assertIn(text, html)
+        self.assertEqual(self.client.get(reverse('billing_receipt', args=[pending.invoice_number])).status_code, 404)
+        self.assertIn(reverse('billing_receipt', args=[done.invoice_number]), self.client.get(reverse('billing')).content.decode())
+        self.client.force_login(other)
+        self.assertEqual(self.client.get(reverse('billing_receipt', args=[done.invoice_number])).status_code, 404)

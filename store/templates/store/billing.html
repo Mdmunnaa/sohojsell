@@ -186,6 +186,7 @@
             <th>Method</th>
             <th>TrxID</th>
             <th>Status</th>
+            <th>রসিদ</th>
           </tr>
         </thead>
         <tbody>
@@ -202,8 +203,9 @@
             <td>
               {% if p.status == 'Completed' %}<span class="badge bg-success rounded-pill"><i class="bi bi-check-lg"></i> সম্পন্ন</span>
               {% elif p.status == 'Failed' %}<span class="badge bg-secondary rounded-pill"><i class="bi bi-x-lg"></i> হয়নি</span>
-              {% else %}<span class="badge bg-warning text-dark rounded-pill">⏳ যাচাই চলছে</span>{% endif %}
+              {% else %}<span class="badge bg-warning text-dark rounded-pill"><i class="bi bi-hourglass-split"></i> যাচাই চলছে</span>{% endif %}
             </td>
+            <td>{% if p.status == 'Completed' %}<a href="{% url 'billing_receipt' p.invoice_number %}" target="_blank" rel="noopener" class="btn btn-sm btn-light border fw-semibold"><i class="bi bi-receipt me-1"></i>রসিদ</a>{% else %}—{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -243,7 +245,7 @@
             <td>
               {% if req.status == 'Approved' %}<span class="badge bg-success rounded-pill"><i class="bi bi-check-lg"></i> Approved</span>
               {% elif req.status == 'Rejected' %}<span class="badge bg-danger rounded-pill"><i class="bi bi-x-lg"></i> Rejected</span>
-              {% else %}<span class="badge bg-warning text-dark rounded-pill">⏳ Pending</span>{% endif %}
+              {% else %}<span class="badge bg-warning text-dark rounded-pill"><i class="bi bi-hourglass-split"></i> Pending</span>{% endif %}
             </td>
           </tr>
           {% endfor %}

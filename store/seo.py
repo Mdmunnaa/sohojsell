@@ -99,7 +99,7 @@ MAIN_PRIVATE_PATHS = ('/accounts/', '/admin/', '/saas-master/', '/demo/', '/dash
                       '/orders/', '/products/', '/customers/', '/reports/', '/dues/', '/website/', '/sms/', '/offers/',
                       '/landing/', '/purchases/', '/settings/', '/billing/', '/payment/', '/staff/', '/facebook/',
                       '/internal/')
-MAIN_PUBLIC_PAGES = ('contact', 'privacy_policy', 'terms', 'refund_policy')
+MAIN_PUBLIC_PAGES = ('about', 'contact', 'privacy_policy', 'terms', 'refund_policy')
 
 
 def main_site_url(request):

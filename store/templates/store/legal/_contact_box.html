@@ -1,8 +1,9 @@
 <div class="legal-contact">
-  <div><strong>{{ site.name }}</strong>{% if site.legal_name %} ({{ site.legal_name }}){% endif %}</div>
-  {% if site.address %}<div><i class="bi bi-geo-alt me-2"></i>{{ site.address }}</div>{% endif %}
-  {% if site.phone %}<div><i class="bi bi-telephone me-2"></i><a href="tel:{{ site.phone }}">{{ site.phone }}</a></div>{% endif %}
-  {% if site.email %}<div><i class="bi bi-envelope me-2"></i><a href="mailto:{{ site.email }}">{{ site.email }}</a></div>{% endif %}
+  <div><strong>{{ site.name }}</strong> — {{ company.name_bn }}-এর একটি পণ্য</div>
+  <div class="text-muted small mb-2">{{ company.kind_bn }} · ট্রেড লাইসেন্স আইডি {{ company.licence_id }}</div>
+  <div><i class="bi bi-geo-alt me-2"></i>{{ company.address_bn }}</div>
+  {% if site.phone %}<div><i class="bi bi-telephone me-2"></i>হেল্পলাইন: <a href="tel:{{ site.phone_tel }}">{{ site.phone }}</a></div>{% endif %}
+  {% if site.email %}<div><i class="bi bi-envelope me-2"></i>সাপোর্ট: <a href="mailto:{{ site.email }}">{{ site.email }}</a></div>{% endif %}
+  {% if site.info_email %}<div><i class="bi bi-envelope-open me-2"></i>অন্যান্য কাজে: <a href="mailto:{{ site.info_email }}">{{ site.info_email }}</a></div>{% endif %}
   {% if site.whatsapp_url %}<div><i class="bi bi-whatsapp me-2"></i><a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener">WhatsApp-এ মেসেজ দিন</a></div>{% endif %}
-  {% if not site.phone and not site.email and not site.whatsapp_url %}<div>যোগাযোগের তথ্য শিগগিরই যোগ করা হবে।</div>{% endif %}
 </div>

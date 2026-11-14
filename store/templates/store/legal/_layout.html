@@ -14,6 +14,7 @@
 .legal-card li{margin-bottom:4px}
 .legal-card a{color:var(--brand-dark)}
 .legal-note{background:var(--brand-light);border:1px solid rgba(255,77,0,.18);border-radius:12px;padding:14px 16px;font-size:14.5px;color:var(--ink2);margin-bottom:22px}
+.legal-provider{font-size:13.5px!important;color:var(--muted)!important;background:var(--bg);border-radius:10px;padding:10px 14px;margin-bottom:22px}
 .legal-contact{background:var(--bg);border-radius:12px;padding:16px 18px;margin-top:8px}
 .legal-contact div{font-size:15px;color:var(--ink2);margin-bottom:4px}
 @media(max-width:576px){.legal-card{padding:22px 18px}.legal-head h1{font-size:25px}}
@@ -27,6 +28,7 @@
     <p>সর্বশেষ হালনাগাদ: {{ site.policy_updated_on }}</p>
   </div>
   <div class="legal-card">
+    <p class="legal-provider">{{ site.name }} পরিচালনা করে <strong>{{ company.name_bn }}</strong> — {{ company.kind_bn }}, ট্রেড লাইসেন্স আইডি {{ company.licence_id }}, {{ company.address_bn }}। এই পাতায় "আমরা" মানে {{ company.name_bn }}। <a href="{% url 'about' %}">বিস্তারিত</a></p>
     {% block legal_body %}{% endblock %}
   </div>
 </div>

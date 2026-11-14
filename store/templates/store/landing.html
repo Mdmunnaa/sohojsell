@@ -402,10 +402,11 @@
       <div>
         <h3>যোগাযোগ</h3>
         <div class="lk">
-          {% if site.phone %}<a href="tel:{{ site.phone }}"><i class="bi bi-telephone"></i> {{ site.phone }}</a>{% endif %}
+          {% if site.phone %}<a href="tel:{{ site.phone_tel }}"><i class="bi bi-telephone"></i> {{ site.phone }}</a>{% endif %}
           {% if site.whatsapp_url %}<a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp-এ লিখুন</a>{% endif %}
           {% if site.email %}<a href="mailto:{{ site.email }}"><i class="bi bi-envelope"></i> {{ site.email }}</a>{% endif %}
           <a href="{% url 'contact' %}">যোগাযোগের পাতা</a>
+          <a href="{% url 'about' %}">আমাদের সম্পর্কে</a>
         </div>
       </div>
       <div>
@@ -414,7 +415,7 @@
       </div>
     </div>
     <div class="fb">
-      <span>© {% now "Y" %} {{ site.name }}{% if site.legal_name %} · {{ site.legal_name }}{% endif %}{% if site.address %} · {{ site.address }}{% endif %}</span>
+      <span>© {% now "Y" %} {{ site.name }} — {{ company.name_bn }}-এর একটি পণ্য · <a href="{% url 'about' %}">ট্রেড লাইসেন্স আইডি {{ company.licence_id }}</a> · {{ company.address_bn }}</span>
       <span><a href="{% url 'landing_page_en' %}" hreflang="en" lang="en" style="font-weight:700">English</a> · বাংলাদেশে তৈরি</span>
     </div>
   </div>

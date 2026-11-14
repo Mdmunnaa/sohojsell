@@ -1,0 +1,88 @@
+{% load static bangla %}<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>রসিদ {{ payment.invoice_number }} | {{ site.name }}</title>
+<link rel="icon" href="{% static 'brand/favicon-32.png' %}" sizes="32x32">
+{% include 'store/partials/fonts.html' with hind=1 %}
+<style>
+{% comment %}প্যাকেজ/SMS কেনার রসিদ: প্রদানকারী এডুমি (Edumi), SellPunch নামে। A4-এর অর্ধেকে প্রিন্ট হয়, PDF-ও করা যায়।{% endcomment %}
+* { box-sizing: border-box; }
+body { margin: 0; background: #F1F5F9; color: #0F172A; font-family: 'Hind Siliguri', system-ui, sans-serif; font-size: 15px; line-height: 1.6; }
+.sheet { max-width: 720px; margin: 28px auto; background: #fff; border: 1px solid #E2E8F0; border-radius: 14px; padding: 32px 36px; }
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; border-bottom: 2px solid #0F172A; padding-bottom: 18px; }
+.top img { height: 38px; width: auto; display: block; }
+.issuer { font-size: 13px; color: #475569; margin-top: 8px; line-height: 1.6; }
+.issuer b { color: #0F172A; }
+.title { text-align: right; }
+.title h1 { margin: 0; font-size: 24px; font-weight: 700; }
+.title .paid { display: inline-block; margin-top: 6px; font-size: 13px; font-weight: 700; color: #0F7A55; border: 1.5px solid #0F7A55; border-radius: 6px; padding: 1px 10px; }
+.meta { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 20px 0; font-size: 14px; }
+.meta h2 { font-size: 12.5px; color: #64748B; font-weight: 700; margin: 0 0 4px; }
+.meta p { margin: 0; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th { text-align: left; font-size: 12.5px; color: #64748B; font-weight: 700; padding: 9px 10px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; }
+td { padding: 12px 10px; border-bottom: 1px solid #E2E8F0; vertical-align: top; }
+.num { text-align: right; white-space: nowrap; }
+.total td { font-weight: 700; font-size: 16px; border-bottom: 0; }
+.foot { margin-top: 22px; font-size: 12.5px; color: #64748B; line-height: 1.7; }
+.actions { max-width: 720px; margin: 0 auto 30px; display: flex; gap: 10px; justify-content: center; }
+.actions button, .actions a { font: inherit; font-weight: 700; font-size: 14.5px; border-radius: 10px; padding: 9px 18px; border: 1.5px solid #CBD5E1; background: #fff; color: #0F172A; cursor: pointer; text-decoration: none; }
+.actions .print { background: #0F172A; border-color: #0F172A; color: #fff; }
+@media (max-width: 600px) { .sheet { margin: 0; border-radius: 0; border: 0; padding: 22px 16px; } .top { flex-direction: column; } .title { text-align: left; } .meta { grid-template-columns: 1fr; } }
+@media print { body { background: #fff; } .sheet { margin: 0; border: 0; padding: 0; } .actions { display: none; } }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <div class="top">
+    <div>
+      <img src="{% static 'brand/sellpunch-logo.svg' %}" alt="{{ site.name }}" width="150" height="38">
+      <div class="issuer">
+        <b>{{ site.name }} — {{ company.name_bn }}-এর একটি পণ্য</b><br>
+        ট্রেড লাইসেন্স আইডি {{ company.licence_id }}<br>
+        {{ company.address_bn }}<br>
+        {% if site.phone %}{{ site.phone }} · {% endif %}{{ site.email }}
+      </div>
+    </div>
+    <div class="title">
+      <h1>পেমেন্টের রসিদ</h1>
+      <span class="paid">পরিশোধিত</span>
+    </div>
+  </div>
+
+  <div class="meta">
+    <div>
+      <h2>যার কাছ থেকে</h2>
+      <p><b>{{ shop.name }}</b><br>{{ shop.user.phone_number }}{% if shop.address %}<br>{{ shop.address }}{% endif %}</p>
+    </div>
+    <div>
+      <h2>রসিদের তথ্য</h2>
+      <p>রসিদ নং: <b>{{ payment.invoice_number }}</b><br>
+        তারিখ: {{ payment.completed_at|default:payment.created_at|date:"d M Y, h:i A" }}<br>
+        মাধ্যম: {{ payment.payment_method|default:"PayStation" }}{% if payment.trx_id %}<br>লেনদেন নম্বর: {{ payment.trx_id }}{% endif %}</p>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>বিবরণ</th><th class="num">টাকা</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>{% if payment.kind == 'sms' %}SMS ব্যালেন্স — {{ payment.sms_count|bn }}টা SMS{% else %}{{ site.name }} {{ payment.plan_name }} প্যাকেজ — {% if payment.days >= 365 %}১ বছর{% else %}{{ payment.days|bn }} দিন{% endif %}{% endif %}</td>
+        <td class="num">৳{{ payment.amount|floatformat:2 }}</td>
+      </tr>
+      <tr class="total"><td>মোট পরিশোধিত</td><td class="num">৳{{ payment.amount|floatformat:2 }}</td></tr>
+    </tbody>
+  </table>
+
+  <p class="foot">এটা কম্পিউটারে তৈরি রসিদ, সই লাগে না। প্রশ্ন থাকলে {{ site.email }}-এ রসিদ নম্বরসহ লিখুন{% if site.phone %} বা {{ site.phone }}-এ ফোন করুন{% endif %}।
+    {% if payment.environment == 'sandbox' %}<br><b>পরীক্ষামূলক (sandbox) পেমেন্ট — আসল টাকা কাটা হয়নি।</b>{% endif %}</p>
+</main>
+<div class="actions">
+  <button type="button" class="print" onclick="window.print()">প্রিন্ট / PDF</button>
+  <a href="{% url 'billing' %}">বিলিং পাতায় ফিরুন</a>
+</div>
+</body>
+</html>

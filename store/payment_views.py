@@ -151,7 +151,7 @@ def paystation_callback(request):
     if status in ('ok', 'already'):
         messages.success(request, msg)
     elif status in ('unverified', 'failed'):
-        messages.warning(request, f'⏳ {msg}' if status == 'unverified' else msg)
+        messages.warning(request, msg)
     else:
         messages.error(request, msg)
     return redirect(back)

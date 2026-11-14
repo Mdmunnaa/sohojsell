@@ -234,11 +234,14 @@ LOGIN_REDIRECT_URL = '/dashboard/'
 # ============================================================
 SITE_NAME = os.environ.get('SITE_NAME', 'SellPunch')
 SITE_NAME_BN = os.environ.get('SITE_NAME_BN', 'সেলপাঞ্চ')
-SUPPORT_PHONE = os.environ.get('SUPPORT_PHONE', '')            # যেমন 01XXXXXXXXX
-SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', '')            # যেমন support@yourdomain.com
-SUPPORT_WHATSAPP = os.environ.get('SUPPORT_WHATSAPP', '')      # দেশের কোডসহ, যেমন 8801XXXXXXXXX
-BUSINESS_LEGAL_NAME = os.environ.get('BUSINESS_LEGAL_NAME', '')  # ট্রেড লাইসেন্সে যে নাম
-BUSINESS_ADDRESS = os.environ.get('BUSINESS_ADDRESS', '')
+# SellPunch চালায় এডুমি (Edumi) — ট্রেড লাইসেন্স, ঠিকানা আর যোগাযোগ store/company.py-তে। env ফাঁকা থাকলে সেগুলোই।
+from store.company import COMPANY as _COMPANY, DEFAULT_CONTACT as _CONTACT  # noqa: E402
+SUPPORT_PHONE = os.environ.get('SUPPORT_PHONE') or _CONTACT['SUPPORT_PHONE']
+SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL') or _CONTACT['SUPPORT_EMAIL']
+INFO_EMAIL = os.environ.get('INFO_EMAIL') or _CONTACT['INFO_EMAIL']
+SUPPORT_WHATSAPP = os.environ.get('SUPPORT_WHATSAPP') or _CONTACT['SUPPORT_WHATSAPP']   # দেশের কোডসহ
+BUSINESS_LEGAL_NAME = os.environ.get('BUSINESS_LEGAL_NAME') or _COMPANY['name_bn']     # ট্রেড লাইসেন্সে যে নাম
+BUSINESS_ADDRESS = os.environ.get('BUSINESS_ADDRESS') or _COMPANY['address_bn']
 FACEBOOK_PAGE_URL = os.environ.get('FACEBOOK_PAGE_URL', '')
 POLICY_UPDATED_ON = '৩ নভেম্বর ২০২৬'
 
