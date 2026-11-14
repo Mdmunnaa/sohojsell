@@ -1,0 +1,66 @@
+# প্রতি শুক্রবার ভোর ৩:০০ (ঢাকা) — সর্বশেষ ব্যাকআপ সত্যিই ফেরত আনা যায় কিনা পরীক্ষা (Edumi-র মতো)।
+# এই মেশিনেই একটা একদম ফাঁকা, অস্থায়ী PostgreSQL চালু করে তাতে পুরো ব্যাকআপ ফেরত আনা হয়, সারির সংখ্যা মিলিয়ে দেখা হয়,
+# SellPunch-এর কোড দিয়ে মাইগ্রেশন চালিয়ে টেবিলগুলো পড়ে দেখা হয়। ফল লাইভ ডাটাবেসের store_backupcheck-এ এক লাইন
+# ("নিরাপত্তা ও ডাটা" পাতায় শুধু তারিখ আর সময়, Master HQ-তে সংখ্যাসহ)। লাইভ ডাটাবেসে আর কিছু লেখা হয় না।
+# ব্যর্থ হলে GitHub আপনাকে ইমেইল দেয়, আর Master HQ-র "এখন যা করতে হবে"-তে ওঠে।
+# হাতে চালাতে: GitHub → Actions → backup-restore-check → Run workflow। বিস্তারিত: deploy/BACKUP_RESTORE.md
+name: backup-restore-check
+
+on:
+  schedule:
+    - cron: "0 21 * * 4"   # UTC বৃহস্পতিবার 21:00 = ঢাকা শুক্রবার 03:00 (রাতের ব্যাকআপের ৪৫ মিনিট পরে)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-restore-check
+  cancel-in-progress: false
+
+jobs:
+  restore-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SECRET_KEY: ci-only-not-a-real-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+      DEBUG: "0"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: PostgreSQL-এর সর্বশেষ client আর একই সংস্করণের ফাঁকা, অস্থায়ী ডাটাবেস
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          V=$(apt-cache search --names-only '^postgresql-client-[0-9]+$' | sed -E 's/^postgresql-client-([0-9]+).*/\1/' | sort -n | tail -1)
+          sudo apt-get install -y -qq "postgresql-client-$V" > /dev/null
+          echo "/usr/lib/postgresql/$V/bin" >> "$GITHUB_PATH"
+          echo "client: $V"
+          docker run -d --name restore-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=restore_check -p 5432:5432 "postgres:$V" \
+            || docker run -d --name restore-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=restore_check -p 5432:5432 postgres:latest
+          for i in $(seq 1 60); do
+            /usr/lib/postgresql/$V/bin/pg_isready -h localhost -p 5432 -U postgres -q && break
+            sleep 2
+          done
+          /usr/lib/postgresql/$V/bin/pg_isready -h localhost -p 5432 -U postgres
+          docker exec restore-pg postgres --version
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: SellPunch-এর প্যাকেজ (মাইগ্রেশন আর পড়ে দেখার জন্য)
+        run: pip install --quiet -r requirements.txt
+
+      - name: ব্যাকআপ নামানো → ফাঁকা ডাটাবেসে ফেরত আনা → মিলিয়ে দেখা → ফল জমা
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BACKUP_BUCKET: ${{ secrets.R2_BACKUP_BUCKET }}
+        run: python scripts/backup_restore_check.py --target-url postgresql://postgres:postgres@localhost:5432/restore_check

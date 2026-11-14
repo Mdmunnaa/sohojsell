@@ -11,6 +11,7 @@ ALLOWED_URLS = [
     '/accounts/logout/',
     '/accounts/signup/',
     '/billing/',
+    '/settings/data/export/',     # মেয়াদ শেষ হলেও নিজের সব ডাটা নামাতে পারবেন
     '/payment/',
     '/saas-master/',
     '/admin/',
@@ -24,6 +25,8 @@ ALLOWED_URLS = [
     '/refund-policy/',
     '/data-deletion/',
     '/contact/',
+    '/about/',
+    '/security/',
 ]
 
 

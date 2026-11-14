@@ -19,6 +19,7 @@ from datetime import timedelta
 import random
 
 from .models import Shop, Product, Category, Order, OrderItem, Customer, MasterSetting, Banner
+from . import backups
 from .plans import (
     can_add_staff, has_custom_domain, has_facebook, plan_label, product_limit, products_remaining,
     staff_limit, storefront_closes_on, storefront_is_open, upgrade_message,
@@ -590,6 +591,7 @@ SETTINGS_TABS = [
     ('courier', 'bi-truck', 'কুরিয়ার'),
     ('pos', 'bi-printer', 'POS ও রসিদ'),
     ('facebook', 'bi-facebook', 'Facebook'),
+    ('data', 'bi-database-down', 'ডাটা ও ব্যাকআপ'),
 ]
 SETTINGS_FORMS = {
     'steadfast': SteadfastSettingsForm,
@@ -608,6 +610,32 @@ COURIER_ACTION_SECTIONS = {
 
 def _settings_url(tab, anchor=''):
     return f"{reverse('settings')}?tab={tab}" + (f'#{anchor}' if anchor else '')
+
+
+def security_page(request):
+    """নিরাপত্তা ও ডাটা — ব্যাকআপের কার্ড শুধু টাটকা সফল পরীক্ষা থাকলে, নজরদারির লাইন শুধু STATUS_PAGE_URL থাকলে।"""
+    from django.conf import settings as dj_settings
+    from .plans import STOREFRONT_GRACE_DAYS
+    return render(request, 'store/security.html', {
+        'backup_test': backups.trust_line(),
+        'status_page': getattr(dj_settings, 'STATUS_PAGE_URL', ''),
+        'grace_days_bn': str(STOREFRONT_GRACE_DAYS).translate(str.maketrans('0123456789', '০১২৩৪৫৬৭৮৯')),
+    })
+
+
+@login_required(login_url='/accounts/login/')
+def export_all_data(request):
+    """সেটিংস → ডাটা ও ব্যাকআপ: দোকানের সব তথ্য এক Excel-এ (store/data_export.py)। শুধু মালিক; লক থাকলেও চলে।"""
+    from .data_export import build_full_export, export_filename
+    shop = getattr(request.user, 'shop', None)
+    if shop is None or shop.user_id != request.user.id:
+        messages.error(request, 'সব ডাটা শুধু দোকানের মালিক নামাতে পারেন।')
+        return redirect('dashboard')
+    workbook = build_full_export(shop, absolute=request.build_absolute_uri)
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{export_filename(shop)}"'
+    workbook.save(response)
+    return response
 
 
 @login_required(login_url='/accounts/login/')
@@ -661,6 +689,8 @@ def shop_settings(request):
         'facebook_allowed': has_facebook(shop),
         'fb_page': fb_page,
         'fb_recent_replies': shop.fb_comment_replies.select_related('product')[:5] if fb_page else [],
+        'is_owner': shop.user_id == request.user.id,
+        'backup_test': backups.trust_line() if active_tab == 'data' else None,
         'steadfast_webhook_url': request.build_absolute_uri(reverse('steadfast_webhook')),
         'days_left': shop.days_remaining(),
     })

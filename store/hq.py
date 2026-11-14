@@ -175,7 +175,12 @@ def attention():
     settle = SettlementRequest.objects.filter(status=SettlementRequest.PENDING).aggregate(
         n=Count('pk'), amount=Sum('amount'))
     setting = MasterSetting.objects.order_by('pk').first()
+    from . import backups
+    mixups = list(Shop.objects.filter(user__staff_profile__isnull=False).values_list('pk', flat=True)[:50])
     return {
+        'backup': backups.hq_status()['warning'],
+        # পুরনো একটা বাগে স্টাফ সেটিংস সেভ করলে দোকানের মালিকানা স্টাফের নামে চলে যেত — এমন দোকান ঠিক করতে হবে
+        'owner_mixups': len(mixups), 'owner_mixup_first': mixups[0] if mixups else None,
         'signups_closed': bool(setting and not setting.signups_open),
         'domains': domains.pending_for_master().count(),
         'settlements': settle['n'], 'settlements_amount': settle['amount'] or Decimal('0'),

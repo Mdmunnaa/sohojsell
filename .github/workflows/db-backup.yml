@@ -1,0 +1,53 @@
+# প্রতিদিন রাত ২:১৫ (ঢাকা) — ডাটাবেসের এনক্রিপ্ট করা (AES-256) ব্যাকআপ Cloudflare R2-এর PRIVATE বাকেটে।
+# ৩০ দিনের দৈনিক + ১২ মাসের মাসিক কপি থাকে; পুরনোগুলো নিজে থেকে মোছে। ব্যর্থ হলে GitHub আপনাকে ইমেইল দেবে।
+# হাতে চালাতে: GitHub → Actions → db-backup → Run workflow। সেটআপ ও ফেরত আনা: deploy/BACKUP_RESTORE.md
+name: db-backup
+
+on:
+  schedule:
+    - cron: "15 20 * * *"   # UTC 20:15 = ঢাকা 02:15 (Edumi-র ব্যাকআপের ৩০ মিনিট আগে)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: PostgreSQL-এর সর্বশেষ client (pg_dump সার্ভারের সমান বা নতুন হতে হয়)
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          V=$(apt-cache search --names-only '^postgresql-client-[0-9]+$' | sed -E 's/^postgresql-client-([0-9]+).*/\1/' | sort -n | tail -1)
+          sudo apt-get install -y -qq "postgresql-client-$V" > /dev/null
+          echo "/usr/lib/postgresql/$V/bin" >> "$GITHUB_PATH"
+          echo "pg_dump client: $V"
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: boto3 (R2-এ তোলার জন্য)
+        run: pip install --quiet boto3==1.40.55
+
+      - name: ব্যাকআপ → যাচাই → এনক্রিপ্ট → R2
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BACKUP_BUCKET: ${{ secrets.R2_BACKUP_BUCKET }}
+        run: |
+          pg_dump --version
+          python scripts/db_backup.py backup

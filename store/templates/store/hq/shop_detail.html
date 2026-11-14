@@ -31,6 +31,19 @@
   </div>
 </div>
 
+{% if owner_mixup %}
+<div class="callout bad"><b>এই দোকানের মালিকানা একজন স্টাফের নামে চলে গেছে।</b>
+  লগইন নম্বর {{ owner.phone_number }} আসলে {% if owner_mixup.shop_id == shop.pk %}এই দোকানেরই{% else %}{{ owner_mixup.shop.name }}-এর{% endif %} স্টাফ —
+  পুরনো একটা বাগে স্টাফ সেটিংস সেভ করলে এমন হতো (এখন ঠিক করা)। আসল মালিকের লগইন নম্বর দিয়ে দোকান ফেরত দিন; স্টাফ আগের মতো স্টাফ থাকবে।
+  <form method="post" action="{% url 'hq_shop_action' shop.pk %}" class="btn-row" style="margin-top: 10px" data-confirm="দোকান এই নম্বরের মালিককে ফেরত দেবেন?">{% csrf_token %}
+    <input type="hidden" name="action" value="owner_fix">
+    <input class="input" name="phone" required placeholder="আসল মালিকের লগইন নম্বর" value="{{ owner_guess.phone_number|default:'' }}" style="max-width: 240px">
+    <button class="btn btn-sm btn-primary" type="submit">মালিক ঠিক করুন</button>
+  </form>
+  {% if owner_guess %}<small>দোকানের ফোন নম্বরে একটা দোকান-ছাড়া অ্যাকাউন্ট পাওয়া গেছে, সেটাই বসানো আছে — মিলিয়ে নিন।</small>{% endif %}
+</div>
+{% endif %}
+
 {% if shop.is_suspended %}
 <div class="callout bad"><b>এই দোকান বন্ধ করা আছে।</b> ওয়েবসাইট কাস্টমাররা দেখতে পাচ্ছে না, মালিক আর স্টাফ লগইন করতে পারছে না। চালু করতে নিচে "দোকান আবার চালু করুন"।</div>
 {% elif shop.is_demo %}

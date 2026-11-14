@@ -1068,6 +1068,7 @@ class HQAuditLog(models.Model):
         'sms': 'SMS ব্যালেন্স বদল',
         'sms_toggle': 'SMS চালু/বন্ধ',
         'password': 'পাসওয়ার্ড রিসেট',
+        'owner_fix': 'মালিক ঠিক করা',
         'user_active': 'লগইন চালু/বন্ধ',
         'login_as': 'অ্যাকাউন্টে ঢোকা',
         'note': 'নোট লেখা',
@@ -1128,3 +1129,22 @@ class PlatformNotice(models.Model):
 
     def __str__(self):
         return self.title
+
+
+# ============================================================
+# সাপ্তাহিক "ব্যাকআপ থেকে ফেরত আনা" পরীক্ষার ফল (scripts/backup_restore_check.py, GitHub Actions থেকে লেখে)
+# ============================================================
+class BackupCheck(models.Model):
+    checked_at = models.DateTimeField(db_index=True)
+    backup_key = models.CharField(max_length=200, blank=True, default='')
+    backup_date = models.DateField(null=True, blank=True)
+    ok = models.BooleanField(default=False)
+    restore_seconds = models.IntegerField(null=True, blank=True)
+    counts = models.JSONField(default=dict, blank=True)
+    problems = models.TextField(blank=True, default='')
+
+    class Meta:
+        ordering = ['-checked_at']
+
+    def __str__(self):
+        return f"{self.checked_at:%Y-%m-%d} {'ok' if self.ok else 'failed'}"

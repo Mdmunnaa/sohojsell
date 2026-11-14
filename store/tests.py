@@ -4020,3 +4020,174 @@ class CompanyIdentityTests(TestCase):
         self.assertIn(reverse('billing_receipt', args=[done.invoice_number]), self.client.get(reverse('billing')).content.decode())
         self.client.force_login(other)
         self.assertEqual(self.client.get(reverse('billing_receipt', args=[done.invoice_number])).status_code, 404)
+
+
+class DataSafetyTests(TestCase):
+    """ধাপ ২: সব ডাটা এক Excel-এ (শুধু মালিক, লক থাকলেও), "নিরাপত্তা ও ডাটা" পাতা, ব্যাকআপ পরীক্ষার ফল।"""
+
+    def setUp(self):
+        from .models import Category, Customer, Expense, Order, OrderItem, Product
+        self.owner = User.objects.create_user(phone_number='01793000001', password='Seller-pass-1')
+        self.shop = Shop.objects.create(user=self.owner, name='Data Shop', slug='datashop', phone='01793000001',
+                                        address='Savar')
+        cat = Category.objects.create(shop=self.shop, name='শার্ট')
+        self.product = Product.objects.create(shop=self.shop, name='সুতি শার্ট', price=850, cost_price=500,
+                                              stock_quantity=4, category=cat)
+        customer = Customer.objects.create(shop=self.shop, name='রহিম', phone='01811111111', address='মিরপুর')
+        order = Order.objects.create(shop=self.shop, customer=customer, total_amount=Decimal('910'),
+                                     delivery_charge=Decimal('60'), status='Delivered')
+        OrderItem.objects.create(order=order, product=self.product, quantity=1, price=Decimal('850'),
+                                 cost_price=Decimal('500'))
+        Expense.objects.create(shop=self.shop, title='দোকান ভাড়া', amount=Decimal('5000'), spent_on=timezone.localdate())
+
+    def _sheets(self, response):
+        import io
+        from openpyxl import load_workbook
+        return load_workbook(io.BytesIO(response.content), read_only=True)
+
+    def test_owner_downloads_everything(self):
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse('export_all_data'))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('sellpunch-datashop-', response['Content-Disposition'])
+        wb = self._sheets(response)
+        for name in ('তথ্য', 'প্রোডাক্ট', 'সাইজ-রং', 'কাস্টমার', 'অর্ডার', 'অর্ডারের পণ্য', 'টাকা আদায়', 'ফেরত',
+                     'সাপ্লায়ার', 'মাল কেনা', 'কেনার পণ্য', 'সাপ্লায়ারকে টাকা', 'খরচ'):
+            self.assertIn(name, wb.sheetnames)
+        products = list(wb['প্রোডাক্ট'].iter_rows(values_only=True))
+        self.assertEqual(products[1][1], 'সুতি শার্ট')
+        self.assertEqual(products[1][2], 'শার্ট')
+        orders = list(wb['অর্ডার'].iter_rows(values_only=True))
+        self.assertEqual((orders[1][2], orders[1][3]), ('রহিম', '01811111111'))
+        self.assertEqual(list(wb['খরচ'].iter_rows(values_only=True))[1][2], 'দোকান ভাড়া')
+        info = {row[0]: row[1] for row in wb['তথ্য'].iter_rows(values_only=True) if row and len(row) > 1 and row[0]}
+        self.assertEqual(info['অর্ডার'], 1)
+
+    def test_staff_cannot_and_locked_owner_can(self):
+        from .models import StaffProfile
+        staff = User.objects.create_user(phone_number='01793000002', password='Staff-pass-1')
+        StaffProfile.objects.create(user=staff, shop=self.shop, can_manage_settings=True)
+        self.client.force_login(staff)
+        denied = self.client.get(reverse('export_all_data'))
+        self.assertNotEqual(denied.get('Content-Type', ''),
+                            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        Shop.objects.filter(pk=self.shop.pk).update(is_locked=True, subscription_plan='Basic',
+                                                    valid_until=timezone.localdate() - timedelta(days=3))
+        self.client.force_login(self.owner)
+        self.assertEqual(self.client.get(reverse('dashboard')).status_code, 302)        # লক
+        response = self.client.get(reverse('export_all_data'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    def test_staff_saving_settings_keeps_shop_owner(self):
+        """আগে মিডলওয়্যার request.user.shop = shop লিখত — Django তাতে shop.user_id স্টাফের করে দিত, আর স্টাফ সেটিংস
+        সেভ করলেই দোকানের মালিকানা স্টাফের নামে চলে যেত।"""
+        from .models import StaffProfile
+        staff = User.objects.create_user(phone_number='01793000003', password='Staff-pass-1')
+        StaffProfile.objects.create(user=staff, shop=self.shop, can_manage_settings=True)
+        self.client.force_login(staff)
+        response = self.client.post(reverse('settings'), {
+            'section': 'pos', 'pos_vat_percent': '5', 'pos_vat_mode': 'exclusive', 'pos_bin': '',
+            'pos_receipt_width': '80', 'pos_receipt_note': '', 'pos_auto_print': ''})
+        self.assertEqual(response.status_code, 302)
+        self.shop.refresh_from_db()
+        self.assertEqual(self.shop.pos_vat_percent, Decimal('5'))       # সেভ সত্যিই হয়েছে
+        self.assertEqual(self.shop.user_id, self.owner.pk)             # মালিক বদলায়নি
+        self.assertEqual(self.client.get(reverse('dashboard')).status_code, 200)
+
+    def test_settings_data_tab(self):
+        self.client.force_login(self.owner)
+        html = self.client.get(reverse('settings') + '?tab=data').content.decode()
+        self.assertIn(reverse('export_all_data'), html)
+        self.assertIn('আপনার তথ্যের সুরক্ষা', html)           # পরীক্ষা না থাকলে ব্যাকআপের দাবি নেই
+
+    def test_security_page_only_claims_fresh_backups(self):
+        from .models import BackupCheck
+        html = self.client.get('/security/').content.decode()
+        self.assertIn('তথ্যের মালিক আপনি', html)
+        self.assertIn('16-0223-01249-00000048', html)
+        self.assertNotIn('প্রতিদিন ব্যাকআপ', html)
+        self.assertNotIn('এখানে দেখুন', html)                 # STATUS_PAGE_URL নেই
+        BackupCheck.objects.create(checked_at=timezone.now() - timedelta(days=20), ok=True, restore_seconds=200)
+        self.assertNotIn('প্রতিদিন ব্যাকআপ', self.client.get('/security/').content.decode())
+        BackupCheck.objects.create(checked_at=timezone.now() - timedelta(days=2), ok=True, restore_seconds=200)
+        html = self.client.get('/security/').content.decode()
+        self.assertIn('প্রতিদিন ব্যাকআপ', html)
+        self.assertIn('৩ মিনিট', html)
+        self.assertIn('/security/', self.client.get('/sitemap.xml').content.decode())
+        with override_settings(STATUS_PAGE_URL='https://status.sellpunch.com'):
+            self.assertIn('https://status.sellpunch.com', self.client.get('/security/').content.decode())
+
+    def test_master_hq_backup_warning(self):
+        from .models import BackupCheck
+        from . import backups
+        self.assertIn('এখনো আসেনি', backups.hq_status()['warning'])
+        BackupCheck.objects.create(checked_at=timezone.now(), ok=False, problems='x')
+        self.assertIn('ব্যর্থ', backups.hq_status()['warning'])
+        BackupCheck.objects.create(checked_at=timezone.now() + timedelta(seconds=1), ok=True)
+        self.assertEqual(backups.hq_status()['warning'], '')
+        admin = User.objects.create_superuser(phone_number='01700000111', password='Admin-pass-111')
+        self.client.force_login(admin)
+        self.assertNotIn('ব্যাকআপ পরীক্ষা ব্যর্থ', self.client.get(reverse('master_dashboard')).content.decode())
+
+    def test_master_hq_repairs_shop_owned_by_staff(self):
+        """পুরনো বাগে স্টাফের নামে চলে যাওয়া দোকান: Master HQ দেখায়, আসল মালিকের নম্বর দিলে ফেরত যায়।"""
+        from .models import HQAuditLog, StaffProfile
+        staff = User.objects.create_user(phone_number='01793000004', password='Staff-pass-1')
+        StaffProfile.objects.create(user=staff, shop=self.shop, can_manage_settings=True)
+        Shop.objects.filter(pk=self.shop.pk).update(user=staff)                     # বাগে যা হতো
+        admin = User.objects.create_superuser(phone_number='01700000112', password='Admin-pass-112')
+        self.client.force_login(admin)
+        self.assertIn('মালিকানা স্টাফের নামে চলে গেছে', self.client.get(reverse('master_dashboard')).content.decode())
+        page = self.client.get(reverse('hq_shop', args=[self.shop.pk])).content.decode()
+        self.assertIn('value="01793000001"', page)                    # দোকানের ফোনে মালিকের অ্যাকাউন্ট পাওয়া গেছে
+        action = reverse('hq_shop_action', args=[self.shop.pk])
+        self.client.post(action, {'action': 'owner_fix', 'phone': '01793000004'})       # স্টাফের নম্বর চলবে না
+        self.assertEqual(Shop.objects.get(pk=self.shop.pk).user_id, staff.pk)
+        self.client.post(action, {'action': 'owner_fix', 'phone': '01793000001'})
+        self.assertEqual(Shop.objects.get(pk=self.shop.pk).user_id, self.owner.pk)
+        self.assertTrue(HQAuditLog.objects.filter(action='owner_fix', shop=self.shop).exists())
+        self.assertNotIn('মালিকানা স্টাফের নামে', self.client.get(reverse('master_dashboard')).content.decode())
+
+    def test_backup_read_check_command(self):
+        import io
+        import json as _json
+        from django.core.management import call_command
+        out = io.StringIO()
+        call_command('backup_read_check', stdout=out)
+        counts = _json.loads(out.getvalue().strip().splitlines()[-1])
+        self.assertEqual(counts['store.Order'], 1)
+
+
+class BackupScriptTests(TestCase):
+    """scripts/db_backup.py আর backup_restore_check.py-র খাঁটি ফাংশন (GitHub Actions-এ চলে)।"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'scripts'))
+
+    def test_names_and_retention(self):
+        import datetime as dt
+        import db_backup
+        key = db_backup.backup_key(dt.datetime(2026, 11, 15, 2, 15, 3))
+        self.assertEqual(key, 'db/daily/sellpunch-2026-11-15-021503.dump.gpg')
+        self.assertEqual(db_backup.key_date(key), dt.date(2026, 11, 15))
+        keys = ['db/daily/sellpunch-2026-10-01-021500.dump.gpg', 'db/daily/sellpunch-2026-11-14-021500.dump.gpg',
+                'db/daily/manual-copy.dump.gpg']
+        self.assertEqual(db_backup.keys_to_delete(keys, dt.date(2026, 11, 15), 30),
+                         ['db/daily/sellpunch-2026-10-01-021500.dump.gpg'])
+        self.assertEqual(db_backup.direct_url('postgresql://u:p@ep-x-pooler.ap-southeast-1.aws.neon.tech/db'),
+                         'postgresql://u:p@ep-x.ap-southeast-1.aws.neon.tech/db')
+        self.assertNotIn('p@', db_backup.safe_target('postgresql://u:p@host/db'))
+
+    def test_restore_check_counting(self):
+        import backup_restore_check as rc
+        text = 'COPY public.store_order (id) FROM stdin;\n1\n2\n\\.\n'
+        self.assertEqual(rc.count_copy_rows(text), 2)
+        counts = {t: 5 for t in rc.CHECK_TABLES}
+        self.assertEqual(rc.compare(counts, counts), [])
+        broken = dict(counts, store_order=4)
+        self.assertEqual(len(rc.compare(counts, broken)), 1)

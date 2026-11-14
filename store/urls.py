@@ -43,6 +43,7 @@ urlpatterns = [
     path('data-deletion/', TemplateView.as_view(template_name='store/legal/data_deletion.html'), name='data_deletion'),
     path('contact/', TemplateView.as_view(template_name='store/legal/contact.html'), name='contact'),
     path('about/', TemplateView.as_view(template_name='store/about.html'), name='about'),
+    path('security/', views.security_page, name='security'),
 
     # Dashboard
     path('dashboard/', views.seller_dashboard, name='dashboard'),
@@ -118,6 +119,7 @@ urlpatterns = [
 
     # Settings & Billing
     path('settings/', views.shop_settings, name='settings'),
+    path('settings/data/export/', views.export_all_data, name='export_all_data'),
     path('billing/', views.billing_page, name='billing'),
     path('billing/receipt/<str:invoice>/', views.billing_receipt, name='billing_receipt'),
     path('payment/success/<str:plan_name>/', views.payment_success, name='payment_success'),

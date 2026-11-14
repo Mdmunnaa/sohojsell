@@ -1,0 +1,131 @@
+{% extends 'store/public_base.html' %}
+{% block title %}নিরাপত্তা ও ডাটা | {{ site.name }}{% endblock %}
+{% block meta_description %}{{ site.name }}-এ আপনার দোকানের তথ্য কীভাবে রাখা হয়: যেকোনো সময় সব ডাটা Excel-এ, এনক্রিপ্ট করা ব্যাকআপ, নিরাপদ পেমেন্ট, আর মেয়াদ শেষ হলে কী হয়। পরিচালনা করে {{ company.name_bn }}।{% endblock %}
+
+{% block extra_css %}
+<style>
+{% comment %}
+"নিরাপত্তা ও ডাটা" — Edumi-র "নিরাপত্তা ও বিশ্বাস" পাতার মতো। যা লেখা, তার প্রতিটার পেছনে আসল ব্যবস্থা আছে:
+ব্যাকআপের কার্ড আর তারিখ দেখায় শুধু টাটকা সফল ফেরত-আনার পরীক্ষা থাকলে (store/backups.py), নজরদারির লাইন শুধু
+STATUS_PAGE_URL বসানো থাকলে। মেয়াদ শেষের নিয়ম store/plans.py আর subscription_middleware.py থেকে।
+{% endcomment %}
+.sc-wrap{max-width:1000px;margin:40px auto 0;padding:0 16px}
+.sc-head{margin-bottom:26px}
+.sc-head .kicker{font-size:13px;font-weight:700;color:var(--brand-dark);margin-bottom:6px}
+.sc-head h1{font-size:clamp(26px,3.4vw,36px);font-weight:800;line-height:1.25;margin:0 0 10px}
+.sc-head p{font-size:16.5px;line-height:1.8;color:var(--ink2);max-width:64ch;margin:0}
+.sc-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:26px 28px;box-shadow:0 2px 16px rgba(13,13,26,.05);margin-bottom:20px}
+.sc-card h2{font-size:20px;font-weight:800;margin:0 0 12px}
+.sc-card p,.sc-card li{font-size:15px;line-height:1.8;color:var(--ink2)}
+.sc-who{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;justify-content:space-between}
+.sc-who p{margin:0;max-width:60ch}
+.sc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:20px}
+.sc-item{background:#fff;border:1px solid var(--border);border-radius:16px;padding:22px}
+.sc-item .ic{width:44px;height:44px;border-radius:12px;background:var(--brand-light);color:var(--brand-dark);display:flex;align-items:center;justify-content:center;font-size:21px}
+.sc-item h3{font-size:17px;font-weight:800;margin:12px 0 8px}
+.sc-item p,.sc-item li{font-size:14.5px;line-height:1.75;color:var(--ink2);margin:0}
+.sc-item ul{padding-left:18px;margin:8px 0 0}
+.sc-item .ok{margin-top:10px;color:#166534;font-weight:600}
+.sc-steps{list-style:none;padding:0;margin:0}
+.sc-steps li{display:grid;grid-template-columns:150px 1fr;gap:16px;padding:12px 0;border-bottom:1px solid var(--border)}
+.sc-steps li:last-child{border-bottom:0}
+.sc-steps .when{font-weight:800;color:var(--ink)}
+.sc-faq details{border-bottom:1px solid var(--border);padding:12px 0}
+.sc-faq details:last-child{border-bottom:0}
+.sc-faq summary{font-weight:700;cursor:pointer;color:var(--ink);font-size:15.5px}
+.sc-faq details p{margin:8px 0 0}
+.sc-btn{display:inline-flex;align-items:center;gap:8px;font-weight:700;border:1.5px solid var(--border);border-radius:10px;padding:8px 14px;text-decoration:none;color:var(--ink);white-space:nowrap}
+@media(max-width:768px){.sc-grid{grid-template-columns:minmax(0,1fr)}.sc-card{padding:22px 18px}.sc-steps li{grid-template-columns:minmax(0,1fr);gap:2px}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sc-wrap">
+  <header class="sc-head">
+    <div class="kicker">নিরাপত্তা ও ডাটা</div>
+    <h1>আপনার দোকানের তথ্য আপনার — আমরা শুধু যত্নে রাখি</h1>
+    <p>দোকানের প্রোডাক্ট, অর্ডার আর কাস্টমারের তথ্য কোথায় থাকে, কীভাবে সুরক্ষিত থাকে, আর চলে যেতে চাইলে কীভাবে সব নিয়ে যাবেন — সব এখানে।</p>
+  </header>
+
+  <section class="sc-card" aria-labelledby="who">
+    <div class="sc-who">
+      <div>
+        <h2 id="who">কে চালায়</h2>
+        <p>{{ site.name }} পরিচালনা করে <strong>{{ company.name_bn }}</strong> — {{ company.kind_bn }}, ট্রেড লাইসেন্স আইডি {{ company.licence_id }}, {{ company.address_bn }}।</p>
+      </div>
+      <a class="sc-btn" href="{% url 'about' %}">আমাদের সম্পর্কে <i class="bi bi-arrow-right"></i></a>
+    </div>
+  </section>
+
+  <div class="sc-grid">
+    <article class="sc-item">
+      <span class="ic" aria-hidden="true"><i class="bi bi-file-earmark-arrow-down"></i></span>
+      <h3>তথ্যের মালিক আপনি</h3>
+      <p>দোকানের মালিক যেকোনো সময় সেটিংস → <b>ডাটা ও ব্যাকআপ</b> থেকে এক ক্লিকে সব তথ্য একটা Excel ফাইলে নামাতে পারেন — মেয়াদ শেষ হয়ে গেলেও। ভেতরে আলাদা শিটে:</p>
+      <ul>
+        <li>প্রোডাক্ট (ছবির লিংকসহ), সাইজ-রং, কাস্টমার</li>
+        <li>অর্ডার, অর্ডারের পণ্য, টাকা আদায়, ফেরত</li>
+        <li>সাপ্লায়ার, মাল কেনা, খরচ</li>
+      </ul>
+      <p class="mt-2">আমরা আপনার বা আপনার কাস্টমারের তথ্য কারো কাছে বিক্রি করি না, বিজ্ঞাপনে ব্যবহার করি না।</p>
+    </article>
+    {% if backup_test %}
+    <article class="sc-item">
+      <span class="ic" aria-hidden="true"><i class="bi bi-database-check"></i></span>
+      <h3>প্রতিদিন ব্যাকআপ</h3>
+      <p>প্রতি রাতে পুরো ডাটাবেসের এনক্রিপ্ট করা (AES-256) কপি আলাদা, গোপন স্টোরেজে রাখা হয় — ৩০ দিনের প্রতিদিনের আর ১২ মাসের মাসিক কপি। ছবি থাকে Cloudflare R2-তে।</p>
+      <p class="mt-2">প্রতি সপ্তাহে সর্বশেষ ব্যাকআপ একটা আলাদা, ফাঁকা ডাটাবেসে পুরো ফেরত এনে মিলিয়ে দেখা হয়।</p>
+      <p class="ok"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> শেষ সফল পরীক্ষা: {{ backup_test.date }}{% if backup_test.duration %} (সময় লেগেছে {{ backup_test.duration }}){% endif %}</p>
+    </article>
+    {% endif %}
+    <article class="sc-item">
+      <span class="ic" aria-hidden="true"><i class="bi bi-lock"></i></span>
+      <h3>নিরাপত্তা</h3>
+      <ul>
+        <li>পুরো সাইট আর প্রতিটা দোকানের ওয়েবসাইট HTTPS-এ চলে</li>
+        <li>পাসওয়ার্ড এনক্রিপ্ট করে রাখা হয় — আমরাও দেখতে পাই না</li>
+        <li>প্রতিটা দোকানের তথ্য আলাদা, প্রতিটা অনুরোধে যাচাই হয়</li>
+        <li>স্টাফকে কাজ অনুযায়ী আলাদা অনুমতি — প্রোডাক্ট, অর্ডার, কাস্টমার, সেটিংস</li>
+        <li>প্রতিটা আপডেটের আগে কয়েকশো স্বয়ংক্রিয় পরীক্ষা চালানো হয়</li>
+        <li>বাইরের প্রতিষ্ঠান দিয়ে নিরাপত্তা অডিট এখনো হয়নি</li>
+      </ul>
+    </article>
+    <article class="sc-item">
+      <span class="ic" aria-hidden="true"><i class="bi bi-credit-card"></i></span>
+      <h3>নিরাপদ পেমেন্ট</h3>
+      <p>অনলাইন পেমেন্ট হয় PayStation পেমেন্ট গেটওয়ে দিয়ে। বিকাশ/নগদের পিন বা কার্ডের নম্বর {{ site.name }} কখনো দেখে না, রাখেও না। সাইনআপে কোনো টাকা লাগে না, আর নিজে থেকে কখনো টাকা কাটে না — প্যাকেজ আপনি কিনলে তবেই।</p>
+    </article>
+    <article class="sc-item">
+      <span class="ic" aria-hidden="true"><i class="bi bi-hdd-network"></i></span>
+      <h3>সার্ভার</h3>
+      <p>সফটওয়্যার চলে ক্লাউড সার্ভারে, ডাটাবেস PostgreSQL (Neon), ছবি Cloudflare R2-তে। কোন কোন প্রতিষ্ঠানের সেবা ব্যবহার হয়, তা <a href="{% url 'privacy_policy' %}">প্রাইভেসি পলিসিতে</a> লেখা আছে।</p>
+      {% if status_page %}<p class="mt-2">সার্ভার সারাক্ষণ নজরে রাখা হয় — এখনকার অবস্থা আর আগের দিনগুলোর হিসাব <a href="{{ status_page }}" target="_blank" rel="noopener">এখানে দেখুন</a>।</p>{% endif %}
+    </article>
+  </div>
+
+  <section class="sc-card" aria-labelledby="expiry">
+    <h2 id="expiry">প্যাকেজের মেয়াদ শেষ হলে কী হয়</h2>
+    <ol class="sc-steps">
+      <li><span class="when">মেয়াদের দিন</span><span>ড্যাশবোর্ড লক হয় — শুধু বিলিং পাতা খোলে। কোনো তথ্য মোছে না।</span></li>
+      <li><span class="when">পরের {{ grace_days_bn }} দিন</span><span>দোকানের ওয়েবসাইট আগের মতোই চালু থাকে, কাস্টমার অর্ডার দিতে পারে।</span></li>
+      <li><span class="when">তারপর</span><span>ওয়েবসাইট "সাময়িক বন্ধ" দেখায়। প্যাকেজ কিনলেই সাথে সাথে সব খুলে যায়।</span></li>
+      <li><span class="when">পুরো সময়</span><span>লগইন করে প্যাকেজ কিনতে পারেন, অথবা সব ডাটা Excel-এ নামিয়ে নিতে পারেন।</span></li>
+      <li><span class="when">তথ্য মোছা</span><span>আপনি অনুরোধ না করলে তথ্য মোছা হয় না। দীর্ঘদিন বিল না দিলে অ্যাকাউন্ট বন্ধ করার আগে জানানো হবে — <a href="{% url 'terms' %}">শর্তাবলি</a> দেখুন।</span></li>
+    </ol>
+  </section>
+
+  <section class="sc-card sc-faq" aria-labelledby="faqTitle">
+    <h2 id="faqTitle">প্রায়ই জিজ্ঞাসিত প্রশ্ন</h2>
+    <details open><summary>{{ site.name }} কোনোদিন বন্ধ হয়ে গেলে আমার তথ্যের কী হবে?</summary><p>সব তথ্য যেকোনো সময় Excel-এ নামিয়ে নিজের কাছে রাখতে পারেন — নিয়মিত নামিয়ে রাখাই সবচেয়ে নিরাপদ। সার্ভিস বন্ধ করার মতো কিছু হলে আগে জানানো হবে, যাতে সবাই তথ্য নিয়ে নিতে পারেন।</p></details>
+    <details><summary>আমার কাস্টমারের নম্বর কি অন্য দোকান বা অন্য কেউ দেখতে পায়?</summary><p>না। প্রতিটা দোকানের তথ্য আলাদা, শুধু সেই দোকানের মালিক আর যে স্টাফকে কাস্টমার দেখার অনুমতি দেওয়া হয়েছে তারাই দেখেন।</p></details>
+    <details><summary>স্টাফ কতটুকু দেখতে পায়?</summary><p>যতটুকু আপনি অনুমতি দেন — প্রোডাক্ট, অর্ডার, কাস্টমার আর সেটিংস আলাদা করে চালু/বন্ধ করা যায়। সব ডাটা একসাথে নামানো শুধু মালিক পারেন।</p></details>
+    <details><summary>বিকাশ বা কার্ডের তথ্য কি আপনারা রাখেন?</summary><p>না। পেমেন্ট হয় PayStation-এর পাতায়; আমরা শুধু লেনদেন নম্বর আর পরিমাণ পাই, যা রসিদে দেখায়।</p></details>
+    <details><summary>অ্যাকাউন্ট পুরো মুছে ফেলতে চাইলে?</summary><p>আগে সব ডাটা নামিয়ে নিন, তারপর <a href="{% url 'data_deletion' %}">মুছে ফেলার নিয়ম</a> অনুযায়ী অনুরোধ করুন।</p></details>
+  </section>
+
+  <section class="sc-card" aria-labelledby="contact">
+    <h2 id="contact">প্রশ্ন থাকলে</h2>
+    {% include 'store/legal/_contact_box.html' %}
+  </section>
+</div>
+{% endblock %}

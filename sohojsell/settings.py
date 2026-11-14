@@ -243,6 +243,7 @@ SUPPORT_WHATSAPP = os.environ.get('SUPPORT_WHATSAPP') or _CONTACT['SUPPORT_WHATS
 BUSINESS_LEGAL_NAME = os.environ.get('BUSINESS_LEGAL_NAME') or _COMPANY['name_bn']     # ট্রেড লাইসেন্সে যে নাম
 BUSINESS_ADDRESS = os.environ.get('BUSINESS_ADDRESS') or _COMPANY['address_bn']
 FACEBOOK_PAGE_URL = os.environ.get('FACEBOOK_PAGE_URL', '')
+STATUS_PAGE_URL = os.environ.get('STATUS_PAGE_URL', '')     # UptimeRobot-এর পাবলিক স্ট্যাটাস পাতা (যেমন https://status.sellpunch.com)
 POLICY_UPDATED_ON = '৩ নভেম্বর ২০২৬'
 
 # ============================================================

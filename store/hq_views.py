@@ -165,6 +165,11 @@ def shop_detail(request, shop_id):
         sales=Sum('total_amount', filter=Q(created_at__gte=month) & ~Q(status__in=['Cancelled', 'Returned'])),
         all_sales=Sum('total_amount', filter=~Q(status__in=['Cancelled', 'Returned'])))
     staff = StaffProfile.objects.filter(shop=shop).select_related('user')
+    owner_mixup = StaffProfile.objects.filter(user_id=shop.user_id).select_related('shop').first()
+    owner_guess = None
+    if owner_mixup and shop.phone:
+        owner_guess = (User.objects.filter(phone_number=shop.phone, shop__isnull=True, staff_profile__isnull=True)
+                       .first())
     end = subscription_end(shop)
     paid_total = OnlinePayment.objects.filter(shop=shop, status=OnlinePayment.STATUS_COMPLETED).aggregate(
         v=Sum('amount'))['v'] or Decimal('0')
@@ -176,7 +181,7 @@ def shop_detail(request, shop_id):
         'numbers': numbers, 'paid_total': paid_total,
         'n_products': Product.objects.filter(shop=shop).count(),
         'n_customers': shop.customers.count(),
-        'staff': staff,
+        'staff': staff, 'owner_mixup': owner_mixup, 'owner_guess': owner_guess,
         'payments': OnlinePayment.objects.filter(shop=shop).order_by('-created_at')[:12],
         'legacy_payments': PaymentRequest.objects.filter(shop=shop).order_by('-created_at')[:5],
         'sms_logs': SmsLog.objects.filter(shop=shop).order_by('-created_at')[:8],
@@ -332,6 +337,26 @@ def shop_action(request, shop_id):
         hq.log_action(request, 'password', shop, f'মালিক {shop.user.phone_number}')
         messages.success(request, f'{shop.user.phone_number}-এর নতুন পাসওয়ার্ড: {password} — এখনই সেলারকে জানান '
                                   '(এটা আর দেখানো হবে না), আর লগইনের পর সেটিংস থেকে বদলে নিতে বলুন।')
+
+    elif action == 'owner_fix':
+        # স্টাফের নামে চলে যাওয়া দোকান আসল মালিককে ফেরত (পুরনো মিডলওয়্যারের বাগ, store/middleware.py)
+        phone = (request.POST.get('phone') or '').strip()
+        target = User.objects.filter(phone_number=phone).first()
+        if not StaffProfile.objects.filter(user_id=shop.user_id).exists():
+            messages.error(request, 'এই দোকানের মালিক ঠিকই আছেন, কিছু বদলানো হয়নি।')
+        elif target is None:
+            messages.error(request, f'{phone or "এই"} নম্বরে কোনো অ্যাকাউন্ট নেই।')
+        elif StaffProfile.objects.filter(user=target).exists():
+            messages.error(request, f'{phone} একজন স্টাফের নম্বর — আসল মালিকের লগইন নম্বর দিন।')
+        elif Shop.objects.filter(user=target).exists():
+            other = Shop.objects.get(user=target)
+            messages.error(request, f'{phone}-এর নামে আরেকটা দোকান আছে ({other.name}, নং {other.pk}) — '
+                                    'আগে সেটা দেখুন (ফাঁকা হলে মুছে তারপর এখানে আসুন)।')
+        else:
+            old = shop.user.phone_number
+            Shop.objects.filter(pk=shop.pk).update(user=target)
+            hq.log_action(request, 'owner_fix', shop, f'{old} (স্টাফ) থেকে {target.phone_number}')
+            messages.success(request, f'দোকান আবার {target.phone_number}-এর নামে। {old} আগের মতো স্টাফ।')
 
     elif action == 'note':
         shop.hq_note = (request.POST.get('note') or '').strip()[:4000]
@@ -777,6 +802,8 @@ def system_settings(request):
         messages.success(request, 'সেটিংস রাখা হয়েছে।')
         return redirect('master_settings')
     latency = health.database_latency_ms()
+    from . import backups
+    backup = backups.hq_status()
     checks = [
         ('ডাটাবেস', latency is not None and latency <= 25,
          f'{latency:.0f} ms' if latency is not None else 'মাপা যায়নি', health.database_region() or ''),
@@ -787,6 +814,9 @@ def system_settings(request):
          'Cloudflare R2' if getattr(django_settings, 'USE_R2', False) else 'সার্ভারের নিজের ডিস্ক', ''),
         ('প্রতিদিনের কাজ (cron)', bool(getattr(django_settings, 'CRON_SECRET', '')),
          'CRON_SECRET বসানো' if getattr(django_settings, 'CRON_SECRET', '') else 'CRON_SECRET নেই', ''),
+        ('ব্যাকআপ (প্রতি রাতে, সাপ্তাহিক পরীক্ষা)', not backup['warning'],
+         (f"শেষ পরীক্ষা {timezone.localtime(backup['last'].checked_at):%d %b}" + ('' if backup['last'].ok else ' — ব্যর্থ'))
+         if backup['last'] else 'এখনো চালু হয়নি', backup['warning']),
         ('DEBUG বন্ধ', not django_settings.DEBUG, 'বন্ধ' if not django_settings.DEBUG else 'চালু — লাইভে বন্ধ রাখুন', ''),
     ]
     return render(request, 'store/hq/settings.html', {

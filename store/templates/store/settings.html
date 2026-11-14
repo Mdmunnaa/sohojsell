@@ -491,10 +491,58 @@
         <div class="mt-4"><a href="{% url 'billing' %}" class="ws-save text-decoration-none d-inline-flex align-items-center gap-2"><i class="bi bi-arrow-up-circle"></i> প্যাকেজ আপগ্রেড করুন</a></div>
       </div>
     {% endif %}
+
+  {% elif active_tab == 'data' %}
+    {# ডাটা ও ব্যাকআপ: নিজের কাছে সব ডাটা, আমাদের দিকের ব্যাকআপ, মুছতে চাইলে #}
+    <h5 class="ws-section-title">ডাটা ও ব্যাকআপ</h5>
+    <p class="ws-section-sub">দোকানের তথ্যের মালিক আপনি। যেকোনো সময় সব নামিয়ে নিজের কাছে রাখতে পারেন — মেয়াদ শেষ হয়ে গেলেও।</p>
+    <div class="dt-grid">
+      <section class="ws-card dt-card">
+        <div class="dt-ic"><i class="bi bi-file-earmark-spreadsheet"></i></div>
+        <h6>সব ডাটা এক Excel ফাইলে</h6>
+        <p>প্রোডাক্ট, সাইজ-রং, কাস্টমার, অর্ডার, অর্ডারের পণ্য, টাকা আদায়, ফেরত, সাপ্লায়ার, মাল কেনা আর খরচ — আলাদা শিটে। Excel বা Google Sheets-এ খোলে।</p>
+        {% if is_owner %}
+        <a href="{% url 'export_all_data' %}" class="ws-save text-decoration-none d-inline-flex align-items-center gap-2"><i class="bi bi-download"></i> সব ডাটা নামান</a>
+        <p class="dt-note">বড় দোকানে ফাইল বানাতে কয়েক সেকেন্ড লাগতে পারে।</p>
+        {% else %}
+        <p class="dt-note">সব ডাটা শুধু দোকানের মালিক নামাতে পারেন।</p>
+        {% endif %}
+      </section>
+      <section class="ws-card dt-card">
+        <div class="dt-ic"><i class="bi bi-shield-check"></i></div>
+        {% if backup_test %}
+        <h6>আমাদের দিক থেকে ব্যাকআপ</h6>
+        <p>প্রতি রাতে পুরো ডাটাবেসের এনক্রিপ্ট করা কপি আলাদা, গোপন স্টোরেজে রাখা হয়, ৩০ দিন পর্যন্ত। ছবি থাকে আলাদা স্টোরেজে।</p>
+        <p class="dt-ok"><i class="bi bi-check-circle-fill"></i> শেষবার ব্যাকআপ থেকে পুরো ফেরত এনে মিলিয়ে দেখা হয়েছে {{ backup_test.date }}-এ</p>
+        {% else %}
+        <h6>আপনার তথ্যের সুরক্ষা</h6>
+        <p>পাসওয়ার্ড এনক্রিপ্ট করা, প্রতিটা দোকানের তথ্য আলাদা, পুরো সাইট HTTPS-এ। স্টাফ শুধু যতটুকু অনুমতি দেন ততটুকু দেখে।</p>
+        {% endif %}
+        <a href="{% url 'security' %}" class="dt-link">নিরাপত্তা ও ডাটা নিয়ে বিস্তারিত <i class="bi bi-arrow-right"></i></a>
+      </section>
+      <section class="ws-card dt-card">
+        <div class="dt-ic muted"><i class="bi bi-trash3"></i></div>
+        <h6>অ্যাকাউন্ট মুছতে চাইলে</h6>
+        <p>আগে সব ডাটা নামিয়ে নিন। তারপর মুছে ফেলার অনুরোধ করলে দোকানের সব তথ্য মুছে দেওয়া হয়।</p>
+        <a href="{% url 'data_deletion' %}" class="dt-link">মুছে ফেলার নিয়ম <i class="bi bi-arrow-right"></i></a>
+      </section>
+    </div>
   {% endif %}
 
   </div>
 </div>
+<style>
+.dt-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 6px; }
+.dt-card { padding: 20px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.dt-card h6 { font-weight: 800; font-size: 16px; margin: 4px 0 0; color: #0F172A; }
+.dt-card p { font-size: 14px; color: #475569; line-height: 1.7; margin: 0; }
+.dt-ic { width: 44px; height: 44px; border-radius: 12px; background: #EEF2FF; color: #4338CA; display: flex; align-items: center; justify-content: center; font-size: 21px; }
+.dt-ic.muted { background: #F1F5F9; color: #64748B; }
+.dt-note { font-size: 12.5px !important; color: #64748B !important; }
+.dt-ok { color: #166534 !important; font-weight: 600; }
+.dt-link { font-weight: 700; font-size: 14px; text-decoration: none; margin-top: auto; }
+@media (max-width: 991px) { .dt-grid { grid-template-columns: minmax(0, 1fr); } }
+</style>
 
 <script>
 (function () {

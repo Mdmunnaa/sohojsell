@@ -119,8 +119,10 @@ class StaffAccessMiddleware:
     def __call__(self, request):
         if hasattr(request, 'user') and request.user.is_authenticated:
             if not hasattr(request.user, 'shop') and hasattr(request.user, 'staff_profile'):
-                # স্টাফের শপকে মেইন শপ হিসেবে সেট করা
-                request.user.shop = request.user.staff_profile.shop
+                # স্টাফের শপকে মেইন শপ হিসেবে সেট করা।
+                # `request.user.shop = shop` লেখা যাবে না: Django তখন উল্টো দিকটাও বদলায় (shop.user_id = স্টাফ),
+                # আর পরে কোনো ফর্ম shop.save() করলে দোকানের মালিকানা স্টাফের নামে চলে যায়। তাই শুধু ক্যাশে বসানো হয়।
+                request.user._state.fields_cache['shop'] = request.user.staff_profile.shop
                 request.user.is_shop_staff = True
 
                 # --- PERMISSION SECURITY CHECK ---
