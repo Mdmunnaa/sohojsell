@@ -11,10 +11,15 @@
 	"compatibility_date": "2026-11-01",
 	"observability": { "enabled": true },
 
-	// আপাতত টেস্টের ঠিকানা। সব ঠিক থাকলে এখানে sellpunch.com, www.sellpunch.com বসবে
-	// (README-র "আসল ডোমেইনে নেওয়া" অংশ দেখুন)
+	// sellpunch.com, www আর সব দোকানের সাবডোমেইন এই Worker-এ (DNS-এ তিনটা রেকর্ড Proxied/কমলা হলে)।
+	// Render-এ ফিরতে: Settings → Domains & Routes থেকে শেষ তিনটা route মুছুন (README দেখুন)
 	"workers_dev": false,
-	"routes": [{ "pattern": "cf.sellpunch.com", "custom_domain": true }],
+	"routes": [
+		{ "pattern": "cf.sellpunch.com", "custom_domain": true },
+		{ "pattern": "sellpunch.com/*", "zone_name": "sellpunch.com" },
+		{ "pattern": "www.sellpunch.com/*", "zone_name": "sellpunch.com" },
+		{ "pattern": "*.sellpunch.com/*", "zone_name": "sellpunch.com" }
+	],
 
 	"containers": [
 		{
@@ -38,7 +43,7 @@
 	// ড্যাশবোর্ডে দেওয়া Variables মুছবে না (গোপন জিনিস Secret হিসেবে দিন)
 	"keep_vars": true,
 	"vars": {
-		"PRIMARY_HOST": "cf.sellpunch.com",
+		"PRIMARY_HOST": "sellpunch.com",
 		// "true" থাকলে প্রতি ৫ মিনিটে সার্ভারকে জাগিয়ে রাখে, কাস্টমারকে অপেক্ষা করতে হয় না
 		"KEEP_WARM": "true"
 	},
