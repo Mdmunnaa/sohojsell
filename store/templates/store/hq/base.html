@@ -115,6 +115,10 @@ a.kpi:hover { background: var(--panel-2); text-decoration: none; }
 .tbl .nowrap { white-space: nowrap; }
 .tbl .strong { font-weight: 600; color: var(--ink); }
 .meta { color: var(--muted); font-size: 13px; }
+/* সিস্টেমের অবস্থা: লম্বা ব্যাখ্যা নিচে ভাঙে, তাই অবস্থাটা (সবুজ/হলুদ) সবসময় চোখে পড়ে */
+.sys-checks td:first-child { width: 42%; }
+.sys-checks td.num { white-space: normal; }
+.sys-checks .meta { text-align: left; margin-top: 4px; }
 .faint { color: var(--faint); }
 .mono { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size: 13px; }
 

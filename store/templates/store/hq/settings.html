@@ -42,7 +42,7 @@
   <div>
     <section class="panel flush">
       <div class="panel-head"><h2>সিস্টেমের অবস্থা</h2><span class="hint">Django {{ django_version }}</span></div>
-      <div class="tbl-wrap"><table class="tbl">
+      <div class="tbl-wrap"><table class="tbl sys-checks">
         <tbody>
         {% for label, ok, value, extra in checks %}
           <tr><td>{{ label }}</td><td class="num">{% if ok %}<span class="st st-ok">{{ value }}</span>{% else %}<span class="st st-warn">{{ value }}</span>{% endif %}{% if extra %}<div class="meta">{{ extra }}</div>{% endif %}</td></tr>
