@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Dashboard{% endblock %} — {{ site.name }}</title>
     {% include 'store/partials/brand_head.html' %}
-    <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
+    <link href="{% static 'vendor/bootstrap/bootstrap-app.min.css' %}" rel="stylesheet">
+    {% include 'store/partials/icons_app.html' %}
     {% include 'store/partials/fonts.html' with hind=1 syne=1 dmsans=1 %}
 
     <style>
@@ -224,9 +224,7 @@
     /* Topbar */
     .topbar {
       height: 56px;
-      background: rgba(240,242,246,.9);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      background: #f0f2f6;   /* ঝাপসা (blur) পটভূমি সস্তা ফোনে স্ক্রল ভারী করত — এখন সাধারণ রং */
       border-bottom: 1px solid var(--border);
       display: flex; align-items: center;
       padding: 0 24px; gap: 14px;
@@ -278,13 +276,8 @@
     .page-content {
       flex: 1;
       padding: 26px 28px 48px;
-      /* backwards, both না: শেষে transform থেকে গেলে ভেতরের Bootstrap পপআপ (কুরিয়ারে পাঠান, CSV আপলোড)
-         ধূসর পর্দার নিচে আর পাতার বাইরে চলে যেত — চাপা যেত না */
-      animation: fadeUp .3s ease backwards;
-    }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+      /* আগে পাতা ০.৩ সেকেন্ড ধরে ফুটে উঠত (fadeUp) — এখন সাথে সাথে দেখায়, তাই পাতা দ্রুত মনে হয়।
+         transform-ওয়ালা অ্যানিমেশন রাখবেন না: ভেতরের Bootstrap পপআপ ধূসর পর্দার নিচে আটকে যায়। */
     }
 
     /* ──────────────────────────────
@@ -570,6 +563,7 @@
 
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
 <script src="{% static 'vendor/sweetalert2/sweetalert2.all.min.js' %}"></script>
+{% include 'store/partials/shrink_uploads.html' %}
 <script>
 /* Bootstrap পপআপ খোলার আগে body-তে সরানো — কোনো কার্ড/অংশে transform থাকলেও পপআপ যেন ধূসর পর্দার উপরে আর পর্দার মাঝখানে আসে */
 document.addEventListener('show.bs.modal', function (e) { if (e.target.parentElement !== document.body) document.body.appendChild(e.target); });

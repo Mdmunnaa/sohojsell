@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>{% block title %}Master HQ{% endblock %} | SellPunch Master HQ</title>
 <link rel="icon" href="{% static 'brand/favicon-32.png' %}" sizes="32x32">
-<link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
+{% include 'store/partials/icons_app.html' %}
 {% include 'store/partials/fonts.html' with hind=1 %}
 <style>
 {% comment %}

@@ -843,18 +843,18 @@ def courier_dashboard(request):
     shop = request.user.shop
     courier_orders = Order.objects.filter(shop=shop).exclude(
         steadfast_tracking_code__isnull=True
-    ).exclude(steadfast_tracking_code__exact='').order_by('-created_at')
-    # Stats
-    from django.db.models import Count as DCount
-    delivered = courier_orders.filter(status='Delivered').count()
-    shipped = courier_orders.filter(status='Shipped').count()
-    failed = courier_orders.filter(status__in=('Returned', 'Cancelled')).count()
-    total = courier_orders.count()
+    ).exclude(steadfast_tracking_code__exact='').select_related('customer').order_by('-created_at')
+    # চারটা সংখ্যা একটা প্রশ্নে (আগে চারটা আলাদা), আর তালিকার কাস্টমার একসাথে (আগে প্রতি সারিতে একটা করে)
+    stats = courier_orders.order_by().aggregate(
+        total=Count('id'), delivered=Count('id', filter=Q(status='Delivered')),
+        shipped=Count('id', filter=Q(status='Shipped')),
+        failed=Count('id', filter=Q(status__in=('Returned', 'Cancelled'))))
+    delivered, shipped, failed, total = stats['delivered'], stats['shipped'], stats['failed'], stats['total']
     courier_stats = [
-        ('মোট পার্সেল', total, '#3b82f6', 'truck'),
-        ('পথে আছে', shipped, '#8b5cf6', 'truck-front'),
-        ('ডেলিভারি হয়েছে', delivered, '#22c55e', 'check-circle'),
-        ('ফেরত/বাতিল', failed, '#ef4444', 'x-circle'),
+        ('মোট পার্সেল', total, '#3b82f6', 'bi-truck'),
+        ('পথে আছে', shipped, '#8b5cf6', 'bi-truck-front'),
+        ('ডেলিভারি হয়েছে', delivered, '#22c55e', 'bi-check-circle'),
+        ('ফেরত/বাতিল', failed, '#ef4444', 'bi-x-circle'),
     ]
     paginator = Paginator(courier_orders, 20)
     page = request.GET.get('page', 1)

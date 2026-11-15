@@ -11,7 +11,6 @@
    এখন চাপলেই পেছনের ক্যামেরা, বাংলায় অবস্থা, টর্চ।
 ব্যবহার: const scan = await SPScan.start('reader-id', code => {...});  scan.stop();  SPScan.message(err)
 {% endcomment %}
-<script src="{% static 'vendor/html5-qrcode/html5-qrcode.min.js' %}" defer></script>
 <style>
 .sp-scan{position:relative;border-radius:14px;overflow:hidden;background:#0B0F19;min-height:200px}
 .sp-scan video{width:100%!important;height:auto;max-height:min(55vh,440px);display:block;object-fit:cover}
@@ -25,6 +24,24 @@
 </style>
 <script>
 window.SPScan = (function () {
+  // html5-qrcode (১০৬ KB) শুধু দরকার হলে নামে — Android-এ ফোনের নিজের স্ক্যানার চলে, তাই বেশিরভাগ সময় নামেই না।
+  // আগে প্রতিটা প্রোডাক্ট/POS পাতা খুললেই নামত।
+  const LIBRARY = "{% static 'vendor/html5-qrcode/html5-qrcode.min.js' %}";
+  let libraryLoading = null;
+  function loadLibrary() {
+    if (window.Html5Qrcode) return Promise.resolve();
+    if (!libraryLoading) {
+      libraryLoading = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = LIBRARY;
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = () => { libraryLoading = null; reject(new Error('scanner not loaded')); };
+        document.head.appendChild(script);
+      });
+    }
+    return libraryLoading;
+  }
   const WANT = ['qr_code', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'code_93', 'itf', 'codabar'];
   const BIG = 1280;                     // html5-qrcode-এর বক্স এত চওড়া হলে ক্যামেরার ছবি প্রায় পুরো মাপে পড়ে
   const VIDEO = { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } };
@@ -74,7 +91,7 @@ window.SPScan = (function () {
 
   // ── ২. html5-qrcode — বড় বক্স, CSS-এ ছোট করে দেখানো
   async function startLibrary(el, onCode) {
-    if (!window.Html5Qrcode) throw new Error('scanner not loaded');
+    await loadLibrary();
     const F = window.Html5QrcodeSupportedFormats;
     const bigId = el.id + '-big';
     el.innerHTML = `<div class="sp-big" id="${bigId}" style="width:${BIG}px"></div>`;

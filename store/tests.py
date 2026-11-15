@@ -3602,8 +3602,7 @@ class SpeedTests(ShopTestMixin, TestCase):
         self.assertNotIn('bootstrap.min.css', html)
         self.assertNotIn('bootstrap.bundle', html)
         self.assertIn("data-bs-toggle=\"modal\"]", html)               # নিজের ছোট modal স্ক্রিপ্ট
-        self.assertIn('hind-siliguri-bengali-400', html)
-        self.assertNotIn('hind-siliguri-bengali-500', html)          # বাংলা ফন্টের দুটো ফাইলই
+        self.assertNotIn('hind-siliguri-bengali', html)              # বাংলা লেখা ফোনের নিজের ফন্টে — ০ KB
 
     def test_homepage_images_are_responsive(self):
         html = self.client.get('/').content.decode()
@@ -4686,7 +4685,7 @@ class GuideAuditFixTests(ShopTestMixin, TestCase):
 
     def test_popups_are_not_trapped_under_backdrop(self):
         html = self.client.get(reverse('dashboard')).content.decode()
-        self.assertIn('animation: fadeUp .3s ease backwards', html)      # 'both' রাখলে transform থেকে যায়, পপআপ আটকে যায়
+        self.assertNotIn('animation: fadeUp', html)      # পাতায় transform-ওয়ালা অ্যানিমেশন থাকলে পপআপ আটকে যায়
         self.assertIn("addEventListener('show.bs.modal'", html)
 
 
@@ -4721,3 +4720,133 @@ class ContactEmailTests(ShopTestMixin, TestCase):
         html = self.client.get(reverse('billing')).content.decode()
         self.assertIn('mailto:refund@sellpunch.com', html)
         self.assertIn('রিফান্ড পলিসি', html)
+
+
+class DashboardSpeedTests(ShopTestMixin, TestCase):
+    """ড্যাশবোর্ডের গতি: ছোট আইকন ফন্ট আর ছাঁটা Bootstrap, কম ডাটাবেস প্রশ্ন, দ্রুত প্রোডাক্ট সেভ।"""
+
+    def _build_vendor(self):
+        import importlib.util
+        from pathlib import Path
+        root = Path(__file__).resolve().parent.parent
+        spec = importlib.util.spec_from_file_location('build_vendor', root / 'tools' / 'build_vendor.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_every_icon_used_is_in_the_app_icon_font(self):
+        from pathlib import Path
+        partial = (Path(__file__).parent / 'templates' / 'store' / 'partials' / 'icons_app.html').read_text(encoding='utf-8')
+        have = set(re.findall(r'\.bi-([a-z0-9-]+)::before', partial))
+        css = (Path(__file__).parent / 'static' / 'vendor' / 'bootstrap-icons' / 'bootstrap-icons.min.css').read_text()
+        known = {name: 0 for name in re.findall(r'\.bi-([a-z0-9-]+)::before', css)}
+        missing = sorted(set(self._build_vendor().app_icon_names(known)) - have)
+        self.assertFalse(missing, f'icons_app.html-এ নেই: {missing} — python tools/build_vendor.py <node_modules> চালান')
+
+    def test_rendered_pages_only_use_icons_in_the_font(self):
+        """ভিউ থেকে আসা আইকনের নামও (যেমন courier_stats) ছোট ফন্টে থাকতে হবে।"""
+        from pathlib import Path
+        partial = (Path(__file__).parent / 'templates' / 'store' / 'partials' / 'icons_app.html').read_text(encoding='utf-8')
+        have = set(re.findall(r'\.bi-([a-z0-9-]+)::before', partial))
+        self.make_shop()
+        for url in ('dashboard', 'product_list', 'add_product', 'order_list', 'courier', 'sms_panel', 'settings',
+                    'website_settings', 'billing', 'customer_list', 'reports', 'pos', 'due_list', 'staff_list'):
+            html = self.client.get(reverse(url)).content.decode()
+            used = set(re.findall(r'class="[^"]*\bbi-([a-z0-9-]+)', html))
+            self.assertFalse(used - have, f'{url}: {sorted(used - have)}')
+
+    def test_app_pages_use_small_css(self):
+        self.make_shop()
+        for html in (self.client.get(reverse('dashboard')).content.decode(),
+                     self.client.get(reverse('about')).content.decode()):
+            self.assertIn('bootstrap-app.min.css', html)
+            self.assertIn('bi-app.woff2', html)
+            self.assertNotIn('bootstrap-icons.min.css', html)
+            self.assertNotIn('vendor/bootstrap/bootstrap.min.css', html)
+        dashboard = self.client.get(reverse('dashboard')).content.decode()
+        self.assertNotIn('backdrop-filter: blur(14px)', dashboard)
+        self.assertIn('createImageBitmap', dashboard)          # ছবি পাঠানোর আগে ফোনেই ছোট (partials/shrink_uploads.html)
+
+    def test_font_css_is_well_formed(self):
+        from pathlib import Path
+        text = (Path(__file__).parent / 'templates' / 'store' / 'partials' / 'fonts.html').read_text(encoding='utf-8')
+        css = re.sub(r'\{%.*?%\}', '', re.search(r'<style>(.*?)</style>', text, re.S).group(1))
+        self.assertEqual(css.count('{'), css.count('}'))
+        self.assertNotIn(") format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,"
+                         "U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD})", css)
+
+    def test_scanner_library_loads_only_when_used(self):
+        self.make_shop()
+        html = self.client.get(reverse('add_product')).content.decode()
+        self.assertNotIn('<script src="/static/vendor/html5-qrcode', html)
+        self.assertIn('loadLibrary()', html)
+
+    def test_category_choices_are_only_this_shops(self):
+        from .forms import ProductForm
+        from .models import Category
+        _user, shop = self.make_shop()
+        other_user = User.objects.create_user(phone_number='01799999999', password='Test-pass-123')
+        other = Shop.objects.create(user=other_user, name='Other', phone='01799999999', address='x', slug='othershop')
+        mine = Category.objects.create(shop=shop, name='শার্ট')
+        theirs = Category.objects.create(shop=other, name='গোপন ক্যাটাগরি')
+        form = ProductForm(shop=shop)
+        self.assertEqual(list(form.fields['category'].queryset), [mine])
+        html = self.client.get(reverse('add_product')).content.decode()
+        self.assertIn('>শার্ট</option>', html)
+        self.assertNotIn('গোপন ক্যাটাগরি', html)
+        self.assertNotIn(' - Other', html)
+        bad = ProductForm({'name': 'x', 'price': '10', 'stock_quantity': '1', 'category': theirs.pk, 'is_active': 'on'}, shop=shop)
+        self.assertFalse(bad.is_valid())
+        self.assertIn('category', bad.errors)
+
+    def test_page_query_counts_stay_small(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        from .models import Category, Customer
+        _user, shop = self.make_shop()
+        for i in range(15):
+            Category.objects.create(shop=shop, name=f'ক্যাটাগরি {i}')
+            customer = Customer.objects.create(shop=shop, name=f'C{i}', phone=f'0171000{i:04d}')
+            Order.objects.create(shop=shop, customer=customer, total_amount=500, status='Shipped',
+                                 steadfast_tracking_code=f'T{i}', courier_partner='Steadfast')
+        for name, limit in (('add_product', 10), ('courier', 12)):
+            self.client.get(reverse(name))
+            with CaptureQueriesContext(connection) as queries:
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200)
+            self.assertLessEqual(len(queries), limit, f'{name}: {len(queries)} queries')
+
+    def test_session_is_written_once_a_day_not_every_page(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        self.make_shop()
+        self.client.get(reverse('dashboard'))                     # আজকের প্রথম পাতা — মেয়াদ বাড়ে
+        with CaptureQueriesContext(connection) as queries:
+            self.client.get(reverse('product_list'))
+        writes = [q['sql'] for q in queries if q['sql'].startswith('UPDATE "django_session"')]
+        self.assertFalse(writes)
+        session = self.client.session
+        self.assertEqual(session.get('_fresh'), timezone.localdate().isoformat())
+
+    def test_product_photo_is_shrunk_fast_with_unique_names(self):
+        import io
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+        from . import images
+        from .storage import UNIQUE_NAME
+        buffer = io.BytesIO()
+        Image.new('RGB', (4000, 3000), (200, 120, 40)).save(buffer, format='JPEG', quality=90)
+        main, thumb, size = images.product_versions(SimpleUploadedFile('IMG 1.jpg', buffer.getvalue(), content_type='image/jpeg'))
+        self.assertEqual(size, (1200, 900))
+        self.assertTrue(UNIQUE_NAME.search(main.name), main.name)
+        self.assertTrue(UNIQUE_NAME.search('products/thumbs/' + thumb.name), thumb.name)
+        self.assertEqual(Image.open(thumb).size, (480, 360))
+
+    def test_r2_storage_skips_lookup_only_for_unique_names(self):
+        from .storage import R2Storage
+        storage = R2Storage(bucket_name='b', access_key='k', secret_key='s', endpoint_url='https://example.invalid',
+                            file_overwrite=False)          # settings-এর মতো
+        with mock.patch.object(R2Storage, 'exists', return_value=False) as exists:
+            self.assertEqual(storage.get_available_name('products/a-u0123456789.jpg'), 'products/a-u0123456789.jpg')
+            exists.assert_not_called()
+            storage.get_available_name('banners/b.jpg')
+            exists.assert_called()

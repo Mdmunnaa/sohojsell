@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice - #ORD-{{ order.id }}</title>
-    <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
+    <link href="{% static 'vendor/bootstrap/bootstrap-app.min.css' %}" rel="stylesheet">
+    {% include 'store/partials/icons_app.html' %}
     {% include 'store/partials/fonts.html' with jakarta=1 %}
 
     <style>

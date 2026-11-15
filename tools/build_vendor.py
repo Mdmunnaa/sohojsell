@@ -75,6 +75,55 @@ def public_icon_names(known):
     return sorted(names)
 
 
+# ড্যাশবোর্ড, HQ, লগইন/নীতিমালার পাতা, ইনভয়েস — পুরো ১২৮ KB আইকন ফন্টের বদলে শুধু যেগুলো কোথাও ব্যবহার হয়
+APP_SOURCES = [
+    *sorted(path for path in TEMPLATES.rglob('*.html') if not path.name.startswith('icons_')),   # নিজের বানানো ফাইল বাদ
+    *sorted((ROOT / 'accounts' / 'templates').rglob('*.html')),
+    *sorted(path for folder in ('store', 'accounts', 'sohojsell') for path in (ROOT / folder).rglob('*.py')
+            if 'migrations' not in path.parts and path.name != 'tests.py'),
+]
+
+
+def app_icon_names(known):
+    names = set()
+    for path in APP_SOURCES:
+        text = path.read_text(encoding='utf-8')
+        names.update(n for n in ICON_RE.findall(text) if n in known)
+        for block in DYNAMIC_RE.findall(text):
+            names.update(t for t in TOKEN_RE.findall(block) if t in known)
+    names.add('chevron-down')       # গাইডের সূচির CSS-এ (content:"\F282")
+    return sorted(names)
+
+
+def _write_subset(node, known, names, font_name, partial_name, note):
+    from fontTools import subset
+    out = STATIC / 'bootstrap-icons' / font_name
+    options = subset.Options()
+    options.flavor = 'woff2'
+    options.layout_features = []
+    options.name_IDs = []
+    options.notdef_outline = False
+    font = subset.load_font(str(node / 'bootstrap-icons/font/fonts/bootstrap-icons.woff2'), options)
+    subsetter = subset.Subsetter(options)
+    subsetter.populate(unicodes=[known[n] for n in names])
+    subsetter.subset(font)
+    subset.save_font(font, str(out), options)
+    rules = ''.join(f'.bi-{n}::before{{content:"\\{known[n]:x}"}}' for n in names)
+    (TEMPLATES / 'partials' / partial_name).write_text(
+        "{% load static %}{# tools/build_vendor.py বানায় — হাতে বদলাবেন না। " + note + ": " + str(len(names)) + "টা #}"
+        "<style>@font-face{font-display:block;font-family:\"bootstrap-icons\";"
+        "src:url(\"{% static 'vendor/bootstrap-icons/" + font_name + "' %}\") format(\"woff2\")}"
+        '.bi::before,[class^="bi-"]::before,[class*=" bi-"]::before{display:inline-block;font-family:bootstrap-icons!important;'
+        'font-style:normal;font-weight:normal!important;font-variant:normal;text-transform:none;line-height:1;'
+        'vertical-align:-.125em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}'
+        + rules + '</style>\n', encoding='utf-8')
+    print(f'{note}: {len(names)} icons → {out.stat().st_size // 1024} KB')
+
+
+def build_app_icon_subset(node, known):
+    _write_subset(node, known, app_icon_names(known), 'bi-app.woff2', 'icons_app.html', 'ড্যাশবোর্ড/HQ/লগইনের আইকন')
+
+
 def build_icon_subset(node, known):
     from fontTools import subset
     names = public_icon_names(known)
@@ -123,6 +172,43 @@ fs.writeFileSync(out, res[0].css);
     print(f'storefront bootstrap: {len(css) // 1024} KB')
 
 
+def build_app_bootstrap(node, purge_dir=None):
+    """
+    ড্যাশবোর্ড/HQ/লগইনের Bootstrap — পুরো ২২৭ KB থেকে শুধু যে ক্লাসগুলো কোথাও লেখা আছে (APP_SOURCES: সব টেমপ্লেট + পাইথন)।
+    পাতা খোলার আগে এটা নামতেই হয়, তাই ছোট হলে প্রথম দেখা দ্রুত। Bootstrap-এর JS যেসব ক্লাস নিজে বসায় (পপআপ, ড্রপডাউন,
+    collapse, টুলটিপ...) আর টেমপ্লেটে জোড়া লাগানো নাম (alert-{{ message.tags }}) — safelist-এ। নতুন কোথাও
+    'bg-' + রং-এর মতো জোড়া লাগানো ক্লাস লিখলে পুরো নামটা কোথাও লিখে রাখুন (মন্তব্যেও চলে), নইলে বাদ পড়বে।
+    """
+    out = STATIC / 'bootstrap' / 'bootstrap-app.min.css'
+    purge_dir = Path(purge_dir or node.parent)
+    script = purge_dir / 'purge-app.mjs'
+    script.write_text("""
+import { PurgeCSS } from 'purgecss';
+import fs from 'fs';
+const [css, out, list] = process.argv.slice(2);
+const content = fs.readFileSync(list, 'utf8').split('\\n').filter(Boolean);
+const res = await new PurgeCSS().purge({
+  content, css: [css], variables: false, keyframes: true, fontFace: true,
+  safelist: {
+    standard: ['show', 'showing', 'hiding', 'fade', 'collapse', 'collapsing', 'collapse-horizontal', 'active', 'disabled',
+               'was-validated', 'is-invalid', 'is-valid', 'invalid-feedback', 'valid-feedback', 'visually-hidden'],
+    greedy: [/^modal/, /^dropdown/, /^offcanvas/, /^tooltip/, /^bs-tooltip/, /^popover/, /^bs-popover/, /^toast/,
+             /^carousel/, /^alert/, /^nav/, /^tab/, /^accordion/, /^spinner/, /^progress/, /^placeholder/],
+  },
+});
+fs.writeFileSync(out, res[0].css);
+""")
+    listing = purge_dir / 'app-content.txt'
+    listing.write_text('\n'.join(str(path) for path in APP_SOURCES), encoding='utf-8')
+    # উৎস: আগে কপি করা পুরো bootstrap.min.css (COPY দেখুন)
+    subprocess.run(['node', str(script), str(STATIC / 'bootstrap' / 'bootstrap.min.css'), str(out), str(listing)],
+                   check=True, cwd=purge_dir)
+    css = out.read_text(encoding='utf-8')
+    css = re.sub(r'/\*#\s*sourceMappingURL=.*?\*/', '', css).strip()
+    out.write_text(css + '\n', encoding='utf-8')
+    print(f'app bootstrap: {len(css) // 1024} KB')
+
+
 def main():
     node = Path(sys.argv[1]).resolve()
     for src, dst in COPY.items():
@@ -152,7 +238,9 @@ def main():
             path.write_text(cleaned, encoding='utf-8')
     known = json.loads((node / 'bootstrap-icons/font/bootstrap-icons.json').read_text())
     build_icon_subset(node, known)
+    build_app_icon_subset(node, known)
     build_storefront_bootstrap(node)
+    build_app_bootstrap(node)
 
 
 if __name__ == '__main__':

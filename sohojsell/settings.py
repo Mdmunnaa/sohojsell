@@ -92,6 +92,7 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',     # static ফাইল (admin-এর CSS ইত্যাদি)
     'django.middleware.gzip.GZipMiddleware',          # HTML ছোট করে পাঠানো (static ফাইল whitenoise নিজেই দেয়, তাই এর পরে)
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'store.middleware.SessionRefreshMiddleware',         # লগইনের মেয়াদ দিনে একবার বাড়ায়
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -190,7 +191,7 @@ USE_R2 = all([R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_N
 
 if USE_R2:
     DEFAULT_STORAGE = {
-        'BACKEND': 'storages.backends.s3.S3Storage',
+        'BACKEND': 'store.storage.R2Storage',   # S3Storage, শুধু নিজের বানানো নামে আগাম যাচাই বাদ
         'OPTIONS': {
             'bucket_name': R2_BUCKET_NAME,
             'access_key': R2_ACCESS_KEY_ID,
@@ -223,7 +224,8 @@ AUTH_USER_MODEL = 'accounts.User'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 SESSION_COOKIE_AGE = 86400 * 30
-SESSION_SAVE_EVERY_REQUEST = True
+# মেয়াদ বাড়ানো দিনে একবার — store.middleware.SessionRefreshMiddleware (আগে প্রতিটা পাতায় ডাটাবেসে লেখা হতো)
+SESSION_SAVE_EVERY_REQUEST = False
 
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'

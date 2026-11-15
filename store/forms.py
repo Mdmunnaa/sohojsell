@@ -34,6 +34,13 @@ class ProductForm(forms.ModelForm):
     def __init__(self, *args, shop=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.shop = shop or getattr(self.instance, 'shop', None)
+        # শুধু নিজের দোকানের ক্যাটাগরি, শুধু নাম। আগে সব দোকানের সব ক্যাটাগরি ("নাম - অন্য দোকান") আসত, আর প্রতিটার
+        # জন্য একটা করে ডাটাবেস প্রশ্ন — দোকান বাড়লে প্রোডাক্ট যোগ/এডিটের পাতা ধীর হতো।
+        from .models import Category
+        category = self.fields['category']
+        category.queryset = (Category.objects.filter(shop=self.shop).order_by('name') if self.shop is not None
+                             else Category.objects.none())
+        category.label_from_instance = lambda obj: obj.name
 
     def clean_barcode(self):
         code = (self.cleaned_data.get('barcode') or '').strip().translate(str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789'))

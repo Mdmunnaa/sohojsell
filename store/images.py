@@ -24,7 +24,11 @@ BANNER_MAX = 1600
 LOGO_MAX = 512
 
 
-def _open(file_field):
+def _open(file_field, draft=None):
+    """
+    draft=(চওড়া, উঁচু) দিলে বড় JPEG পুরোটা খোলে না — libjpeg-কে বলে ১/২, ১/৪ বা ১/৮ মাপে খুলতে, যতটা ছোট করলেও
+    দুই দিকই এর চেয়ে বড় থাকে। ফোনের ১২ মেগাপিক্সেল ছবিতে ৩–৪ গুণ দ্রুত, মানে প্রোডাক্ট সেভ তাড়াতাড়ি।
+    """
     from PIL import Image, ImageOps
     file_field.open('rb')
     try:
@@ -32,6 +36,8 @@ def _open(file_field):
     except Exception:
         pass
     image = Image.open(file_field)
+    if draft and image.format == 'JPEG':
+        image.draft('RGB', draft)
     image.load()
     return ImageOps.exif_transpose(image)
 
@@ -71,8 +77,10 @@ def _png(image):
 
 
 def _base_name(file_field):
-    name = os.path.splitext(os.path.basename(file_field.name or 'image'))[0][:60]
-    return name or 'image'
+    """ফাইলের নাম + এলোমেলো চিহ্ন (-u + ১০ অক্ষর) — নাম কখনো মেলে না, তাই R2-তে আগাম যাচাই লাগে না (store/storage.py)।"""
+    import secrets
+    name = os.path.splitext(os.path.basename(file_field.name or 'image'))[0][:60] or 'image'
+    return f'{name}-u{secrets.token_hex(5)}'
 
 
 def product_versions(file_field):
@@ -81,20 +89,21 @@ def product_versions(file_field):
     মাপটা Facebook-কে আগেই বলে দিলে প্রথমবার শেয়ারেই ছবি দেখায়।
     """
     try:
-        image = _flatten(_open(file_field))
+        image = _flatten(_open(file_field, (PRODUCT_MAX, PRODUCT_MAX)))
     except Exception:
         logger.warning('Could not process product image %s', getattr(file_field, 'name', ''), exc_info=True)
         return None, None, None
     base = _base_name(file_field)
     big = _resize(image, PRODUCT_MAX)
     main = ContentFile(_jpeg(big, 82), name=f'{base}.jpg')
-    thumb = ContentFile(_jpeg(_resize(image, THUMB_MAX), 78), name=f'{base}-thumb.jpg')
+    # ছোট ছবি ১২০০px-এরটা থেকে (আসল ৪০০০px থেকে আবার না) — একই মান, কম কাজ
+    thumb = ContentFile(_jpeg(_resize(big, THUMB_MAX), 78), name=f'{base}-thumb.jpg')
     return main, thumb, big.size
 
 
 def banner_version(file_field):
     try:
-        image = _flatten(_open(file_field))
+        image = _flatten(_open(file_field, (BANNER_MAX, 1)))
     except Exception:
         logger.warning('Could not process banner %s', getattr(file_field, 'name', ''), exc_info=True)
         return None
@@ -106,7 +115,7 @@ def banner_version(file_field):
 
 def logo_version(file_field):
     try:
-        image = _open(file_field)
+        image = _open(file_field, (LOGO_MAX, LOGO_MAX))
     except Exception:
         logger.warning('Could not process logo %s', getattr(file_field, 'name', ''), exc_info=True)
         return None

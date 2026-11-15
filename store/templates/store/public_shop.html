@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ shop.name }} - Storefront</title>
-    <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
+    <link href="{% static 'vendor/bootstrap/bootstrap-app.min.css' %}" rel="stylesheet">
+    {% include 'store/partials/icons_app.html' %}
     <style>
         body { background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
         .store-header { background: linear-gradient(135deg, #0d6efd 0%, #0043a8 100%); color: white; padding: 40px 0; border-bottom: 5px solid #fd7e14;}

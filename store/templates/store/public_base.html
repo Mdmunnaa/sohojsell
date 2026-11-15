@@ -7,8 +7,8 @@
 <title>{% block title %}{{ site.name }}{% endblock %}</title>
 {% include 'store/partials/brand_head.html' %}
 <meta name="description" content="{% block meta_description %}{{ site.name }} — Facebook ও অনলাইন সেলারদের জন্য অর্ডার, স্টক, ইনভয়েস আর কুরিয়ার এক জায়গায়।{% endblock %}">
-<link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
+<link href="{% static 'vendor/bootstrap/bootstrap-app.min.css' %}" rel="stylesheet">
+{% include 'store/partials/icons_app.html' %}
 {% include 'store/partials/fonts.html' with hind=1 jakarta=1 %}
 <style>
 /* landing পেইজের রং আর ফন্টের সাথে মিল রেখে — সব পাবলিক পেইজের উপরের বার আর footer */

@@ -155,3 +155,25 @@ class StaffAccessMiddleware:
 
         response = self.get_response(request)
         return response
+
+
+class SessionRefreshMiddleware:
+    """
+    লগইন ৩০ দিন থাকে, আর ব্যবহার করলে মেয়াদ আবার ৩০ দিন হয়। আগে এর জন্য প্রতিটা ক্লিকে সেশন ডাটাবেসে নতুন করে লেখা
+    হতো (SESSION_SAVE_EVERY_REQUEST) — প্রতি পাতায় বাড়তি তিনটা প্রশ্ন। এখন দিনে একবার: সেদিনের প্রথম পাতায়।
+    """
+    KEY = '_fresh'
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        session = getattr(request, 'session', None)
+        if session is not None and not session.is_empty():
+            from django.utils import timezone
+            today = timezone.localdate().isoformat()
+            if session.get(self.KEY) != today:
+                session[self.KEY] = today
+        return response
+
