@@ -24,6 +24,7 @@
         <div class="lk">
           {% if site.phone %}<a href="tel:{{ site.phone_tel }}"><i class="bi bi-telephone"></i> {{ site.phone }}</a>{% endif %}
           {% if site.whatsapp_url %}<a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> {{ ui.whatsapp }}</a>{% endif %}
+          <a href="{% url 'guide_index' %}">{% if lang == 'en' %}Guide center{% else %}গাইড সেন্টার{% endif %}</a>
           <a href="{% url 'contact' %}">{{ ui.contact_page }}</a>
           <a href="{% url 'about' %}">{{ ui.about }}</a>
           <a href="{% url 'security' %}">{{ ui.security }}</a>

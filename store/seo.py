@@ -138,6 +138,11 @@ def main_sitemap_xml(request):
     for kind, page in marketing.all_pages():
         name = 'mk_feature' if kind == 'feature' else 'mk_industry'
         rows += pair(reverse(name, args=[page['slug']]), reverse(name + '_en', args=[page['slug']]), 'monthly', '0.8')
+    from . import guides
+    rows.append(f'<url><loc>{escape(base + reverse("guide_index"))}</loc><lastmod>{guides.GUIDES_UPDATED}</lastmod>'
+                '<changefreq>weekly</changefreq><priority>0.8</priority></url>')
+    rows += [f'<url><loc>{escape(base + reverse("guide_detail", args=[g["slug"]]))}</loc><lastmod>{guides.GUIDES_UPDATED}</lastmod>'
+             '<changefreq>monthly</changefreq><priority>0.7</priority></url>' for g in guides.all_guides()]
     rows += [f'<url><loc>{escape(base + reverse(name))}</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>'
              for name in MAIN_PUBLIC_PAGES]
     return ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
@@ -195,6 +200,11 @@ def main_llms_txt(request):
     lines += ['', '## Who it is for']
     for page in marketing.INDUSTRIES:
         lines.append(f"- [{page['en']['nav']}]({base}{reverse('mk_industry_en', args=[page['slug']])}): {page['en']['description']}")
+    from . import guides
+    lines += ['', '## Guide center (step-by-step how-to, in Bangla, with screenshots)',
+              f"- [Guide center]({base}{reverse('guide_index')}) — full text of every guide: {base}{reverse('site_llms_full')}"]
+    for guide in guides.all_guides():
+        lines.append(f"- [{guide['title']}]({base}{reverse('guide_detail', args=[guide['slug']])}): {guide['summary']}")
     lines += [
         '', '## Pages',
         f'- [Home (Bangla)]({base}/)', f"- [Home (English)]({base}{reverse('landing_page_en')})",
@@ -209,6 +219,21 @@ def main_llms_txt(request):
         if value:
             lines.append(f'- {label}: {value}')
     return '\n'.join(lines) + '\n'
+
+
+def main_llms_full_txt(request):
+    """/llms-full.txt — গাইড সেন্টারের প্রতিটা গাইডের পুরো লেখা, ছবির পূর্ণ ঠিকানাসহ।"""
+    from django.conf import settings
+    from django.urls import reverse
+    from . import guides
+    base = main_site_url(request)
+    site = getattr(settings, 'SITE_NAME', 'SellPunch')
+    parts = [f'# {site} — guide center (full text, Bangla)', '',
+             f'> Step-by-step guides for every {site} feature. Source: {base}{reverse("guide_index")}', '']
+    for guide in guides.all_guides():
+        parts += ['---', '', f"Source: {base}{reverse('guide_detail', args=[guide['slug']])}", '',
+                  guides.guide_plain_markdown(guide, base), '']
+    return '\n'.join(parts) + '\n'
 
 
 def product_ld(request, shop, product, meta, rating=None):

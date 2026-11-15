@@ -278,7 +278,9 @@
     .page-content {
       flex: 1;
       padding: 26px 28px 48px;
-      animation: fadeUp .3s ease both;
+      /* backwards, both না: শেষে transform থেকে গেলে ভেতরের Bootstrap পপআপ (কুরিয়ারে পাঠান, CSV আপলোড)
+         ধূসর পর্দার নিচে আর পাতার বাইরে চলে যেত — চাপা যেত না */
+      animation: fadeUp .3s ease backwards;
     }
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(8px); }
@@ -480,6 +482,10 @@
         {% endif %}
 
       {% endif %}
+      {# গাইড সেন্টার — মালিক আর স্টাফ সবার জন্য, নতুন ট্যাবে (কাজের পাতা বন্ধ হয় না) #}
+      <a href="{% url 'guide_index' %}" class="sb-link" target="_blank" rel="noopener">
+        <i class="bi bi-question-circle"></i> <span class="sb-text-hide">গাইড ও সাহায্য</span>
+      </a>
     </nav>
 
     <div class="sb-bottom">
@@ -565,6 +571,8 @@
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
 <script src="{% static 'vendor/sweetalert2/sweetalert2.all.min.js' %}"></script>
 <script>
+/* Bootstrap পপআপ খোলার আগে body-তে সরানো — কোনো কার্ড/অংশে transform থাকলেও পপআপ যেন ধূসর পর্দার উপরে আর পর্দার মাঝখানে আসে */
+document.addEventListener('show.bs.modal', function (e) { if (e.target.parentElement !== document.body) document.body.appendChild(e.target); });
 /* Mobile Sidebar Logic */
 function sbOpen()  { document.getElementById('sidebar').classList.add('open');    document.getElementById('sbOverlay').classList.add('on'); }
 function sbClose() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sbOverlay').classList.remove('on'); }

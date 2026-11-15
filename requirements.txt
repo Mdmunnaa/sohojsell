@@ -4,6 +4,7 @@ django-allauth[socialaccount]==65.3.0
 requests==2.34.2
 pillow==12.1.1
 openpyxl==3.1.5
+Markdown==3.10.3             # গাইড সেন্টার (store/guides.py) — store/guide_content/*.md
 
 # Render-এ চালানোর জন্য
 gunicorn==26.2.0

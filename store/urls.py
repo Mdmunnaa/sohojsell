@@ -12,6 +12,7 @@ from . import views_ledger
 from . import views_offers
 from . import views_landing
 from . import views_marketing
+from . import views_guides
 from . import views_dues
 from . import views_demo
 from . import hq_views
@@ -53,6 +54,10 @@ urlpatterns = [
     path('en/features/<slug:slug>/', views_marketing.feature_en, name='mk_feature_en'),
     path('en/for/<slug:slug>/', views_marketing.industry_en, name='mk_industry_en'),
     path('security/', views.security_page, name='security'),
+    # গাইড সেন্টার — প্রতিটা অপশনের ছবিসহ নিয়ম (লেখা store/guide_content/*.md)
+    path('guide/', views_guides.guide_index, name='guide_index'),
+    path('guide/<slug:slug>/', views_guides.guide_detail, name='guide_detail'),
+    path('llms-full.txt', views.site_llms_full, name='site_llms_full'),
 
     # Dashboard
     path('dashboard/', views.seller_dashboard, name='dashboard'),

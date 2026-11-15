@@ -27,7 +27,7 @@ from .plans import (
 from .forms import (ShopSetupForm, ProductForm, OrderCreateForm, SteadfastSettingsForm, PathaoSettingsForm,
                     RedxSettingsForm, PosSettingsForm)
 from .links import storefront_link
-from . import couriers, offers, order_flow, reviews, risk, sf_lang, sms, variants
+from . import couriers, offers, order_flow, pos, reviews, risk, sf_lang, sms, variants
 from .themes import THEMES
 from django.urls import reverse
 
@@ -93,6 +93,12 @@ def site_llms(request):
     """/llms.txt — AI সার্চের জন্য SellPunch-এর পরিচয় (store/seo.py)।"""
     from . import seo
     return HttpResponse(seo.main_llms_txt(request), content_type='text/plain; charset=utf-8')
+
+
+def site_llms_full(request):
+    """/llms-full.txt — গাইড সেন্টারের সব গাইডের পুরো লেখা (AI টুল যেন সঠিক নিয়ম বলতে পারে)।"""
+    from . import seo
+    return HttpResponse(seo.main_llms_full_txt(request), content_type='text/plain; charset=utf-8')
 
 
 def site_robots(request):
@@ -325,6 +331,19 @@ def order_create(request):
         delivery_charge = float(request.POST.get('delivery_charge') or 0)
         discount = float(request.POST.get('discount') or 0)
         payment_method = request.POST.get('payment_method', 'COD')
+        # "Full Paid" = আগে পুরো টাকা নেওয়া (কুরিয়ার ৳০ তুলবে)। আংশিক অগ্রিম হলে COD, অগ্রিমটা advance_paid-এ —
+        # কুরিয়ার শুধু বাকিটা তোলে (store/couriers.py cod_amount)
+        advance = 0.0
+        if payment_method == 'Full Paid':
+            payment_method = 'Paid'
+        elif payment_method == 'Partial Paid':
+            try:
+                advance = max(0.0, float(request.POST.get('advance_amount') or 0))
+            except ValueError:
+                advance = 0.0
+            payment_method = 'COD'
+        elif payment_method not in ('COD', 'Paid'):
+            payment_method = 'COD'
 
         customer, created = Customer.objects.get_or_create(
             shop=shop, phone=c_phone,
@@ -367,6 +386,7 @@ def order_create(request):
                 subtotal += price * qty
 
         order.total_amount = max(0, subtotal + delivery_charge - discount)
+        order.advance_paid = min(advance, float(order.total_amount))
         order.save()
         messages.success(request, f"Order #ORD-{order.id} created successfully!")
         return redirect('order_list')
@@ -494,7 +514,8 @@ def invoice_view(request, order_id):
 @login_required(login_url='/accounts/login/')
 def customer_list(request):
     shop = request.user.shop
-    customers = Customer.objects.filter(shop=shop).annotate(
+    # POS-এর নাম ছাড়া বিলগুলো একটা "Walk-in Customer"-এ জমা হয় — সে আসল কাস্টমার না, তালিকায় দেখানো হয় না
+    customers = Customer.objects.filter(shop=shop).exclude(phone=pos.WALK_IN_PHONE).annotate(
         total_orders=Count('orders'),
         total_spent=Sum('orders__total_amount'),
         returned_orders=Count('orders', filter=Q(orders__status__in=['Returned', 'Cancelled']))
@@ -827,13 +848,13 @@ def courier_dashboard(request):
     from django.db.models import Count as DCount
     delivered = courier_orders.filter(status='Delivered').count()
     shipped = courier_orders.filter(status='Shipped').count()
-    cancelled = courier_orders.filter(status='Cancelled').count()
+    failed = courier_orders.filter(status__in=('Returned', 'Cancelled')).count()
     total = courier_orders.count()
     courier_stats = [
-        ('Total', total, '#3b82f6', 'truck'),
-        ('Shipped', shipped, '#8b5cf6', 'truck-front'),
-        ('Delivered', delivered, '#22c55e', 'check-circle'),
-        ('Cancelled', cancelled, '#ef4444', 'x-circle'),
+        ('মোট পার্সেল', total, '#3b82f6', 'truck'),
+        ('পথে আছে', shipped, '#8b5cf6', 'truck-front'),
+        ('ডেলিভারি হয়েছে', delivered, '#22c55e', 'check-circle'),
+        ('ফেরত/বাতিল', failed, '#ef4444', 'x-circle'),
     ]
     paginator = Paginator(courier_orders, 20)
     page = request.GET.get('page', 1)

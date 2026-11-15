@@ -1,0 +1,77 @@
+{% extends 'store/marketing/base.html' %}
+{% load bangla %}
+{# গাইড সেন্টার: সব গাইড ক্যাটাগরি অনুযায়ী, উপরে খোঁজার ঘর (গাইডের প্রতিটা অংশ পর্যন্ত খোঁজে)। views_guides.guide_index #}
+{% block extra_style %}{% include 'store/guides/_style.html' %}{% endblock %}
+{% block content %}
+<header class="g-hero">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="breadcrumb">{% for name, url in crumbs %}{% if not forloop.last %}<a href="{{ url }}">{{ name }}</a><i class="bi bi-chevron-right"></i>{% else %}<span aria-current="page">{{ name }}</span>{% endif %}{% endfor %}</nav>
+    <h1>গাইড সেন্টার</h1>
+    <p class="lead">SellPunch-এর প্রতিটা অপশন ছবিসহ ধাপে ধাপে — দোকান খোলা থেকে প্রথম অর্ডার, POS, কুরিয়ার আর হিসাব পর্যন্ত।</p>
+    <div class="g-search" role="search">
+      <i class="bi bi-search" aria-hidden="true"></i>
+      <input type="search" id="gFind" placeholder="কী খুঁজছেন? যেমন: কুপন, বারকোড, বাকি" aria-label="গাইডে খুঁজুন" autocomplete="off">
+      <div class="g-results" id="gResults" hidden></div>
+    </div>
+    <p class="g-stats"><span><i class="bi bi-journal-text"></i> {{ guide_count|bn }}টা গাইড</span><span><i class="bi bi-image"></i> {{ shot_count|bn }}টা ছবি</span><span><i class="bi bi-phone"></i> মোবাইলেও পড়া যায়</span></p>
+    <div class="g-pop">
+      <span>শুরু করতে:</span>
+      {% for g in popular %}<a href="{% url 'guide_detail' g.slug %}"><i class="bi {{ g.icon }}"></i>{{ g.label }}</a>{% endfor %}
+    </div>
+  </div>
+</header>
+
+<section class="g-list">
+  <div class="wrap">
+    <div class="g-head">
+      <h2>সব গাইড</h2>
+      <div class="g-filter" id="gFilter" role="group" aria-label="ক্যাটাগরি অনুযায়ী দেখুন">
+        <button type="button" class="on" data-cat="" aria-pressed="true">সব</button>
+        {% for category in seller_categories %}<button type="button" data-cat="{{ category }}" aria-pressed="false">{{ category }}</button>{% endfor %}
+      </div>
+    </div>
+    <div class="g-grid" id="gGrid">
+      {% for g in seller_guides %}
+      <a class="g-card" href="{% url 'guide_detail' g.slug %}" data-cat="{{ g.category }}">
+        <span class="g-top"><span class="g-ic"><i class="bi {{ g.icon }}"></i></span><span class="g-k">{{ g.category }}</span></span>
+        <span class="g-t">{{ g.title }}</span>
+        <span class="g-d">{{ g.summary }}</span>
+        <span class="g-m">{{ g.minutes|bn }} মিনিটে পড়া{% if g.shots %} · {{ g.shots|bn }}টা ছবি{% endif %}<i class="bi bi-arrow-right"></i></span>
+      </a>
+      {% endfor %}
+    </div>
+    {% for g in buyer_guides %}
+    <a class="g-buyer" href="{% url 'guide_detail' g.slug %}">
+      <span class="g-ic"><i class="bi {{ g.icon }}"></i></span>
+      <span class="g-buyer-txt"><span class="g-k">{{ g.category }}</span><span class="g-t">{{ g.title }}</span><span class="g-d">{{ g.summary }}</span></span>
+      <span class="g-buyer-go">লিংকটা কাস্টমারদের পাঠাতে পারেন <i class="bi bi-arrow-right"></i></span>
+    </a>
+    {% endfor %}
+    {% include 'store/guides/_help.html' %}
+  </div>
+</section>
+<script>
+(function () {
+  const rows = {{ search_json|safe }};
+  const box = document.getElementById('gFind'), out = document.getElementById('gResults');
+  const esc = s => s.replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  box.addEventListener('input', () => {
+    const words = box.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) { out.hidden = true; out.innerHTML = ''; return; }
+    const hits = rows.filter(r => { const t = (r.g + ' ' + r.s + ' ' + (r.d || '')).toLowerCase(); return words.every(w => t.includes(w)); }).slice(0, 8);
+    out.innerHTML = hits.length
+      ? hits.map(r => `<a href="${r.u}"><b>${esc(r.s || r.g)}</b>${r.s ? `<small>${esc(r.g)}</small>` : ''}</a>`).join('')
+      : '<p>এই নামে কিছু পাওয়া যায়নি — অন্যভাবে লিখে দেখুন, অথবা নিচের তালিকা দেখুন।</p>';
+    out.hidden = false;
+  });
+  document.addEventListener('click', e => { if (!e.target.closest('.g-search')) out.hidden = true; });
+  const filter = document.getElementById('gFilter'), cards = document.querySelectorAll('#gGrid .g-card');
+  filter.addEventListener('click', e => {
+    const btn = e.target.closest('button'); if (!btn) return;
+    filter.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b === btn); b.setAttribute('aria-pressed', b === btn); });
+    cards.forEach(c => { c.hidden = !!btn.dataset.cat && c.dataset.cat !== btn.dataset.cat; });
+  });
+  box.addEventListener('focus', () => { if (out.innerHTML) out.hidden = false; });
+})();
+</script>
+{% endblock %}

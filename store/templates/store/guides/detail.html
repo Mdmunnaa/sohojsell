@@ -1,0 +1,71 @@
+{% extends 'store/marketing/base.html' %}
+{% load bangla %}
+{# একটা গাইড: বাম পাশে "এই গাইডে যা আছে" (কম্পিউটারে স্থির), ডানে লেখা ও ছবি। views_guides.guide_detail #}
+{% block extra_style %}{% include 'store/guides/_style.html' %}{% endblock %}
+{% block content %}
+<header class="g-hero g-hero-sm">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="breadcrumb">{% for name, url in crumbs %}{% if not forloop.last %}<a href="{{ url }}">{{ name }}</a><i class="bi bi-chevron-right"></i>{% else %}<span aria-current="page">{{ name }}</span>{% endif %}{% endfor %}</nav>
+    <span class="g-kicker"><i class="bi {{ guide.icon }}"></i> {{ guide.category }}</span>
+    <h1>{{ guide.h1 }}</h1>
+    <p class="lead">{{ guide.summary }}</p>
+    <p class="g-stats"><span><i class="bi bi-clock"></i> {{ guide.minutes|bn }} মিনিটে পড়া</span>{% if guide.shots %}<span><i class="bi bi-image"></i> {{ guide.shots|bn }}টা ছবি</span>{% endif %}<span><i class="bi bi-arrow-repeat"></i> হালনাগাদ: <time datetime="{{ guides_updated }}">{{ guides_updated_date|bn_day }}</time></span></p>
+  </div>
+</header>
+
+<section class="g-body">
+  <div class="wrap g-layout">
+    {% if guide_toc|length > 1 %}
+    <aside class="g-toc">
+      <details open>
+        <summary>এই গাইডে যা আছে</summary>
+        <ol>{% for item in guide_toc %}<li><a href="#{{ item.id }}">{{ item.name }}</a></li>{% endfor %}</ol>
+      </details>
+    </aside>
+    {% endif %}
+    <article class="g-content">
+      {{ content_html|safe }}
+
+      <nav class="g-pn" aria-label="আগের ও পরের গাইড">
+        {% if prev_guide %}<a href="{% url 'guide_detail' prev_guide.slug %}"><small><i class="bi bi-arrow-left"></i> আগের গাইড</small>{{ prev_guide.title }}</a>{% else %}<span></span>{% endif %}
+        {% if next_guide %}<a class="nx" href="{% url 'guide_detail' next_guide.slug %}"><small>পরের গাইড <i class="bi bi-arrow-right"></i></small>{{ next_guide.title }}</a>{% endif %}
+      </nav>
+
+      {% if related_guides %}
+      <h2 class="g-more">আরও গাইড</h2>
+      <div class="g-grid g-grid-3">
+        {% for g in related_guides %}
+        <a class="g-card" href="{% url 'guide_detail' g.slug %}"><span class="g-ic"><i class="bi {{ g.icon }}"></i></span><span class="g-t">{{ g.title }}</span><span class="g-d">{{ g.summary|truncatechars:110 }}</span></a>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <p class="g-all"><a href="{{ guide_index_url }}"><i class="bi bi-grid"></i> সব গাইড দেখুন</a></p>
+      {% include 'store/guides/_help.html' %}
+    </article>
+  </div>
+</section>
+<script>
+(function () {
+  // ফোনে সূচি বন্ধ থাকে (জায়গা বাঁচাতে); কম্পিউটারে খোলা, আর পড়ার জায়গা অনুযায়ী উজ্জ্বল হয়
+  const toc = document.querySelector('.g-toc details');
+  if (!toc) return;
+  if (window.matchMedia('(max-width: 979px)').matches) toc.open = false;
+  const links = [...toc.querySelectorAll('a')], map = new Map(links.map(a => [decodeURIComponent(a.hash.slice(1)), a]));
+  // যে অংশটা পড়া হচ্ছে (শিরোনাম পর্দার একদম উপরের দিকে উঠে গেছে) সেটা উজ্জ্বল — ছোট অংশেও ঠিক থাকে
+  const heads = [...document.querySelectorAll('.g-content h2[id]')].filter(h => map.has(h.id));
+  let queued = false, current = null;
+  const mark = () => {
+    queued = false;
+    const line = Math.min(window.innerHeight * 0.3, 150);
+    let active = null;
+    for (const h of heads) { if (h.getBoundingClientRect().top <= line) active = h; else break; }
+    if (active === current) return;
+    current = active;
+    links.forEach(a => a.classList.remove('on'));
+    if (active) map.get(active.id).classList.add('on');
+  };
+  window.addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(mark); } }, { passive: true });
+  mark();
+})();
+</script>
+{% endblock %}

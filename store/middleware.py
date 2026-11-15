@@ -132,9 +132,12 @@ class StaffAccessMiddleware:
                 # কোন লিংকে কোন পারমিশন লাগবে তার লিস্ট
                 restrictions = [
                     (('/pos/', '/dues/'), staff.can_use_pos, "POS System"),
-                    (('/products/', '/categories/', '/barcode/', '/purchases/', '/suppliers/'),
+                    # আসল ঠিকানাগুলো: /barcodes/ (আগে '/barcode/' লেখা ছিল, মিলত না), /online-orders/,
+                    # /order/create|edit|delete/, /invoice/ — আগে এগুলো পারমিশন ছাড়াই খোলা যেত
+                    (('/products/', '/categories/', '/barcodes/', '/purchases/', '/suppliers/'),
                      staff.can_manage_products, "Product Management"),
-                    (('/orders/', '/storefront-orders/', '/courier/', '/offers/', '/reviews/', '/landing/'),
+                    (('/orders/', '/order/', '/online-orders/', '/invoice/', '/courier/', '/offers/', '/reviews/',
+                      '/landing/'),
                      staff.can_manage_orders, "Order Management"),
                     (('/customers/',), staff.can_manage_customers, "Customer Database"),
                     (('/sms/',), staff.can_send_sms, "SMS Panel"),

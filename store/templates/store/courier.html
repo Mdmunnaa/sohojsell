@@ -1,11 +1,11 @@
 {% extends 'store/base.html' %}
-{% block title %}Courier{% endblock %}
+{% block title %}কুরিয়ার{% endblock %}
 {% block page_title %}কুরিয়ার{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <div>
-    <h4 class="fw-bold mb-1">Courier Shipments</h4>
-    <p class="text-muted mb-0" style="font-size:13px;">{{ page_obj.paginator.count }} total shipments via Steadfast</p>
+    <h4 class="fw-bold mb-1">কুরিয়ারে পাঠানো পার্সেল</h4>
+    <p class="text-muted mb-0" style="font-size:13px;">মোট {{ page_obj.paginator.count }}টা পার্সেল — Steadfast, Pathao আর RedX। পাঠাতে: সব অর্ডার → অর্ডারের পাশের ট্রাক বোতাম।</p>
   </div>
 </div>
 
@@ -19,7 +19,7 @@
           <i class="bi bi-{{ icon }}"></i>
         </div>
         <div>
-          <div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;">{{ label }}</div>
+          <div style="font-size:12px;color:#64748b;font-weight:700;">{{ label }}</div>
           <div style="font-size:20px;font-weight:800;color:#0f172a;">{{ count }}</div>
         </div>
       </div>
@@ -33,13 +33,13 @@
     <table class="table table-hover align-middle mb-0">
       <thead style="background:#f8fafc;">
         <tr style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">
-          <th class="px-4 py-3">Order</th>
-          <th class="py-3">Customer</th>
-          <th class="py-3">Phone</th>
-          <th class="py-3">Tracking</th>
-          <th class="py-3 text-end">Amount</th>
-          <th class="py-3 text-center">Status</th>
-          <th class="py-3">Date</th>
+          <th class="px-4 py-3">অর্ডার</th>
+          <th class="py-3">কাস্টমার</th>
+          <th class="py-3">মোবাইল</th>
+          <th class="py-3">কুরিয়ার ও ট্র্যাকিং</th>
+          <th class="py-3 text-end">টাকা</th>
+          <th class="py-3 text-center">স্ট্যাটাস</th>
+          <th class="py-3">তারিখ</th>
         </tr>
       </thead>
       <tbody>
@@ -52,19 +52,22 @@
           <td style="font-size:13px;color:#3b82f6;">{{ order.customer.phone }}</td>
           <td>
             {% if order.steadfast_tracking_code %}
-            <a href="https://steadfast.com.bd/t/{{ order.steadfast_tracking_code }}" target="_blank"
+            {# ট্র্যাকিং লিংক শুধু Steadfast-এর (আগে Pathao/RedX-এর কোডও Steadfast-এ যেত) #}
+            <div style="font-size:11px;color:#64748b;font-weight:700;">{{ order.courier_partner|default:"Steadfast" }}</div>
+            {% if order.courier_partner == 'Steadfast' or not order.courier_partner %}<a href="https://steadfast.com.bd/t/{{ order.steadfast_tracking_code }}" target="_blank" rel="noopener"
                class="badge rounded-pill text-decoration-none" style="background:#e8f0fe;color:#1a73e8;font-weight:700;font-size:11px;">
               <i class="bi bi-truck me-1"></i>{{ order.steadfast_tracking_code }}
-            </a>
+            </a>{% else %}<span class="badge rounded-pill" style="background:#f1f5f9;color:#334155;font-weight:700;font-size:11px;"><i class="bi bi-truck me-1"></i>{{ order.steadfast_tracking_code }}</span>{% endif %}
             {% else %}
             <span style="color:#94a3b8;font-size:13px;">—</span>
             {% endif %}
           </td>
           <td class="text-end fw-bold">৳{{ order.total_amount|floatformat:0 }}</td>
           <td class="text-center">
-            {% if order.status == 'Delivered' %}<span class="badge bg-success rounded-pill">Delivered</span>
-            {% elif order.status == 'Shipped' %}<span class="badge bg-primary rounded-pill">Shipped</span>
-            {% elif order.status == 'Cancelled' %}<span class="badge bg-danger rounded-pill">Cancelled</span>
+            {% if order.status == 'Delivered' %}<span class="badge bg-success rounded-pill">ডেলিভারি হয়েছে</span>
+            {% elif order.status == 'Shipped' %}<span class="badge bg-primary rounded-pill">পথে আছে</span>
+            {% elif order.status == 'Returned' %}<span class="badge bg-danger rounded-pill">ফেরত</span>
+            {% elif order.status == 'Cancelled' %}<span class="badge bg-danger rounded-pill">বাতিল</span>
             {% else %}<span class="badge bg-warning text-dark rounded-pill">{{ order.status }}</span>{% endif %}
           </td>
           <td style="font-size:12px;color:#64748b;">{{ order.created_at|date:"d M Y" }}</td>
@@ -73,8 +76,8 @@
         <tr>
           <td colspan="7" class="text-center py-5">
             <i class="bi bi-truck" style="font-size:48px;color:#e2e8f0;display:block;margin-bottom:12px;"></i>
-            <div class="fw-bold text-muted">No shipments yet</div>
-            <div style="font-size:13px;color:#94a3b8;">Send orders to Steadfast from the Orders page</div>
+            <div class="fw-bold text-muted">এখনো কোনো পার্সেল পাঠানো হয়নি</div>
+            <div style="font-size:13px;color:#94a3b8;">সব অর্ডার পাতায় অর্ডারের পাশের ট্রাক বোতাম চেপে Steadfast, Pathao বা RedX-এ পাঠান</div>
           </td>
         </tr>
         {% endfor %}
@@ -83,7 +86,7 @@
   </div>
   {% if page_obj.has_other_pages %}
   <div class="px-4 py-3 border-top d-flex justify-content-between align-items-center" style="background:#fafafa;">
-    <span style="font-size:13px;color:#64748b;">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</span>
+    <span style="font-size:13px;color:#64748b;">{{ page_obj.paginator.count }}টার মধ্যে {{ page_obj.start_index }}–{{ page_obj.end_index }}</span>
     <nav><ul class="pagination pagination-sm mb-0 gap-1">
       {% if page_obj.has_previous %}<li class="page-item"><a class="page-link rounded-pill px-3" href="?page={{ page_obj.previous_page_number }}">←</a></li>{% endif %}
       {% for num in page_obj.paginator.page_range %}

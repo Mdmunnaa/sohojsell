@@ -1,0 +1,258 @@
+{
+ "accounts-expenses": {
+  "w": 1280,
+  "h": 780
+ },
+ "accounts-purchase-new": {
+  "w": 1280,
+  "h": 780
+ },
+ "accounts-purchases": {
+  "w": 1280,
+  "h": 780
+ },
+ "accounts-reports": {
+  "w": 1280,
+  "h": 780
+ },
+ "accounts-suppliers": {
+  "w": 1280,
+  "h": 780
+ },
+ "barcode-camera-mobile": {
+  "w": 520,
+  "h": 1125
+ },
+ "barcode-field": {
+  "w": 1280,
+  "h": 780
+ },
+ "barcode-pos-camera": {
+  "w": 520,
+  "h": 1125
+ },
+ "barcode-print": {
+  "w": 1280,
+  "h": 780
+ },
+ "billing-page": {
+  "w": 1280,
+  "h": 780
+ },
+ "buyers-checkout": {
+  "w": 520,
+  "h": 1125
+ },
+ "buyers-home": {
+  "w": 520,
+  "h": 1125
+ },
+ "buyers-product": {
+  "w": 520,
+  "h": 1125
+ },
+ "buyers-success": {
+  "w": 520,
+  "h": 1125
+ },
+ "buyers-track": {
+  "w": 520,
+  "h": 1125
+ },
+ "courier-list": {
+  "w": 1280,
+  "h": 780
+ },
+ "courier-send": {
+  "w": 300,
+  "h": 474
+ },
+ "courier-settings": {
+  "w": 1280,
+  "h": 780
+ },
+ "customers-list": {
+  "w": 1280,
+  "h": 780
+ },
+ "domain-tab": {
+  "w": 1280,
+  "h": 780
+ },
+ "dues-detail": {
+  "w": 1280,
+  "h": 780
+ },
+ "dues-list": {
+  "w": 1280,
+  "h": 780
+ },
+ "dues-reminder": {
+  "w": 1280,
+  "h": 780
+ },
+ "gs-dashboard": {
+  "w": 1280,
+  "h": 780
+ },
+ "gs-signup": {
+  "w": 520,
+  "h": 1125
+ },
+ "gs-store-info": {
+  "w": 1280,
+  "h": 780
+ },
+ "gs-storefront-mobile": {
+  "w": 520,
+  "h": 1125
+ },
+ "landing-edit": {
+  "w": 1280,
+  "h": 780
+ },
+ "landing-list": {
+  "w": 1280,
+  "h": 780
+ },
+ "landing-public-mobile": {
+  "w": 520,
+  "h": 1125
+ },
+ "marketing-abandoned": {
+  "w": 1280,
+  "h": 780
+ },
+ "marketing-coupons": {
+  "w": 1280,
+  "h": 780
+ },
+ "marketing-reviews": {
+  "w": 1280,
+  "h": 780
+ },
+ "marketing-sms": {
+  "w": 1280,
+  "h": 780
+ },
+ "orders-create": {
+  "w": 1280,
+  "h": 780
+ },
+ "orders-invoice": {
+  "w": 1280,
+  "h": 780
+ },
+ "orders-list": {
+  "w": 1280,
+  "h": 780
+ },
+ "orders-mobile": {
+  "w": 520,
+  "h": 1125
+ },
+ "orders-web": {
+  "w": 1280,
+  "h": 780
+ },
+ "payment-balance": {
+  "w": 1280,
+  "h": 780
+ },
+ "payment-settings": {
+  "w": 1280,
+  "h": 780
+ },
+ "pos-day-close": {
+  "w": 1280,
+  "h": 780
+ },
+ "pos-desktop": {
+  "w": 1280,
+  "h": 780
+ },
+ "pos-mobile": {
+  "w": 520,
+  "h": 1125
+ },
+ "pos-pay": {
+  "w": 560,
+  "h": 606
+ },
+ "pos-pay-due": {
+  "w": 560,
+  "h": 726
+ },
+ "pos-receipt": {
+  "w": 304,
+  "h": 539
+ },
+ "pos-sales": {
+  "w": 760,
+  "h": 428
+ },
+ "pos-settings": {
+  "w": 1280,
+  "h": 780
+ },
+ "products-add": {
+  "w": 1280,
+  "h": 780
+ },
+ "products-add-mobile": {
+  "w": 520,
+  "h": 1125
+ },
+ "products-categories": {
+  "w": 1280,
+  "h": 780
+ },
+ "products-import": {
+  "w": 500,
+  "h": 252
+ },
+ "products-list": {
+  "w": 1280,
+  "h": 780
+ },
+ "products-variants": {
+  "w": 676,
+  "h": 405
+ },
+ "settings-data": {
+  "w": 1280,
+  "h": 780
+ },
+ "settings-page": {
+  "w": 1280,
+  "h": 780
+ },
+ "staff-add": {
+  "w": 1280,
+  "h": 780
+ },
+ "staff-list": {
+  "w": 1280,
+  "h": 780
+ },
+ "website-banners": {
+  "w": 1280,
+  "h": 780
+ },
+ "website-delivery": {
+  "w": 1280,
+  "h": 780
+ },
+ "website-design": {
+  "w": 1280,
+  "h": 780
+ },
+ "website-designs-compare": {
+  "w": 1400,
+  "h": 667
+ },
+ "website-product-mobile": {
+  "w": 520,
+  "h": 1125
+ }
+}

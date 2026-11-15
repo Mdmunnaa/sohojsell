@@ -1,0 +1,10 @@
+<div class="g-help">
+  <div>
+    <b>আটকে গেলে আমাদের লিখুন</b>
+    <p>যেকোনো ধাপে বুঝতে না পারলে স্ক্রিনশট পাঠান — বাংলায় ধরে ধরে দেখিয়ে দেব।</p>
+  </div>
+  <div class="g-help-btns">
+    {% if site.whatsapp_url %}<a class="btn btn-brand" href="{{ site.whatsapp_url }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp</a>{% endif %}
+    {% if site.phone %}<a class="btn btn-out" href="tel:{{ site.phone_tel }}"><i class="bi bi-telephone"></i> {{ site.phone }}</a>{% endif %}
+  </div>
+</div>

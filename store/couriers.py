@@ -30,7 +30,7 @@ PATHAO_BASE_URL = getattr(settings, 'PATHAO_BASE_URL', 'https://api-hermes.patha
 REDX_BASE_URL = getattr(settings, 'REDX_BASE_URL', 'https://openapi.redx.com.bd/v1.0.0-beta')
 
 # এগুলোতে কাস্টমার আগেই টাকা দিয়ে দিয়েছে, কুরিয়ার কিছু তুলবে না
-PREPAID_METHODS = {'Paid', 'bKash', 'Card'}
+PREPAID_METHODS = {'Paid', 'bKash', 'Card', 'Full Paid'}   # 'Full Paid' = আগের হাতে লেখা অর্ডার (এখন 'Paid' জমা হয়)
 COURIERS = ('Steadfast', 'Pathao', 'RedX')
 
 

@@ -28,6 +28,7 @@
       <a href="#features">যা যা আছে</a>
       <a href="#how">কীভাবে শুরু</a>
       <a href="#pricing">দাম</a>
+      <a href="{% url 'guide_index' %}">গাইড</a>
       <a href="#faq">প্রশ্নোত্তর</a>
     </div>
     <div class="nav-cta">
@@ -43,6 +44,7 @@
     <a href="#how" onclick="toggleMenu()">কীভাবে শুরু</a>
     <a href="#pricing" onclick="toggleMenu()">দাম</a>
     <a href="#faq" onclick="toggleMenu()">প্রশ্নোত্তর</a>
+    <a href="{% url 'guide_index' %}">গাইড সেন্টার</a>
     <a href="{% url 'demo_start' %}">লাইভ ডেমো দেখুন</a>
     <a href="{% url 'login' %}">লগইন</a>
     <a href="{% url 'landing_page_en' %}" hreflang="en" lang="en"><i class="bi bi-globe2"></i> English</a>
@@ -429,6 +431,7 @@
           {% if site.phone %}<a href="tel:{{ site.phone_tel }}"><i class="bi bi-telephone"></i> {{ site.phone }}</a>{% endif %}
           {% if site.whatsapp_url %}<a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp-এ লিখুন</a>{% endif %}
           {% if site.email %}<a href="mailto:{{ site.email }}"><i class="bi bi-envelope"></i> {{ site.email }}</a>{% endif %}
+          <a href="{% url 'guide_index' %}">গাইড সেন্টার</a>
           <a href="{% url 'contact' %}">যোগাযোগের পাতা</a>
           <a href="{% url 'about' %}">আমাদের সম্পর্কে</a>
           <a href="{% url 'security' %}">নিরাপত্তা ও ডাটা</a>

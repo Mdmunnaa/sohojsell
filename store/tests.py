@@ -4512,3 +4512,179 @@ class ProductBarcodeTests(TestCase):
         html = self.client.get(reverse('pos')).content.decode()
         self.assertIn('id="cam-done"', html)
         self.assertIn('স্ক্যান শেষ', html)
+
+
+class GuideCenterTests(TestCase):
+    """গাইড সেন্টার (/guide/): প্রতিটা গাইড খোলে, ছবি আছে, SEO-র schema/sitemap/llms ঠিক, ইংরেজি পাতার দাবি নেই।"""
+
+    def _ld(self, html):
+        data = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', html, re.S).group(1))
+        return {item['@type']: item for item in data['@graph']}
+
+    def test_index_lists_every_guide(self):
+        from . import guides
+        response = self.client.get('/guide/')
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertEqual(html.count('<h1'), 1)
+        self.assertIn('<link rel="canonical" href="http://testserver/guide/">', html)
+        self.assertNotIn('hreflang="en"', html)                         # গাইড শুধু বাংলায় — ইংরেজি পাতার দাবি নয়
+        for guide in guides.all_guides():
+            self.assertIn(f'href="/guide/{guide["slug"]}/"', html)
+        kinds = self._ld(html)
+        self.assertIn('BreadcrumbList', kinds)
+        self.assertEqual(len(kinds['CollectionPage']['mainEntity']['itemListElement']), len(guides.GUIDE_REGISTRY))
+        self.assertNotRegex(html, r'[\U0001F300-\U0001FAFF]')
+
+    def test_every_guide_renders_with_pictures_and_schema(self):
+        from . import guides
+        titles = set()
+        for guide in guides.all_guides():
+            url = f'/guide/{guide["slug"]}/'
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200, url)
+            html = response.content.decode()
+            title = re.search(r'<title>(.*?)</title>', html).group(1)
+            self.assertNotIn(title, titles, url)
+            titles.add(title)
+            self.assertIn('SellPunch', title)
+            self.assertEqual(html.count('<h1'), 1, url)
+            self.assertIn(f'<link rel="canonical" href="http://testserver{url}">', html)
+            self.assertNotIn('hreflang="en"', html)
+            self.assertNotIn('shot:', html, url)                       # সব ছবির নাম ছবিতে বদলেছে
+            kinds = self._ld(html)
+            self.assertIn('TechArticle', kinds, url)
+            self.assertIn('BreadcrumbList', kinds, url)
+            self.assertIn('FAQPage', kinds, url)
+            self.assertTrue(kinds['FAQPage']['mainEntity'], url)
+            if guide['shots']:
+                self.assertIn('<figure class="g-shot', html, url)
+                self.assertTrue(kinds['TechArticle']['image'], url)
+            self.assertNotRegex(html, r'[\U0001F300-\U0001FAFF]')
+        self.assertEqual(self.client.get('/guide/no-such-guide/').status_code, 404)
+
+    def test_every_picture_exists(self):
+        from pathlib import Path
+        from . import guides
+        manifest = guides.shot_manifest()
+        static_dir = Path(__file__).resolve().parent / 'static' / guides.SHOT_STATIC_DIR
+        used = set()
+        for guide in guides.all_guides():
+            for shot_id, alt in guides.guide_images(guide):
+                self.assertIn(shot_id, manifest, guide['slug'])
+                self.assertTrue((static_dir / f'{shot_id}.webp').is_file(), shot_id)
+                self.assertTrue(alt.strip(), shot_id)                    # প্রতিটা ছবির বর্ণনা (alt) আছে
+                used.add(shot_id)
+        self.assertGreaterEqual(len(used), 60)
+        html = guides.render_guide_html(guides.get_guide('pos'))
+        self.assertIn('pos-desktop-900w.webp 900w', html)                   # ফোনে ছোট ছবি নামে
+        self.assertEqual(html.count('loading="eager"'), 1)                  # শুধু প্রথম ছবি সাথে সাথে
+
+    def test_guide_links_point_to_real_guides(self):
+        from . import guides
+        slugs = {g['slug'] for g in guides.all_guides()}
+        for guide in guides.all_guides():
+            html = guides.render_guide_html(guide)
+            for slug in re.findall(r'href="/guide/([^/"#]+)/', html):
+                self.assertIn(slug, slugs, guide['slug'])
+
+    def test_sitemap_llms_and_links(self):
+        from . import guides
+        sitemap = self.client.get('/sitemap.xml').content.decode()
+        self.assertIn('<loc>http://testserver/guide/</loc>', sitemap)
+        for guide in guides.all_guides():
+            self.assertIn(f'<loc>http://testserver/guide/{guide["slug"]}/</loc>', sitemap)
+        self.assertIn('/guide/pos/', self.client.get('/llms.txt').content.decode())
+        full = self.client.get('/llms-full.txt')
+        self.assertEqual(full.status_code, 200)
+        text = full.content.decode()
+        self.assertIn('http://testserver/guide/courier/', text)
+        self.assertIn('# ক্রেতাদের জন্য: কীভাবে অর্ডার করবেন', text)
+        self.assertNotIn('shot:', text)
+        # হোমপেজ, SEO পাতা আর ড্যাশবোর্ড থেকে গাইডে যাওয়া যায়
+        self.assertIn('href="/guide/"', self.client.get('/').content.decode())
+        self.assertIn('href="/guide/"', self.client.get(reverse('mk_index')).content.decode())
+        user = User.objects.create_user(phone_number='01780000001', password='Test-pass-123')
+        Shop.objects.create(user=user, name='Guide Shop', phone='01780000001', address='Dhaka')
+        self.client.force_login(user)
+        self.assertIn('href="/guide/"', self.client.get(reverse('dashboard')).content.decode())
+
+
+class GuideAuditFixTests(ShopTestMixin, TestCase):
+    """গাইড লিখতে গিয়ে পাওয়া ভুলগুলো: হাতে বানানো অর্ডারের পেমেন্ট, স্টাফের পারমিশন, কুরিয়ার পাতা, কাস্টমার তালিকা, পপআপ।"""
+
+    def setUp(self):
+        from .models import Product
+        self.user, self.shop = self.make_shop()
+        self.product = Product.objects.create(shop=self.shop, name='শার্ট', price=500, stock_quantity=10)
+
+    def _create(self, **extra):
+        data = {'customer_name': 'Rahim', 'customer_phone': '01712345678', 'customer_address': 'Savar',
+                'delivery_charge': '60', 'discount': '0', 'product[]': [str(self.product.id)],
+                'price[]': ['500'], 'quantity[]': ['2'], **extra}
+        self.client.post(reverse('order_create'), data)
+        return Order.objects.filter(shop=self.shop).latest('id')
+
+    def test_manual_order_payment(self):
+        from . import couriers
+        paid = self._create(payment_method='Full Paid')
+        self.assertEqual(paid.payment_method, 'Paid')
+        self.assertEqual(couriers.cod_amount(paid), 0)                    # আগে পুরো টাকা নেওয়া — কুরিয়ার আর তুলবে না
+        partial = self._create(payment_method='Partial Paid', advance_amount='300')
+        self.assertEqual(partial.payment_method, 'COD')
+        self.assertEqual(float(partial.advance_paid), 300)
+        self.assertEqual(couriers.cod_amount(partial), 760)               # ১০৬০ − ৩০০
+        cod = self._create(payment_method='COD')
+        self.assertEqual(couriers.cod_amount(cod), 1060)
+        odd = self._create(payment_method='Bitcoin')
+        self.assertEqual(odd.payment_method, 'COD')
+        too_much = self._create(payment_method='Partial Paid', advance_amount='99999')
+        self.assertEqual(float(too_much.advance_paid), 1060)
+        form = self.client.get(reverse('order_create')).content.decode()
+        self.assertIn('value="Paid"', form)
+        self.assertIn('name="advance_amount"', form)
+
+    def test_staff_without_permission_is_blocked(self):
+        from .models import StaffProfile
+        order = self._create(payment_method='COD')
+        staff = User.objects.create_user(phone_number='01933333333', password='Test-pass-123', name='Karim')
+        StaffProfile.objects.create(user=staff, shop=self.shop, can_use_pos=True)
+        self.client.force_login(staff)
+        for url in (reverse('storefront_orders'), reverse('order_create'), reverse('invoice', args=[order.id]),
+                    reverse('courier'), reverse('barcode_print'), reverse('landing_list')):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 302, url)
+            self.assertEqual(response['Location'], reverse('dashboard'), url)
+        StaffProfile.objects.filter(user=staff).update(can_manage_orders=True, can_manage_products=True)
+        self.assertEqual(self.client.get(reverse('order_create')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('barcode_print')).status_code, 200)
+
+    def test_courier_page_in_bangla_with_right_links(self):
+        steadfast = self._create(payment_method='COD')
+        pathao = self._create(payment_method='COD')
+        Order.objects.filter(pk=steadfast.pk).update(steadfast_tracking_code='SF123', courier_partner='Steadfast',
+                                                     status='Shipped')
+        Order.objects.filter(pk=pathao.pk).update(steadfast_tracking_code='PT999', courier_partner='Pathao',
+                                                  status='Returned')
+        html = self.client.get(reverse('courier')).content.decode()
+        self.assertIn('মোট পার্সেল', html)
+        self.assertIn('ফেরত/বাতিল', html)
+        self.assertIn('https://steadfast.com.bd/t/SF123', html)
+        self.assertIn('PT999', html)
+        self.assertNotIn('steadfast.com.bd/t/PT999', html)                # Pathao-র কোড Steadfast-এ খোঁজে না
+
+    def test_walk_in_hidden_from_customer_list(self):
+        from . import pos
+        from .models import Customer
+        Customer.objects.create(shop=self.shop, name='Walk-in Customer', phone=pos.WALK_IN_PHONE)
+        Customer.objects.create(shop=self.shop, name='Rahima', phone='01811112222')
+        html = self.client.get(reverse('customer_list')).content.decode()
+        self.assertIn('Rahima', html)
+        self.assertIn('01811112222', html)
+        self.assertNotIn('Walk-in Customer', html)
+        self.assertNotIn(pos.WALK_IN_PHONE, html)
+
+    def test_popups_are_not_trapped_under_backdrop(self):
+        html = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('animation: fadeUp .3s ease backwards', html)      # 'both' রাখলে transform থেকে যায়, পপআপ আটকে যায়
+        self.assertIn("addEventListener('show.bs.modal'", html)

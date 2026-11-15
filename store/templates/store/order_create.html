@@ -130,11 +130,17 @@
 
                         <div class="mb-4">
                             <label class="form-label fw-bold text-muted small">Payment Method <span class="text-danger">*</span></label>
-                            <select name="payment_method" class="form-select bg-light border-0 py-2 fw-bold text-primary" required>
+                            {# Full Paid = "Paid" (কুরিয়ার ৳০ তুলবে); আগে "Full Paid" জমা হতো, কুরিয়ার পুরো টাকা আবার তুলত #}
+                            <select name="payment_method" id="payMethod" class="form-select bg-light border-0 py-2 fw-bold text-primary" required>
                                 <option value="COD">Cash on Delivery (COD)</option>
-                                <option value="Full Paid">Full Paid (bKash/Bank)</option>
+                                <option value="Paid">Full Paid (bKash/Bank)</option>
                                 <option value="Partial Paid">Partial Paid (Advance)</option>
                             </select>
+                            <div id="advanceBox" class="mt-2" hidden>
+                                <label class="form-label fw-bold text-muted small" for="advanceAmount">অগ্রিম কত টাকা পেয়েছেন</label>
+                                <input type="number" min="0" step="1" name="advance_amount" id="advanceAmount" class="form-control bg-light border-0 py-2" placeholder="যেমন 150">
+                                <div class="small text-muted mt-1">কুরিয়ার বাকিটা তুলবে: Tk. <b id="codLeft">0</b></div>
+                            </div>
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100 fw-bold rounded-pill shadow-sm py-3 fs-5 transition-all hover-lift">
@@ -193,6 +199,20 @@
         });
 
         // --- লাইভ ক্যালকুলেশন ফাংশন ---
+        // আংশিক অগ্রিম: কত পেয়েছেন লিখলে কুরিয়ার কত তুলবে দেখায়
+        function updateCodLeft() {
+            const total = parseFloat(document.getElementById('summaryTotal').innerText) || 0;
+            const advance = parseFloat(document.getElementById('advanceAmount').value) || 0;
+            document.getElementById('codLeft').innerText = Math.max(0, total - advance).toFixed(0);
+        }
+        document.getElementById('payMethod').addEventListener('change', e => {
+            const partial = e.target.value === 'Partial Paid';
+            document.getElementById('advanceBox').hidden = !partial;
+            document.getElementById('advanceAmount').required = partial;
+            updateCodLeft();
+        });
+        document.getElementById('advanceAmount').addEventListener('input', updateCodLeft);
+
         function calculateGrandTotal() {
             let subtotal = 0;
 
@@ -213,6 +233,7 @@
             summaryDelivery.innerText = delivery.toFixed(2);
             summaryDiscount.innerText = discount.toFixed(2);
             summaryTotal.innerText = Math.max(0, grandTotal).toFixed(2); // মাইনাস যাতে না হয়
+            updateCodLeft();
         }
 
         // --- ইনপুট দিলে যাতে অটো হিসাব হয় ---
