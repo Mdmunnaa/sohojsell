@@ -67,6 +67,7 @@
       position: sticky;
       top: 0;
       height: 100vh;
+      height: 100dvh;
       overflow-y: auto;
       overflow-x: hidden;
       border-right: 1px solid var(--sb-border);
@@ -179,8 +180,11 @@
     /* Bottom */
     .sb-bottom {
       padding: 10px;
+      /* iPhone-এর নিচের দাগের (home indicator) উপরে থাকে */
+      padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
       border-top: 1px solid var(--sb-border);
       flex-shrink: 0;
+      background: var(--sb-bg);
     }
     .sb-user {
       display: flex; align-items: center; gap: 9px;
@@ -199,12 +203,13 @@
     .sb-u-role { font-size: 11px; color: #64748b; }
     .sb-logout {
       display: flex; align-items: center; gap: 8px;
-      padding: 8px 10px; border-radius: var(--r-sm);
-      color: #dc2626; font-size: 13.5px; font-weight: 600;
+      padding: 9px 10px; border-radius: var(--r-sm);
+      color: #dc2626; font-size: 14px; font-weight: 600;
+      background: #fef2f2; border: 1px solid #fecaca;
       text-decoration: none; transition: background .15s;
     }
-    .sb-logout i { font-size: 14px; }
-    .sb-logout:hover { background: #fef2f2; color: #b91c1c; }
+    .sb-logout i { font-size: 15px; }
+    .sb-logout:hover { background: #fee2e2; color: #b91c1c; }
 
     /* ──────────────────────────────
        MAIN AREA
@@ -293,9 +298,11 @@
     @media (max-width: 900px) {
       .app-shell { display: block; }
       .desktop-toggle { display: none; } /* Hide desktop toggle on mobile */
+      /* ফোনে 100vh ব্রাউজারের ঠিকানা-বার আর নিচের বার ধরে না — সাইডবার পর্দার চেয়ে লম্বা হয়ে
+         একদম নিচের লগআউট বাটন বারের নিচে চাপা পড়ত। top:0 + bottom:0 দিলে ঠিক দেখা অংশের সমান হয়। */
       .sidebar {
-        position: fixed; top: 0; left: 0; z-index: 999;
-        height: 100vh;
+        position: fixed; top: 0; bottom: 0; left: 0; z-index: 999;
+        height: auto; min-height: 0; max-height: 100dvh;
         transform: translateX(-100%);
         transition: transform .28s cubic-bezier(.4,0,.2,1);
       }

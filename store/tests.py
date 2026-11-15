@@ -1684,6 +1684,14 @@ class DashboardTests(ShopTestMixin, TestCase):
         self.assertNotIn('sellpunch-wordmark-white.svg', html)
         self.assertNotIn('color: rgba(255,255,255,.75)', html)
 
+    def test_mobile_sidebar_fits_screen_so_logout_shows(self):
+        # ফোনে 100vh ব্রাউজারের বার ধরে না — সাইডবার লম্বা হয়ে লগআউট বারের নিচে চাপা পড়ত
+        html = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('position: fixed; top: 0; bottom: 0; left: 0; z-index: 999;', html)
+        self.assertIn('height: auto; min-height: 0; max-height: 100dvh;', html)
+        self.assertIn('class="sb-logout"', html)
+        self.assertIn(reverse('logout'), html)
+
     def test_today_sales_profit_and_change(self):
         from . import dashboard
         now = timezone.now()
