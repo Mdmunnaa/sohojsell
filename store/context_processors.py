@@ -16,6 +16,7 @@ def site_info(request):
             'phone_tel': ('+' if phone.strip().startswith('+') else '') + ''.join(ch for ch in phone if ch.isdigit()),
             'email': settings.SUPPORT_EMAIL,
             'info_email': getattr(settings, 'INFO_EMAIL', ''),
+            'refund_email': getattr(settings, 'REFUND_EMAIL', ''),
             'whatsapp_url': f'https://wa.me/{whatsapp}' if whatsapp else '',
             'legal_name': settings.BUSINESS_LEGAL_NAME,
             'address': settings.BUSINESS_ADDRESS,

@@ -425,6 +425,7 @@
           {% if site.phone %}<a href="tel:{{ site.phone_tel }}"><i class="bi bi-telephone"></i> {{ site.phone }}</a>{% endif %}
           {% if site.whatsapp_url %}<a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp us</a>{% endif %}
           {% if site.email %}<a href="mailto:{{ site.email }}"><i class="bi bi-envelope"></i> {{ site.email }}</a>{% endif %}
+          {% if site.info_email %}<a href="mailto:{{ site.info_email }}"><i class="bi bi-envelope-open"></i> {{ site.info_email }}</a>{% endif %}
           <a href="{% url 'guide_index' %}">Guide center (Bangla)</a>
           <a href="{% url 'contact' %}">Contact page</a>
           <a href="{% url 'about' %}#english">About us</a>

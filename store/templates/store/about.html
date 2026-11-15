@@ -56,7 +56,8 @@
         <dt>ঠিকানা</dt><dd>{{ company.address_bn }}</dd>
         {% if site.phone %}<dt>হেল্পলাইন</dt><dd><a href="tel:{{ site.phone_tel }}">{{ site.phone }}</a></dd>{% endif %}
         {% if site.email %}<dt>সাপোর্ট</dt><dd><a href="mailto:{{ site.email }}">{{ site.email }}</a></dd>{% endif %}
-        {% if site.info_email %}<dt>অন্যান্য কাজে</dt><dd><a href="mailto:{{ site.info_email }}">{{ site.info_email }}</a></dd>{% endif %}
+        {% if site.info_email %}<dt>সাধারণ প্রশ্ন</dt><dd><a href="mailto:{{ site.info_email }}">{{ site.info_email }}</a></dd>{% endif %}
+        {% if site.refund_email %}<dt>রিফান্ড ও বিল</dt><dd><a href="mailto:{{ site.refund_email }}">{{ site.refund_email }}</a></dd>{% endif %}
       </dl>
     </div>
   </section>
@@ -78,7 +79,7 @@
   <section class="ab-card ab-en" id="english" lang="en" aria-labelledby="en-title">
     <h2 id="en-title">About {{ site.name }} (in English)</h2>
     <p>{{ site.name }} is a product of <strong>{{ company.name_en }}</strong>, an {{ company.kind_en }} registered in Bangladesh under trade licence ID <code>{{ company.licence_id }}</code>, issued by {{ company.issuer_en }}. Owner: {{ company.owner_en }}. Registered address: {{ company.address_en }}.</p>
-    <p class="mb-0">Support: {% if site.phone %}{{ site.phone }} · {% endif %}{{ site.email }}{% if site.info_email %} · General enquiries: {{ site.info_email }}{% endif %}</p>
+    <p class="mb-0">Support: {% if site.phone %}{{ site.phone }} · {% endif %}{{ site.email }}{% if site.info_email %} · General enquiries: {{ site.info_email }}{% endif %}{% if site.refund_email %} · Refunds and billing: {{ site.refund_email }}{% endif %}</p>
   </section>
 </div>
 {% endblock %}

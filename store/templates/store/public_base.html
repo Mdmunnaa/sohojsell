@@ -135,6 +135,7 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
         <div class="ss-footer-contact">
           {% if site.phone %}<a href="tel:{{ site.phone_tel }}"><i class="bi bi-telephone me-2"></i>{{ site.phone }}</a>{% endif %}
           {% if site.email %}<a href="mailto:{{ site.email }}"><i class="bi bi-envelope me-2"></i>{{ site.email }}</a>{% endif %}
+          {% if site.info_email %}<a href="mailto:{{ site.info_email }}"><i class="bi bi-envelope-open me-2"></i>{{ site.info_email }}</a>{% endif %}
           {% if site.facebook_url %}<a href="{{ site.facebook_url }}" target="_blank" rel="noopener"><i class="bi bi-facebook me-2"></i>Facebook পেইজ</a>{% endif %}
         </div>
       </div>

@@ -6,5 +6,6 @@
   <div class="g-help-btns">
     {% if site.whatsapp_url %}<a class="btn btn-brand" href="{{ site.whatsapp_url }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp</a>{% endif %}
     {% if site.phone %}<a class="btn btn-out" href="tel:{{ site.phone_tel }}"><i class="bi bi-telephone"></i> {{ site.phone }}</a>{% endif %}
+    {% if site.email %}<a class="btn btn-out" href="mailto:{{ site.email }}"><i class="bi bi-envelope"></i> {{ site.email }}</a>{% endif %}
   </div>
 </div>

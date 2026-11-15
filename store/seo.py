@@ -214,7 +214,10 @@ def main_llms_txt(request):
         f"- [Refund policy]({base}{reverse('refund_policy')})",
         '', '## Contact',
     ]
-    for label, value in (('Phone', getattr(settings, 'SUPPORT_PHONE', '')), ('Email', getattr(settings, 'SUPPORT_EMAIL', '')),
+    for label, value in (('Phone', getattr(settings, 'SUPPORT_PHONE', '')),
+                         ('Support email', getattr(settings, 'SUPPORT_EMAIL', '')),
+                         ('General enquiries and partnerships', getattr(settings, 'INFO_EMAIL', '')),
+                         ('Refunds and billing', getattr(settings, 'REFUND_EMAIL', '')),
                          ('Address', COMPANY.get('address_en', ''))):
         if value:
             lines.append(f'- {label}: {value}')

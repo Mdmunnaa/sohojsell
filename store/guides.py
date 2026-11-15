@@ -190,7 +190,7 @@ def guide_plain_markdown(guide, base_url=''):
         alt, shot_id = match.group(1), match.group(2)
         return f'![{alt}]({base_url}{shot_url(shot_id)})' if shot_id in manifest else f'(ছবি: {alt})'
     _, text = _split_meta(_read(guide))
-    text = re.sub(r'\]\(/guide/', f']({base_url}/guide/', text)
+    text = re.sub(r'\]\(/(?!/)', f']({base_url}/', text)          # সাইটের ভেতরের সব লিংক পূর্ণ ঠিকানায়
     return _SHOT_RE.sub(image, text).strip()
 
 

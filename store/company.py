@@ -33,7 +33,8 @@ COMPANY = {
 DEFAULT_CONTACT = {
     'SUPPORT_PHONE': '+880 9658-614453',          # Edumi-র হেল্পলাইন (একই প্রতিষ্ঠান)
     'SUPPORT_EMAIL': 'support@sellpunch.com',
-    'INFO_EMAIL': 'info@sellpunch.com',
+    'INFO_EMAIL': 'info@sellpunch.com',            # সাধারণ প্রশ্ন, ব্যবসা/পার্টনারশিপ, লাইসেন্সের কপি
+    'REFUND_EMAIL': 'refund@sellpunch.com',        # রিফান্ড আর বিল/পেমেন্টের সমস্যা
     'SUPPORT_WHATSAPP': '8801804181010',
 }
 

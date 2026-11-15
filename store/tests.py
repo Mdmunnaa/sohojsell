@@ -4688,3 +4688,36 @@ class GuideAuditFixTests(ShopTestMixin, TestCase):
         html = self.client.get(reverse('dashboard')).content.decode()
         self.assertIn('animation: fadeUp .3s ease backwards', html)      # 'both' রাখলে transform থেকে যায়, পপআপ আটকে যায়
         self.assertIn("addEventListener('show.bs.modal'", html)
+
+
+class ContactEmailTests(ShopTestMixin, TestCase):
+    """support@, info@ আর refund@sellpunch.com — যার যেখানে কাজ সেখানে দেখায় (admin@ ভেতরের কাজের, পাবলিক নয়)।"""
+
+    def test_emails_on_public_pages(self):
+        contact = self.client.get(reverse('contact')).content.decode()
+        for email in ('support@sellpunch.com', 'info@sellpunch.com', 'refund@sellpunch.com'):
+            self.assertIn(f'href="mailto:{email}"', contact)
+        refund = self.client.get(reverse('refund_policy')).content.decode()
+        self.assertIn('href="mailto:refund@sellpunch.com?subject=Refund"', refund)
+        about = self.client.get(reverse('about')).content.decode()
+        self.assertIn('Refunds and billing: refund@sellpunch.com', about)
+        for url in ('/', reverse('landing_page_en'), reverse('mk_index'), reverse('guide_index'), reverse('contact')):
+            html = self.client.get(url).content.decode()
+            self.assertIn('href="mailto:support@sellpunch.com"', html, url)
+            self.assertNotIn('admin@sellpunch.com', html, url)
+        home = self.client.get('/').content.decode()
+        self.assertIn('href="mailto:info@sellpunch.com"', home)
+        data = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', home, re.S).group(1))
+        org = next(item for item in data['@graph'] if item.get('@id', '').endswith('/#org'))
+        points = {p['contactType']: p['email'] for p in org['contactPoint']}
+        self.assertEqual(points, {'customer support': 'support@sellpunch.com', 'sales': 'info@sellpunch.com',
+                                  'billing support': 'refund@sellpunch.com'})
+        llms = self.client.get('/llms.txt').content.decode()
+        self.assertIn('- Refunds and billing: refund@sellpunch.com', llms)
+        self.assertIn('- General enquiries and partnerships: info@sellpunch.com', llms)
+
+    def test_billing_page_shows_refund_email(self):
+        self.make_shop()
+        html = self.client.get(reverse('billing')).content.decode()
+        self.assertIn('mailto:refund@sellpunch.com', html)
+        self.assertIn('রিফান্ড পলিসি', html)

@@ -239,6 +239,7 @@ from store.company import COMPANY as _COMPANY, DEFAULT_CONTACT as _CONTACT  # no
 SUPPORT_PHONE = os.environ.get('SUPPORT_PHONE') or _CONTACT['SUPPORT_PHONE']
 SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL') or _CONTACT['SUPPORT_EMAIL']
 INFO_EMAIL = os.environ.get('INFO_EMAIL') or _CONTACT['INFO_EMAIL']
+REFUND_EMAIL = os.environ.get('REFUND_EMAIL') or _CONTACT['REFUND_EMAIL']
 SUPPORT_WHATSAPP = os.environ.get('SUPPORT_WHATSAPP') or _CONTACT['SUPPORT_WHATSAPP']   # দেশের কোডসহ
 BUSINESS_LEGAL_NAME = os.environ.get('BUSINESS_LEGAL_NAME') or _COMPANY['name_bn']     # ট্রেড লাইসেন্সে যে নাম
 BUSINESS_ADDRESS = os.environ.get('BUSINESS_ADDRESS') or _COMPANY['address_bn']

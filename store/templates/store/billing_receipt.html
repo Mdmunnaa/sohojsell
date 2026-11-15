@@ -77,7 +77,7 @@ td { padding: 12px 10px; border-bottom: 1px solid #E2E8F0; vertical-align: top; 
     </tbody>
   </table>
 
-  <p class="foot">এটা কম্পিউটারে তৈরি রসিদ, সই লাগে না। প্রশ্ন থাকলে {{ site.email }}-এ রসিদ নম্বরসহ লিখুন{% if site.phone %} বা {{ site.phone }}-এ ফোন করুন{% endif %}।
+  <p class="foot">এটা কম্পিউটারে তৈরি রসিদ, সই লাগে না। প্রশ্ন থাকলে {{ site.email }}-এ রসিদ নম্বরসহ লিখুন{% if site.phone %} বা {{ site.phone }}-এ ফোন করুন{% endif %}।{% if site.refund_email %} রিফান্ড চাইলে {{ site.refund_email }}-এ লিখুন।{% endif %}
     {% if payment.environment == 'sandbox' %}<br><b>পরীক্ষামূলক (sandbox) পেমেন্ট — আসল টাকা কাটা হয়নি।</b>{% endif %}</p>
 </main>
 <div class="actions">
