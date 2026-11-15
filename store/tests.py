@@ -1052,6 +1052,24 @@ class POSTests(ShopTestMixin, TestCase):
             {'phone': '01712345678', 'amount': 400, 'method': 'bkash'}), content_type='application/json').json()
         self.assertEqual((paid['collected'], paid['due_left']), (400, 0))
 
+    def test_whole_bill_on_due_without_typing_amount(self):
+        # টাকার ঘর খালি রেখে "বাকি রাখুন" টিক দিলে স্ক্রিন এটাই পাঠায়: অঙ্ক 0, full নয়
+        sale = self.sell(items=[{'id': self.shirt.id, 'qty': 1}], payments=[{'method': 'cash', 'amount': 0, 'full': False}],
+                         allow_due=True, customer={'name': 'রহিম', 'phone': '01712345678'}).json()
+        self.assertTrue(sale['success'])
+        self.assertEqual((sale['sale']['due'], sale['sale']['change']), (450, 0))
+
+    def test_due_option_always_on_screen_and_csrf_cookie_set(self):
+        response = self.client.get(reverse('pos'))
+        html = response.content.decode()
+        # আগে টাকার অঙ্ক না লিখলে বাকির টিক লুকিয়ে থাকত; এখন সবসময় আছে, সাথে "পুরোটা বাকি"
+        self.assertIn('id="allow-due"', html)
+        self.assertIn('data-due-all', html)
+        self.assertIn('id="due-hint"', html)
+        self.assertNotIn("$('due-check-row').style.display", html)
+        # বিক্রি JS থেকে যায় — csrftoken কুকি না থাকলে "সার্ভার থেকে ঠিক উত্তর আসেনি" হতো
+        self.assertIn('csrftoken', response.cookies)
+
     def test_owner_can_change_price_but_staff_cannot(self):
         owner = self.sell(items=[{'id': self.shirt.id, 'qty': 1, 'price': 400}]).json()
         self.assertEqual(owner['sale']['total'], 400)
@@ -1657,6 +1675,14 @@ class DashboardTests(ShopTestMixin, TestCase):
         if when is not None:
             Order.objects.filter(pk=order.pk).update(created_at=when)
         return order
+
+    def test_sidebar_is_light_and_readable(self):
+        # কালো সাইডবারে ধূসর লেখা পড়া যেত না — এখন সাদা পটভূমি, গাঢ় লেখা, গাঢ় লোগো
+        html = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('--sb-bg: #ffffff;', html)
+        self.assertIn('brand/sellpunch-wordmark.svg', html)
+        self.assertNotIn('sellpunch-wordmark-white.svg', html)
+        self.assertNotIn('color: rgba(255,255,255,.75)', html)
 
     def test_today_sales_profit_and_change(self):
         from . import dashboard

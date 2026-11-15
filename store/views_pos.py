@@ -9,6 +9,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
 from . import pos
@@ -80,6 +81,8 @@ def _product_json(p):
     return data
 
 
+# POS-এর বিক্রি JS থেকে যায়, csrftoken কুকি লাগে — কুকি মুছে গেলে বা অন্যভাবে লগইন হলেও যেন থাকে
+@ensure_csrf_cookie
 @login_required(login_url=LOGIN)
 def pos_screen(request):
     shop = request.user.shop

@@ -15,10 +15,12 @@
 
     :root {
       --sb-w: 220px;
-      --sb-bg: #0c0e14;
-      --sb-border: rgba(255,255,255,0.07);
-      --sb-text: #64748b;
-      --sb-hover-bg: rgba(255,255,255,0.05);
+      /* সাইডবার: সাদা পটভূমি, গাঢ় লেখা — আগের কালো সাইডবারে ধূসর লেখা রোদে/কম আলোর ফোনে পড়া যেত না */
+      --sb-bg: #ffffff;
+      --sb-border: #e5e7eb;
+      --sb-text: #334155;
+      --sb-icon: #64748b;
+      --sb-hover-bg: #f1f5f9;
       --accent: #3b82f6;
       --accent-rgb: 59,130,246;
       --accent-glow: rgba(59,130,246,0.15);
@@ -73,13 +75,6 @@
     }
     .sidebar::-webkit-scrollbar { display: none; }
 
-    /* subtle dot-grid texture */
-    .sidebar {
-      background-image:
-        radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
-      background-size: 24px 24px;
-      background-color: var(--sb-bg);
-    }
 
     /* ──────────────────────────────
        COLLAPSED STATE (MINIMIZED)
@@ -127,8 +122,8 @@
       display: flex; align-items: center; justify-content: center;
     }
     .sb-logo-icon img { width: 36px; height: 36px; display: block; }
-    .sb-logo-text { font-family: var(--fn-head); font-size: 17px; font-weight: 800; color: #fff; letter-spacing: -.3px; }
-    .sb-logo-sub { font-size: 10px; color: rgba(255,255,255,.25); letter-spacing: .4px; margin-top: 1px; font-weight: 400; }
+    .sb-logo-text { font-family: var(--fn-head); font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -.3px; }
+    .sb-logo-sub { font-size: 11px; color: #64748b; letter-spacing: .2px; margin-top: 2px; font-weight: 500; }
 
     /* Nav scroll area */
     .sb-nav { flex: 1; padding: 10px 10px; overflow-y: auto; scrollbar-width: none; }
@@ -136,8 +131,8 @@
 
     /* Section label */
     .sb-label {
-      font-size: 10.5px; font-weight: 600; letter-spacing: .3px;
-      color: rgba(255,255,255,.28);
+      font-size: 11.5px; font-weight: 700; letter-spacing: .2px;
+      color: #64748b;
       padding: 14px 8px 5px;
     }
 
@@ -147,38 +142,39 @@
     /* Nav link */
     .sb-link {
       display: flex; align-items: center; gap: 9px;
-      padding: 8px 10px; border-radius: var(--r-sm);
-      color: var(--sb-text); font-size: 13px; font-weight: 500;
+      padding: 9px 10px; border-radius: var(--r-sm);
+      color: var(--sb-text); font-size: 14px; font-weight: 500;
       text-decoration: none;
       transition: background .15s, color .15s;
       position: relative;
       margin-bottom: 1px;
       white-space: nowrap;
     }
-    .sb-link i { font-size: 15px; flex-shrink: 0; width: 18px; text-align: center; }
-    .sb-link:hover { background: var(--sb-hover-bg); color: rgba(255,255,255,.75); }
+    .sb-link i { font-size: 16px; flex-shrink: 0; width: 18px; text-align: center; color: var(--sb-icon); }
+    .sb-link:hover { background: var(--sb-hover-bg); color: #0f172a; }
+    .sb-link:hover i { color: #334155; }
     .sb-link.active {
-      background: var(--accent-glow);
-      color: #fff;
+      background: #eff6ff;
+      color: #1d4ed8; font-weight: 600;
     }
-    .sb-link.active i { color: var(--accent); }
+    .sb-link.active i { color: #2563eb; }
     .sb-link.active::after {
       content: '';
       position: absolute; left: 0; top: 25%; bottom: 25%;
       width: 2.5px; border-radius: 0 2px 2px 0;
-      background: var(--accent);
+      background: #2563eb;
     }
 
     /* POS pill */
     .sb-link.pos {
-      background: rgba(34,197,94,.1);
-      color: #4ade80;
-      border: 1px solid rgba(34,197,94,.15);
+      background: #ecfdf5;
+      color: #047857; font-weight: 600;
+      border: 1px solid #a7f3d0;
     }
-    .sb-link.pos i { color: #4ade80; }
-    .sb-link.pos:hover { background: rgba(34,197,94,.16); }
-    .sb-link.pos.active { background: rgba(34,197,94,.2); color: #4ade80; }
-    .sb-link.pos.active::after { background: var(--green); }
+    .sb-link.pos i { color: #059669; }
+    .sb-link.pos:hover { background: #d1fae5; color: #065f46; }
+    .sb-link.pos.active { background: #d1fae5; color: #065f46; }
+    .sb-link.pos.active::after { background: #059669; }
 
     /* Bottom */
     .sb-bottom {
@@ -189,7 +185,7 @@
     .sb-user {
       display: flex; align-items: center; gap: 9px;
       padding: 9px 10px; border-radius: var(--r-sm);
-      background: rgba(255,255,255,.04);
+      background: #f8fafc; border: 1px solid var(--sb-border);
       margin-bottom: 6px;
     }
     .sb-avatar {
@@ -199,16 +195,16 @@
       font-size: 12px; color: #fff; font-weight: 700;
       font-family: var(--fn-head); flex-shrink: 0;
     }
-    .sb-u-name { font-size: 12px; font-weight: 600; color: #e2e8f0; line-height: 1.3; }
-    .sb-u-role { font-size: 10px; color: rgba(255,255,255,.25); }
+    .sb-u-name { font-size: 13px; font-weight: 600; color: #0f172a; line-height: 1.3; }
+    .sb-u-role { font-size: 11px; color: #64748b; }
     .sb-logout {
       display: flex; align-items: center; gap: 8px;
       padding: 8px 10px; border-radius: var(--r-sm);
-      color: #f87171; font-size: 12.5px; font-weight: 500;
+      color: #dc2626; font-size: 13.5px; font-weight: 600;
       text-decoration: none; transition: background .15s;
     }
     .sb-logout i { font-size: 14px; }
-    .sb-logout:hover { background: rgba(239,68,68,.1); color: #f87171; }
+    .sb-logout:hover { background: #fef2f2; color: #b91c1c; }
 
     /* ──────────────────────────────
        MAIN AREA
@@ -252,7 +248,7 @@
     .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 
     /* Page content */
-    .sb-new-badge { font-size:10.5px; background:#EF4444; color:#fff; font-weight:700; min-width:20px; padding:3px 6px; border-radius:999px; box-shadow:0 0 0 3px rgba(239,68,68,.2); }
+    .sb-new-badge { font-size:10.5px; background:#EF4444; color:#fff; font-weight:700; min-width:20px; padding:3px 6px; border-radius:999px; }
     .sidebar.collapsed .sb-new-badge { display:inline-block; position:absolute; top:6px; right:10px; margin:0; padding:2px 5px; min-width:16px; font-size:9px; }
     .demo-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
       padding: 10px 24px; background: linear-gradient(90deg,#FEF3C7,#FDE68A); color:#78350F; font-size:13.5px; border-bottom:1px solid #FCD34D; }
@@ -303,7 +299,7 @@
         transform: translateX(-100%);
         transition: transform .28s cubic-bezier(.4,0,.2,1);
       }
-      .sidebar.open { transform: translateX(0); }
+      .sidebar.open { transform: translateX(0); box-shadow: 8px 0 30px rgba(15,23,42,.18); }
 
       /* Reset collapsed state on mobile just in case */
       .sidebar.collapsed { --sb-w: 220px; }
@@ -333,7 +329,7 @@
       <div class="sb-logo-row">
         <div class="sb-logo-icon"><img src="{% static 'brand/sellpunch-mark.svg' %}" alt="" width="36" height="36"></div>
         <div>
-          <div class="sb-logo-text"><img src="{% static 'brand/sellpunch-wordmark-white.svg' %}" alt="{{ site.name }}" height="22" style="display:block;height:22px;width:auto;"></div>
+          <div class="sb-logo-text"><img src="{% static 'brand/sellpunch-wordmark.svg' %}" alt="{{ site.name }}" height="22" style="display:block;height:22px;width:auto;"></div>
           <div class="sb-logo-sub">বিজনেস ড্যাশবোর্ড</div>
         </div>
       </div>
@@ -402,7 +398,7 @@
         </a>
         <a href="{% url 'review_list' %}" class="sb-link {% if request.resolver_match.url_name == 'review_list' %}active{% endif %}">
           <i class="bi bi-star"></i> <span class="sb-text-hide">রিভিউ</span>
-          {% if pending_reviews %}<span class="badge ms-auto sb-text-hide" style="font-size:10px;background:rgba(245,158,11,.18);color:#FBBF24;">{{ pending_reviews }}</span>{% endif %}
+          {% if pending_reviews %}<span class="badge ms-auto sb-text-hide" style="font-size:10.5px;background:#FEF3C7;color:#92400E;">{{ pending_reviews }}</span>{% endif %}
         </a>
         {% endif %}
 
@@ -415,7 +411,7 @@
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_send_sms %}
         <a href="{% url 'sms_panel' %}" class="sb-link {% if request.resolver_match.url_name == 'sms_panel' %}active{% endif %}">
           <i class="bi bi-chat-dots"></i> <span class="sb-text-hide">SMS</span>
-          {% if shop.sms_balance < 20 %}<span class="badge ms-auto sb-text-hide" style="font-size:10px;background:rgba(245,158,11,.18);color:#FBBF24;">কম</span>{% endif %}
+          {% if shop.sms_balance < 20 %}<span class="badge ms-auto sb-text-hide" style="font-size:10.5px;background:#FEF3C7;color:#92400E;">কম</span>{% endif %}
         </a>
         {% endif %}
         {% endif %}

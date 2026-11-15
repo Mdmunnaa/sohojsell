@@ -147,6 +147,10 @@
   .quick-cash { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 12px; }
   .quick-cash button { border: 1.5px solid var(--p-line); background: #fff; border-radius: 10px; padding: 7px 12px; font-weight: 800; font-size: 13.5px; color: var(--p-ink); }
   .quick-cash button:hover { border-color: var(--p-ink); }
+  .quick-cash button.due-all { color: #B91C1C; border-color: #FECACA; background: #FEF2F2; }
+  .quick-cash button.due-all:hover { border-color: #B91C1C; }
+  .due-hint { font-size: 12.5px; font-weight: 700; color: #B91C1C; margin: -4px 0 6px; }
+  .due-hint:empty { display: none; }
   .pay-result { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
   .pr { border-radius: 14px; padding: 10px 12px; background: var(--p-soft); }
   .pr small { display: block; font-size: 12px; font-weight: 700; color: var(--p-muted); }
@@ -332,6 +336,7 @@
         <div class="pr due"><small>বাকি</small><b id="r-due">৳0</b></div>
       </div>
       <label class="check-row" id="due-check-row"><input type="checkbox" id="allow-due"> বাকি রাখুন (কাস্টমার পরে দেবেন)</label>
+      <div class="due-hint" id="due-hint"></div>
       <div class="due-box" id="due-box">
         <div style="font-size:13px;font-weight:700;color:#991B1B;">বাকি রাখতে কাস্টমারের নাম আর মোবাইল লাগবে</div>
         <div class="row2">
@@ -756,14 +761,16 @@ function renderQuickCash() {
   const opts = [exact];
   [10, 50, 100, 500, 1000].forEach(step => { const v = Math.ceil(taka / step) * step; if (v > exact) opts.push(v); });
   const uniq = [...new Set(opts)].slice(0, 5);
-  $('quick-cash').innerHTML = uniq.map((v, i) => `<button type="button" data-cash="${v}">${i === 0 ? 'ঠিক ' : ''}৳${v.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</button>`).join('');
+  $('quick-cash').innerHTML = uniq.map((v, i) => `<button type="button" data-cash="${v}">${i === 0 ? 'ঠিক ' : ''}৳${v.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</button>`).join('')
+    + (payLines.length === 1 ? '<button type="button" class="due-all" data-due-all="1">পুরোটা বাকি</button>' : '');
 }
 function payCalc() {
   let cashGiven = 0, nonCash = 0;
   const single = payLines.length === 1;
   payLines.forEach(l => {
     let a = cents(bnDigits(l.amount));
-    if (single && l.amount === '') a = payTotal;          // খালি = পুরো বিল
+    // খালি = পুরো বিল পাওয়া; কিন্তু "বাকি রাখুন" টিক দিলে খালি = কিছুই পাওয়া যায়নি (পুরোটা বাকি)
+    if (single && l.amount === '') a = $('allow-due').checked ? 0 : payTotal;
     if (l.method === 'cash') cashGiven += a; else nonCash += a;
   });
   const cashApplied = Math.min(cashGiven, Math.max(payTotal - nonCash, 0));
@@ -773,8 +780,11 @@ function payCalc() {
 function updatePayResult() {
   const r = payCalc();
   $('r-paid').textContent = fmt(r.paid); $('r-change').textContent = fmt(r.change); $('r-due').textContent = fmt(r.due);
-  $('due-check-row').style.display = r.due > 0 ? '' : 'none';
-  if (r.due <= 0) { $('allow-due').checked = false; $('due-box').classList.remove('show'); }
+  // বাকির অপশন সবসময় দেখা যায় (আগে টাকার অঙ্ক না লিখলে লুকিয়ে থাকত)
+  const emptyAmount = payLines.length === 1 && payLines[0].amount === '';
+  if (r.due <= 0 && !emptyAmount) { $('allow-due').checked = false; $('due-box').classList.remove('show'); }
+  $('due-hint').textContent = $('allow-due').checked && emptyAmount
+    ? `পুরো ${fmt(payTotal)} বাকি — কিছু টাকা দিলে উপরে লিখুন` : '';
   const ok = r.due <= 0 || $('allow-due').checked;
   $('btn-confirm').disabled = !ok || r.nonCash > payTotal;
   $('btn-confirm').innerHTML = r.due > 0 && ok ? `বাকিতে বিক্রি (${fmt(r.due)} বাকি) <span class="kbd">Enter</span>` : 'বিক্রি সম্পন্ন <span class="kbd">Enter</span>';
@@ -795,6 +805,12 @@ $('pay-lines').addEventListener('click', e => {
   payLines.splice(Number(e.target.closest('.pl').dataset.i), 1); renderPayLines();
 });
 $('quick-cash').addEventListener('click', e => {
+  if (e.target.closest('[data-due-all]')) {
+    payLines[0].amount = ''; $('allow-due').checked = true; $('due-box').classList.add('show');
+    renderPayLines();
+    if (!$('due-phone').value) $('due-phone').focus();
+    return;
+  }
   const b = e.target.closest('[data-cash]'); if (!b) return;
   const l = payLines.find(x => x.method === 'cash'); l.amount = b.dataset.cash; renderPayLines();
 });
@@ -815,8 +831,9 @@ async function confirmSale() {
   if (busy || $('btn-confirm').disabled) return;
   const r = payCalc(), single = payLines.length === 1;
   const payments = payLines.map(l => {
-    const empty = single && l.amount === '';
-    return { method: l.method, amount: empty ? payTotal / 100 : (Number(bnDigits(l.amount)) || 0), reference: l.ref, full: single && (empty || cents(bnDigits(l.amount)) >= payTotal) };
+    const empty = single && l.amount === '', dueAll = empty && $('allow-due').checked;
+    return { method: l.method, amount: dueAll ? 0 : (empty ? payTotal / 100 : (Number(bnDigits(l.amount)) || 0)), reference: l.ref,
+             full: single && !dueAll && (empty || cents(bnDigits(l.amount)) >= payTotal) };
   });
   const allowDue = r.due > 0 && $('allow-due').checked;
   const phone = allowDue ? $('due-phone').value : $('cust-phone').value;
