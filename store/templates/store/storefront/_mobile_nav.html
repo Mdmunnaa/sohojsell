@@ -2,6 +2,8 @@
 মোবাইলের নিচের মেনু (বাংলাদেশের পরিচিত অনলাইন শপের মতো): ক্যাটাগরি · WhatsApp · হোম (মাঝে উঁচু গোল) · সব প্রোডাক্ট · কল।
 সাথে ডান পাশে ভাসমান কার্ট (কয়টা পণ্য, মোট কত) আর WhatsApp বাটন, আর ক্যাটাগরির তালিকা নিচ থেকে খোলে।
 হোম আর প্রোডাক্ট পাতা দুটোতেই বসে; লাগে: shop, categories। কার্টের সংখ্যা _cart_checkout.html-এর renderCart() বসায়।
+ক্যাটাগরির তালিকা (openCats()) হোমের "সব ক্যাটাগরি" বাটন আর কম্পিউটারের প্রোডাক্ট পাতার হেডার থেকেও খোলে:
+ফোনে নিচ থেকে ওঠে, কম্পিউটারে মাঝখানে দুই কলামে। ৮টার বেশি ক্যাটাগরি হলে উপরে খোঁজার ঘর, পাশে কয়টা প্রোডাক্ট।
 {% endcomment %}
 <style>
 .sf-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 990; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: end; background: #fff; border-top: 1px solid #E5E7EB; box-shadow: 0 -6px 24px rgba(15, 23, 42, .08); padding: 0 4px env(safe-area-inset-bottom); }
@@ -24,16 +26,28 @@
 
 .cat-sheet-bg { position: fixed; inset: 0; z-index: 9990; background: rgba(15, 23, 42, .55); opacity: 0; transition: opacity .2s; }
 .cat-sheet-bg.show { opacity: 1; }
-.cat-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9991; max-height: 78vh; overflow-y: auto; background: #fff; border-radius: 22px 22px 0 0; padding: 8px 0 calc(16px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform .25s cubic-bezier(.25, 1, .5, 1); }
+.cat-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9991; display: flex; flex-direction: column; max-height: 82vh; max-height: 82dvh; overflow: hidden; background: #fff; border-radius: 22px 22px 0 0; padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform .25s cubic-bezier(.25, 1, .5, 1); }
 .cat-sheet.show { transform: none; }
 .cat-sheet[hidden], .cat-sheet-bg[hidden] { display: none; }
-.cs-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px 12px; border-bottom: 1px solid #F1F5F9; }
+.cs-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 20px 12px; border-bottom: 1px solid #F1F5F9; }
 .cs-head b { font-size: 18px; font-weight: 800; color: var(--dark); }
-.cs-x { width: 38px; height: 38px; border-radius: 50%; border: 0; background: #F1F5F9; color: var(--dark); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.cs-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 20px; color: var(--dark); text-decoration: none; font-size: 16px; font-weight: 700; border-bottom: 1px solid #F8FAFC; }
-.cs-link i { color: #94A3B8; font-size: 14px; }
+.cs-head .cs-total { font-size: 13px; font-weight: 700; color: var(--muted); margin-right: auto; }
+.cs-x { flex: none; width: 38px; height: 38px; border-radius: 50%; border: 0; background: #F1F5F9; color: var(--dark); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.cs-find { flex: none; position: relative; margin: 12px 16px 4px; }
+.cs-find i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94A3B8; font-size: 15px; pointer-events: none; }
+.cs-find input { width: 100%; padding: 11px 14px 11px 40px; border: 1.5px solid var(--border); border-radius: 12px; background: #F8FAFC; font-size: 15px; font-weight: 600; color: var(--dark); outline: none; }
+.cs-find input:focus { border-color: var(--orange); background: #fff; }
+.cs-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.cs-link { display: flex; align-items: center; gap: 10px; padding: 14px 20px; color: var(--dark); text-decoration: none; font-size: 16px; font-weight: 700; border-bottom: 1px solid #F8FAFC; }
+.cs-link[hidden] { display: none; }
+.cs-name { flex: 1; min-width: 0; }
+.cs-n { flex: none; min-width: 28px; padding: 2px 9px; border-radius: 999px; background: #F1F5F9; color: var(--muted); font-size: 12.5px; font-weight: 800; text-align: center; }
+.cs-link i { flex: none; color: #94A3B8; font-size: 14px; }
 .cs-link.on { color: var(--orange-dark); }
-.cs-link.muted { color: var(--muted); font-weight: 600; }
+.cs-link.on .cs-n { background: var(--orange-light); color: var(--orange-dark); }
+.cs-link.muted { flex: none; color: var(--muted); font-weight: 600; border-top: 1px solid #F1F5F9; border-bottom: 0; }
+.cs-empty { padding: 26px 20px; text-align: center; color: var(--muted); font-weight: 600; font-size: 14px; margin: 0; }
+.cs-empty[hidden] { display: none; }
 
 @media (max-width: 767.98px) {
   body { padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important; }
@@ -44,8 +58,13 @@
   .fcart { bottom: 24px; }
   .wa-fab { right: 24px; bottom: 24px; }
   .fcart:not([hidden]) ~ .wa-fab { bottom: 132px; }
-  .cat-sheet { left: 50%; right: auto; width: 440px; transform: translate(-50%, 100%); }
-  .cat-sheet.show { transform: translate(-50%, 0); }
+  /* কম্পিউটারে: মাঝখানে একটা জানালা, দুই কলামে */
+  .cat-sheet { left: 50%; right: auto; top: 50%; bottom: auto; width: min(660px, calc(100vw - 48px)); max-height: 80vh; border-radius: 22px; padding-bottom: 8px; opacity: 0; transform: translate(-50%, -46%); transition: transform .2s, opacity .2s; box-shadow: 0 30px 60px -20px rgba(15, 23, 42, .45); }
+  .cat-sheet.show { opacity: 1; transform: translate(-50%, -50%); }
+  .cs-list { display: grid; grid-template-columns: 1fr 1fr; align-content: start; column-gap: 6px; padding: 8px 12px; }
+  .cs-link { border-bottom: 0; border-radius: 12px; padding: 12px 14px; font-size: 15px; }
+  .cs-link:hover { background: var(--orange-light); }
+  .cs-link.muted { margin: 0 12px; border-radius: 0; }
 }
 {% if shop.design == 'bold' %}
 .sf-nav { background: var(--dark); border-top: 0; }
@@ -88,12 +107,18 @@
 
 <div class="cat-sheet-bg" id="catSheetBg" hidden onclick="closeCats()"></div>
 <div class="cat-sheet" id="catSheet" role="dialog" aria-modal="true" aria-labelledby="catSheetTitle" hidden>
-  <div class="cs-head"><b id="catSheetTitle">{% t "ক্যাটাগরি" %}</b><button type="button" class="cs-x" onclick="closeCats()" aria-label="{% t "বন্ধ করুন" %}"><i class="bi bi-x-lg"></i></button></div>
-  <a class="cs-link{% if not category and not product %} on{% endif %}" href="{% shop_url 'storefront_home' shop %}#products">{% t "সব প্রোডাক্ট" %}<i class="bi bi-chevron-right"></i></a>
-  {% for cat in categories %}
-  <a class="cs-link{% if category.id == cat.id or product.category_id == cat.id %} on{% endif %}" href="{% shop_url 'storefront_category' shop cat.id %}">{{ cat.name }}<i class="bi bi-chevron-right"></i></a>
-  {% endfor %}
-  <a class="cs-link muted" href="{% shop_url 'storefront_track' shop %}">{% t "অর্ডার ট্র্যাক করুন" %}<i class="bi bi-truck"></i></a>
+  <div class="cs-head"><b id="catSheetTitle">{% t "সব ক্যাটাগরি" %}</b>{% if categories %}<span class="cs-total">({% num categories|length %})</span>{% endif %}<button type="button" class="cs-x" onclick="closeCats()" aria-label="{% t "বন্ধ করুন" %}"><i class="bi bi-x-lg"></i></button></div>
+  {% if categories|length > 8 %}
+  <div class="cs-find"><i class="bi bi-search" aria-hidden="true"></i><input type="search" id="catFind" placeholder="{% t "ক্যাটাগরি খুঁজুন..." %}" aria-label="{% t "ক্যাটাগরি খুঁজুন" %}" autocomplete="off"></div>
+  {% endif %}
+  <div class="cs-list">
+    <a class="cs-link{% if not category and not product %} on{% endif %}" href="{% shop_url 'storefront_home' shop %}#products"><span class="cs-name">{% t "সব প্রোডাক্ট" %}</span><i class="bi bi-chevron-right"></i></a>
+    {% for cat in categories %}
+    <a class="cs-link{% if category.id == cat.id or product.category_id == cat.id %} on{% endif %}" href="{% shop_url 'storefront_category' shop cat.id %}" data-name="{{ cat.name|lower }}"><span class="cs-name">{{ cat.name }}</span>{% if cat.n %}<span class="cs-n">{% num cat.n %}</span>{% endif %}<i class="bi bi-chevron-right"></i></a>
+    {% endfor %}
+    <p class="cs-empty" id="catEmpty" hidden>{% t "এই নামে কোনো ক্যাটাগরি নেই" %}</p>
+  </div>
+  <a class="cs-link muted" href="{% shop_url 'storefront_track' shop %}"><span class="cs-name">{% t "অর্ডার ট্র্যাক করুন" %}</span><i class="bi bi-truck"></i></a>
 </div>
 <script>
 (function () {
@@ -110,6 +135,17 @@
     setTimeout(function () { sheet.hidden = true; bg.hidden = true; }, 250);
   };
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !sheet.hidden) closeCats(); });
+  {# অনেক ক্যাটাগরি হলে নাম লিখে খোঁজা #}
+  var find = document.getElementById('catFind'), empty = document.getElementById('catEmpty');
+  if (find) find.addEventListener('input', function () {
+    var q = find.value.trim().toLowerCase(), shown = 0;
+    sheet.querySelectorAll('.cs-list .cs-link[data-name]').forEach(function (a) {
+      var ok = !q || a.getAttribute('data-name').indexOf(q) !== -1;
+      a.hidden = !ok; if (ok) shown++;
+    });
+    var all = sheet.querySelector('.cs-list .cs-link:not([data-name])'); if (all) all.hidden = !!q;
+    empty.hidden = shown > 0;
+  });
   {# ভাসমান কার্ট: renderCart() প্রতিবার এটা ডাকে #}
   window.renderFloatCart = function (count, subtotal) {
     var box = document.getElementById('float-cart'); if (!box) return;

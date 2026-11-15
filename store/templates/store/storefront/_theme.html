@@ -15,9 +15,12 @@ body { background: #fff; }
 .search-input { border-radius: 4px; background: #fff; }
 .cart-top-btn, .checkout-btn, .place-order-btn, .btn-buy, .desk-btn-buy, .desk-cart-btn, .tk-btn { border-radius: 4px; background: var(--dark); box-shadow: none; }
 .desk-btn-add { border-radius: 4px; }
+.desk-search input, .desk-cats-btn { border-radius: 4px; }
 .cart-top-btn:hover, .checkout-btn:hover, .place-order-btn:hover, .desk-btn-buy:hover { transform: none; background: var(--orange); }
 .cat-chip { border-radius: 4px; background: #fff; border: 1px solid var(--border); color: var(--dark); }
 .cat-chip.active, .cat-chip:hover { background: var(--dark); color: #fff; box-shadow: none; }
+.cat-all { border-radius: 4px; border-color: var(--dark); color: var(--dark); }
+.cat-all:hover { background: #F6F6F7; }
 .banner-slider { border-radius: 0; margin: 0; box-shadow: none; }
 .banner-slide img { height: 240px; }
 .flash-sale-wrap { border-radius: 0; margin: 16px 0 0; box-shadow: none; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
@@ -47,7 +50,7 @@ body { background: #fff; }
 .desk-btn-add { background: #fff; color: var(--dark); border: 1.5px solid var(--dark); }
 .wa-order, .qty-step, .pd-rate { border-radius: 4px; }
 .announce-bar { background: var(--dark); }
-@media (min-width: 768px) { .product-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 28px 20px; } .prod-img-wrap { height: 300px; } .banner-slider { margin: 0 auto; } .banner-slide img { height: 380px; } }
+@media (min-width: 768px) { .product-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 28px 20px; } .prod-img-wrap { height: 300px; } .banner-slider { margin: 0 auto; } .flash-sale-wrap { margin: 16px auto 0; } .banner-slide img { height: 380px; } }
 {% elif d == 'bold' %}
 {# বোল্ড: রঙিন হেডার, বড় বাটন, মোটা অক্ষর #}
 :root { --bg: #F4F5F9; --glass: {{ t.primary }}; }
@@ -62,7 +65,9 @@ body { background: #fff; }
 .search-form i { color: rgba(255,255,255,.85); }
 .search-input:focus ~ i, .search-form:focus-within i { color: var(--muted); }
 .cart-top-btn { background: #fff; color: var(--orange); border-radius: 999px; box-shadow: none; }
-.cat-bar { background: var(--orange-dark); border-top: 0; }
+.cat-wrap { background: var(--orange-dark); border-top: 0; }
+.cat-all { background: var(--dark); border-color: var(--dark); color: #fff; }
+.cat-all:hover { background: #000; }
 .cat-chip { background: rgba(255,255,255,.14); color: #fff; border-radius: 999px; }
 .cat-chip.active, .cat-chip:hover { background: #fff; color: var(--orange-dark); box-shadow: none; }
 .announce-bar { background: var(--dark); }
@@ -88,6 +93,13 @@ body { background: #fff; }
 .desk-store-link, .desk-header .mob-btn { color: #fff; }
 .desk-store-logo { background: #fff; color: var(--orange); }
 .desk-cart-btn { background: #fff; color: var(--orange); }
+.desk-search input { border: 0; background: rgba(255,255,255,.18); color: #fff; border-radius: 999px; }
+.desk-search input::placeholder { color: rgba(255,255,255,.75); }
+.desk-search input:focus { background: #fff; color: var(--dark); }
+.desk-search i { color: rgba(255,255,255,.85); }
+.desk-search:focus-within i { color: var(--muted); }
+.desk-cats-btn { background: rgba(255,255,255,.14); border-color: transparent; color: #fff; border-radius: 999px; }
+.desk-cats-btn:hover { background: #fff; color: var(--orange-dark); }
 .tk-top { background: var(--orange); border-bottom: 0; }
 .tk-shop, .tk-shop small, .tk-home { color: #fff; }
 .var-chip.on { background: var(--orange); border-color: var(--orange); }
@@ -107,8 +119,10 @@ body { background: var(--orange-light); }
 .search-input:focus { background: #fff; }
 .cart-top-btn, .checkout-btn, .place-order-btn, .btn-buy, .desk-btn-buy, .desk-cart-btn, .tk-btn { border-radius: 999px; }
 .desk-btn-add { border-radius: 999px; }
+.desk-search input, .desk-cats-btn { border-radius: 999px; }
 .cat-chip { border-radius: 999px; background: #fff; color: var(--orange-dark); border: 1px solid var(--border); }
 .cat-chip.active, .cat-chip:hover { background: var(--orange); color: #fff; }
+.cat-all { border-radius: 999px; }
 .banner-slider { border-radius: 28px; }
 .flash-sale-wrap { border-radius: 28px; }
 .prod-card, .rel-card, .info-card, .delivery-card, .desc-card, .related-section, .trust-badges, .tk-card { border-radius: 26px; border: 0; }

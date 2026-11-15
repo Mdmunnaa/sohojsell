@@ -1133,9 +1133,11 @@ def storefront_home(request, shop_slug, category_id=None):
 
 
 def _storefront_categories(shop):
-    """যেসব ক্যাটাগরিতে বিক্রির মতো প্রোডাক্ট আছে — ওয়েবসাইটের ক্যাটাগরি বার আর নিচের মেনুর তালিকা।"""
-    return list(Category.objects.filter(shop=shop, product__is_active=True, product__stock_quantity__gt=0)
-                .distinct().order_by('name'))
+    """যেসব ক্যাটাগরিতে বিক্রির মতো প্রোডাক্ট আছে — ওয়েবসাইটের ক্যাটাগরি বার আর "সব ক্যাটাগরি" তালিকা।
+    প্রতিটার .n = কয়টা প্রোডাক্ট কেনা যায় (তালিকায় নামের পাশে দেখায়)।"""
+    on_sale = Q(product__is_active=True, product__stock_quantity__gt=0)
+    return list(Category.objects.filter(shop=shop).annotate(n=Count('product', filter=on_sale))
+                .filter(n__gt=0).order_by('name'))
 
 
 @ensure_csrf_cookie

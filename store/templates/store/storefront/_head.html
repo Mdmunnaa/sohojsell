@@ -36,4 +36,11 @@
   body, button, input, select, textarea { font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; }
   /* ফোনে ঘর ১৬px-এর ছোট হলে iPhone নিজে থেকে জুম করে ফেলে */
   @media (max-width: 767px) { input, select, textarea { font-size: 16px !important; } }
+  /* বিবরণ/নামে লম্বা লিংক (ফেসবুক, ইউটিউব), #হ্যাশট্যাগ বা ===== থাকলে ঘরের বাইরে গিয়ে পুরো পাতা চওড়া করে দিত —
+     ফোনে পাতা ছোট হয়ে/পাশে সরে "ভেঙে" যেত। এখন লম্বা শব্দ ঘরের মধ্যে ভেঙে পরের লাইনে যায়। */
+  body { overflow-wrap: break-word; }
+  .pd-title, .desc-text, .rv-text, .prod-title, .flash-name, .rel-name, .ci-name, .cat-hero h1, .shop-name-sf,
+  .announce-bar, .site-footer, .modal-body, .cs-name, .var-chip, .lp-desc, .lp-h1, .rv-name { overflow-wrap: anywhere; }
+  /* তবুও কিছু বাইরে গেলে পাতা পাশে সরবে না (sticky হেডার ঠিক থাকে, তাই hidden নয়) */
+  @supports (overflow: clip) { html, body { overflow-x: clip; } }
 </style>

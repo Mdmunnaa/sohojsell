@@ -92,6 +92,8 @@
   .qp-state { font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: #F1F5F9; color: #64748B; white-space: nowrap; }
   .qp-switch:has(input:checked) .qp-state { background: #DCFCE7; color: #15803D; }
   .qp-switch .form-switch { padding-left: 2.9em; min-height: 0; flex-shrink: 0; }
+  .sold-switch { padding-left: 16px; }
+  .sold-switch .form-check-input { float: none; margin: 0; flex: none; width: 2.6em; height: 1.4em; }
   .qp-switch .form-check-input { width: 2.9em; height: 1.55em; cursor: pointer; margin-top: 0; }
   .qp-switch .form-check-input:checked { background-color: #16A34A; border-color: #16A34A; }
   .qp-off { display: flex; gap: 10px; align-items: center; margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: #F8FAFC; border: 1px dashed #CBD5E1; font-size: 13.5px; color: #475569; }
@@ -320,7 +322,8 @@
           <div class="ws-help">কোনো ব্যানার না থাকলে দোকানের নামের নিচে দেখাবে।</div>
         </div>
         <div class="col-12">
-          <div class="form-check form-switch ws-card d-flex align-items-center gap-3 m-0" style="padding-left:16px;">
+          {# সুইচটা আগে কার্ডের বাম কিনারার বাইরে ঝুলে থাকত (Bootstrap-এর ঋণাত্মক margin) — sold-switch সেটা মুছে দেয় #}
+          <div class="form-check form-switch ws-card sold-switch d-flex align-items-center gap-3 m-0">
             {{ design_form.show_sold_count }}
             <label class="form-check-label" for="{{ design_form.show_sold_count.id_for_label }}">
               <b style="font-size:14px;">প্রোডাক্টের নিচে "কয়টা বিক্রি হয়েছে" দেখান</b>

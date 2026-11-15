@@ -3960,6 +3960,65 @@ class StorefrontMobileNavTests(TestCase):
         html = self.client.get(f'/shop/navshop/product/{self.product.id}/').content.decode()
         self.assertIn('Order Now', html)
         self.assertIn('Categories', html)
+        self.assertIn('All categories', html)
+
+    def _many_categories(self, count):
+        from .models import Category, Product
+        for i in range(count):
+            cat = Category.objects.create(shop=self.shop, name=f'ক্যাটাগরি {i:02d}')
+            Product.objects.create(shop=self.shop, name=f'পণ্য {i}', price=100, stock_quantity=2, category=cat)
+
+    def test_all_categories_button_opens_full_list(self):
+        # অনেক ক্যাটাগরি হলে চিপের সারিতে সবগুলো ধরে না — "সব ক্যাটাগরি" বাটনে পুরো তালিকা, খোঁজার ঘরসহ
+        self._many_categories(20)
+        for design in ('classic', 'minimal', 'bold', 'soft'):
+            Shop.objects.filter(pk=self.shop.pk).update(storefront_design=design)
+            home = self.client.get('/shop/navshop/').content.decode()
+            self.assertIn('class="cat-all" onclick="openCats()"', home)
+            self.assertIn('id="catFind"', home)
+            self.assertEqual(home.count('class="cs-link'), 21 + 2)          # সব প্রোডাক্ট + ২১টা + ট্র্যাক
+            product = self.client.get(f'/shop/navshop/product/{self.product.id}/').content.decode()
+            self.assertIn('class="desk-cats-btn" onclick="openCats()"', product)
+            self.assertIn('class="desk-search"', product)
+
+    def test_category_list_shows_product_count_and_hides_empty(self):
+        from .models import Category, Product
+        Product.objects.create(shop=self.shop, name='স্যান্ডেল', price=500, stock_quantity=4, category=self.cat)
+        Product.objects.create(shop=self.shop, name='বুট', price=500, stock_quantity=0, category=self.cat)      # স্টক নেই
+        Product.objects.create(shop=self.shop, name='লোফার', price=500, stock_quantity=3, category=self.cat, is_active=False)
+        empty = Category.objects.create(shop=self.shop, name='খালি ক্যাটাগরি')
+        html = self.client.get('/shop/navshop/').content.decode()
+        self.assertIn('<span class="cs-name">জুতা</span><span class="cs-n">২</span>', html)
+        self.assertNotIn(f'/shop/navshop/category/{empty.id}/', html)
+        self.assertNotIn('id="catFind"', html)                              # অল্প ক্যাটাগরিতে খোঁজার ঘর লাগে না
+
+    def test_no_category_button_without_categories(self):
+        from .models import Product
+        Product.objects.filter(shop=self.shop).update(category=None)
+        self.assertNotIn('class="cat-all"', self.client.get('/shop/navshop/').content.decode())
+
+    def test_long_text_cannot_widen_the_page(self):
+        # বিবরণে লম্বা ফেসবুক লিংক/হ্যাশট্যাগ থাকলে পুরো পাতা চওড়া হয়ে ফোনে "ভেঙে" যেত
+        for url in ('/shop/navshop/', f'/shop/navshop/product/{self.product.id}/', '/shop/navshop/track/'):
+            html = self.client.get(url).content.decode()
+            self.assertIn('body { overflow-wrap: break-word; }', html)
+            self.assertIn('.pd-title, .desc-text, .rv-text, .prod-title', html)
+            self.assertIn('@supports (overflow: clip) { html, body { overflow-x: clip; } }', html)
+
+    def test_long_shop_name_keeps_search_usable(self):
+        Shop.objects.filter(pk=self.shop.pk).update(name='রূপকথা ফ্যাশন হাউস অ্যান্ড বুটিক কালেকশন সাভার শাখা')
+        html = self.client.get('/shop/navshop/').content.decode()
+        self.assertIn('<div class="shop-id">', html)
+        self.assertIn('.search-form { flex: 1 1 150px; min-width: 120px;', html)
+
+    def test_design_specific_layout_fixes(self):
+        Shop.objects.filter(pk=self.shop.pk).update(storefront_design='bold')
+        html = self.client.get('/shop/navshop/').content.decode()
+        self.assertIn('.cat-wrap { background: var(--orange-dark); border-top: 0; }', html)   # পুরো চওড়া পট্টি
+        self.assertNotIn('.cat-bar { background: var(--orange-dark)', html)
+        Shop.objects.filter(pk=self.shop.pk).update(storefront_design='minimal')
+        html = self.client.get('/shop/navshop/').content.decode()
+        self.assertIn('.flash-sale-wrap { margin: 16px auto 0; }', html)                      # "ছাড় চলছে" মাঝখানে
 
 
 class ReviewFormLookTests(TestCase):

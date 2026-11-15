@@ -26,7 +26,17 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 
 /* DESKTOP HEADER */
 .desk-header { display: none; position: sticky; top: 0; background: var(--glass); backdrop-filter: blur(12px); padding: 0 24px; box-shadow: var(--shadow-sm); z-index: 100; height: 70px; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.3); }
-.desk-store-link { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--dark); font-weight: 900; font-size: 18px; letter-spacing: -0.5px; }
+.desk-store-link { display: flex; align-items: center; gap: 12px; flex: 0 1 auto; min-width: 0; text-decoration: none; color: var(--dark); font-weight: 900; font-size: 18px; letter-spacing: -0.5px; }
+.desk-store-link > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* কম্পিউটারে প্রোডাক্ট পাতা থেকেও খোঁজা আর ক্যাটাগরিতে যাওয়া যায় (আগে শুধু লোগো আর কার্ট ছিল) */
+.desk-search { flex: 1 1 260px; max-width: 520px; position: relative; margin: 0 24px; }
+.desk-search i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94A3B8; font-size: 15px; pointer-events: none; }
+.desk-search input { width: 100%; padding: 10px 14px 10px 38px; border: 1.5px solid var(--border); border-radius: 12px; background: #F8FAFC; font-size: 14px; font-weight: 500; color: var(--dark); outline: none; }
+.desk-search input:focus { border-color: var(--orange); background: #fff; }
+.desk-actions { display: flex; align-items: center; gap: 10px; flex: none; }
+.desk-cats-btn { display: flex; align-items: center; gap: 8px; background: #fff; color: var(--dark); border: 1.5px solid var(--border); padding: 9px 16px; border-radius: 12px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.desk-cats-btn:hover { border-color: var(--orange); color: var(--orange-dark); }
+.announce-bar { background: var(--orange); color: #fff; text-align: center; font-size: 13px; font-weight: 700; padding: 8px 16px; line-height: 1.4; }
 .desk-store-logo { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; overflow: hidden; }
 .desk-store-logo img { width: 100%; height: 100%; object-fit: cover; }
 .desk-cart-btn { display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); color: #fff; border: none; padding: 10px 24px; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif; transition: 0.2s; position: relative; box-shadow: 0 4px 12px rgba(var(--orange-rgb),0.25); }
@@ -122,7 +132,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .rv-box { display: flex; align-items: center; gap: 10px; background: #fff; border: 1.5px solid #E2E8F0; border-radius: 14px; padding: 0 14px; transition: border-color .15s, box-shadow .15s; }
 .rv-box:focus-within { border-color: var(--orange); box-shadow: 0 0 0 4px rgba(var(--orange-rgb), .12); }
 .rv-box > i { color: #94A3B8; font-size: 17px; }
-.rv-box input, .rv-box textarea { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; padding: 14px 0; font-size: 15.5px; font-weight: 600; color: var(--dark); font-family: inherit; }
+.rv-box input, .rv-box textarea { flex: 1; min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; padding: 14px 0; font-size: 15.5px; font-weight: 600; color: var(--dark); font-family: inherit; }
 .rv-box textarea { min-height: 104px; resize: vertical; line-height: 1.6; padding-top: 12px; }
 .rv-box.area { align-items: flex-start; }
 .rv-box.area > i { margin-top: 15px; }
@@ -146,7 +156,9 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 .rv-submit:active { transform: scale(.98); }
 .rv-submit:disabled { opacity: .7; cursor: wait; }
 .rv-note { margin: 10px 0 0; text-align: center; font-size: 12px; color: var(--muted); font-weight: 600; }
-@media (min-width: 560px) { .rv-grid { grid-template-columns: 1fr 1fr; } .rv-form { padding: 24px 22px 20px; } }
+@media (min-width: 560px) { .rv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rv-form { padding: 24px 22px 20px; } }
+/* ট্যাবলেট/ছোট ল্যাপটপে রিভিউ ফর্ম ডান কলামে সরু — নাম আর মোবাইলের ঘর পাশাপাশি না রেখে নিচে নিচে (আগে ঘর দুটো কলামের বাইরে চলে যেত) */
+@media (min-width: 768px) and (max-width: 1099px) { .rv-grid { grid-template-columns: minmax(0, 1fr); } }
 .rv-msg { border-radius: 12px; padding: 11px 13px; font-size: 13.5px; font-weight: 700; margin-bottom: 12px; }
 .rv-msg.ok { background: #ECFDF5; color: #065F46; }
 .rv-msg.bad { background: #FEF2F2; color: #991B1B; }
@@ -340,7 +352,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 </head>
 <body>
 
-{% if shop.announcement_text %}<div style="background:var(--orange);color:#fff;text-align:center;font-size:13px;font-weight:700;padding:8px 16px;line-height:1.4;">{{ shop.announcement_text }}</div>{% endif %}
+{% if shop.announcement_text %}<div class="announce-bar">{{ shop.announcement_text }}</div>{% endif %}
 
 
 <!-- DESKTOP HEADER -->
@@ -351,9 +363,14 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
     {% else %}
       <div class="desk-store-logo">{{ shop.name|slice:":1"|upper }}</div>
     {% endif %}
-    {{ shop.name }}
+    <span>{{ shop.name }}</span>
   </a>
+  <form method="GET" action="{% shop_url 'storefront_home' shop %}" class="desk-search" role="search">
+    <i class="bi bi-search" aria-hidden="true"></i>
+    <input type="search" name="q" placeholder="{% t "প্রোডাক্ট খুঁজুন..." %}" aria-label="{% t "প্রোডাক্ট খুঁজুন" %}">
+  </form>
   <div class="desk-actions">
+    {% if categories %}<button type="button" class="desk-cats-btn" onclick="openCats()" aria-haspopup="dialog"><i class="bi bi-grid-fill" aria-hidden="true"></i> {% t "সব ক্যাটাগরি" %}</button>{% endif %}
     <button class="desk-cart-btn" onclick="openCart()">
       <i class="bi bi-cart3 fs-5"></i> {% t "কার্ট" %} <span id="desktop-cart-badge" style="display:none;background:var(--orange);color:#fff;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:800;">0</span>
     </button>
