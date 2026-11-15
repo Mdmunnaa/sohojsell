@@ -52,7 +52,8 @@
 
    **দেবেন না:** `DEBUG`, `PRIMARY_HOST`, `KEEP_WARM`, `PORT`, `WEB_CONCURRENCY`, `PYTHON_VERSION`, `DJANGO_SUPERUSER_*`, `RENDER…`।
 
-   সব দেওয়ার পর Deployments → সর্বশেষটা → **Redeploy** (নতুন Secrets কন্টেইনারে যায় নতুন deploy-এ)।
+   সব দেওয়ার পর নিচের **Deploy** চাপুন। Secrets বদলালে Worker নিজে থেকে নতুন Secrets নিয়ে নতুন কন্টেইনার চালু করে
+   (পুরনোটা ১৫ মিনিটে ঘুমায়) — আলাদা করে Redeploy লাগে না।
 
 4. ২–৩ মিনিট পর **https://cf.sellpunch.com** খুলুন। প্রথমবার Cloudflare সার্ভার বানাতে কয়েক মিনিট নেয়;
    "There is no Container instance available" দেখালে একটু পরে আবার দেখুন।

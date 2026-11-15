@@ -57,9 +57,23 @@ function passThroughHosts(vars: Record<string, unknown>): Set<string> {
 // wrangler.jsonc-এর triggers.crons-এর সাথে হুবহু মিলতে হবে
 const DAILY_CRON = '0 4 * * *'; // ০৪:০০ UTC = সকাল ১০টা বাংলাদেশ
 
+/**
+ * Secrets-এর একটা ছোট ছাপ (hash)। চালু কন্টেইনার পুরনো Secrets নিয়েই চলতে থাকে, তাই ড্যাশবোর্ডে কোনো Secret
+ * বদলালে নামটাও বদলে যায় → নতুন Secrets নিয়ে নতুন কন্টেইনার চালু হয়; পুরনোটা ট্রাফিক না পেয়ে ১৫ মিনিটে ঘুমায়।
+ */
+let envStamp: string | undefined;
+async function stampOf(env: Env): Promise<string> {
+	if (envStamp) return envStamp;
+	const vars = appEnv(env);
+	const text = JSON.stringify(Object.keys(vars).sort().map((name) => [name, vars[name]]));
+	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+	envStamp = [...new Uint8Array(digest)].slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('');
+	return envStamp;
+}
+
 /** সব ট্রাফিক একটা কন্টেইনারে। পরে বেশি লাগলে getRandom(env.APP, N) দিয়ে ভাগ করা যাবে। */
-function app(env: Env) {
-	return getContainer(env.APP, 'main');
+async function app(env: Env) {
+	return getContainer(env.APP, `main-${await stampOf(env)}`);
 }
 
 export default {
@@ -93,7 +107,7 @@ export default {
 			if (cached) return cached;
 		}
 
-		const response = await app(env).fetch(forwarded);
+		const response = await (await app(env)).fetch(forwarded);
 
 		if (cacheable && response.status === 200) {
 			ctx.waitUntil(caches.default.put(request, response.clone()));
@@ -112,7 +126,7 @@ export default {
 				return;
 			}
 			ctx.waitUntil(
-				app(env)
+				(await app(env))
 					.fetch(
 						new Request(`https://${host}/internal/cron/daily/`, {
 							method: 'POST',
@@ -126,7 +140,7 @@ export default {
 
 		if ((vars.KEEP_WARM ?? 'true') !== 'true') return;
 		ctx.waitUntil(
-			app(env)
+			(await app(env))
 				.fetch(new Request(`https://${host}/healthz/`, { headers: { 'X-Forwarded-Proto': 'https' } }))
 				.then((res) => res.body?.cancel()),
 		);

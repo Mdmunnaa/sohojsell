@@ -23,7 +23,7 @@
 			"image_build_context": "..",
 			// ১/২ vCPU, 4 GiB RAM, 8 GB ডিস্ক
 			"instance_type": "standard-1",
-			"max_instances": 2,
+			"max_instances": 3,   // Secret বদলালে ১৫ মিনিট পুরনো + নতুন দুটো একসাথে থাকে
 			// বাংলাদেশের কাছে (এশিয়া-প্যাসিফিক)। Neon ডাটাবেসও একই অঞ্চলে থাকা দরকার।
 			"constraints": { "regions": ["APAC"] }
 		}
