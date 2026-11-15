@@ -629,7 +629,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
       </div>
       {% endif %}
 
-      <div class="copyright">© {% now "Y" %} {{ shop.name }} · {% t "{site} দিয়ে তৈরি" site=site.name %}</div>
+      <div class="copyright">© {% now "Y" %} {{ shop.name }} · <a href="https://{{ site.store_domain }}/" class="made-by" style="color:inherit;text-decoration:underline;text-underline-offset:2px">{% t "{site} দিয়ে তৈরি" site=site.name %}</a></div>
     </footer>
 
   </div>

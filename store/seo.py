@@ -120,19 +120,95 @@ def main_robots_txt(request):
 
 
 def main_sitemap_xml(request):
-    """হোমপেজ (বাংলা + ইংরেজি, একে অপরের hreflang সহ) আর নীতিমালার পাতা।"""
+    """হোমপেজ, ফিচার আর ব্যবসার ধরনের পাতা (বাংলা + ইংরেজি, একে অপরের hreflang সহ) আর নীতিমালার পাতা।"""
     from django.urls import reverse
     from django.utils.html import escape
+    from . import marketing
     base = main_site_url(request)
-    home_bn, home_en = base + '/', base + reverse('landing_page_en')
-    alternates = ''.join(f'<xhtml:link rel="alternate" hreflang="{lang}" href="{escape(url)}"/>'
-                         for lang, url in (('bn', home_bn), ('en', home_en), ('x-default', home_bn)))
-    rows = [f'<url><loc>{escape(url)}</loc>{alternates}<changefreq>weekly</changefreq><priority>1.0</priority></url>'
-            for url in (home_bn, home_en)]
+
+    def pair(path_bn, path_en, freq, priority):
+        url_bn, url_en = base + path_bn, base + path_en
+        alternates = ''.join(f'<xhtml:link rel="alternate" hreflang="{lang}" href="{escape(url)}"/>'
+                             for lang, url in (('bn', url_bn), ('en', url_en), ('x-default', url_bn)))
+        return [f'<url><loc>{escape(url)}</loc>{alternates}<changefreq>{freq}</changefreq><priority>{priority}</priority></url>'
+                for url in (url_bn, url_en)]
+
+    rows = pair('/', reverse('landing_page_en'), 'weekly', '1.0')
+    rows += pair(reverse('mk_index'), reverse('mk_index_en'), 'weekly', '0.8')
+    for kind, page in marketing.all_pages():
+        name = 'mk_feature' if kind == 'feature' else 'mk_industry'
+        rows += pair(reverse(name, args=[page['slug']]), reverse(name + '_en', args=[page['slug']]), 'monthly', '0.8')
     rows += [f'<url><loc>{escape(base + reverse(name))}</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>'
              for name in MAIN_PUBLIC_PAGES]
     return ('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
             'xmlns:xhtml="http://www.w3.org/1999/xhtml">' + ''.join(rows) + '</urlset>')
+
+
+def main_llms_txt(request):
+    """
+    /llms.txt — ChatGPT, Claude, Perplexity-র মতো AI যেন SellPunch কী, দাম কত, কোন পাতায় কী আছে পরিষ্কার বোঝে
+    (Edumi-তে একটা কোচিং সেন্টার ChatGPT দেখে এসেছিল)। দাম আর লিমিট কোড থেকে, তাই কখনো পুরনো হয় না।
+    """
+    from django.conf import settings
+    from django.urls import reverse
+    from . import marketing
+    from .company import COMPANY
+    from .payments import PLAN_PRICES, PLAN_YEAR_PRICES
+    from .plans import PLAN_LIMITS
+    base = main_site_url(request)
+    site = getattr(settings, 'SITE_NAME', 'SellPunch')
+    lines = [
+        f'# {site}',
+        '',
+        f'> {site} is an all-in-one ecommerce website builder and POS software for small businesses and Facebook (F-commerce) '
+        'sellers in Bangladesh. A seller gets their own online store website in about 1 minute (shop name + web address + '
+        'mobile number + password, no code, no hosting), plus in-store POS billing, one-click Steadfast/Pathao/RedX courier '
+        'booking, customer SMS, a digital due book (baki khata) and profit reports. The seller dashboard is in Bangla; each '
+        'store can be shown to customers in Bangla or English.',
+        '',
+        f'{site} is a product of {COMPANY["name_en"]}, a registered business in Bangladesh '
+        f'(trade licence ID {COMPANY["licence_id"]}).',
+        '',
+        '## Key facts',
+        '- Website live in about 1 minute after sign-up, at yourshop.' + (getattr(settings, 'STORE_BASE_DOMAIN', '') or 'sellpunch.com')
+        + '; own domain (www.yourshop.com) on Premium.',
+        '- 30-day free trial with every feature; no card needed.',
+        '- Payments: cash on delivery, or bKash / Nagad / card advance through the PayStation gateway (optional per store).',
+        '- Couriers: Steadfast, Pathao and RedX — tested on live merchant accounts.',
+        '- Works in the phone browser; no app to install.',
+        '',
+        '## Pricing (BDT)',
+    ]
+    for key in ('Basic', 'Standard', 'Premium'):
+        limits = PLAN_LIMITS[key]
+        products = 'unlimited products' if limits['products'] is None else f"{limits['products']} products"
+        extras = [products, f"{limits['staff']} staff"]
+        if limits['facebook']:
+            extras.append('Facebook page connect')
+        if limits['custom_domain']:
+            extras.append('own domain')
+        lines.append(f"- {key}: {int(PLAN_PRICES[key])}/month or {int(PLAN_YEAR_PRICES[key])}/year — {', '.join(extras)}")
+    lines += ['', '## Features']
+    for page in marketing.FEATURES:
+        lines.append(f"- [{page['en']['nav']}]({base}{reverse('mk_feature_en', args=[page['slug']])}): {page['en']['description']}"
+                     f" (Bangla: {base}{reverse('mk_feature', args=[page['slug']])})")
+    lines += ['', '## Who it is for']
+    for page in marketing.INDUSTRIES:
+        lines.append(f"- [{page['en']['nav']}]({base}{reverse('mk_industry_en', args=[page['slug']])}): {page['en']['description']}")
+    lines += [
+        '', '## Pages',
+        f'- [Home (Bangla)]({base}/)', f"- [Home (English)]({base}{reverse('landing_page_en')})",
+        f"- [All features]({base}{reverse('mk_index_en')})", f"- [Sign up — 30 days free]({base}{reverse('signup')})",
+        f"- [About and trade licence]({base}{reverse('about')})", f"- [Security and data]({base}{reverse('security')})",
+        f"- [Terms]({base}{reverse('terms')})", f"- [Privacy policy]({base}{reverse('privacy_policy')})",
+        f"- [Refund policy]({base}{reverse('refund_policy')})",
+        '', '## Contact',
+    ]
+    for label, value in (('Phone', getattr(settings, 'SUPPORT_PHONE', '')), ('Email', getattr(settings, 'SUPPORT_EMAIL', '')),
+                         ('Address', COMPANY.get('address_en', ''))):
+        if value:
+            lines.append(f'- {label}: {value}')
+    return '\n'.join(lines) + '\n'
 
 
 def product_ld(request, shop, product, meta, rating=None):

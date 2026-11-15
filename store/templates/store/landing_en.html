@@ -4,9 +4,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ site.name }} — POS Software &amp; Online Store Builder for Bangladesh</title>
-<meta name="description" content="All-in-one POS software and e-commerce website builder for small businesses in Bangladesh. Online store, in-store billing, Steadfast/Pathao/RedX courier booking, SMS and profit reports. 30 days free.">
-<meta property="og:title" content="{{ site.name }} — POS Software &amp; Online Store Builder for Bangladesh">
+<title>{{ site.name }} — Ecommerce Website in 1 Minute, POS &amp; Courier | Bangladesh</title>
+<meta name="description" content="Create your ecommerce website in 1 minute — plus shop POS, Steadfast/Pathao/RedX courier booking, SMS, due book and profit reports for small businesses in Bangladesh. 30 days free, no card.">
+<meta property="og:title" content="{{ site.name }} — Ecommerce Website in 1 Minute, POS &amp; Courier | Bangladesh">
 <meta property="og:description" content="Online store, POS billing, courier booking, customer SMS, due tracking and profit reports — in one place. 30 days free, no card needed.">
 {% include 'store/partials/landing_seo.html' %}
 {% include 'store/partials/brand_head.html' %}
@@ -50,7 +50,7 @@
 <header class="hero">
   <div class="wrap hero-grid">
     <div>
-      <h1>The all-in-one <em>POS &amp; online store</em> software for Bangladesh</h1>
+      <h1>Your own <em>ecommerce website in 1 minute</em> — plus POS and full accounts for Bangladesh</h1>
       <p class="lead">Your own e-commerce website, a POS for your counter, one-click courier booking, customer SMS, due tracking and profit reports. Made for Facebook sellers and shop owners who are tired of juggling notebooks, Excel and inbox messages.</p>
       <div class="hero-cta">
         <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> Start {{ trial_days }} days free</a>
@@ -58,7 +58,7 @@
       </div>
       <div class="hero-notes">
         <span><i class="bi bi-check-circle-fill"></i> No card needed</span>
-        <span><i class="bi bi-check-circle-fill"></i> Set up in 5 minutes</span>
+        <span><i class="bi bi-check-circle-fill"></i> Website live in 1 minute</span>
         <span><i class="bi bi-check-circle-fill"></i> Runs on your phone</span>
       </div>
     </div>
@@ -131,7 +131,7 @@
     <div class="feat">
       <div class="feat-text">
         <span class="kicker">E-commerce website</span>
-        <h3>Your own online store in 5 minutes — no coding</h3>
+        <h3>Your own online store in 1 minute — no coding</h3>
         <p>Add product photos and prices and your store goes live at <b>yourshop.{{ site.store_domain }}</b>. Share the link on Facebook and customers place orders themselves.</p>
         <ul>
           <li><i class="ic red bi bi-palette-fill"></i><span><b>4 designs, 6 color themes</b> — or use your own brand color</span></li>
@@ -140,6 +140,7 @@
           <li><i class="ic blue bi bi-whatsapp"></i><span><b>WhatsApp ordering</b>, coupon codes, customer reviews, free-delivery threshold</span></li>
           <li><i class="ic amber bi bi-google"></i><span><b>Built-in SEO</b> — sitemap, product rich results and share previews, automatically</span></li>
         </ul>
+        <a href="{% url 'mk_feature_en' 'online-shop' %}" class="feat-link" style="margin-right:18px">More about the online store website <i class="bi bi-arrow-right"></i></a>
         <a href="{% url 'demo_store' %}" class="feat-link">See the demo store as a customer <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
@@ -164,6 +165,7 @@
           <li><i class="ic blue bi bi-printer"></i><span><b>Receipt printing</b> on POS printers or A4, plus barcode stickers</span></li>
           <li><i class="ic amber bi bi-people"></i><span><b>Staff accounts</b> — a cashier sees the POS, not your reports</span></li>
         </ul>
+        <a href="{% url 'mk_feature_en' 'pos-software' %}" class="feat-link">More about the POS software <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
         <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/pos</i></div><img src="{% static 'landing/pos.webp' %}" srcset="{% img_srcset 'landing/pos.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="POS screen (in Bangla) — products, bill and payment" width="1800" height="1125" loading="lazy"></div>
@@ -182,6 +184,7 @@
           <li><i class="ic blue bi bi-geo"></i><span><b>Order tracking page</b> — customers check where their order is</span></li>
           <li><i class="ic amber bi bi-shield-exclamation"></i><span><b>Fake order warning</b> — numbers that returned parcels before are flagged next to the order</span></li>
         </ul>
+        <a href="{% url 'mk_feature_en' 'courier-integration' %}" class="feat-link">More about courier booking <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
         <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/orders</i></div><img src="{% static 'landing/orders.webp' %}" srcset="{% img_srcset 'landing/orders.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="Order list (in Bangla) — status, courier and risk" width="1800" height="1125" loading="lazy"></div>
@@ -200,6 +203,7 @@
           <li><i class="ic blue bi bi-receipt"></i><span><b>Expenses and purchases</b> — rent, salaries, ad boosts; supplier dues</span></li>
           <li><i class="ic amber bi bi-file-earmark-excel"></i><span><b>Excel export</b> — orders, products, customers and expenses on separate sheets</span></li>
         </ul>
+        <a href="{% url 'mk_feature_en' 'accounting' %}" class="feat-link">More about shop accounting <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
         <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/reports</i></div><img src="{% static 'landing/reports.webp' %}" srcset="{% img_srcset 'landing/reports.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="Business reports (in Bangla) — sales, profit and expenses" width="1800" height="1125" loading="lazy"></div>
@@ -216,6 +220,7 @@
           <li><i class="ic green bi bi-send"></i><span><b>Reminder SMS</b> — to one customer or everyone, with their name and amount</span></li>
           <li><i class="ic blue bi bi-alarm"></i><span><b>Automatic reminders</b> every 7, 15 or 30 days, if you turn them on</span></li>
         </ul>
+        <a href="{% url 'mk_feature_en' 'due-book' %}" class="feat-link">More about the due book <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
         <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/dues</i></div><img src="{% static 'landing/dues.webp' %}" srcset="{% img_srcset 'landing/dues.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="Due book (in Bangla) — who owes how much, reminder SMS" width="1800" height="1125" loading="lazy"></div>
@@ -233,6 +238,7 @@
           <li><i class="ic blue bi bi-cart-x"></i><span><b>Abandoned checkouts</b> — numbers of customers who left without ordering, so you can call them</span></li>
           <li><i class="ic amber bi bi-layout-text-window"></i><span><b>Single-product landing pages</b> for Facebook ads, with views and orders counted</span></li>
         </ul>
+        <a href="{% url 'mk_feature_en' 'landing-page' %}" class="feat-link">More about landing pages <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
         <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/sms</i></div><img src="{% static 'landing/sms.webp' %}" srcset="{% img_srcset 'landing/sms.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="SMS panel (in Bangla) — send SMS to customers" width="1800" height="1125" loading="lazy"></div>
@@ -266,6 +272,23 @@
   </div>
 </section>
 
+<!-- ================= FOR (SEO পাতার লিংক — store/marketing.py) ================= -->
+<section id="for">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">Who it is for</span>
+      <h2>Made for your kind of business</h2>
+      <p>What helps clothing, cosmetics, gadget, grocery and book sellers — and home businesses.</p>
+    </div>
+    <div class="links">
+      {% for item in industry_links %}
+      <a class="lnk" href="{{ item.url }}"><span class="t"><i class="bi {{ item.icon }}"></i>{{ item.nav }}</span><p>{{ item.description|truncatechars:120 }}</p></a>
+      {% endfor %}
+    </div>
+    <p style="text-align:center;margin-top:26px"><a href="{{ features_url }}" class="feat-link" style="margin-top:0">See every feature in detail <i class="bi bi-arrow-right"></i></a></p>
+  </div>
+</section>
+
 <!-- ================= HOW ================= -->
 <section id="how" class="bg">
   <div class="wrap">
@@ -275,7 +298,7 @@
       <p>No technical skills needed. If you can use Facebook, you can use {{ site.name }}.</p>
     </div>
     <div class="steps">
-      <div class="step"><div class="n">1</div><h3>Sign up with your mobile number</h3><p>Enter your shop name and address. {{ trial_days }} days free — no card or bKash needed.</p></div>
+      <div class="step"><div class="n">1</div><h3>Enter a shop name and address — website in 1 minute</h3><p>Shop name, the web address you want, mobile number and password — that is it. {{ trial_days }} days free, no card or bKash needed.</p></div>
       <div class="step"><div class="n">2</div><h3>Add products and your logo</h3><p>Photos, prices, stock — and sizes or colors if you have them. A banner makes your store look even better.</p></div>
       <div class="step"><div class="n">3</div><h3>Share your link and start selling</h3><p>Put the store link on your Facebook Page and open the POS at your shop. You'll hear about every order on the dashboard and by SMS.</p></div>
     </div>
@@ -394,7 +417,7 @@
       </div>
       <div>
         <h3>Product</h3>
-        <div class="lk"><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="{% url 'demo_start' %}">Live demo</a><a href="{% url 'signup' %}">Start free</a><a href="{% url 'login' %}">Log in</a></div>
+        <div class="lk"><a href="{{ features_url }}">All features</a><a href="{% url 'mk_feature_en' 'online-shop' %}">Ecommerce website</a><a href="{% url 'mk_feature_en' 'pos-software' %}">POS software</a><a href="#pricing">Pricing</a><a href="{% url 'demo_start' %}">Live demo</a><a href="{% url 'signup' %}">Start free</a><a href="{% url 'login' %}">Log in</a></div>
       </div>
       <div>
         <h3>Contact</h3>

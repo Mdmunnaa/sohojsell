@@ -3439,7 +3439,7 @@ class HomepageSeoTests(TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
         self.assertIn('<html lang="en">', html)
-        self.assertIn('POS Software &amp; Online Store Builder for Bangladesh', html)
+        self.assertIn('Ecommerce Website in 1 Minute, POS &amp; Courier', html)
         self.assertIn('<link rel="canonical" href="http://testserver/en/">', html)
         self.assertIn('hreflang="bn" href="http://testserver/"', html)
         self.assertIn('hreflang="x-default" href="http://testserver/"', html)
@@ -4310,3 +4310,53 @@ class MetaDomainVerificationTests(TestCase):
             tag = '<meta name="facebook-domain-verification" content="7rh5vwevehlcj3rluhleivo9nd4n83">'
             self.assertIn(tag, html, url)
             self.assertLess(html.index(tag), html.index('</head>'), url)
+
+
+class MarketingPagesTests(TestCase):
+    """SEO পাতা (store/marketing.py): প্রতিটা পাতা খোলে, নিজের title/canonical/hreflang/schema, sitemap আর llms.txt-এ আছে।"""
+
+    def test_every_page_renders_with_seo_tags(self):
+        import json
+        import re
+        from . import marketing
+        urls = [reverse('mk_index'), reverse('mk_index_en')]
+        for kind, page in marketing.all_pages():
+            name = 'mk_feature' if kind == 'feature' else 'mk_industry'
+            urls += [reverse(name, args=[page['slug']]), reverse(name + '_en', args=[page['slug']])]
+        titles = set()
+        for url in urls:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200, url)
+            html = response.content.decode()
+            title = re.search(r'<title>(.*?)</title>', html).group(1)
+            self.assertNotIn(title, titles, url)                     # প্রতিটা পাতার আলাদা শিরোনাম
+            titles.add(title)
+            self.assertEqual(html.count('<h1'), 1, url)
+            self.assertIn(f'<link rel="canonical" href="http://testserver{url}">', html)
+            self.assertIn('hreflang="bn"', html)
+            self.assertIn('hreflang="en"', html)
+            data = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', html, re.S).group(1))
+            kinds = {item['@type'] for item in data['@graph']}
+            self.assertTrue({'WebPage', 'BreadcrumbList'} <= kinds, url)
+            if '/features/' in url and not url.endswith('/features/') or '/for/' in url:
+                self.assertIn('FAQPage', kinds, url)
+            self.assertNotRegex(html, r'[\U0001F300-\U0001FAFF]')     # ইমোজি নেই
+        self.assertEqual(self.client.get('/features/no-such-page/').status_code, 404)
+
+    def test_sitemap_llms_and_homepage_links(self):
+        sitemap = self.client.get('/sitemap.xml').content.decode()
+        for path in ('/features/', '/en/features/', '/features/online-shop/', '/en/for/clothing/', '/for/home-business/'):
+            self.assertIn(f'<loc>http://testserver{path}</loc>', sitemap)
+        llms = self.client.get('/llms.txt')
+        self.assertEqual(llms.status_code, 200)
+        text = llms.content.decode()
+        self.assertIn('1 minute', text)
+        self.assertIn('Basic: 499/month', text)
+        self.assertIn('/en/features/pos-software/', text)
+        home = self.client.get('/').content.decode()
+        self.assertIn('১ মিনিটে', home)
+        self.assertIn('href="/features/online-shop/"', home)
+        self.assertIn('href="/for/clothing/"', home)
+        home_en = self.client.get(reverse('landing_page_en')).content.decode()
+        self.assertIn('href="/en/features/pos-software/"', home_en)
+        self.assertIn('href="/en/for/grocery/"', home_en)

@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ site.name }} — POS আর অনলাইন শপ সফটওয়্যার, পুরোটা বাংলায়</title>
-<meta name="description" content="নিজের ওয়েবসাইট, দোকানের POS, অর্ডার থেকে কুরিয়ার, কাস্টমারকে SMS, বাকির খাতা আর লাভ-লোকসানের রিপোর্ট — এক সফটওয়্যারে। বাংলাদেশের Facebook সেলার আর ছোট দোকানের জন্য। ৩০ দিন ফ্রি।">
-<meta property="og:title" content="{{ site.name }} — POS আর অনলাইন শপ সফটওয়্যার, পুরোটা বাংলায়">
+<title>{{ site.name }} — ১ মিনিটে ই-কমার্স ওয়েবসাইট, POS আর কুরিয়ার</title>
+<meta name="description" content="১ মিনিটে নিজের ই-কমার্স ওয়েবসাইট — সাথে দোকানের POS, Steadfast/Pathao/RedX কুরিয়ার, SMS, বাকির খাতা আর লাভের হিসাব। Facebook সেলার আর ছোট দোকানের জন্য, পুরোটা বাংলায়। ৩০ দিন ফ্রি।">
+<meta property="og:title" content="{{ site.name }} — ১ মিনিটে ই-কমার্স ওয়েবসাইট, POS আর কুরিয়ার">
 <meta property="og:description" content="ওয়েবসাইট, POS, অর্ডার, কুরিয়ার, SMS, বাকির খাতা আর লাভের হিসাব — সব এক জায়গায়। ৩০ দিন ফ্রি, কার্ড লাগে না।">
 {% include 'store/partials/landing_seo.html' %}
 {% include 'store/partials/brand_head.html' %}
@@ -54,7 +54,7 @@
 <header class="hero">
   <div class="wrap hero-grid">
     <div>
-      <h1>দোকান আর অনলাইন বিক্রির <em>পুরো হিসাব</em> — এক সফটওয়্যারে</h1>
+      <h1>১ মিনিটে নিজের <em>ই-কমার্স ওয়েবসাইট</em> — সাথে দোকানের POS আর পুরো হিসাব</h1>
       <p class="lead">নিজের ওয়েবসাইট, দোকানের POS, অর্ডার থেকে কুরিয়ার, কাস্টমারকে SMS, বাকির খাতা আর লাভ-লোকসানের রিপোর্ট। Facebook পেজে যারা বিক্রি করেন বা ছোট দোকান চালান — তাদের রোজকার কাজের জন্য বানানো।</p>
       <div class="hero-cta">
         <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> {{ trial_days|bn }} দিন ফ্রি শুরু করুন</a>
@@ -62,7 +62,7 @@
       </div>
       <div class="hero-notes">
         <span><i class="bi bi-check-circle-fill"></i> কার্ড লাগে না</span>
-        <span><i class="bi bi-check-circle-fill"></i> ৫ মিনিটে সেটআপ</span>
+        <span><i class="bi bi-check-circle-fill"></i> ১ মিনিটে ওয়েবসাইট চালু</span>
         <span><i class="bi bi-check-circle-fill"></i> মোবাইল থেকেই চালানো যায়</span>
       </div>
     </div>
@@ -135,7 +135,7 @@
     <div class="feat">
       <div class="feat-text">
         <span class="kicker">ওয়েবসাইট</span>
-        <h3>৫ মিনিটে নিজের অনলাইন শপ — কোড লেখা ছাড়া</h3>
+        <h3>১ মিনিটে নিজের অনলাইন শপ — কোড লেখা ছাড়া</h3>
         <p>প্রোডাক্টের ছবি আর দাম দিলেই <b class="en">yourshop.{{ site.store_domain }}</b> ঠিকানায় দোকান চালু। লিংকটা Facebook-এ শেয়ার করুন, কাস্টমার নিজেই অর্ডার করবে।</p>
         <ul>
           <li><i class="ic red bi bi-palette-fill"></i><span><b>৪টা ডিজাইন, ৬টা রং</b> — নিজের পছন্দের রংও দেওয়া যায়</span></li>
@@ -144,6 +144,7 @@
           <li><i class="ic blue bi bi-whatsapp"></i><span><b>WhatsApp-এ অর্ডার</b>, কুপন কোড, কাস্টমারের রিভিউ, ফ্রি ডেলিভারির শর্ত</span></li>
           <li><i class="ic amber bi bi-google"></i><span><b>Google-এ খুঁজে পাওয়ার</b> ব্যবস্থা (SEO, সাইটম্যাপ) নিজে থেকে</span></li>
         </ul>
+        <a href="{% url 'mk_feature' 'online-shop' %}" class="feat-link" style="margin-right:18px">অনলাইন শপ ওয়েবসাইটের বিস্তারিত <i class="bi bi-arrow-right"></i></a>
         <a href="{% url 'demo_store' %}" class="feat-link">ডেমো দোকানটা কাস্টমার যেভাবে দেখে <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
@@ -168,6 +169,7 @@
           <li><i class="ic blue bi bi-printer"></i><span><b>রসিদ প্রিন্ট</b> (POS প্রিন্টার বা A4), বারকোড স্টিকার প্রিন্ট</span></li>
           <li><i class="ic amber bi bi-people"></i><span><b>স্টাফ অ্যাকাউন্ট</b> — ক্যাশিয়ার শুধু POS দেখবে, রিপোর্ট না</span></li>
         </ul>
+        <a href="{% url 'mk_feature' 'pos-software' %}" class="feat-link">POS সফটওয়্যারের বিস্তারিত <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
         <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/pos</i></div><img src="{% static 'landing/pos.webp' %}" srcset="{% img_srcset 'landing/pos.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="POS স্ক্রিন — প্রোডাক্ট, বিল, পেমেন্ট" width="1800" height="1125" loading="lazy"></div>
@@ -186,6 +188,7 @@
           <li><i class="ic blue bi bi-geo"></i><span><b>ট্র্যাকিং লিংক</b> — কাস্টমার নিজেই দেখে অর্ডার কোথায়</span></li>
           <li><i class="ic amber bi bi-shield-exclamation"></i><span><b>ভুয়া অর্ডার চেনা</b> — যে নম্বর আগে পার্সেল ফেরত দিয়েছে, অর্ডারের পাশেই সতর্কতা</span></li>
         </ul>
+        <a href="{% url 'mk_feature' 'courier-integration' %}" class="feat-link">কুরিয়ার বুকিংয়ের বিস্তারিত <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
         <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/orders</i></div><img src="{% static 'landing/orders.webp' %}" srcset="{% img_srcset 'landing/orders.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="অর্ডারের তালিকা — স্ট্যাটাস, কুরিয়ার, ঝুঁকি" width="1800" height="1125" loading="lazy"></div>
@@ -204,6 +207,7 @@
           <li><i class="ic blue bi bi-receipt"></i><span><b>খরচ আর মাল কেনার খাতা</b> — ভাড়া, বেতন, বুস্ট; সাপ্লায়ারের বাকি</span></li>
           <li><i class="ic amber bi bi-file-earmark-excel"></i><span><b>Excel ডাউনলোড</b> — অর্ডার, প্রোডাক্ট, কাস্টমার, খরচ আলাদা শিটে</span></li>
         </ul>
+        <a href="{% url 'mk_feature' 'accounting' %}" class="feat-link">দোকানের হিসাবের বিস্তারিত <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
         <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/reports</i></div><img src="{% static 'landing/reports.webp' %}" srcset="{% img_srcset 'landing/reports.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="ব্যবসার রিপোর্ট — বিক্রি, লাভ, খরচ" width="1800" height="1125" loading="lazy"></div>
@@ -220,6 +224,7 @@
           <li><i class="ic green bi bi-send"></i><span><b>তাগাদার SMS</b> — একজনকে বা সবাইকে, নাম আর টাকার অঙ্কসহ</span></li>
           <li><i class="ic blue bi bi-alarm"></i><span><b>নিজে থেকে তাগাদা</b> — ৭, ১৫ বা ৩০ দিন পর পর, আপনি চালু রাখলে</span></li>
         </ul>
+        <a href="{% url 'mk_feature' 'due-book' %}" class="feat-link">বাকির খাতার বিস্তারিত <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
         <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/dues</i></div><img src="{% static 'landing/dues.webp' %}" srcset="{% img_srcset 'landing/dues.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="বাকির খাতা — কার কাছে কত বাকি, তাগাদা SMS" width="1800" height="1125" loading="lazy"></div>
@@ -237,6 +242,7 @@
           <li><i class="ic blue bi bi-cart-x"></i><span><b>অসম্পূর্ণ অর্ডার</b> — কার্টে রেখে চলে যাওয়া কাস্টমারের নম্বর, ফোন দিয়ে অর্ডার নিন</span></li>
           <li><i class="ic amber bi bi-layout-text-window"></i><span><b>এক প্রোডাক্টের ল্যান্ডিং পেজ</b> — Facebook বিজ্ঞাপনের জন্য, কত ভিউ থেকে কত অর্ডার তা-ও দেখা যায়</span></li>
         </ul>
+        <a href="{% url 'mk_feature' 'landing-page' %}" class="feat-link">ল্যান্ডিং পেজের বিস্তারিত <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
         <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/sms</i></div><img src="{% static 'landing/sms.webp' %}" srcset="{% img_srcset 'landing/sms.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="SMS প্যানেল — কাস্টমারদের SMS পাঠানো" width="1800" height="1125" loading="lazy"></div>
@@ -270,6 +276,23 @@
   </div>
 </section>
 
+<!-- ================= FOR (SEO পাতার লিংক — store/marketing.py) ================= -->
+<section id="for">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">যে ব্যবসার জন্য</span>
+      <h2>আপনার ব্যবসার জন্য কী কী কাজে লাগবে</h2>
+      <p>পোশাক, কসমেটিকস, গ্যাজেট, মুদি, বই আর ঘরে বসে ব্যবসা — কার জন্য কোন ফিচার কাজের।</p>
+    </div>
+    <div class="links">
+      {% for item in industry_links %}
+      <a class="lnk" href="{{ item.url }}"><span class="t"><i class="bi {{ item.icon }}"></i>{{ item.nav }}</span><p>{{ item.description|truncatechars:120 }}</p></a>
+      {% endfor %}
+    </div>
+    <p style="text-align:center;margin-top:26px"><a href="{{ features_url }}" class="feat-link" style="margin-top:0">সব ফিচারের বিস্তারিত দেখুন <i class="bi bi-arrow-right"></i></a></p>
+  </div>
+</section>
+
 <!-- ================= HOW ================= -->
 <section id="how" class="bg">
   <div class="wrap">
@@ -279,7 +302,7 @@
       <p>কোনো টেকনিক্যাল জ্ঞান লাগে না। Facebook চালাতে পারলেই পারবেন।</p>
     </div>
     <div class="steps">
-      <div class="step"><div class="n">১</div><h3>মোবাইল নম্বর দিয়ে অ্যাকাউন্ট খুলুন</h3><p>দোকানের নাম আর ঠিকানা দিন। {{ trial_days|bn }} দিন ফ্রি — কার্ড বা বিকাশ কিছু লাগে না।</p></div>
+      <div class="step"><div class="n">১</div><h3>দোকানের নাম আর ঠিকানা দিন — ১ মিনিটে ওয়েবসাইট</h3><p>দোকানের নাম, পছন্দের ওয়েবসাইট ঠিকানা, মোবাইল নম্বর আর পাসওয়ার্ড — ব্যস। {{ trial_days|bn }} দিন ফ্রি, কার্ড বা বিকাশ কিছু লাগে না।</p></div>
       <div class="step"><div class="n">২</div><h3>প্রোডাক্ট আর লোগো তুলুন</h3><p>ছবি, দাম, স্টক। সাইজ-রং থাকলে তা-ও। ব্যানার দিলে ওয়েবসাইট আরও সুন্দর দেখায়।</p></div>
       <div class="step"><div class="n">৩</div><h3>লিংক শেয়ার করুন, বিক্রি শুরু</h3><p>Facebook পেজে ওয়েবসাইটের লিংক দিন, দোকানে POS খুলুন। অর্ডার এলেই ড্যাশবোর্ডে আর SMS-এ জানবেন।</p></div>
     </div>
@@ -398,7 +421,7 @@
       </div>
       <div>
         <h3>সফটওয়্যার</h3>
-        <div class="lk"><a href="#features">যা যা আছে</a><a href="#pricing">দাম</a><a href="{% url 'demo_start' %}">লাইভ ডেমো</a><a href="{% url 'signup' %}">ফ্রি শুরু করুন</a><a href="{% url 'login' %}">লগইন</a></div>
+        <div class="lk"><a href="{{ features_url }}">সব ফিচার</a><a href="{% url 'mk_feature' 'online-shop' %}">ই-কমার্স ওয়েবসাইট</a><a href="{% url 'mk_feature' 'pos-software' %}">POS সফটওয়্যার</a><a href="#pricing">দাম</a><a href="{% url 'demo_start' %}">লাইভ ডেমো</a><a href="{% url 'signup' %}">ফ্রি শুরু করুন</a><a href="{% url 'login' %}">লগইন</a></div>
       </div>
       <div>
         <h3>যোগাযোগ</h3>

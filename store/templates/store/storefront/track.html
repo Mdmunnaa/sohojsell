@@ -127,7 +127,7 @@ body { margin: 0; background: var(--bg); color: var(--ink2); min-height: 100vh; 
     </form>
   </section>
 {% endif %}
-  <div class="tk-foot">© {% now "Y" %} {{ shop.name }} · {% t "{site} দিয়ে তৈরি" site=site.name %}</div>
+  <div class="tk-foot">© {% now "Y" %} {{ shop.name }} · <a href="https://{{ site.store_domain }}/" class="made-by" style="color:inherit;text-decoration:underline;text-underline-offset:2px">{% t "{site} দিয়ে তৈরি" site=site.name %}</a></div>
 </main>
 </body>
 </html>

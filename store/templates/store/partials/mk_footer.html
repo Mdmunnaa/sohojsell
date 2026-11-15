@@ -1,0 +1,41 @@
+{% load static %}{# SEO পাতার ফুটার (store/marketing/base.html)। ফিচার আর ব্যবসার ধরনের সব লিংক — Google প্রতিটা পাতা খুঁজে পায়। #}
+<footer>
+  <div class="wrap">
+    <div class="ft">
+      <div>
+        <img src="{% static 'brand/sellpunch-logo.svg' %}" alt="{{ site.name }}" width="128" height="32" style="height:32px;width:auto" loading="lazy">
+        <p>{{ ui.footer_about }}</p>
+        <div class="soc">
+          {% if site.facebook_url %}<a href="{{ site.facebook_url }}" target="_blank" rel="noopener" aria-label="Facebook"><i class="bi bi-facebook"></i></a>{% endif %}
+          {% if site.whatsapp_url %}<a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener" aria-label="WhatsApp"><i class="bi bi-whatsapp"></i></a>{% endif %}
+          {% if site.email %}<a href="mailto:{{ site.email }}" aria-label="Email"><i class="bi bi-envelope"></i></a>{% endif %}
+        </div>
+      </div>
+      <div>
+        <h3>{{ ui.features }}</h3>
+        <div class="lk">{% for item in feature_links %}<a href="{{ item.url }}">{{ item.nav }}</a>{% endfor %}</div>
+      </div>
+      <div>
+        <h3>{{ ui.industries }}</h3>
+        <div class="lk">{% for item in industry_links %}<a href="{{ item.url }}">{{ item.nav }}</a>{% endfor %}</div>
+      </div>
+      <div>
+        <h3>{{ ui.contact }}</h3>
+        <div class="lk">
+          {% if site.phone %}<a href="tel:{{ site.phone_tel }}"><i class="bi bi-telephone"></i> {{ site.phone }}</a>{% endif %}
+          {% if site.whatsapp_url %}<a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> {{ ui.whatsapp }}</a>{% endif %}
+          <a href="{% url 'contact' %}">{{ ui.contact_page }}</a>
+          <a href="{% url 'about' %}">{{ ui.about }}</a>
+          <a href="{% url 'security' %}">{{ ui.security }}</a>
+          <a href="{% url 'privacy_policy' %}">{{ ui.privacy }}</a>
+          <a href="{% url 'terms' %}">{{ ui.terms }}</a>
+          <a href="{% url 'refund_policy' %}">{{ ui.refund }}</a>
+        </div>
+      </div>
+    </div>
+    <div class="fb">
+      <span>© {% now "Y" %} {{ site.name }} — {% if lang == 'en' %}{{ ui.product_of }} {{ company.name_en }}{% else %}{{ company.name_bn }}-{{ ui.product_of }}{% endif %} · <a href="{% url 'about' %}">{{ ui.licence }} {{ company.licence_id }}</a></span>
+      <span>{{ ui.made_in }}</span>
+    </div>
+  </div>
+</footer>

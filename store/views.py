@@ -80,7 +80,19 @@ def _home(request, lang):
     home_seo = {'base': base, 'url_bn': base + '/', 'url_en': base + reverse('landing_page_en'), 'lang': lang}
     home_seo['canonical'] = home_seo['url_en'] if lang == 'en' else home_seo['url_bn']
     template = 'store/landing_en.html' if lang == 'en' else 'store/landing.html'
-    return render(request, template, {'plans': plans, 'sms_rate': rate, 'trial_days': 30, 'home_seo': home_seo})
+    from . import marketing, views_marketing
+    return render(request, template, {
+        'plans': plans, 'sms_rate': rate, 'trial_days': 30, 'home_seo': home_seo,
+        # SEO পাতার লিংক (store/marketing.py) — হোমপেজ থেকে প্রতিটায় লিংক থাকলে Google দ্রুত খুঁজে পায়
+        'industry_links': views_marketing._cards(marketing.INDUSTRIES, 'industry', lang),
+        'features_url': views_marketing._index_url(lang),
+    })
+
+
+def site_llms(request):
+    """/llms.txt — AI সার্চের জন্য SellPunch-এর পরিচয় (store/seo.py)।"""
+    from . import seo
+    return HttpResponse(seo.main_llms_txt(request), content_type='text/plain; charset=utf-8')
 
 
 def site_robots(request):

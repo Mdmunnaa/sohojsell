@@ -11,6 +11,7 @@ from . import views_sms
 from . import views_ledger
 from . import views_offers
 from . import views_landing
+from . import views_marketing
 from . import views_dues
 from . import views_demo
 from . import hq_views
@@ -30,6 +31,7 @@ urlpatterns = [
     path('en/', views.landing_page_en, name='landing_page_en'),
     path('robots.txt', views.site_robots, name='site_robots'),
     path('sitemap.xml', views.site_sitemap, name='site_sitemap'),
+    path('llms.txt', views.site_llms, name='site_llms'),
     path('internal/cron/daily/', views_cron.cron_daily, name='cron_daily'),   # Cloudflare cron, দিনে একবার
     # লাইভ ডেমো (পাসওয়ার্ড ছাড়া ডেমো দোকানে ঢোকা)
     path('demo/', views_demo.demo_start, name='demo_start'),
@@ -43,6 +45,13 @@ urlpatterns = [
     path('data-deletion/', TemplateView.as_view(template_name='store/legal/data_deletion.html'), name='data_deletion'),
     path('contact/', TemplateView.as_view(template_name='store/legal/contact.html'), name='contact'),
     path('about/', TemplateView.as_view(template_name='store/about.html'), name='about'),
+    # SEO পাতা — প্রতিটা ফিচার আর ব্যবসার ধরন (লেখা store/marketing.py)
+    path('features/', views_marketing.index, name='mk_index'),
+    path('features/<slug:slug>/', views_marketing.feature, name='mk_feature'),
+    path('for/<slug:slug>/', views_marketing.industry, name='mk_industry'),
+    path('en/features/', views_marketing.index_en, name='mk_index_en'),
+    path('en/features/<slug:slug>/', views_marketing.feature_en, name='mk_feature_en'),
+    path('en/for/<slug:slug>/', views_marketing.industry_en, name='mk_industry_en'),
     path('security/', views.security_page, name='security'),
 
     # Dashboard

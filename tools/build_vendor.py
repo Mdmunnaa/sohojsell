@@ -31,6 +31,8 @@ PUBLIC_SOURCES = [
     TEMPLATES / 'landing.html', TEMPLATES / 'landing_en.html',
     *sorted((TEMPLATES / 'partials').glob('landing_*.html')),
     ROOT / 'store' / 'views.py', ROOT / 'store' / 'views_landing.py',
+    *sorted((TEMPLATES / 'marketing').glob('*.html')), TEMPLATES / 'partials' / 'mk_footer.html',
+    ROOT / 'store' / 'marketing.py', ROOT / 'store' / 'views_marketing.py',      # SEO পাতা (/features/, /for/)
 ]
 
 COPY = {

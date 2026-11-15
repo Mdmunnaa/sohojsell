@@ -1,0 +1,89 @@
+{% extends 'store/marketing/base.html' %}
+{% load static speed bangla %}
+{% block content %}
+<header class="hero mk-hero">
+  <div class="wrap hero-grid">
+    <div>
+      <nav class="crumbs" aria-label="breadcrumb">{% for name, url in crumbs %}{% if not forloop.last %}<a href="{{ url }}">{{ name }}</a><i class="bi bi-chevron-right"></i>{% else %}<span aria-current="page">{{ name }}</span>{% endif %}{% endfor %}</nav>
+      <h1>{{ text.h1|safe }}</h1>
+      <p class="lead">{{ text.lead }}</p>
+      <div class="hero-cta">
+        <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> {{ ui.start }}</a>
+        <a href="{% url 'demo_start' %}" class="btn btn-lg btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> {{ ui.demo }}</a>
+      </div>
+      <div class="hero-notes">{% for note in ui.notes %}<span><i class="bi bi-check-circle-fill"></i> {{ note }}</span>{% endfor %}</div>
+      <p class="mk-price">{% if lang == 'en' %}{{ ui.price_from }} <b>{{ min_price }}</b> {{ ui.price_tail }}{% else %}{{ ui.price_from }} <b>{{ min_price|bn }}</b> {{ ui.price_tail }}{% endif %} · <a href="{{ home_url }}#pricing">{{ ui.see_prices }}</a></p>
+    </div>
+    <div class="mk-shot{% if image.tall %} tall{% endif %}">
+      {% if image.tall %}
+      <div class="phone"><img src="{% static image.path %}" srcset="{% img_srcset image.path image.width %}" sizes="(max-width: 600px) 220px, 260px" alt="{{ text.nav }} — {{ site.name }}" width="{{ image.width }}" height="{{ image.height }}" fetchpriority="high"></div>
+      {% else %}
+      <div class="frame">
+        <div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}</i></div>
+        <img src="{% static image.path %}" srcset="{% img_srcset image.path image.width %}" sizes="(max-width: 900px) 92vw, 600px" alt="{{ text.nav }} — {{ site.name }}" width="{{ image.width }}" height="{{ image.height }}" fetchpriority="high">
+      </div>
+      {% if image.phone %}<div class="phone"><img src="{% static image.phone %}" srcset="{% img_srcset image.phone 780 %}" sizes="150px" alt="{{ text.nav }} — {% if lang == 'en' %}on mobile{% else %}মোবাইলে{% endif %}" width="780" height="1688" loading="lazy"></div>{% endif %}
+      {% endif %}
+    </div>
+  </div>
+</header>
+
+<section class="bg" id="points">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">{{ ui.what_you_get }}</span>
+      <h2>{{ text.nav }}{% if lang == 'en' %} with {{ site.name }}{% else %} — {{ site.name }}-এ যা আছে{% endif %}</h2>
+    </div>
+    <div class="pts">
+      {% for icon, heading, body in text.points %}
+      <div class="pt"><div class="ic"><i class="bi {{ icon }}"></i></div><h3>{{ heading }}</h3><p>{{ body }}</p></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">{{ ui.how }}</span>
+      <h2>{{ ui.how_title }}</h2>
+    </div>
+    <div class="steps">
+      {% for heading, body in ui.steps %}
+      <div class="step"><div class="n">{% if lang == 'en' %}{{ forloop.counter }}{% else %}{{ forloop.counter|bn }}{% endif %}</div><h3>{{ heading }}</h3><p>{{ body }}</p></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="bg" id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">{{ ui.faq }}</span>
+      <h2>{{ ui.faq_title }}</h2>
+    </div>
+    <div class="faq">
+      {% for q, a in text.faq %}
+      <details{% if forloop.first %} open{% endif %}><summary>{{ q }}</summary><p>{{ a }}</p></details>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if related %}
+<section id="related">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">{{ ui.related }}</span>
+      <h2>{{ ui.related_title }}</h2>
+    </div>
+    <div class="links">
+      {% for item in related %}
+      <a class="lnk" href="{{ item.url }}"><span class="t"><i class="bi {{ item.icon }}"></i>{{ item.nav }}</span><p>{{ item.description|truncatechars:110 }}</p><span class="go">{{ ui.more }} <i class="bi bi-arrow-right"></i></span></a>
+      {% endfor %}
+      <a class="lnk" href="{{ index_url }}"><span class="t"><i class="bi bi-grid-fill"></i>{{ ui.all_features }}</span><p>{{ ui.index_description|truncatechars:110 }}</p><span class="go">{{ ui.more }} <i class="bi bi-arrow-right"></i></span></a>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

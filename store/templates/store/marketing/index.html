@@ -1,0 +1,46 @@
+{% extends 'store/marketing/base.html' %}
+{% load static speed bangla %}
+{% block content %}
+<header class="hero mk-hero">
+  <div class="wrap hero-grid">
+    <div>
+      <nav class="crumbs" aria-label="breadcrumb">{% for name, url in crumbs %}{% if not forloop.last %}<a href="{{ url }}">{{ name }}</a><i class="bi bi-chevron-right"></i>{% else %}<span aria-current="page">{{ name }}</span>{% endif %}{% endfor %}</nav>
+      <h1>{{ ui.index_h1|safe }}</h1>
+      <p class="lead">{{ ui.index_lead }}</p>
+      <div class="hero-cta">
+        <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> {{ ui.start }}</a>
+        <a href="{% url 'demo_start' %}" class="btn btn-lg btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> {{ ui.demo }}</a>
+      </div>
+      <p class="mk-price">{% if lang == 'en' %}{{ ui.price_from }} <b>{{ min_price }}</b> {{ ui.price_tail }}{% else %}{{ ui.price_from }} <b>{{ min_price|bn }}</b> {{ ui.price_tail }}{% endif %} · <a href="{{ home_url }}#pricing">{{ ui.see_prices }}</a></p>
+    </div>
+    <div class="mk-shot">
+      <div class="frame">
+        <div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/dashboard</i></div>
+        <img src="{% static 'landing/dashboard.webp' %}" srcset="{% img_srcset 'landing/dashboard.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 600px" alt="{{ site.name }} — {% if lang == 'en' %}seller dashboard{% else %}সেলার ড্যাশবোর্ড{% endif %}" width="1800" height="1125" fetchpriority="high">
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="bg" id="features">
+  <div class="wrap">
+    <h2 class="idx-h">{{ ui.features }}</h2>
+    <div class="links">
+      {% for item in feature_links %}
+      <a class="lnk" href="{{ item.url }}"><span class="t"><i class="bi {{ item.icon }}"></i>{{ item.nav }}</span><p>{{ item.description }}</p><span class="go">{{ ui.more }} <i class="bi bi-arrow-right"></i></span></a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section id="industries">
+  <div class="wrap">
+    <h2 class="idx-h">{{ ui.industries }}</h2>
+    <div class="links">
+      {% for item in industry_links %}
+      <a class="lnk" href="{{ item.url }}"><span class="t"><i class="bi {{ item.icon }}"></i>{{ item.nav }}</span><p>{{ item.description }}</p><span class="go">{{ ui.more }} <i class="bi bi-arrow-right"></i></span></a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -399,7 +399,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
     {% if shop.privacy_policy %}<a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">{% t "প্রাইভেসি পলিসি" %}</a>{% endif %}
   </div>
 
-  <div class="copyright">© {% now "Y" %} {{ shop.name }} · {% t "{site} দিয়ে তৈরি" site=site.name %}</div>
+  <div class="copyright">© {% now "Y" %} {{ shop.name }} · <a href="https://{{ site.store_domain }}/" class="made-by" style="color:inherit;text-decoration:underline;text-underline-offset:2px">{% t "{site} দিয়ে তৈরি" site=site.name %}</a></div>
 </footer>
 
 {% include 'store/storefront/_mobile_nav.html' %}

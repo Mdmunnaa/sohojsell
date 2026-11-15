@@ -1,0 +1,93 @@
+{% load static speed %}<!DOCTYPE html>
+{# SEO পাতার কাঠামো (store/views_marketing.py)। চেহারা হোমপেজের মতো (partials/landing_style.html), নিচে শুধু এই পাতাগুলোর বাড়তি স্টাইল। #}
+<html lang="{{ lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ title }}{% if title|length < 52 %} | {{ site.name }}{% endif %}</title>
+<meta name="description" content="{{ description }}">
+<link rel="canonical" href="{{ mk_seo.canonical }}">
+<link rel="alternate" hreflang="bn" href="{{ mk_seo.url_bn }}">
+<link rel="alternate" hreflang="en" href="{{ mk_seo.url_en }}">
+<link rel="alternate" hreflang="x-default" href="{{ mk_seo.url_bn }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ site.name }}">
+<meta property="og:title" content="{{ title }}">
+<meta property="og:description" content="{{ description }}">
+<meta property="og:url" content="{{ mk_seo.canonical }}">
+<meta property="og:image" content="{{ mk_seo.base }}{% static 'landing/dashboard.webp' %}">
+<meta property="og:image:width" content="1800">
+<meta property="og:image:height" content="1125">
+{% if lang == 'en' %}<meta property="og:locale" content="en_US"><meta property="og:locale:alternate" content="bn_BD">{% else %}<meta property="og:locale" content="bn_BD"><meta property="og:locale:alternate" content="en_US">{% endif %}
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{{ mk_seo.ld|safe }}</script>
+{% include 'store/partials/brand_head.html' %}
+{% if lang == 'en' %}<link rel="preload" href="{% static 'vendor/fonts/plus-jakarta-sans-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>{% endif %}
+{% include 'store/partials/fonts.html' with hind=1 jakarta=1 %}
+{% include 'store/partials/icons_public.html' %}
+{% include 'store/partials/landing_style.html' %}
+<style>
+.crumbs{font-size:13.5px;color:var(--muted);margin-bottom:18px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.crumbs a{color:var(--muted)}.crumbs a:hover{color:var(--brand-dark)}.crumbs i{font-size:11px;opacity:.6}
+.mk-hero{padding:56px 0 64px}
+.mk-hero h1{font-size:clamp(28px,4.2vw,44px)}
+.mk-price{margin-top:18px;font-size:14.5px;color:var(--ink2)}.mk-price b{color:var(--ink);font-size:17px}
+.mk-shot{position:relative}
+.mk-shot .frame img{display:block;width:100%;height:auto}
+.mk-shot .phone{position:absolute;right:-12px;bottom:-24px;width:150px;padding:6px;border-radius:22px}
+.mk-shot.tall{display:flex;justify-content:center}
+.mk-shot.tall .phone{position:static;width:260px}
+.pts{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.pt{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;box-shadow:var(--shadow)}
+.pt .ic{width:44px;height:44px;border-radius:12px;background:var(--brand-light);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:14px}
+.pt h3{font-size:17px;margin:0 0 8px}
+.pt p{margin:0;color:var(--muted);font-size:15px;line-height:1.7}
+.idx-h{font-size:22px;margin:0 0 18px}
+@media (max-width:900px){.pts{grid-template-columns:1fr 1fr}.mk-shot .phone{width:110px;right:-4px;bottom:-16px}}
+@media (max-width:600px){.pts{grid-template-columns:1fr}.mk-hero{padding:36px 0 48px}.mk-shot.tall .phone{width:220px}}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="wrap nav-in">
+    <a href="{{ home_url }}" aria-label="{{ site.name }}"><img src="{% static 'brand/sellpunch-logo.svg' %}" alt="{{ site.name }}" width="136" height="34" style="height:34px;width:auto"></a>
+    <div class="nav-links">
+      <a href="{{ index_url }}">{{ ui.features }}</a>
+      <a href="{{ home_url }}#pricing">{{ ui.pricing }}</a>
+      <a href="{{ home_url }}#faq">{{ ui.faq }}</a>
+    </div>
+    <div class="nav-cta">
+      <a href="{{ mk_seo.other_url }}" class="nav-lang" hreflang="{{ ui.other_lang_code }}" lang="{{ ui.other_lang_code }}"><i class="bi bi-globe2"></i> {{ ui.other_lang }}</a>
+      <a href="{% url 'login' %}" class="btn btn-sm nav-login" style="color:var(--ink2)">{{ ui.login }}</a>
+      <a href="{% url 'signup' %}" class="btn btn-sm btn-brand">{{ ui.free_start }}</a>
+      <button class="nav-burger" onclick="toggleMenu()" aria-label="{{ ui.menu }}"><i class="bi bi-list" id="ham-icon"></i></button>
+    </div>
+  </div>
+  <div class="mob-menu" id="mob-menu">
+    <a href="{{ index_url }}">{{ ui.all_features }}</a>
+    <a href="{{ home_url }}#pricing">{{ ui.pricing }}</a>
+    <a href="{{ home_url }}#faq">{{ ui.faq }}</a>
+    <a href="{% url 'demo_start' %}">{{ ui.demo }}</a>
+    <a href="{% url 'login' %}">{{ ui.login }}</a>
+    <a href="{{ mk_seo.other_url }}" hreflang="{{ ui.other_lang_code }}" lang="{{ ui.other_lang_code }}"><i class="bi bi-globe2"></i> {{ ui.other_lang }}</a>
+    <a href="{% url 'signup' %}" class="btn btn-brand">{{ ui.start }}</a>
+  </div>
+</nav>
+
+{% block content %}{% endblock %}
+
+<div class="final">
+  <div class="wrap">
+    <h2>{{ ui.final_title }}</h2>
+    <p>{{ ui.final_text }}</p>
+    <div class="cta">
+      <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> {{ ui.start }}</a>
+      <a href="{% url 'demo_start' %}" class="btn btn-lg btn-out">{{ ui.final_demo }}</a>
+    </div>
+  </div>
+</div>
+
+{% include 'store/partials/mk_footer.html' %}
+{% include 'store/partials/landing_script.html' %}
+</body>
+</html>
