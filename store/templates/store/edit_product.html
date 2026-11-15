@@ -4,8 +4,7 @@
 {% block title %}Edit Product - {{ request.user.shop.name }}{% endblock %}
 
 {% block content %}
-<!-- Html5Qrcode Library (For Camera Scan) -->
-<script src="{% static 'vendor/html5-qrcode/html5-qrcode.min.js' %}"></script>
+{% include 'store/partials/cam_scanner.html' %}
 
 <style>
     /* Premium Form Styles */
@@ -58,12 +57,10 @@
 
     /* Scanner Box Styles */
     #reader-container {
-        display: none; border-radius: 16px; overflow: hidden; border: 2px dashed #3B82F6; margin-top: 15px;
+        display: none; border-radius: 16px; overflow: hidden; border: 1px solid #E2E8F0; margin-top: 15px;
         background: #F8FAFC;
     }
     #reader { width: 100%; border: none; }
-    #reader__dashboard_section_csr span { color: #3B82F6 !important; font-weight: bold; }
-    #reader__dashboard_section_swaplink { display: none; }
 
     /* iOS Style Toggle Switch */
     .form-switch { padding-left: 3rem; margin-top: 5px; }
@@ -154,20 +151,25 @@
             <!-- Barcode Field with Camera Scan Button -->
             <div class="mb-4">
                 <label class="form-label w-100 d-flex justify-content-between align-items-center">
-                    <span>Barcode / QR Code <span class="text-muted fw-normal">(Optional)</span></span>
+                    <span>বারকোড / QR কোড <span class="text-muted fw-normal">(ঐচ্ছিক)</span></span>
                     <button type="button" class="btn btn-sm btn-outline-primary rounded-pill fw-bold" onclick="startScanner()">
-                        <i class="bi bi-camera-video-fill me-1"></i> Camera Scan
+                        <i class="bi bi-camera-fill me-1"></i> ক্যামেরায় স্ক্যান
                     </button>
                 </label>
 
                 {{ form.barcode }}
+                {% if form.barcode.errors %}<div class="text-danger small mt-1">{{ form.barcode.errors.0 }}</div>{% endif %}
 
-                <!-- Scanner Video Container -->
+                <!-- ক্যামেরায় স্ক্যান (partials/cam_scanner.html) -->
                 <div id="reader-container">
                     <div id="reader"></div>
-                    <button type="button" class="btn w-100 text-white fw-bold py-2" style="border-radius: 0; background:#EF4444;" onclick="stopScanner()">
-                        <i class="bi bi-x-lg me-1"></i> Close Camera
-                    </button>
+                    <div class="sp-scan-bar px-2 pb-2">
+                        <span class="sp-scan-status" id="scan-status">ক্যামেরা চালু হচ্ছে...</span>
+                        <span class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill fw-bold" id="scan-torch" style="display:none" onclick="toggleTorch()"><i class="bi bi-lightbulb"></i> টর্চ</button>
+                            <button type="button" class="btn btn-sm btn-danger rounded-pill fw-bold" onclick="stopScanner()"><i class="bi bi-x-lg"></i> বন্ধ</button>
+                        </span>
+                    </div>
                 </div>
 
                 <div class="form-text mt-2 small fw-semibold text-muted">
@@ -230,49 +232,51 @@
         }
     });
 
-    // Mobile Camera Barcode Scanner Logic
-    let html5QrcodeScanner;
+    // হাতের বারকোড স্ক্যানার কোডের শেষে Enter চাপে — তাতে ফর্ম আধা-ভরা অবস্থায় জমা হয়ে যেত
+    document.getElementById('id_barcode')?.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
 
-    function startScanner() {
-        const container = document.getElementById('reader-container');
-        container.style.display = 'block';
+    // ক্যামেরায় স্ক্যান — চাপলেই পেছনের ক্যামেরা (partials/cam_scanner.html)
+    let scanner = null, scanStarting = false, torchOn = false;
 
-        if (!html5QrcodeScanner) {
-            html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader",
-                { fps: 10, qrbox: {width: 250, height: 150} },
-                /* verbose= */ false);
+    async function startScanner() {
+        const box = document.getElementById('reader-container'), status = document.getElementById('scan-status');
+        box.style.display = 'block';
+        if (scanner || scanStarting) return;
+        scanStarting = true;
+        status.className = 'sp-scan-status'; status.textContent = 'ক্যামেরা চালু হচ্ছে...';
+        try {
+            scanner = await SPScan.start('reader', onScanSuccess);
+            status.textContent = 'বারকোড বা QR কোড ফ্রেমের মধ্যে ধরুন';
+            document.getElementById('scan-torch').style.display = scanner.hasTorch() ? '' : 'none';
+        } catch (err) {
+            scanner = null;
+            status.className = 'sp-scan-status bad'; status.textContent = SPScan.message(err);
+        } finally {
+            scanStarting = false;
         }
-
-        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
     }
 
-    function onScanSuccess(decodedText, decodedResult) {
+    function onScanSuccess(text) {
         const barcodeInput = document.getElementById('id_barcode');
-        if (barcodeInput) {
-            barcodeInput.value = decodedText;
-
+        if (barcodeInput && text) {
+            barcodeInput.value = text;
             barcodeInput.style.borderColor = '#10B981';
             barcodeInput.style.backgroundColor = '#ecfdf5';
-            setTimeout(() => {
-                barcodeInput.style.borderColor = '';
-                barcodeInput.style.backgroundColor = '';
-            }, 1000);
+            setTimeout(() => { barcodeInput.style.borderColor = ''; barcodeInput.style.backgroundColor = ''; }, 1500);
         }
-
+        SPScan.feedback(true);
         stopScanner();
     }
 
-    function onScanFailure(error) {
-        // invisibly handles background failures while scanning
+    async function toggleTorch() {
+        if (!scanner) return;
+        torchOn = !torchOn;
+        if (!(await scanner.torch(torchOn))) torchOn = false;
     }
 
     function stopScanner() {
-        if (html5QrcodeScanner) {
-            html5QrcodeScanner.clear().catch(error => {
-                console.error("Failed to clear html5QrcodeScanner. ", error);
-            });
-        }
+        if (scanner) { scanner.stop(); scanner = null; }
+        torchOn = false;
         document.getElementById('reader-container').style.display = 'none';
     }
 </script>

@@ -4360,3 +4360,62 @@ class MarketingPagesTests(TestCase):
         home_en = self.client.get(reverse('landing_page_en')).content.decode()
         self.assertIn('href="/en/features/pos-software/"', home_en)
         self.assertIn('href="/en/for/grocery/"', home_en)
+
+
+class ProductBarcodeTests(TestCase):
+    """প্রোডাক্টের ফর্মে বারকোডের ঘর ছিলই না — ক্যামেরা/স্ক্যানারে স্ক্যান করলেও কোথাও বসত না। এখন ঘর আছে, দোকান ধরে আলাদা।"""
+
+    def setUp(self):
+        global Product
+        from .models import Product
+        self.owner = User.objects.create_user(phone_number='01796000001', password='Seller-pass-1')
+        self.shop = Shop.objects.create(user=self.owner, name='Barcode Shop', slug='barcodeshop')
+        other = User.objects.create_user(phone_number='01796000002', password='Seller-pass-2')
+        self.other_shop = Shop.objects.create(user=other, name='Other Shop', slug='othershop')
+        self.client.force_login(self.owner)
+
+    def _post(self, url, **extra):
+        data = {'name': 'Shampoo', 'cost_price': '100', 'price': '150', 'stock_quantity': '5', 'is_active': 'on'}
+        data.update(extra)
+        return self.client.post(url, data)
+
+    def test_page_has_field_and_camera(self):
+        html = self.client.get(reverse('add_product')).content.decode()
+        self.assertIn('name="barcode"', html)
+        self.assertIn('SPScan.start', html)
+        self.assertNotIn('Html5QrcodeScanner', html)
+
+    def test_scanned_barcode_saved_and_bangla_digits(self):
+        self._post(reverse('add_product'), barcode='৮৯০১০৩০৮৬৫২৭৮')
+        self.assertEqual(Product.objects.get(shop=self.shop).barcode, '8901030865278')
+
+    def test_blank_barcode_auto_generated(self):
+        self._post(reverse('add_product'), barcode='')
+        code = Product.objects.get(shop=self.shop).barcode
+        self.assertTrue(code and code.isdigit() and len(code) == 12)
+
+    def test_duplicate_in_same_shop_rejected_other_shop_allowed(self):
+        Product.objects.create(shop=self.other_shop, name='Their shampoo', price=150, barcode='8901030865278')
+        self._post(reverse('add_product'), barcode='8901030865278')          # অন্য দোকানে একই EAN — চলবে
+        mine = Product.objects.get(shop=self.shop)
+        self.assertEqual(mine.barcode, '8901030865278')
+        response = self._post(reverse('add_product'), name='Second', barcode='8901030865278')
+        self.assertContains(response, 'এই বারকোড আগে থেকেই &quot;Shampoo&quot; প্রোডাক্টে আছে।')
+        self.assertEqual(Product.objects.filter(shop=self.shop).count(), 1)
+        # নিজের প্রোডাক্ট এডিট করে একই বারকোড রাখা যায়
+        self._post(reverse('edit_product', args=[mine.pk]), name='Shampoo 2', barcode='8901030865278')
+        mine.refresh_from_db()
+        self.assertEqual(mine.name, 'Shampoo 2')
+
+    def test_csv_import_skips_existing_barcode(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        Product.objects.create(shop=self.shop, name='Old', price=10, barcode='111222333444')
+        csv_file = SimpleUploadedFile('p.csv', 'Name,Selling Price,Barcode\nDup,20,111222333444\nNew,30,555666777888\n'.encode(),
+                                      content_type='text/csv')
+        self.client.post(reverse('import_bulk_products'), {'csv_file': csv_file})
+        self.assertEqual(set(Product.objects.filter(shop=self.shop).values_list('name', flat=True)), {'Old', 'New'})
+
+    def test_pos_has_continuous_camera(self):
+        html = self.client.get(reverse('pos')).content.decode()
+        self.assertIn('id="cam-done"', html)
+        self.assertIn('স্ক্যান শেষ', html)

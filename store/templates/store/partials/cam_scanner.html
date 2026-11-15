@@ -1,0 +1,138 @@
+{% load static %}{% comment %}
+ক্যামেরায় বারকোড/QR স্ক্যান — প্রোডাক্ট যোগ/এডিট আর POS একই জিনিস ব্যবহার করে।
+
+কেন আগে কাজ করত না (১৫ নভেম্বর ২০২৬):
+১. প্রোডাক্টের ফর্মে বারকোডের ঘরই ছিল না (forms.ProductForm) — স্ক্যান হলেও কোথাও বসত না।
+২. html5-qrcode ক্যামেরার ছবিকে পর্দার বক্সের মাপে (ফোনে ~২৫০px) ছোট করে পড়ে — প্রোডাক্টের গায়ের সরু বারকোডের দাগ
+   মিশে যায়, তাই QR পড়ত কিন্তু বারকোড প্রায় পড়তই না। এখন:
+   - ফোনে BarcodeDetector থাকলে (Android Chrome) ফোনের নিজের স্ক্যানার পুরো রেজোলিউশনের ভিডিও থেকে পড়ে — দ্রুত, ঠিকঠাক।
+   - না থাকলে (iPhone ইত্যাদি) html5-qrcode, কিন্তু বক্সটা ১২৮০px চওড়া বানিয়ে CSS-এ ছোট দেখানো — তাই পুরো মাপে পড়ে।
+৩. আগের তৈরি বক্সে ইংরেজি "Request Camera Permissions" → ক্যামেরা বাছাই → "Start" — অনেক ফোনে সামনের ক্যামেরা।
+   এখন চাপলেই পেছনের ক্যামেরা, বাংলায় অবস্থা, টর্চ।
+ব্যবহার: const scan = await SPScan.start('reader-id', code => {...});  scan.stop();  SPScan.message(err)
+{% endcomment %}
+<script src="{% static 'vendor/html5-qrcode/html5-qrcode.min.js' %}" defer></script>
+<style>
+.sp-scan{position:relative;border-radius:14px;overflow:hidden;background:#0B0F19;min-height:200px}
+.sp-scan video{width:100%!important;height:auto;max-height:min(55vh,440px);display:block;object-fit:cover}
+.sp-scan .sp-frame{position:absolute;left:7%;right:7%;top:50%;height:44%;transform:translateY(-50%);border:2px solid rgba(255,255,255,.9);border-radius:12px;box-shadow:0 0 0 999px rgba(11,15,25,.35);pointer-events:none}
+.sp-scan .sp-big{transform-origin:0 0}
+.sp-scan #qr-shaded-region{border-color:rgba(11,15,25,.45)!important}
+.sp-scan-bar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap}
+.sp-scan-status{font-size:13.5px;font-weight:600;color:#475569}
+.sp-scan-status.bad{color:#B91C1C}
+.sp-scan-status.ok{color:#047857}
+</style>
+<script>
+window.SPScan = (function () {
+  const WANT = ['qr_code', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'code_93', 'itf', 'codabar'];
+  const BIG = 1280;                     // html5-qrcode-এর বক্স এত চওড়া হলে ক্যামেরার ছবি প্রায় পুরো মাপে পড়ে
+  const VIDEO = { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+
+  function message(err) {
+    const text = String((err && (err.name || err.message)) || err || '');
+    if (!window.isSecureContext) return 'ক্যামেরা শুধু https ঠিকানায় চলে।';
+    if (/not loaded/i.test(text)) return 'স্ক্যানার এখনো লোড হয়নি — কয়েক সেকেন্ড পর আবার চাপুন।';
+    if (/NotAllowed|Permission|denied/i.test(text)) return 'ক্যামেরার অনুমতি দেওয়া হয়নি। ঠিকানার পাশের তালা চিহ্নে চেপে Camera → Allow করুন, তারপর আবার চাপুন।';
+    if (/NotFound|not found|Overconstrained/i.test(text)) return 'এই ডিভাইসে ক্যামেরা পাওয়া যায়নি।';
+    if (/NotReadable|in use|Could not start|TrackStart/i.test(text)) return 'ক্যামেরা অন্য অ্যাপে চালু আছে — সেটা বন্ধ করে আবার চাপুন।';
+    return 'ক্যামেরা চালু করা যায়নি। পাতা রিফ্রেশ করে আবার চেষ্টা করুন।';
+  }
+  function denied(err) { return /NotAllowed|Permission|denied|NotFound|NotReadable/i.test(String((err && err.name) || err)); }
+
+  // ── ১. ফোনের নিজের স্ক্যানার (BarcodeDetector) — পুরো রেজোলিউশনের ভিডিও থেকে
+  async function startNative(el, onCode) {
+    const supported = await window.BarcodeDetector.getSupportedFormats();
+    const formats = WANT.filter(f => supported.includes(f));
+    if (!formats.length) throw new Error('no formats');
+    const detector = new window.BarcodeDetector({ formats });
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: VIDEO });
+    const track = stream.getVideoTracks()[0];
+    try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (e) { /* সব ফোনে নেই */ }
+    el.innerHTML = '<video playsinline muted autoplay></video><div class="sp-frame"></div>';
+    const video = el.querySelector('video');
+    video.srcObject = stream;
+    try { await video.play(); } catch (e) { /* autoplay আটকালেও muted ভিডিও চলে */ }
+    let running = true, timer = null;
+    const loop = async () => {
+      if (!running) return;
+      try {
+        if (video.readyState >= 2) {
+          const found = await detector.detect(video);
+          if (running && found.length) onCode(String(found[0].rawValue || '').trim());
+        }
+      } catch (e) { /* একটা ফ্রেম না পড়লেও চলে */ }
+      if (running) timer = setTimeout(loop, 110);
+    };
+    loop();
+    return {
+      stop() { running = false; clearTimeout(timer); stream.getTracks().forEach(t => t.stop()); el.innerHTML = ''; return Promise.resolve(); },
+      hasTorch() { try { return !!(track.getCapabilities && track.getCapabilities().torch); } catch (e) { return false; } },
+      async torch(on) { try { await track.applyConstraints({ advanced: [{ torch: on }] }); return true; } catch (e) { return false; } },
+    };
+  }
+
+  // ── ২. html5-qrcode — বড় বক্স, CSS-এ ছোট করে দেখানো
+  async function startLibrary(el, onCode) {
+    if (!window.Html5Qrcode) throw new Error('scanner not loaded');
+    const F = window.Html5QrcodeSupportedFormats;
+    const bigId = el.id + '-big';
+    el.innerHTML = `<div class="sp-big" id="${bigId}" style="width:${BIG}px"></div>`;
+    const big = document.getElementById(bigId);
+    const fit = () => {
+      // ফোন খাড়া ধরলে ছবি লম্বা হয় — বেশি লম্বা হলে মাঝখানটা দেখাই, যেন "স্ক্যান শেষ" বাটন পর্দায় থাকে
+      const scale = el.clientWidth / BIG, full = big.offsetHeight * scale;
+      const shown = Math.min(full, Math.min(window.innerHeight * 0.55, 440));
+      big.style.transform = `translateY(${-(full - shown) / 2}px) scale(${scale})`;
+      el.style.height = Math.round(shown) + 'px';
+    };
+    fit();
+    const cam = new Html5Qrcode(bigId, {
+      formatsToSupport: F ? [F.QR_CODE, F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.CODABAR] : undefined,
+      useBarCodeDetectorIfSupported: true, verbose: false,
+    });
+    const config = {
+      fps: 12, disableFlip: true, videoConstraints: VIDEO,
+      qrbox: (w, h) => { const width = Math.floor(w * 0.86); return { width, height: Math.max(120, Math.floor(Math.min(h * 0.62, width * 0.6))) }; },
+    };
+    const handler = text => onCode(String(text).trim());
+    try {
+      await cam.start({ facingMode: 'environment' }, config, handler, () => {});
+    } catch (first) {
+      // কিছু ফোনে এই চাওয়াগুলো মেলে না — তখন তালিকার শেষ ক্যামেরা (সাধারণত পেছনেরটা), সাধারণ মাপে
+      if (/NotAllowed|Permission/i.test(String(first && first.name || first))) throw first;
+      let cams = [];
+      try { cams = await Html5Qrcode.getCameras(); } catch (e) { throw first; }
+      if (!cams.length) throw first;
+      delete config.videoConstraints;
+      await cam.start(cams[cams.length - 1].id, config, handler, () => {});
+    }
+    fit();
+    window.addEventListener('resize', fit);
+    let stopped = false;
+    return {
+      stop() {
+        if (stopped) return Promise.resolve();
+        stopped = true;
+        window.removeEventListener('resize', fit);
+        return cam.stop().then(() => cam.clear()).catch(() => {}).then(() => { el.innerHTML = ''; el.style.height = ''; });
+      },
+      hasTorch() { try { return cam.getRunningTrackCameraCapabilities().torchFeature().isSupported(); } catch (e) { return false; } },
+      async torch(on) { try { await cam.getRunningTrackCameraCapabilities().torchFeature().apply(on); return true; } catch (e) { return false; } },
+    };
+  }
+
+  async function start(elId, onCode) {
+    const el = document.getElementById(elId);
+    el.classList.add('sp-scan');
+    if ('BarcodeDetector' in window && navigator.mediaDevices) {
+      try { return await startNative(el, onCode); } catch (e) { if (denied(e)) throw e; el.innerHTML = ''; }
+    }
+    return startLibrary(el, onCode);
+  }
+  function feedback(ok) {
+    try { if (navigator.vibrate) navigator.vibrate(ok ? 60 : [40, 60, 40]); } catch (e) { /* না হলেও চলে */ }
+  }
+  return { start, message, feedback };
+})();
+</script>

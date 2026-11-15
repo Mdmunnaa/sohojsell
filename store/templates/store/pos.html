@@ -32,7 +32,6 @@
   .kbd { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; font-weight: 700; color: var(--p-muted); background: #fff; border: 1px solid var(--p-line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; line-height: 1.5; }
   .p-search .kbd { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
   .p-scan-pill { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 700; color: var(--p-go-dark); background: var(--p-go-soft); border: 1px solid #A7F3D0; border-radius: 999px; padding: 7px 12px; white-space: nowrap; }
-  .p-scan-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #10B981; box-shadow: 0 0 0 3px rgba(16,185,129,.2); }
   .p-scan-pill.hit { background: #10B981; color: #fff; }
   .p-tool { border: 1.5px solid var(--p-line); background: #fff; color: var(--p-ink); border-radius: 12px; padding: 9px 12px; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; position: relative; }
   .p-tool:hover { border-color: #CBD5E1; background: var(--p-bg); }
@@ -209,6 +208,7 @@
   .p-toast { background: var(--p-ink); color: #fff; font-weight: 700; font-size: 13.5px; padding: 10px 18px; border-radius: 999px; box-shadow: 0 10px 25px rgba(0,0,0,.2); animation: pop .15s ease; }
   .p-toast.bad { background: var(--p-bad); }
   .p-toast.warn { background: var(--p-warn); }
+  .p-toast.ok { background: var(--p-go); }
 
   /* ফোন */
   #c-fab { display: none; }
@@ -233,6 +233,20 @@
     .m-back { padding: 0; align-items: flex-end; }
     .m-box { border-radius: 22px 22px 0 0; max-height: 94vh; }
   }
+  /* ক্যামেরায় একটানা স্ক্যান */
+  .cam-status { text-align: center; font-weight: 700; font-size: 13.5px; color: var(--p-muted); margin-top: 10px; min-height: 20px; }
+  .cam-status.bad { color: #B91C1C; }
+  .cam-last { display: flex; gap: 10px; align-items: center; margin-top: 10px; background: var(--p-go-soft); border: 1px solid #A7F3D0; border-radius: 12px; padding: 10px 12px; }
+  .cam-last > i { color: var(--p-go); font-size: 20px; }
+  .cam-last b { display: block; font-size: 14.5px; color: var(--p-ink); line-height: 1.3; }
+  .cam-last small { color: var(--p-ink2); font-size: 12.5px; }
+  .cam-last.bad { background: #FEF2F2; border-color: #FECACA; }
+  .cam-last.bad > i { color: #DC2626; }
+  .cam-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; color: var(--p-muted); font-weight: 600; }
+  .cam-torch { border: 1px solid var(--p-line); background: #fff; border-radius: 999px; padding: 5px 12px; font-weight: 700; font-size: 12.5px; color: var(--p-ink2); }
+  .cam-torch.on { background: #FEF3C7; border-color: #FCD34D; }
+  .cam-done { width: 100%; margin-top: 12px; border: 0; border-radius: 12px; background: var(--p-go); color: #fff; font-weight: 800; font-size: 15.5px; padding: 13px; }
+  .cam-done:hover { background: var(--p-go-dark); }
 </style>
 
 <div id="pos-app">
@@ -244,7 +258,7 @@
         <input type="search" id="q" placeholder="নাম বা বারকোড লিখুন / স্ক্যান করুন" autocomplete="off" aria-label="প্রোডাক্ট খুঁজুন">
         <span class="kbd">F2</span>
       </div>
-      <span class="p-scan-pill" id="scan-pill" title="বারকোড স্ক্যানার যেকোনো সময় কাজ করে"><span class="dot"></span><span class="lbl">স্ক্যানার চালু</span></span>
+      <span class="p-scan-pill" id="scan-pill" title="বারকোড স্ক্যানার যেকোনো সময় কাজ করে"><i class="bi bi-upc-scan"></i><span class="lbl">স্ক্যানার চালু</span></span>
       <button class="p-tool" type="button" id="btn-camera" title="মোবাইলের ক্যামেরায় স্ক্যান"><i class="bi bi-camera"></i><span class="lbl">ক্যামেরা</span></button>
       <button class="p-tool" type="button" id="btn-held" title="হোল্ড রাখা বিল (F9)"><i class="bi bi-pause-circle"></i><span class="lbl">হোল্ড</span><span class="count zero" id="held-count">0</span></button>
       <button class="p-tool" type="button" id="btn-sales" title="আজকের বিক্রি"><i class="bi bi-receipt"></i><span class="lbl">আজকের বিক্রি</span><span class="count" id="today-count">0</span></button>
@@ -433,7 +447,16 @@
 <div class="m-back" id="m-camera" role="dialog" aria-modal="true">
   <div class="m-box narrow">
     <div class="m-head"><h3>ক্যামেরায় স্ক্যান</h3><button class="m-x" data-close type="button" aria-label="বন্ধ"><i class="bi bi-x-lg"></i></button></div>
-    <div class="m-body"><div id="reader" style="width:100%;border-radius:14px;overflow:hidden;"></div><div id="cam-status" class="text-center fw-bold small mt-2" style="color:var(--p-muted);"></div></div>
+    <div class="m-body">
+      <div id="reader" style="width:100%;"></div>
+      <div id="cam-status" class="cam-status">ক্যামেরা চালু হচ্ছে...</div>
+      <div class="cam-last" id="cam-last" hidden><i class="bi bi-check-circle-fill"></i><div><b id="cam-last-name"></b><small id="cam-last-meta"></small></div></div>
+      <div class="cam-foot">
+        <span id="cam-count">একটার পর একটা প্রোডাক্ট ধরুন — ক্যামেরা চালু থাকবে</span>
+        <button type="button" class="cam-torch" id="cam-torch" hidden><i class="bi bi-lightbulb"></i> টর্চ</button>
+      </div>
+      <button type="button" class="cam-done" id="cam-done"><i class="bi bi-check2-all"></i> স্ক্যান শেষ</button>
+    </div>
   </div>
 </div>
 
@@ -460,7 +483,7 @@
 <iframe id="print-frame" title="রসিদ" style="position:absolute;width:0;height:0;border:0;visibility:hidden;"></iframe>
 
 {{ pos_config|json_script:"pos-config" }}
-<script src="{% static 'vendor/html5-qrcode/html5-qrcode.min.js' %}" defer></script>
+{% include 'store/partials/cam_scanner.html' %}
 <script>
 (function () {
 'use strict';
@@ -1110,18 +1133,78 @@ function openCartOnPhone() { if (window.innerWidth < 992) toggleCart(true); }
 $('c-fab').addEventListener('click', () => toggleCart(true));
 $('c-close').addEventListener('click', () => toggleCart(false));
 
-/* ── ক্যামেরা ── */
-let cam = null;
-$('btn-camera').addEventListener('click', () => {
-  openModal('m-camera'); $('cam-status').textContent = 'ক্যামেরা চালু হচ্ছে...';
-  if (!window.Html5Qrcode) { $('cam-status').textContent = 'স্ক্যানার লোড হয়নি, নেট দেখে আবার চেষ্টা করুন।'; return; }
-  cam = new Html5Qrcode('reader');
-  cam.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 260, height: 140 } }, text => {
-    $('cam-status').textContent = 'পাওয়া গেছে: ' + text; byBarcode(text); closeModal('m-camera');
-  }, () => {}).then(() => { $('cam-status').textContent = 'বারকোড ফ্রেমের মধ্যে ধরুন'; })
-    .catch(() => { $('cam-status').textContent = 'ক্যামেরা চালু করা যায়নি (অনুমতি দিন)।'; });
+/* ── ক্যামেরা: একটানা স্ক্যান — "স্ক্যান শেষ" না চাপা পর্যন্ত চালু থাকে ──
+   বারকোড ফ্রেমে যতক্ষণ থাকে, প্রতি ফ্রেমে আবার আসে — তাই একই কোড আবার নেওয়া হয় শুধু ফ্রেম থেকে সরে
+   (১.২ সেকেন্ড না দেখা গেলে) আবার এলে। একই প্রোডাক্ট দুটো হলে সরিয়ে আবার ধরুন।
+   অন্য মডাল (সাইজ/রং বাছাই) খোলা থাকলে স্ক্যান থামে। */
+let cam = null, camBusy = false, camLast = '', camLastAt = 0, camAdded = 0, camTorch = false;
+function camStatus(text, bad) { const el = $('cam-status'); el.textContent = text; el.classList.toggle('bad', !!bad); }
+function camShowLast(ok, name, meta) {
+  const box = $('cam-last'); box.hidden = false; box.classList.toggle('bad', !ok);
+  box.querySelector('i').className = ok ? 'bi bi-check-circle-fill' : 'bi bi-x-circle-fill';
+  $('cam-last-name').textContent = name; $('cam-last-meta').textContent = meta;
+}
+function camCount() {
+  const t = totals();
+  $('cam-count').textContent = camAdded
+    ? `এবার ${toBn(camAdded)}টা স্ক্যান · বিলে ${toBn(t.qty)}টা · ${fmt(t.total)}`
+    : 'একটার পর একটা প্রোডাক্ট ধরুন — ক্যামেরা চালু থাকবে';
+}
+async function onCamCode(code) {
+  const now = Date.now();
+  if (!code) return;
+  const stillInFrame = code === camLast && now - camLastAt < 1200;
+  if (code === camLast) camLastAt = now;
+  if (stillInFrame || camBusy || topModal() !== $('m-camera')) return;
+  camLast = code; camLastAt = now; camBusy = true;
+  try {
+    const before = state.lines.reduce((s, l) => s + l.qty, 0);
+    await byBarcode(code);
+    const after = state.lines.reduce((s, l) => s + l.qty, 0);
+    if (after > before) {
+      camAdded += after - before;
+      const p = PRODUCTS.get(lastId), line = state.lines.find(l => l.id === lastId);
+      camShowLast(true, p ? p.name : code, `যোগ হলো${line ? ' — বিলে ' + toBn(line.qty) + 'টা' : ''}`);
+      SPScan.feedback(true);
+    } else if (topModal() === $('m-camera')) {
+      camShowLast(false, code, 'বিলে যোগ হয়নি — বারকোড মেলেনি বা স্টকে নেই');
+      SPScan.feedback(false);
+    }
+    camCount();
+  } finally {
+    camBusy = false;
+  }
+}
+$('btn-camera').addEventListener('click', async () => {
+  openModal('m-camera');
+  if (cam) return;
+  camAdded = 0; camLast = ''; $('cam-last').hidden = true; camCount();
+  camStatus('ক্যামেরা চালু হচ্ছে...');
+  try {
+    cam = await SPScan.start('reader', onCamCode);
+    if (!topModal() || topModal() !== $('m-camera')) { stopCamera(); return; }      // চালু হওয়ার আগেই বন্ধ করেছেন
+    camStatus('বারকোড ফ্রেমের মধ্যে ধরুন — একটার পর একটা');
+    $('cam-torch').hidden = !cam.hasTorch();
+  } catch (err) {
+    cam = null; camStatus(SPScan.message(err), true);
+  }
 });
-function stopCamera() { if (cam) { cam.stop().catch(() => {}); cam = null; } }
+$('cam-torch').addEventListener('click', async () => {
+  if (!cam) return;
+  camTorch = !camTorch;
+  if (!(await cam.torch(camTorch))) camTorch = false;
+  $('cam-torch').classList.toggle('on', camTorch);
+});
+$('cam-done').addEventListener('click', () => closeModal('m-camera'));
+function stopCamera() {
+  if (cam) { cam.stop(); cam = null; }
+  camTorch = false; $('cam-torch').classList.remove('on');
+  if (camAdded > 0) {
+    toast(`স্ক্যান শেষ — ${toBn(camAdded)}টা প্রোডাক্ট বিলে যোগ হলো`, 'ok');
+    beep(true); openCartOnPhone();
+  }
+  camAdded = 0;
+}
 
 /* ── শুরু ── */
 $('cust-phone').value = state.phone; $('cust-name').value = state.name; $('disc').value = state.disc;

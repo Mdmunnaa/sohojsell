@@ -16,7 +16,7 @@ class ProductForm(forms.ModelForm):
         model = Product
         # এখানে 'description' অ্যাড করা হয়েছে
         fields = ['name', 'category', 'description', 'cost_price', 'price', 'compare_price', 'stock_quantity',
-                  'is_active', 'image']
+                  'barcode', 'is_active', 'image']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Product name'}),
             'category': forms.Select(attrs={'class': 'form-select'}),
@@ -27,7 +27,28 @@ class ProductForm(forms.ModelForm):
             'compare_price': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'যেমন 1200'}),
             'stock_quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             'image': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'barcode': forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'off', 'spellcheck': 'false',
+                                              'placeholder': 'স্ক্যান করুন, লিখুন, বা ফাঁকা রাখুন'}),
         }
+
+    def __init__(self, *args, shop=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.shop = shop or getattr(self.instance, 'shop', None)
+
+    def clean_barcode(self):
+        code = (self.cleaned_data.get('barcode') or '').strip().translate(str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789'))
+        if not code:
+            return None                      # ফাঁকা থাকলে Product.save() নিজে একটা বানায়
+        if self.shop is not None:
+            from .models import Product, ProductVariant
+            same = Product.objects.filter(shop=self.shop, barcode=code).exclude(pk=self.instance.pk).first()
+            if same:
+                raise forms.ValidationError(f'এই বারকোড আগে থেকেই "{same.name}" প্রোডাক্টে আছে।')
+            variant = (ProductVariant.objects.filter(product__shop=self.shop, barcode=code)
+                       .exclude(product_id=self.instance.pk).select_related('product').first())
+            if variant:
+                raise forms.ValidationError(f'এই বারকোড "{variant.product.name}" ({variant.name})-এ আছে।')
+        return code
 
     def clean(self):
         data = super().clean()

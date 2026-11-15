@@ -262,7 +262,7 @@ def add_product(request):
                                     "আরও যোগ করতে Billing থেকে প্যাকেজ আপগ্রেড করুন।")
             return redirect('product_list')
 
-        form = ProductForm(request.POST, request.FILES)
+        form = ProductForm(request.POST, request.FILES, shop=shop)
         try:
             rows = variants.rows_from_post(request.POST)
         except variants.VariantError as exc:
@@ -276,7 +276,7 @@ def add_product(request):
             messages.success(request, "প্রোডাক্ট যোগ হয়েছে।")
             return redirect('product_list')
     else:
-        form = ProductForm()
+        form = ProductForm(shop=shop)
     return render(request, 'store/add_product.html', {'form': form, 'variant_rows': _variant_rows(request, None)})
 
 
@@ -2018,6 +2018,9 @@ def import_bulk_products(request):
                 continue  # Skip rows with invalid number format
 
             barcode = row.get('Barcode', '').strip() or None
+            if barcode and Product.objects.filter(shop=shop, barcode=barcode).exists():
+                skipped_count += 1
+                continue
 
             Product.objects.create(
                 shop=shop,

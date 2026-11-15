@@ -236,11 +236,15 @@ class Product(models.Model):
     compare_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True,
                                         help_text='আগের দাম (ছাড় দেখাতে)')
     stock_quantity = models.PositiveIntegerField(default=0)
-    barcode = models.CharField(max_length=50, blank=True, null=True, unique=True, help_text='Leave blank to auto-generate')
+    # দোকানের ভেতরে আলাদা (আগে পুরো সাইটে ছিল — দুই দোকানে একই কোম্পানির প্রোডাক্ট, মানে একই EAN, রাখা যেত না)
+    barcode = models.CharField(max_length=50, blank=True, null=True, db_index=True, help_text='Leave blank to auto-generate')
     is_active = models.BooleanField(default=True)
     # সাইজ/রং থাকলে True; তখন stock_quantity = সব ভ্যারিয়েন্টের স্টকের যোগফল (store/variants.py ঠিক রাখে)
     has_variants = models.BooleanField(default=False, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['shop', 'barcode'], name='unique_product_barcode_per_shop')]
 
     def save(self, *args, **kwargs):
         # Auto-generate barcode if not provided
