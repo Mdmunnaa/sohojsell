@@ -16,7 +16,8 @@
 | `../Dockerfile` | Django ইমেজ: requirements, collectstatic, gunicorn |
 | `wrangler.jsonc` | Worker, কন্টেইনারের সাইজ (`standard-1`), অঞ্চল (`APAC`), ঠিকানা, cron |
 | `src/index.ts` | রিকোয়েস্ট কন্টেইনারে পাঠানো, Secrets → কন্টেইনারের env, static cache, জাগিয়ে রাখা, দৈনিক কাজ |
-| `build.sh` | deploy-এর আগে `migrate` (শুধু Build variables-এ `DATABASE_URL` থাকলে) |
+| `../deploy/container-start.sh` | কন্টেইনার চালু হওয়ার সময় আগে `migrate`, তারপর gunicorn |
+| `build.sh` | ঐচ্ছিক — Build variables-এ `DATABASE_URL` দিলে deploy-এর আগেও `migrate` (দরকার নেই) |
 
 কাজটা তিন ভাগে: **ক)** `cf.sellpunch.com`-এ চালু করা (Render-এ কোনো প্রভাব নেই) → **খ)** যাচাই →
 **গ)** আসল ঠিকানা `sellpunch.com` আর সব দোকানের সাবডোমেইন Cloudflare-এ নেওয়া।
@@ -33,8 +34,7 @@
    - Build command: **`bash build.sh`**
    - Deploy command: **`npx wrangler deploy`**
    - Advanced settings → Root directory: **`cloudflare`**
-   - Build variables: **এখন কিছু দেবেন না।** (Render-ই এখন ডাটাবেস migrate করছে; দুই জায়গা থেকে একসাথে করলে গোলমাল হয়।
-     ধাপ গ-তে দেবেন।)
+   - Build variables: **কিছু দেবেন না।** কন্টেইনার চালু হওয়ার সময় নিজেই migrate করে (`deploy/container-start.sh`)।
    - **Deploy** চাপুন। প্রথমবার ৫–১০ মিনিট লাগে। পরে Settings → Build → "Builds for non-production branches" বন্ধ রাখুন।
 
 3. **Secrets দেওয়া** — Worker `sellpunch` → Settings → **Variables and Secrets** → Add → Type: **Secret**।
@@ -90,7 +90,6 @@ Facebook কানেক্ট আর PayStation পেমেন্টও ধা
    আর ছবির ডোমেইন (`R2_PUBLIC_DOMAIN`, যেমন media.sellpunch.com) Django-তে না পাঠিয়ে সরাসরি R2-তে দেয়।
    অন্য কোনো সাবডোমেইন Django-র না হলে Secrets-এ `PASS_THROUGH_HOSTS` = কমা দিয়ে ঠিকানাগুলো।
 2. **আপনি, deploy শেষ হওয়ার আগেই:**
-   - Worker sellpunch → Settings → Build → **Build variables** → `DATABASE_URL` (Encrypt চাপুন) — এখন থেকে Cloudflare migrate করবে
    - Render → sohojsell → Settings → **Auto-Deploy: Off** — Render এখন থেকে শুধু ব্যাকআপ, নতুন কোড নেবে না
 3. **DNS-এ সুইচ:** Cloudflare → sellpunch.com → **DNS → Records**। `sellpunch.com`, `www`, `*` — এই তিনটা রেকর্ডের
    Proxy status **Proxied (কমলা মেঘ)** করুন। কমলা হওয়ার সাথে সাথে ট্রাফিক Cloudflare-এ যায়।
@@ -108,7 +107,7 @@ Facebook কানেক্ট আর PayStation পেমেন্টও ধা
 Render-এর build.sh যা করত, Cloudflare-এ কোথায় হয়:
 - ডেমো দোকান আবার সাজানো (`seed_demo`) → কেউ `/demo/` খুললে পুরনো হলে নিজে থেকে সাজায়
 - পুরনো ছবি ছোট করা (`optimize_images`) → রোজ সকাল ১০টার কাজে (`/internal/cron/daily/`)
-- `migrate` → `build.sh` (Build variables-এ `DATABASE_URL` থাকলে)
+- `migrate` → কন্টেইনার চালু হওয়ার সময় (`deploy/container-start.sh`)
 - ব্যাকআপ → আগের মতোই GitHub Actions (সার্ভারের উপর নির্ভর করে না)
 
 ## খরচ

@@ -26,12 +26,6 @@ RUN DEBUG=0 SECRET_KEY=collectstatic-only python manage.py collectstatic --no-in
 USER app
 EXPOSE 8080
 
-# ডাটাবেস migrate হয় Cloudflare-এর build ধাপে (cloudflare/build.sh), এখানে না —
-# তাই সার্ভার ঘুম থেকে দ্রুত ওঠে
-CMD ["gunicorn", "sohojsell.wsgi:application", \
-     "--bind", "0.0.0.0:8080", \
-     "--preload", \
-     "--workers", "3", "--threads", "4", "--worker-class", "gthread", \
-     "--timeout", "60", "--graceful-timeout", "20", \
-     "--forwarded-allow-ips", "*", \
-     "--access-logfile", "-"]
+# চালু হওয়ার সময় আগে migrate (নতুন কিছু না থাকলে ২–৩ সেকেন্ড), তারপর gunicorn — deploy/container-start.sh।
+# KEEP_WARM থাকায় কন্টেইনার ঘুমায় না, তাই এটা শুধু নতুন deploy বা Secret বদলালে হয়।
+CMD ["sh", "deploy/container-start.sh"]
