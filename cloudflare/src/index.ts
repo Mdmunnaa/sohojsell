@@ -7,6 +7,9 @@
  * - /static/ ফাইল Cloudflare-এর cache-এ রাখে, তাই সেগুলোর জন্য কন্টেইনার খাটে না।
  * - KEEP_WARM = "true" হলে প্রতি ৫ মিনিটে একবার সাড়া নেয়, তাই সার্ভার ঘুমায় না।
  * - দিনে একবার (সকাল ১০টা, বাংলাদেশ) /internal/cron/daily/ — বাকির অটো-তাগাদা। Secrets-এ CRON_SECRET লাগে।
+ * - *.sellpunch.com-এর সব ঠিকানা এই Worker-এ আসে; ছবির ডোমেইন (R2_PUBLIC_DOMAIN) আর PASS_THROUGH_HOSTS-এর
+ *   ঠিকানাগুলো Django-তে না পাঠিয়ে সরাসরি নিজের জায়গায় যায়।
+ * - মূল ঠিকানা একটাই (PRIMARY_HOST): www.sellpunch.com আর cf.sellpunch.com সেখানে পাঠিয়ে দেয় (Google-এ দুই কপি না)।
  */
 import { Container, getContainer } from '@cloudflare/containers';
 
@@ -31,6 +34,26 @@ export class SellPunchApp extends Container<Env> {
 	envVars = appEnv(this.env);
 }
 
+/** সরাসরি Cloudflare-এ ঢোকার ঠিকানা — মূল ঠিকানা অন্য হলে সেখানে পাঠিয়ে দেয় */
+const DIRECT_HOST = 'cf.sellpunch.com';
+
+function hostOf(value: string): string {
+	return value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/[/:].*$/, '');
+}
+
+/** যেসব ঠিকানা Django-র না (যেমন R2-এর ছবির ডোমেইন media.sellpunch.com) — Secrets থেকে */
+function passThroughHosts(vars: Record<string, unknown>): Set<string> {
+	const hosts = new Set<string>();
+	for (const value of [vars.R2_PUBLIC_DOMAIN, vars.PASS_THROUGH_HOSTS]) {
+		if (typeof value !== 'string') continue;
+		for (const part of value.split(',')) {
+			const host = hostOf(part);
+			if (host) hosts.add(host);
+		}
+	}
+	return hosts;
+}
+
 // wrangler.jsonc-এর triggers.crons-এর সাথে হুবহু মিলতে হবে
 const DAILY_CRON = '0 4 * * *'; // ০৪:০০ UTC = সকাল ১০টা বাংলাদেশ
 
@@ -42,6 +65,18 @@ function app(env: Env) {
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const url = new URL(request.url);
+		const vars = env as unknown as Record<string, unknown>;
+		const host = url.hostname.toLowerCase();
+
+		// ছবির ডোমেইন ইত্যাদি: Worker থেকে একই zone-এর ঠিকানায় fetch সরাসরি আসল জায়গায় যায় (এই Worker-এ ফেরে না)
+		if (passThroughHosts(vars).has(host)) return fetch(request);
+
+		// www.sellpunch.com আর (পুরোপুরি সরানোর পর) cf.sellpunch.com → sellpunch.com
+		const primary = typeof vars.PRIMARY_HOST === 'string' ? hostOf(vars.PRIMARY_HOST) : '';
+		if (primary && host !== primary && (host === `www.${primary}` || host === DIRECT_HOST)) {
+			const target = `https://${primary}${url.pathname}${url.search}`;
+			return Response.redirect(target, request.method === 'GET' || request.method === 'HEAD' ? 301 : 308);
+		}
 
 		// Django যেন বোঝে রিকোয়েস্ট https আর কাস্টমারের আসল IP কোনটা
 		const headers = new Headers(request.headers);

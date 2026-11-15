@@ -85,6 +85,9 @@ Facebook কানেক্ট আর PayStation পেমেন্টও ধা
    ...
    "PRIMARY_HOST": "sellpunch.com",
    ```
+   এরপর Worker নিজে থেকে: `www.sellpunch.com` আর `cf.sellpunch.com` → `sellpunch.com`-এ পাঠায় (Google-এ এক কপি),
+   আর ছবির ডোমেইন (`R2_PUBLIC_DOMAIN`, যেমন media.sellpunch.com) Django-তে না পাঠিয়ে সরাসরি R2-তে দেয়।
+   অন্য কোনো সাবডোমেইন Django-র না হলে Secrets-এ `PASS_THROUGH_HOSTS` = কমা দিয়ে ঠিকানাগুলো।
 2. **আপনি, deploy শেষ হওয়ার আগেই:**
    - Worker sellpunch → Settings → Build → **Build variables** → `DATABASE_URL` (Encrypt চাপুন) — এখন থেকে Cloudflare migrate করবে
    - Render → sohojsell → Settings → **Auto-Deploy: Off** — Render এখন থেকে শুধু ব্যাকআপ, নতুন কোড নেবে না
@@ -98,7 +101,14 @@ Facebook কানেক্ট আর PayStation পেমেন্টও ধা
 - রেকর্ডগুলো আগে ধূসর (DNS only) ছিল → আবার **DNS only** করে দিন।
 - আগে থেকেই কমলা ছিল → Worker sellpunch → Settings → **Domains & Routes** থেকে `sellpunch.com/*`, `www…`, `*.sellpunch.com/*` মুছুন।
 
-**৭ দিন পর** সব ঠিক থাকলে Render → sohojsell → Settings → **Suspend**।
+**৭ দিন পর** সব ঠিক থাকলে Render → sohojsell → Settings → **Suspend**। তার আগে Master HQ-তে দেখুন কোনো দোকান
+নিজের ডোমেইন (www.yourshop.com) চালাচ্ছে কিনা — চালালে নিচের "পরে: Premium-এর নিজের ডোমেইন" আগে করতে হবে।
+
+Render-এর build.sh যা করত, Cloudflare-এ কোথায় হয়:
+- ডেমো দোকান আবার সাজানো (`seed_demo`) → কেউ `/demo/` খুললে পুরনো হলে নিজে থেকে সাজায়
+- পুরনো ছবি ছোট করা (`optimize_images`) → রোজ সকাল ১০টার কাজে (`/internal/cron/daily/`)
+- `migrate` → `build.sh` (Build variables-এ `DATABASE_URL` থাকলে)
+- ব্যাকআপ → আগের মতোই GitHub Actions (সার্ভারের উপর নির্ভর করে না)
 
 ## খরচ
 
