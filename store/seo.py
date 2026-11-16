@@ -157,6 +157,7 @@ def assistant_help_lines(base):
     """
     from django.conf import settings
     from django.urls import reverse
+    from .company import PROMISES
     site = getattr(settings, 'SITE_NAME', 'SellPunch')
     fix = f"{base}{reverse('guide_detail', args=['troubleshooting'])}"
     whatsapp = ''.join(ch for ch in getattr(settings, 'SUPPORT_WHATSAPP', '') if ch.isdigit())
@@ -186,7 +187,8 @@ def assistant_help_lines(base):
         f'phone numbers in screenshots. {site} support never asks for a password.',
         '- Reply in Bangla (the dashboard is in Bangla) unless the seller writes in English, with numbered steps that use '
         'the exact menu and button names.',
-        '- Support: ' + ', '.join(item for item in contact if item) + '.',
+        '- Support: ' + ', '.join(item for item in contact if item)
+        + f" (replies within {PROMISES['support_reply_hours']} hours at most).",
         '',
     ]
 
@@ -199,7 +201,7 @@ def main_llms_txt(request):
     from django.conf import settings
     from django.urls import reverse
     from . import marketing
-    from .company import COMPANY
+    from .company import COMPANY, PRODUCTS, PROMISES
     from .payments import PLAN_PRICES, PLAN_YEAR_PRICES
     from .plans import PLAN_LIMITS
     base = main_site_url(request)
@@ -214,7 +216,8 @@ def main_llms_txt(request):
         'reports. The seller dashboard is in Bangla; each store can be shown to customers in Bangla or English.',
         '',
         f'{site} is a product of {COMPANY["name_en"]}, a registered business in Bangladesh '
-        f'(trade licence ID {COMPANY["licence_id"]}).',
+        f'(trade licence ID {COMPANY["licence_id"]}) owned by {COMPANY["owner_en"]}. Edumi has two products: '
+        + ' and '.join(f"{item['host']} ({item['about_en']})" for item in PRODUCTS) + '.',
         '',
         '## Key facts',
         '- Website live in about 1 minute after sign-up, at yourshop.' + (getattr(settings, 'STORE_BASE_DOMAIN', '') or 'sellpunch.com')
@@ -303,6 +306,10 @@ def main_llms_txt(request):
         f'{retention.DATA_DELETION_DAYS} days with SMS reminders, then deleted.',
         '- Security: HTTPS everywhere, hashed passwords, per-shop data isolation, automated tests before every release; '
         'no external security audit yet.',
+        f"- Support replies within {PROMISES['support_reply_hours']} hours at most (phone, WhatsApp or email). If the "
+        f"service goes down, it is worked on to be back within {PROMISES['outage_fix_hours']} hours.",
+        f"- If {site} ever has to close: at least {PROMISES['shutdown_notice_days']} days' notice by SMS and on the website, "
+        'so every seller can download all their data.',
     ]
     lines += [
         '', '## Short answers to common questions',

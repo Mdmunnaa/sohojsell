@@ -692,6 +692,9 @@ def security_page(request):
     backup_test = backups.trust_line()
     deletion_days_bn = str(retention.DATA_DELETION_DAYS).translate(bn)
     fee = str(shop_payments.fee_percent().normalize()).translate(bn)
+    from .company import PROMISES
+    notice_bn, reply_bn, fix_bn = (str(PROMISES[key]).translate(bn) for key in
+                                   ('shutdown_notice_days', 'support_reply_hours', 'outage_fix_hours'))
     try:
         facebook_live = marketing.facebook_live()
     except Exception:    # noqa: BLE001
@@ -699,8 +702,12 @@ def security_page(request):
     # কেনার আগে মানুষ (আর AI) যা জানতে চায় — প্রতিটা উত্তরের পেছনে কোড আছে; যা এখনো নেই, তা লেখা হয় না
     faq = [
         (f'{site} কোনোদিন বন্ধ হয়ে গেলে আমার তথ্যের কী হবে?',
-         'সব তথ্য যেকোনো সময় Excel-এ নামিয়ে নিজের কাছে রাখতে পারেন — নিয়মিত নামিয়ে রাখাই সবচেয়ে নিরাপদ। সার্ভিস বন্ধ '
-         'করার মতো কিছু হলে আগে জানানো হবে, যাতে সবাই তথ্য নিয়ে নিতে পারেন।'),
+         f'বন্ধ করতে হলে অন্তত {notice_bn} দিন আগে SMS দিয়ে আর এই ওয়েবসাইটে জানানো হবে। সেই সময়ে সব তথ্য Excel-এ, আর '
+         'প্রোডাক্ট Shopify বা WooCommerce-এর ফাইলে নামিয়ে নিতে পারবেন। এমনিতেও যেকোনো সময় সব তথ্য নামানো যায় — নিয়মিত '
+         'নামিয়ে রাখাই সবচেয়ে নিরাপদ।'),
+        ('কোনো সমস্যা হলে কত তাড়াতাড়ি সাহায্য পাব?',
+         f'ফোন, WhatsApp বা ইমেইলে জানালে সর্বোচ্চ {reply_bn} ঘণ্টার মধ্যে উত্তর দেওয়া হয়। সার্ভার বন্ধ হলে {fix_bn} ঘণ্টার '
+         'মধ্যে আবার চালু করার চেষ্টা করা হয়।'),
         ('অন্য প্ল্যাটফর্মে (Shopify, WooCommerce) চলে যেতে চাইলে?',
          'সেটিংস → ডাটা ও ব্যাকআপ থেকে প্রোডাক্টের ফাইল নামান — Shopify আর WooCommerce-এর Import যেভাবে চায় ঠিক সেভাবে: '
          'নাম, বিবরণ, দাম, আগের দাম, স্টক, সাইজ-রং, ক্যাটাগরি আর ছবির লিংক (ছবি ওরা লিংক থেকে নিজেই নামিয়ে নেয়)। কাস্টমার, '

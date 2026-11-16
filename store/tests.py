@@ -6020,3 +6020,40 @@ class AiHelpTests(ShopTestMixin, TestCase):
         steps = setup_steps(self.shop, plan_has_facebook=True)
         hint = next(item['hint'] for item in steps['items'] if item['key'] == 'facebook')
         self.assertIn('Messenger', hint)
+
+
+class CommitmentsTests(TestCase):
+    """মালিকের প্রতিশ্রুতি (company.PROMISES) আর মালিকের পরিচয় সব পাবলিক পাতায় আর llms.txt-এ একই রকম।"""
+
+    def test_about_shows_owner_products_and_promises(self):
+        from .company import COMPANY
+        body = self.client.get(reverse('about')).content.decode()
+        self.assertIn('যিনি চালান', body)
+        self.assertIn(f'আমি {COMPANY["owner_bn"]}, {COMPANY["name_bn"]}-এর মালিক', body)
+        self.assertIn(COMPANY['owner_en'], body)
+        self.assertIn('>edumi.bd</a>', body)
+        self.assertIn('>sellpunch.com</a>', body)
+        self.assertIn('৬ ঘণ্টা', body)
+        self.assertIn('অন্তত ৬০ দিন আগে', body)
+        self.assertIn("at least 60 days' notice", body)
+
+    def test_promises_on_contact_security_terms(self):
+        self.assertIn('সর্বোচ্চ ৬ ঘণ্টার মধ্যে উত্তর', self.client.get(reverse('contact')).content.decode())
+        security = self.client.get(reverse('security')).content.decode()
+        self.assertIn('অন্তত ৬০ দিন আগে SMS দিয়ে', security)
+        self.assertIn('কোনো সমস্যা হলে কত তাড়াতাড়ি সাহায্য পাব?', security)
+        self.assertIn('সার্ভার বন্ধ হলে ৬ ঘণ্টার মধ্যে', security)
+        terms = self.client.get(reverse('terms')).content.decode()
+        self.assertIn('অন্তত ৬০ দিন আগে', terms)
+        self.assertIn('সর্বোচ্চ ৬ ঘণ্টার মধ্যে উত্তর', terms)
+
+    def test_llms_and_schema_name_the_owner(self):
+        llms = self.client.get('/llms.txt').content.decode()
+        self.assertIn('owned by Md. Munna Mia', llms)
+        self.assertIn('edumi.bd (software for schools', llms)
+        self.assertIn("at least 60 days' notice", llms)
+        self.assertIn('Support replies within 6 hours at most', llms)
+        self.assertIn('"founder":{"@type":"Person","name":"Md. Munna Mia"}', self.client.get('/').content.decode())
+        from . import guides
+        guide = (guides.GUIDES_DIR / 'troubleshooting.md').read_text(encoding='utf-8')
+        self.assertIn('সর্বোচ্চ ৬ ঘণ্টার মধ্যে উত্তর', guide)

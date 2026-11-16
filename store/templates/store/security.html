@@ -109,6 +109,7 @@ STATUS_PAGE_URL বসানো থাকলে। মেয়াদ শেষ�
       <h3>সার্ভার</h3>
       <p>সফটওয়্যার চলে ক্লাউড সার্ভারে, ডাটাবেস PostgreSQL (Neon), ছবি Cloudflare R2-তে। কোন কোন প্রতিষ্ঠানের সেবা ব্যবহার হয়, তা <a href="{% url 'privacy_policy' %}">প্রাইভেসি পলিসিতে</a> লেখা আছে।</p>
       {% if status_page %}<p class="mt-2">সার্ভার সারাক্ষণ নজরে রাখা হয় — এখনকার অবস্থা আর আগের দিনগুলোর হিসাব <a href="{{ status_page }}" target="_blank" rel="noopener">এখানে দেখুন</a>।</p>{% endif %}
+      <p class="mt-2">সার্ভার বন্ধ হলে {{ company.outage_fix_hours_bn }} ঘণ্টার মধ্যে আবার চালু করার চেষ্টা করা হয়।</p>
     </article>
   </div>
 

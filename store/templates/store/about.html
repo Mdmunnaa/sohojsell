@@ -1,6 +1,6 @@
 {% extends 'store/public_base.html' %}
 {% block title %}আমাদের সম্পর্কে | {{ site.name }} — {{ company.name_bn }}-এর একটি পণ্য{% endblock %}
-{% block meta_description %}{{ site.name }} বানিয়েছে ও চালায় {{ company.name_bn }} — ট্রেড লাইসেন্সধারী একক মালিকানাধীন আইটি প্রতিষ্ঠান (লাইসেন্স আইডি {{ company.licence_id }}), {{ company.address_bn }}।{% endblock %}
+{% block meta_description %}{{ site.name }} বানিয়েছে ও চালায় {{ company.name_bn }} (মালিক {{ company.owner_bn }}) — ট্রেড লাইসেন্সধারী একক মালিকানাধীন আইটি প্রতিষ্ঠান (লাইসেন্স আইডি {{ company.licence_id }}), {{ company.address_bn }}।{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -24,9 +24,20 @@
 .ab-item i{font-size:22px;color:var(--brand-dark)}
 .ab-item h3{font-size:16px;font-weight:800;margin:10px 0 6px}
 .ab-item p{font-size:14.5px;line-height:1.7;margin:0}
+.ab-owner{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:28px;align-items:start}
+.ab-quote{font-size:16.5px;line-height:1.9;color:var(--ink);margin:0}
+.ab-sign{margin-top:12px;font-size:15px;font-weight:700;color:var(--ink)}
+.ab-sign span{display:block;font-weight:500;color:var(--muted);font-size:14px}
+.ab-products{list-style:none;padding:0!important;margin:0;display:grid;gap:10px}
+.ab-products li{border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+.ab-products a{font-weight:800;color:var(--ink);text-decoration:none}
+.ab-products a:hover{color:var(--brand-dark)}
+.ab-products small{display:block;color:var(--muted);font-size:14px;line-height:1.6}
+.ab-promise{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.ab-promise .num{font-size:28px;font-weight:800;color:var(--brand-dark);line-height:1.1}
 .ab-en{background:var(--bg)}
 .ab-en code{color:var(--ink);background:#fff}
-@media(max-width:768px){.ab-id,.ab-grid{grid-template-columns:minmax(0,1fr)}.ab-card{padding:22px 18px}.ab-facts{grid-template-columns:minmax(0,1fr);gap:2px}.ab-facts dd{margin-bottom:10px}}
+@media(max-width:768px){.ab-id,.ab-grid,.ab-owner,.ab-promise{grid-template-columns:minmax(0,1fr)}.ab-card{padding:22px 18px}.ab-facts{grid-template-columns:minmax(0,1fr);gap:2px}.ab-facts dd{margin-bottom:10px}}
 </style>
 {% endblock %}
 
@@ -42,7 +53,7 @@
     <div class="ab-id">
       <div>
         <h2 id="who">আমরা কে</h2>
-        <p>{{ site.name }} বানিয়েছে ও চালায় <strong>{{ company.name_bn }}</strong>, বাংলাদেশের একটি নিবন্ধিত আইটি প্রতিষ্ঠান। একই প্রতিষ্ঠান শিক্ষা প্রতিষ্ঠানের সফটওয়্যার <a href="{{ company.website }}" target="_blank" rel="noopener">Edumi</a>-ও চালায়।</p>
+        <p>{{ site.name }} বানিয়েছে ও চালায় <strong>{{ company.name_bn }}</strong>, বাংলাদেশের একটি নিবন্ধিত আইটি প্রতিষ্ঠান। প্রতিষ্ঠানের মালিক <strong>{{ company.owner_bn }} ({{ company.owner_en }})</strong>। একই প্রতিষ্ঠান স্কুল, কোচিং আর মাদ্রাসার সফটওয়্যার <a href="{{ company.website }}" target="_blank" rel="noopener">edumi.bd</a>-ও চালায়।</p>
         <p class="ab-note">একক মালিকানাধীন প্রতিষ্ঠানের জন্য RJSC নিবন্ধন প্রযোজ্য নয় — আইনি পরিচয় ইউনিয়ন পরিষদের দেওয়া এই ট্রেড লাইসেন্স। যাচাই করতে লাইসেন্স আইডি দিয়ে {{ company.issuer_bn }}-এ খোঁজ নিতে পারেন। লাইসেন্সের কপি চাইলে <a href="mailto:{{ site.info_email|default:site.email }}">{{ site.info_email|default:site.email }}</a>-এ লিখুন।</p>
       </div>
       <dl class="ab-facts">
@@ -62,6 +73,28 @@
     </div>
   </section>
 
+  <section class="ab-card" aria-labelledby="owner">
+    <h2 id="owner">যিনি চালান</h2>
+    <div class="ab-owner">
+      <div>
+        <p class="ab-quote">আমি {{ company.owner_bn }}, {{ company.name_bn }}-এর মালিক। এডুমির পণ্য দুটো — একটা <a href="{{ company.website }}" target="_blank" rel="noopener">edumi.bd</a>, আরেকটা এই {{ site.name }}। দুটোই বাংলাদেশের মানুষের রোজকার কাজের জন্য, পুরোটা বাংলায় বানানো।</p>
+        <div class="ab-sign">{{ company.owner_bn }} ({{ company.owner_en }})<span>মালিক, {{ company.name_bn }}</span></div>
+      </div>
+      <ul class="ab-products" aria-label="{{ company.name_bn }}-এর পণ্য">
+        {% for product in company.products %}<li><a href="{{ product.url }}"{% if product.name != site.name %} target="_blank" rel="noopener"{% endif %}>{{ product.host }}</a><small>{{ product.about_bn }}</small></li>{% endfor %}
+      </ul>
+    </div>
+  </section>
+
+  <section class="ab-card" aria-labelledby="promise">
+    <h2 id="promise">আমাদের প্রতিশ্রুতি</h2>
+    <div class="ab-promise">
+      <div class="ab-item"><div class="num">{{ company.support_reply_hours_bn }} ঘণ্টা</div><h3>সাপোর্টের উত্তর</h3><p>ফোন, WhatsApp বা ইমেইলে সমস্যা জানালে সর্বোচ্চ {{ company.support_reply_hours_bn }} ঘণ্টার মধ্যে উত্তর।</p></div>
+      <div class="ab-item"><div class="num">{{ company.outage_fix_hours_bn }} ঘণ্টা</div><h3>সার্ভার বন্ধ হলে</h3><p>{{ company.outage_fix_hours_bn }} ঘণ্টার মধ্যে আবার চালু করার চেষ্টা।</p></div>
+      <div class="ab-item"><div class="num">{{ company.shutdown_notice_days_bn }} দিন</div><h3>আগাম নোটিশ</h3><p>{{ site.name }} কখনো বন্ধ করতে হলে অন্তত {{ company.shutdown_notice_days_bn }} দিন আগে জানানো হবে, যাতে সব তথ্য নামিয়ে নিতে পারেন।</p></div>
+    </div>
+  </section>
+
   <section class="ab-card" aria-labelledby="why">
     <h2 id="why">কেন {{ site.name }}</h2>
     <div class="ab-grid">
@@ -78,7 +111,8 @@
 
   <section class="ab-card ab-en" id="english" lang="en" aria-labelledby="en-title">
     <h2 id="en-title">About {{ site.name }} (in English)</h2>
-    <p>{{ site.name }} is a product of <strong>{{ company.name_en }}</strong>, an {{ company.kind_en }} registered in Bangladesh under trade licence ID <code>{{ company.licence_id }}</code>, issued by {{ company.issuer_en }}. Owner: {{ company.owner_en }}. Registered address: {{ company.address_en }}.</p>
+    <p>{{ site.name }} is a product of <strong>{{ company.name_en }}</strong>, an {{ company.kind_en }} registered in Bangladesh under trade licence ID <code>{{ company.licence_id }}</code>, issued by {{ company.issuer_en }}. Owner: {{ company.owner_en }}, who runs both of Edumi's products: {% for product in company.products %}{{ product.host }} ({{ product.about_en }}){% if not forloop.last %} and {% endif %}{% endfor %}. Registered address: {{ company.address_en }}.</p>
+    <p>Our commitments: support replies within {{ company.support_reply_hours }} hours at most; if the service goes down, we work to restore it within {{ company.outage_fix_hours }} hours; if {{ site.name }} ever has to close, at least {{ company.shutdown_notice_days }} days' notice so every seller can download all their data.</p>
     <p class="mb-0">Support: {% if site.phone %}{{ site.phone }} · {% endif %}{{ site.email }}{% if site.info_email %} · General enquiries: {{ site.info_email }}{% endif %}{% if site.refund_email %} · Refunds and billing: {{ site.refund_email }}{% endif %}</p>
   </section>
 </div>

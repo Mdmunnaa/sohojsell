@@ -29,6 +29,22 @@ COMPANY = {
     'website': 'https://www.edumi.bd',
 }
 
+# এডুমির পণ্য — "আমাদের সম্পর্কে" পাতায় মালিকের পরিচয়ের সাথে
+PRODUCTS = [
+    {'name': 'Edumi', 'host': 'edumi.bd', 'url': 'https://www.edumi.bd',
+     'about_bn': 'স্কুল, কোচিং আর মাদ্রাসার সফটওয়্যার', 'about_en': 'software for schools, coaching centres and madrasahs'},
+    {'name': 'SellPunch', 'host': 'sellpunch.com', 'url': 'https://sellpunch.com',
+     'about_bn': 'ছোট ব্যবসার অনলাইন দোকান, POS আর হিসাব', 'about_en': 'online store, POS and accounts for small businesses'},
+]
+
+# মালিকের দেওয়া প্রতিশ্রুতি (১৬ নভেম্বর ২০২৬) — যোগাযোগ, "আমাদের সম্পর্কে", "নিরাপত্তা ও ডাটা", শর্তাবলি আর
+# llms.txt সবাই এখান থেকে নেয়। বদলালে settings.POLICY_UPDATED_ON-ও বদলান (শর্তাবলিতে আছে)।
+PROMISES = {
+    'support_reply_hours': 6,     # ফোন, WhatsApp বা ইমেইলে সমস্যা জানালে সর্বোচ্চ এত ঘণ্টায় উত্তর
+    'outage_fix_hours': 6,        # সার্ভার বন্ধ হলে এত ঘণ্টার মধ্যে চালু করার চেষ্টা
+    'shutdown_notice_days': 60,   # SellPunch পুরো বন্ধ করতে হলে অন্তত এত দিন আগে জানানো, সব তথ্য নামানোর সুযোগসহ
+}
+
 # SellPunch-এর যোগাযোগ (settings / env দিয়ে বদলানো যায়; ফাঁকা env হলে এগুলোই)
 DEFAULT_CONTACT = {
     'SUPPORT_PHONE': '+880 9658-614453',          # Edumi-র হেল্পলাইন (একই প্রতিষ্ঠান)
@@ -51,6 +67,10 @@ def company_context(today=None):
     """টেমপ্লেটের জন্য — নবায়নের তারিখ পার হয়ে গেলে (বদলানো না হলে) মেয়াদের লাইন আর দেখায় না।"""
     from django.utils import timezone
     data = dict(COMPANY)
+    data['products'] = PRODUCTS
+    for key, value in PROMISES.items():
+        data[key] = value
+        data[f'{key}_bn'] = str(value).translate(_BN_DIGITS)
     if data['valid_until'] < (today or timezone.localdate()):
         data['valid_until'] = None
     else:
