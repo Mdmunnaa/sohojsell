@@ -39,7 +39,7 @@ GitHub → রিপো **sohojsell** → **Settings → Secrets and variables �
 |---|---|
 | `BACKUP_DATABASE_URL` | SellPunch-এর লাইভ ডাটাবেসের লিংক: Neon → প্রজেক্ট → **Connect** → connection string (`postgresql://…`; pooler লিংক হলেও চলবে) — Render-এর `DATABASE_URL`-এর সাথে একই |
 | `BACKUP_PASSPHRASE` | ধাপ ৩-এর গোপন বাক্য |
-| `R2_ENDPOINT_URL` | `https://<account-id>.r2.cloudflarestorage.com` |
+| `R2_ENDPOINT_URL` | Cloudflare → **R2** → ডান পাশের **Account ID** (শুধু আইডিটা দিলেও চলে), বা `https://<account-id>.r2.cloudflarestorage.com` — বাকেটের **Settings → S3 API**-এর পুরো লিংক (শেষে `/sellpunch-backups`-সহ) দিলেও স্ক্রিপ্ট ঠিক করে নেয় |
 | `R2_ACCESS_KEY_ID` | ধাপ ২ |
 | `R2_SECRET_ACCESS_KEY` | ধাপ ২ |
 | `R2_BACKUP_BUCKET` | `sellpunch-backups` |

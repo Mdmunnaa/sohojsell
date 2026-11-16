@@ -4288,6 +4288,12 @@ class BackupScriptTests(TestCase):
         self.assertEqual(db_backup.direct_url('postgresql://u:p@ep-x-pooler.ap-southeast-1.aws.neon.tech/db'),
                          'postgresql://u:p@ep-x.ap-southeast-1.aws.neon.tech/db')
         self.assertNotIn('p@', db_backup.safe_target('postgresql://u:p@host/db'))
+        account = '0123456789abcdef0123456789abcdef'
+        endpoint = f'https://{account}.r2.cloudflarestorage.com'
+        for raw in (account, endpoint, f'{endpoint}/sellpunch-backups', f' {endpoint}/ '):
+            self.assertEqual(db_backup.r2_endpoint(raw), endpoint, raw)
+        self.assertEqual(db_backup.bucket_name(f'{endpoint}/sellpunch-backups'), 'sellpunch-backups')
+        self.assertEqual(db_backup.bucket_name('sellpunch-backups'), 'sellpunch-backups')
 
     def test_restore_check_counting(self):
         import backup_restore_check as rc

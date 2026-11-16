@@ -10,7 +10,7 @@ SellPunch — ডাটাবেস ব্যাকআপ (Edumi-র scripts/db_
 পরিবেশ (env) -- GitHub → Settings → Secrets and variables → Actions:
     BACKUP_DATABASE_URL   Neon-এর লিংক (pooler লিংক দিলেও চলবে -- স্ক্রিপ্ট নিজেই সরাসরি লিংকে বদলে নেয়)
     BACKUP_PASSPHRASE     এনক্রিপশনের গোপন বাক্য -- হারালে ব্যাকআপ আর খোলা যাবে না
-    R2_ENDPOINT_URL       https://<account-id>.r2.cloudflarestorage.com
+    R2_ENDPOINT_URL       Cloudflare-এর Account ID, বা https://<account-id>.r2.cloudflarestorage.com (শেষে /বাকেট থাকলেও চলে)
     R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
     R2_BACKUP_BUCKET      আলাদা PRIVATE বাকেট (মিডিয়ার পাবলিক বাকেট না!)
 
@@ -84,15 +84,37 @@ def keys_to_delete(keys, today, keep_days, newest_must_stay=True):
 def env(name):
     value = os.environ.get(name, '').strip()
     if not value:
-        raise BackupError(f'{name} সেট করা নেই (GitHub Secrets দেখুন)')
+        raise BackupError(f'{name} সেট করা নেই — GitHub → Settings → Secrets and variables → Actions → '
+                          f'Repository secrets-এ ঠিক এই নামে ({name}) দিন')
     return value
+
+
+def r2_endpoint(raw):
+    """
+    Cloudflare-এর পাতা থেকে যেভাবেই কপি হোক — শুধু Account ID, https://<id>.r2.cloudflarestorage.com, বা শেষে
+    /<bucket>-সহ পুরো S3 API লিংক — সব থেকে ঠিক endpoint বানায় (বাকেটের নাম endpoint-এ থাকলে আপলোড ভুল জায়গায় যায়)।
+    """
+    raw = raw.strip()
+    match = re.search(r'\b([0-9a-f]{32})\b', raw.lower())
+    if match:
+        return f'https://{match.group(1)}.r2.cloudflarestorage.com'
+    parts = urlsplit(raw if '://' in raw else f'https://{raw}')
+    if not parts.netloc:
+        raise BackupError('R2_ENDPOINT_URL ঠিক নেই — Cloudflare R2-এর Account ID বা S3 API লিংক দিন')
+    return f'{parts.scheme}://{parts.netloc}'
+
+
+def bucket_name(raw):
+    """বাকেটের নাম — ভুলে পুরো লিংক দিলেও শেষ অংশটা নেয়।"""
+    raw = raw.strip().replace('https://', '').replace('http://', '').strip('/')
+    return raw.rsplit('/', 1)[-1].strip()
 
 
 def s3_client():
     import boto3
     from botocore.config import Config
     return boto3.client(
-        's3', endpoint_url=env('R2_ENDPOINT_URL'), region_name='auto',
+        's3', endpoint_url=r2_endpoint(env('R2_ENDPOINT_URL')), region_name='auto',
         aws_access_key_id=env('R2_ACCESS_KEY_ID'), aws_secret_access_key=env('R2_SECRET_ACCESS_KEY'),
         config=Config(signature_version='s3v4', s3={'addressing_style': 'path'},
                       request_checksum_calculation='when_required', response_checksum_validation='when_required',
@@ -157,7 +179,7 @@ def list_keys(client, bucket, prefix):
 # ---------------------------------------------------------------- কমান্ড
 def cmd_backup(_args):
     url = direct_url(env('BACKUP_DATABASE_URL'))
-    passphrase, bucket = env('BACKUP_PASSPHRASE'), env('R2_BACKUP_BUCKET')
+    passphrase, bucket = env('BACKUP_PASSPHRASE'), bucket_name(env('R2_BACKUP_BUCKET'))
     if len(passphrase) < 16:
         raise BackupError('BACKUP_PASSPHRASE কমপক্ষে ১৬ অক্ষরের দিন')
     now = dt.datetime.now(DHAKA)
@@ -189,7 +211,7 @@ def cmd_backup(_args):
 
 
 def cmd_list(_args):
-    client, bucket = s3_client(), env('R2_BACKUP_BUCKET')
+    client, bucket = s3_client(), bucket_name(env('R2_BACKUP_BUCKET'))
     rows = list_keys(client, bucket, 'db/')
     for key, size in sorted(rows):
         print(f'{key}\t{size / 1024:.0f} KB')
@@ -202,7 +224,7 @@ def download(key_or_path, out_path):
         enc = key_or_path
         if not os.path.exists(key_or_path):
             enc = os.path.join(tmp, 'db.dump.gpg')
-            s3_client().download_file(env('R2_BACKUP_BUCKET'), key_or_path, enc)
+            s3_client().download_file(bucket_name(env('R2_BACKUP_BUCKET')), key_or_path, enc)
         decrypt(enc, out_path, passphrase)
     verify_dump(out_path)
 
