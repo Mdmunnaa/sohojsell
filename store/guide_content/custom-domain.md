@@ -1,5 +1,5 @@
 <!-- meta
-title: নিজের ডোমেইন যুক্ত করা: www.yourshop.com-এ দোকানের ওয়েবসাইট
+title: নিজের ডোমেইন যুক্ত করা: www.yourshop.com-এ দোকান
 description: SellPunch-এ yourshop.sellpunch.com-এর বদলে নিজের কেনা ডোমেইনে (www.yourshop.com) ওয়েবসাইট চালু করা — ডোমেইন লেখা, DNS-এ CNAME বসানো, Cloudflare-এর নিয়ম, যাচাই আর SSL।
 -->
 # নিজের ডোমেইন যুক্ত করা

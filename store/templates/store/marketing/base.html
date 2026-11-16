@@ -73,7 +73,7 @@
     <a href="{{ home_url }}#pricing">{{ ui.pricing }}</a>
     <a href="{% url 'guide_index' %}">{% if lang == 'en' %}Guides{% else %}গাইড সেন্টার{% endif %}</a>
     <a href="{{ home_url }}#faq">{{ ui.faq }}</a>
-    <a href="{% url 'demo_start' %}">{{ ui.demo }}</a>
+    <a rel="nofollow" href="{% url 'demo_start' %}">{{ ui.demo }}</a>
     <a href="{% url 'login' %}">{{ ui.login }}</a>
     {% if mk_seo.other_url %}<a href="{{ mk_seo.other_url }}" hreflang="{{ ui.other_lang_code }}" lang="{{ ui.other_lang_code }}"><i class="bi bi-globe2"></i> {{ ui.other_lang }}</a>{% endif %}
     <a href="{% url 'signup' %}" class="btn btn-brand">{{ ui.start }}</a>
@@ -88,7 +88,7 @@
     <p>{{ ui.final_text }}</p>
     <div class="cta">
       <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> {{ ui.start }}</a>
-      <a href="{% url 'demo_start' %}" class="btn btn-lg btn-out">{{ ui.final_demo }}</a>
+      <a rel="nofollow" href="{% url 'demo_start' %}" class="btn btn-lg btn-out">{{ ui.final_demo }}</a>
     </div>
   </div>
 </div>{% endblock %}

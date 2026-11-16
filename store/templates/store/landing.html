@@ -34,7 +34,7 @@
     <div class="nav-cta">
       <a href="{% url 'landing_page_en' %}" class="nav-lang" hreflang="en" lang="en"><i class="bi bi-globe2"></i> English</a>
       <a href="{% url 'login' %}" class="btn btn-sm nav-login" style="color:var(--ink2)">লগইন</a>
-      <a href="{% url 'demo_start' %}" class="btn btn-sm btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> লাইভ ডেমো</a>
+      <a rel="nofollow" href="{% url 'demo_start' %}" class="btn btn-sm btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> লাইভ ডেমো</a>
       <a href="{% url 'signup' %}" class="btn btn-sm btn-brand">ফ্রি শুরু করুন</a>
       <button class="nav-burger" onclick="toggleMenu()" aria-label="মেনু"><i class="bi bi-list" id="ham-icon"></i></button>
     </div>
@@ -45,7 +45,7 @@
     <a href="#pricing" onclick="toggleMenu()">দাম</a>
     <a href="#faq" onclick="toggleMenu()">প্রশ্নোত্তর</a>
     <a href="{% url 'guide_index' %}">গাইড সেন্টার</a>
-    <a href="{% url 'demo_start' %}">লাইভ ডেমো দেখুন</a>
+    <a rel="nofollow" href="{% url 'demo_start' %}">লাইভ ডেমো দেখুন</a>
     <a href="{% url 'login' %}">লগইন</a>
     <a href="{% url 'landing_page_en' %}" hreflang="en" lang="en"><i class="bi bi-globe2"></i> English</a>
     <a href="{% url 'signup' %}" class="btn btn-brand">৩০ দিন ফ্রি শুরু করুন</a>
@@ -60,7 +60,7 @@
       <p class="lead">নিজের ওয়েবসাইট, দোকানের POS, অর্ডার থেকে কুরিয়ার, কাস্টমারকে SMS, বাকির খাতা আর লাভ-লোকসানের রিপোর্ট। Facebook পেজে যারা বিক্রি করেন বা ছোট দোকান চালান — তাদের রোজকার কাজের জন্য বানানো।</p>
       <div class="hero-cta">
         <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> {{ trial_days|bn }} দিন ফ্রি শুরু করুন</a>
-        <a href="{% url 'demo_start' %}" class="btn btn-lg btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> লাইভ ডেমো দেখুন</a>
+        <a rel="nofollow" href="{% url 'demo_start' %}" class="btn btn-lg btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> লাইভ ডেমো দেখুন</a>
       </div>
       <div class="hero-notes">
         <span><i class="bi bi-check-circle-fill"></i> কার্ড লাগে না</span>
@@ -147,7 +147,7 @@
           <li><i class="ic amber bi bi-google"></i><span><b>Google-এ খুঁজে পাওয়ার</b> ব্যবস্থা (SEO, সাইটম্যাপ) নিজে থেকে</span></li>
         </ul>
         <a href="{% url 'mk_feature' 'online-shop' %}" class="feat-link" style="margin-right:18px">অনলাইন শপ ওয়েবসাইটের বিস্তারিত <i class="bi bi-arrow-right"></i></a>
-        <a href="{% url 'demo_store' %}" class="feat-link">ডেমো দোকানটা কাস্টমার যেভাবে দেখে <i class="bi bi-arrow-right"></i></a>
+        <a rel="nofollow" href="{% url 'demo_store' %}" class="feat-link">ডেমো দোকানটা কাস্টমার যেভাবে দেখে <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
         <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>demo.{{ site.store_domain }}</i></div><img src="{% static 'landing/shop.webp' %}" srcset="{% img_srcset 'landing/shop.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="দোকানের ওয়েবসাইট — ব্যানার, ক্যাটাগরি, প্রোডাক্ট" width="1800" height="1125" loading="lazy"></div>
@@ -382,8 +382,8 @@
         <h2>কেনার আগে নিজে চালিয়ে দেখুন</h2>
         <p>"ফ্যাশন পয়েন্ট" নামের একটা ডেমো দোকান সাজানো আছে — ৩ মাসের বিক্রি, কাস্টমার, বাকি, খরচ সব দেওয়া। পাসওয়ার্ড লাগে না, যা খুশি করে দেখুন; রোজ রাতে সব আবার আগের মতো হয়ে যায়।</p>
         <div class="cta">
-          <a href="{% url 'demo_start' %}" class="btn btn-lg btn-white"><i class="bi bi-speedometer2" style="color:var(--brand)"></i> সেলারের ড্যাশবোর্ড</a>
-          <a href="{% url 'demo_store' %}" class="btn btn-lg btn-ghost-w"><i class="bi bi-shop"></i> কাস্টমার যা দেখে</a>
+          <a rel="nofollow" href="{% url 'demo_start' %}" class="btn btn-lg btn-white"><i class="bi bi-speedometer2" style="color:var(--brand)"></i> সেলারের ড্যাশবোর্ড</a>
+          <a rel="nofollow" href="{% url 'demo_store' %}" class="btn btn-lg btn-ghost-w"><i class="bi bi-shop"></i> কাস্টমার যা দেখে</a>
         </div>
         <div class="demo-facts">
           <span>৩০টা প্রোডাক্ট</span><span>৬০০+ অর্ডার</span><span>POS ও ওয়েবসাইট</span><span>বাকির খাতা</span><span>রিপোর্ট</span>
@@ -426,7 +426,7 @@
     <p>{{ trial_days|bn }} দিন ফ্রি। কার্ড লাগে না। পছন্দ না হলে কিছু করতে হবে না।</p>
     <div class="cta">
       <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> ফ্রি অ্যাকাউন্ট খুলুন</a>
-      <a href="{% url 'demo_start' %}" class="btn btn-lg btn-out">আগে ডেমো দেখি</a>
+      <a rel="nofollow" href="{% url 'demo_start' %}" class="btn btn-lg btn-out">আগে ডেমো দেখি</a>
     </div>
   </div>
 </div>
@@ -446,7 +446,7 @@
       </div>
       <div>
         <h3>সফটওয়্যার</h3>
-        <div class="lk"><a href="{{ features_url }}">সব ফিচার</a><a href="{% url 'mk_feature' 'online-shop' %}">ই-কমার্স ওয়েবসাইট</a><a href="{% url 'mk_feature' 'pos-software' %}">POS সফটওয়্যার</a><a href="#pricing">দাম</a><a href="{% url 'demo_start' %}">লাইভ ডেমো</a><a href="{% url 'signup' %}">ফ্রি শুরু করুন</a><a href="{% url 'login' %}">লগইন</a></div>
+        <div class="lk"><a href="{{ features_url }}">সব ফিচার</a><a href="{% url 'mk_feature' 'online-shop' %}">ই-কমার্স ওয়েবসাইট</a><a href="{% url 'mk_feature' 'pos-software' %}">POS সফটওয়্যার</a><a href="#pricing">দাম</a><a rel="nofollow" href="{% url 'demo_start' %}">লাইভ ডেমো</a><a href="{% url 'signup' %}">ফ্রি শুরু করুন</a><a href="{% url 'login' %}">লগইন</a></div>
       </div>
       <div>
         <h3>যোগাযোগ</h3>

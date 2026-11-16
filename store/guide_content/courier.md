@@ -1,5 +1,5 @@
 <!-- meta
-title: কুরিয়ার: Steadfast, Pathao আর RedX যুক্ত করে এক ক্লিকে পার্সেল বুক
+title: কুরিয়ার: Steadfast, Pathao, RedX-এ পার্সেল বুক
 description: SellPunch-এ Steadfast (API Key, Secret Key, Webhook), Pathao (Client ID, Secret, স্টোর) আর RedX (API Access Token) যুক্ত করা, অর্ডার থেকে এক ক্লিকে পার্সেল বুক, COD-এর হিসাব আর ট্র্যাকিং — ছবিসহ।
 -->
 # কুরিয়ার: এক ক্লিকে পার্সেল বুক

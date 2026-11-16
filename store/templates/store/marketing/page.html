@@ -10,7 +10,7 @@
       {% if pending %}<p class="mk-pending"><i class="bi bi-hourglass-split"></i><span>{{ pending }}</span></p>{% endif %}
       <div class="hero-cta">
         <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> {{ ui.start }}</a>
-        <a href="{% url 'demo_start' %}" class="btn btn-lg btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> {{ ui.demo }}</a>
+        <a rel="nofollow" href="{% url 'demo_start' %}" class="btn btn-lg btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> {{ ui.demo }}</a>
       </div>
       <div class="hero-notes">{% for note in ui.notes %}<span><i class="bi bi-check-circle-fill"></i> {{ note }}</span>{% endfor %}</div>
       <p class="mk-price">{% if lang == 'en' %}{{ ui.price_from }} <b>{{ min_price }}</b> {{ ui.price_tail }}{% else %}{{ ui.price_from }} <b>{{ min_price|bn }}</b> {{ ui.price_tail }}{% endif %} · <a href="{{ home_url }}#pricing">{{ ui.see_prices }}</a></p>

@@ -113,7 +113,8 @@ def main_site_url(request):
 
 def main_robots_txt(request):
     """লগইনের পেছনের পাতা আর ডেমো (ঢুকলেই লগইন হয়) Google ঘুরবে না; সাইনআপ পাতা খোলা।"""
-    lines = ['User-agent: *', 'Allow: /', 'Allow: /accounts/signup/']
+    # লগইন পাতা খোলা (নিজেই noindex বলে) — সব পাতা থেকে লিংক আছে, বন্ধ রাখলে Bing "Blocked by robots.txt" ভুল দেখায়
+    lines = ['User-agent: *', 'Allow: /', 'Allow: /accounts/signup/', 'Allow: /accounts/login/']
     lines += [f'Disallow: {path}' for path in MAIN_PRIVATE_PATHS]
     lines.append(f'Sitemap: {main_site_url(request)}/sitemap.xml')
     return '\n'.join(lines) + '\n'

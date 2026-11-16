@@ -564,7 +564,7 @@ FEATURES = [
         },
         'en': {
             'nav': 'Stock & inventory',
-            'title': 'Inventory Software in Bangladesh — Stock, Variants, Barcodes, Purchases',
+            'title': 'Inventory Software in Bangladesh — Stock, Variants and Barcodes',
             'description': 'One stock for your shop and online store: separate stock per size and colour, barcode stickers, '
                            'supplier purchases and dues, average cost price calculated. 30 days free.',
             'h1': '<em>Stock and inventory</em> — one count for the shop and online',
@@ -1155,7 +1155,7 @@ INDUSTRIES = [
         },
         'en': {
             'nav': 'Home business',
-            'title': 'Start a Home-Based Online Business — Website for Homemade Food & Crafts',
+            'title': 'Home-Based Online Business — Website for Homemade Food & Crafts',
             'description': 'Your own website for a home-based online business in 1 minute, run from your phone. Homemade food, '
                            'crafts, clothing — orders, courier, accounts. 30 days free.',
             'h1': 'A <em>home-based online business</em> — your own website, run from your phone',

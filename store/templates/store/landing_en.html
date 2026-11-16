@@ -29,7 +29,7 @@
     <div class="nav-cta">
       <a href="/" class="nav-lang" hreflang="bn" lang="bn"><i class="bi bi-globe2"></i> বাংলা</a>
       <a href="{% url 'login' %}" class="btn btn-sm nav-login" style="color:var(--ink2)">Log in</a>
-      <a href="{% url 'demo_start' %}" class="btn btn-sm btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> Live demo</a>
+      <a rel="nofollow" href="{% url 'demo_start' %}" class="btn btn-sm btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> Live demo</a>
       <a href="{% url 'signup' %}" class="btn btn-sm btn-brand">Start free</a>
       <button class="nav-burger" onclick="toggleMenu()" aria-label="Menu"><i class="bi bi-list" id="ham-icon"></i></button>
     </div>
@@ -39,7 +39,7 @@
     <a href="#how" onclick="toggleMenu()">How it works</a>
     <a href="#pricing" onclick="toggleMenu()">Pricing</a>
     <a href="#faq" onclick="toggleMenu()">FAQ</a>
-    <a href="{% url 'demo_start' %}">Try the live demo</a>
+    <a rel="nofollow" href="{% url 'demo_start' %}">Try the live demo</a>
     <a href="{% url 'login' %}">Log in</a>
     <a href="/" hreflang="bn" lang="bn"><i class="bi bi-globe2"></i> বাংলা</a>
     <a href="{% url 'signup' %}" class="btn btn-brand">Start your {{ trial_days }}-day free trial</a>
@@ -54,7 +54,7 @@
       <p class="lead">Your own e-commerce website, a POS for your counter, one-click courier booking, customer SMS, due tracking and profit reports. Made for Facebook sellers and shop owners who are tired of juggling notebooks, Excel and inbox messages.</p>
       <div class="hero-cta">
         <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> Start {{ trial_days }} days free</a>
-        <a href="{% url 'demo_start' %}" class="btn btn-lg btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> See the live demo</a>
+        <a rel="nofollow" href="{% url 'demo_start' %}" class="btn btn-lg btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> See the live demo</a>
       </div>
       <div class="hero-notes">
         <span><i class="bi bi-check-circle-fill"></i> No card needed</span>
@@ -141,7 +141,7 @@
           <li><i class="ic amber bi bi-google"></i><span><b>Built-in SEO</b> — sitemap, product rich results and share previews, automatically</span></li>
         </ul>
         <a href="{% url 'mk_feature_en' 'online-shop' %}" class="feat-link" style="margin-right:18px">More about the online store website <i class="bi bi-arrow-right"></i></a>
-        <a href="{% url 'demo_store' %}" class="feat-link">See the demo store as a customer <i class="bi bi-arrow-right"></i></a>
+        <a rel="nofollow" href="{% url 'demo_store' %}" class="feat-link">See the demo store as a customer <i class="bi bi-arrow-right"></i></a>
       </div>
       <div class="feat-shot">
         <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>demo.{{ site.store_domain }}</i></div><img src="{% static 'landing/shop-en.webp' %}" srcset="{% img_srcset 'landing/shop-en.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="Online store home page — banner, categories and products" width="1800" height="1125" loading="lazy"></div>
@@ -375,8 +375,8 @@
         <h2>Try it yourself before you sign up</h2>
         <p>"Fashion Point" is a demo shop with three months of sales, customers, dues and expenses. No password needed — do anything you like; everything resets every night.</p>
         <div class="cta">
-          <a href="{% url 'demo_start' %}" class="btn btn-lg btn-white"><i class="bi bi-speedometer2" style="color:var(--brand)"></i> Seller dashboard</a>
-          <a href="{% url 'demo_store' %}" class="btn btn-lg btn-ghost-w"><i class="bi bi-shop"></i> Customer view</a>
+          <a rel="nofollow" href="{% url 'demo_start' %}" class="btn btn-lg btn-white"><i class="bi bi-speedometer2" style="color:var(--brand)"></i> Seller dashboard</a>
+          <a rel="nofollow" href="{% url 'demo_store' %}" class="btn btn-lg btn-ghost-w"><i class="bi bi-shop"></i> Customer view</a>
         </div>
         <div class="demo-facts">
           <span>30 products</span><span>600+ orders</span><span>POS &amp; website</span><span>Due book</span><span>Reports</span>
@@ -419,7 +419,7 @@
     <p>{{ trial_days }} days free. No card needed. Not for you? Just don't renew.</p>
     <div class="cta">
       <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> Create a free account</a>
-      <a href="{% url 'demo_start' %}" class="btn btn-lg btn-out">Try the demo first</a>
+      <a rel="nofollow" href="{% url 'demo_start' %}" class="btn btn-lg btn-out">Try the demo first</a>
     </div>
   </div>
 </div>
@@ -439,7 +439,7 @@
       </div>
       <div>
         <h3>Product</h3>
-        <div class="lk"><a href="{{ features_url }}">All features</a><a href="{% url 'mk_feature_en' 'online-shop' %}">Ecommerce website</a><a href="{% url 'mk_feature_en' 'pos-software' %}">POS software</a><a href="#pricing">Pricing</a><a href="{% url 'demo_start' %}">Live demo</a><a href="{% url 'signup' %}">Start free</a><a href="{% url 'login' %}">Log in</a></div>
+        <div class="lk"><a href="{{ features_url }}">All features</a><a href="{% url 'mk_feature_en' 'online-shop' %}">Ecommerce website</a><a href="{% url 'mk_feature_en' 'pos-software' %}">POS software</a><a href="#pricing">Pricing</a><a rel="nofollow" href="{% url 'demo_start' %}">Live demo</a><a href="{% url 'signup' %}">Start free</a><a href="{% url 'login' %}">Log in</a></div>
       </div>
       <div>
         <h3>Contact</h3>

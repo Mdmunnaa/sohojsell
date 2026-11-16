@@ -9,7 +9,7 @@
       <p class="lead">{{ ui.index_lead }}</p>
       <div class="hero-cta">
         <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> {{ ui.start }}</a>
-        <a href="{% url 'demo_start' %}" class="btn btn-lg btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> {{ ui.demo }}</a>
+        <a rel="nofollow" href="{% url 'demo_start' %}" class="btn btn-lg btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> {{ ui.demo }}</a>
       </div>
       <p class="mk-price">{% if lang == 'en' %}{{ ui.price_from }} <b>{{ min_price }}</b> {{ ui.price_tail }}{% else %}{{ ui.price_from }} <b>{{ min_price|bn }}</b> {{ ui.price_tail }}{% endif %} · <a href="{{ home_url }}#pricing">{{ ui.see_prices }}</a></p>
     </div>

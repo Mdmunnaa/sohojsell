@@ -5,6 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}{{ site.name }}{% endblock %}</title>
+{% block robots %}{% endblock %}
 {% include 'store/partials/brand_head.html' %}
 <meta name="description" content="{% block meta_description %}{{ site.name }} — Facebook ও অনলাইন সেলারদের জন্য অর্ডার, স্টক, ইনভয়েস আর কুরিয়ার এক জায়গায়।{% endblock %}">
 <link href="{% static 'vendor/bootstrap/bootstrap-app.min.css' %}" rel="stylesheet">

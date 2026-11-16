@@ -5537,10 +5537,12 @@ class FacebookSeoTests(TestCase):
 
 
 class PublicPageHeadingTests(TestCase):
-    """Bing Site Scan-এর "H1 tag missing" — sitemap-এর প্রতিটা পাতায় (আর লগইন-সাইনআপে) ঠিক একটা <h1>।"""
+    """Bing Site Scan যা ধরে: sitemap-এর প্রতিটা পাতায় (আর লগইন-সাইনআপে) ঠিক একটা <h1>, শিরোনাম ৭০ অক্ষরের মধ্যে,
+    প্রতিটা ছবিতে alt লেখা, আর robots.txt-এ বন্ধ পাতার লিংক nofollow।"""
 
     def test_every_public_page_has_one_h1(self):
         import re
+        from html import unescape
         from urllib.parse import urlparse
         sitemap = self.client.get('/sitemap.xml').content.decode()
         paths = {urlparse(url).path for url in re.findall(r'<loc>([^<]+)</loc>', sitemap)}
@@ -5551,7 +5553,24 @@ class PublicPageHeadingTests(TestCase):
             response = self.client.get(path)
             if response.status_code != 200 or 'text/html' not in response.get('Content-Type', ''):
                 continue
-            count = len(re.findall(r'<h1[\s>]', response.content.decode()))
+            html = response.content.decode()
+            count = len(re.findall(r'<h1[\s>]', html))
             if count != 1:
-                problems.append(f'{path}: {count}')
+                problems.append(f'{path}: {count} h1')
+            title = unescape(re.search(r'<title>(.*?)</title>', html, re.S).group(1).strip())
+            if len(title) > 70:
+                problems.append(f'{path}: title {len(title)}')
+            for img in re.findall(r'<img\b[^>]*>', html):
+                if not re.search(r'\balt="[^"]+"', img):
+                    problems.append(f'{path}: img without alt {img[:60]}')
+            for link in re.findall(r'<a\b[^>]*href="/(?:demo|dashboard)/[^"]*"[^>]*>', html):
+                if 'rel="nofollow"' not in link:
+                    problems.append(f'{path}: followed link to a blocked page {link[:60]}')
         self.assertEqual(problems, [])
+
+    def test_login_is_crawlable_but_not_indexed(self):
+        robots = self.client.get('/robots.txt').content.decode()
+        self.assertIn('Allow: /accounts/login/', robots)
+        self.assertIn('Disallow: /accounts/', robots)
+        self.assertContains(self.client.get(reverse('login')), '<meta name="robots" content="noindex, follow">')
+        self.assertNotContains(self.client.get(reverse('signup')), 'name="robots"')
