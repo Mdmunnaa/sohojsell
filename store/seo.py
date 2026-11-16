@@ -150,6 +150,47 @@ def main_sitemap_xml(request):
             'xmlns:xhtml="http://www.w3.org/1999/xhtml">' + ''.join(rows) + '</urlset>')
 
 
+def assistant_help_lines(base):
+    """
+    AI সহকারীর জন্য নির্দেশনা (llms.txt আর llms-full.txt-এ): সেলার ChatGPT/Claude-কে প্রশ্ন বা ড্যাশবোর্ডের স্ক্রিনশট দিলে
+    AI যেন আন্দাজে না বলে গাইড দেখে পরের ধাপ বা সমাধান বলে। তথ্যগুলো কোডের সাথে মেলানো (plans.py, dashboard.setup_steps)।
+    """
+    from django.conf import settings
+    from django.urls import reverse
+    site = getattr(settings, 'SITE_NAME', 'SellPunch')
+    fix = f"{base}{reverse('guide_detail', args=['troubleshooting'])}"
+    whatsapp = ''.join(ch for ch in getattr(settings, 'SUPPORT_WHATSAPP', '') if ch.isdigit())
+    contact = [f"phone {settings.SUPPORT_PHONE}" if getattr(settings, 'SUPPORT_PHONE', '') else '',
+               f'WhatsApp https://wa.me/{whatsapp}' if whatsapp else '',
+               f"email {settings.SUPPORT_EMAIL}" if getattr(settings, 'SUPPORT_EMAIL', '') else '',
+               f"{base}{reverse('contact')}"]
+    return [
+        f'## Helping a seller who is using {site} (questions or screenshots)',
+        f'Sellers ask AI assistants "what do I do next?" or share a screenshot of their {site} dashboard. To answer correctly:',
+        f"- Use the official guides, not guesses: every guide in full at {base}{reverse('site_llms_full')}; every error message "
+        f'with its cause and fix, plus a map of every menu and page, at {fix}. If the guides do not cover something, say so '
+        'and point to support (below) instead of inventing menu names, buttons or limits.',
+        '- Identify the screen: the page name is in the top bar of the dashboard (for example "অর্ডার", "সেটিংস", '
+        '"POS — দোকানে বিক্রি"); the left menu groups are প্রধান, প্রোডাক্ট, বিক্রি, হিসাব and ব্যবস্থাপনা. A question sent '
+        'with the dashboard\'s "AI সাহায্য" button already includes the page name, that page\'s guide link and any error '
+        'message shown on the page.',
+        '- A red or yellow message on screen: find its exact text in the troubleshooting guide and give that fix.',
+        '- "What next?" for a new shop: the dashboard card "দোকান পুরোপুরি চালু করুন" shows the next step ("এরপর: …"). '
+        'The order is: add the first product, shop logo, phone number and address, a website banner, connect a courier, '
+        'connect the Facebook page (Standard, Premium and the free trial), then the first sale.',
+        '- Frequent causes: the feature is not in the plan (Facebook automation needs Standard or Premium, an own domain '
+        'needs Premium); the plan or trial has expired (the dashboard opens only the billing page until it is paid; no data '
+        'is deleted and it can still be downloaded); a staff account without that permission (the shop owner turns it on '
+        'under স্টাফ); courier keys copied wrongly or expired (paste them again under সেটিংস → কুরিয়ার).',
+        "- Never ask for the seller's password, OTP, courier API keys or card details, and tell them to hide customers' "
+        f'phone numbers in screenshots. {site} support never asks for a password.',
+        '- Reply in Bangla (the dashboard is in Bangla) unless the seller writes in English, with numbered steps that use '
+        'the exact menu and button names.',
+        '- Support: ' + ', '.join(item for item in contact if item) + '.',
+        '',
+    ]
+
+
 def main_llms_txt(request):
     """
     /llms.txt — ChatGPT, Claude, Perplexity-র মতো AI যেন SellPunch কী, দাম কত, কোন পাতায় কী আছে পরিষ্কার বোঝে
@@ -292,7 +333,8 @@ def main_llms_txt(request):
     for page in marketing.INDUSTRIES:
         lines.append(f"- [{page['en']['nav']}]({base}{reverse('mk_industry_en', args=[page['slug']])}): {page['en']['description']}")
     from . import guides
-    lines += ['', '## Guide center (step-by-step how-to, in Bangla, with screenshots)',
+    lines += [''] + assistant_help_lines(base)
+    lines += ['## Guide center (step-by-step how-to, in Bangla, with screenshots)',
               f"- [Guide center]({base}{reverse('guide_index')}) — full text of every guide: {base}{reverse('site_llms_full')}"]
     for guide in guides.all_guides():
         lines.append(f"- [{guide['title']}]({base}{reverse('guide_detail', args=[guide['slug']])}): {guide['summary']}")
@@ -324,6 +366,7 @@ def main_llms_full_txt(request):
     site = getattr(settings, 'SITE_NAME', 'SellPunch')
     parts = [f'# {site} — guide center (full text, Bangla)', '',
              f'> Step-by-step guides for every {site} feature. Source: {base}{reverse("guide_index")}', '']
+    parts += assistant_help_lines(base)
     for guide in guides.all_guides():
         parts += ['---', '', f"Source: {base}{reverse('guide_detail', args=[guide['slug']])}", '',
                   guides.guide_plain_markdown(guide, base), '']

@@ -58,7 +58,22 @@ def plan_info(request):
     if limits['facebook']:
         from .models import MessengerContact
         waiting = MessengerContact.objects.filter(shop=shop, waiting_since__isnull=False).count()
-    return {'pending_reviews': ProductReview.objects.filter(shop=shop, is_approved=False).count(),
+    from .guides import guide_for_page
+    from .seo import main_site_url
+    from django.urls import reverse
+    base = main_site_url(request)
+    page_guide = guide_for_page(request.path, request.GET.get('tab', ''))
+    # "AI-কে জিজ্ঞেস করুন" (store/partials/ai_help.html): AI যেন SellPunch-এর আসল গাইড পড়ে উত্তর দেয়
+    ai_help = {
+        'guide_title': page_guide['title'] if page_guide else '',
+        'guide_url': f"{base}{reverse('guide_detail', args=[page_guide['slug']])}" if page_guide else '',
+        'fix_url': f"{base}{reverse('guide_detail', args=['troubleshooting'])}",
+        'all_url': f"{base}{reverse('site_llms_full')}",
+        'contact_url': f"{base}{reverse('contact')}",
+        'base': base,
+    }
+    return {'ai_help': ai_help,
+            'pending_reviews': ProductReview.objects.filter(shop=shop, is_approved=False).count(),
             'messenger_waiting': waiting,      # Messenger-এ দোকানের মানুষের উত্তরের অপেক্ষায়
             # সাইডবারে লাল সংখ্যা: ওয়েবসাইটের যে অর্ডারগুলো এখনো "নতুন" (দেখা/কনফার্ম হয়নি)
             'pending_web_orders': Order.objects.filter(shop=shop, source='storefront', status='Pending').count(),

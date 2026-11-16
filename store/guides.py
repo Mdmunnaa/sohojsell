@@ -31,6 +31,7 @@ BUYER_CATEGORY = 'আপনার ক্রেতাদের জন্য'   # 
 
 GUIDE_REGISTRY = [
     {'slug': 'getting-started', 'category': 'শুরু করুন', 'icon': 'bi-rocket-takeoff', 'file': 'getting-started.md'},
+    {'slug': 'troubleshooting', 'category': 'শুরু করুন', 'icon': 'bi-life-preserver', 'file': 'troubleshooting.md'},
     {'slug': 'move-to-sellpunch', 'category': 'শুরু করুন', 'icon': 'bi-box-arrow-in-down', 'file': 'move-to-sellpunch.md'},
     {'slug': 'products', 'category': 'প্রোডাক্ট ও স্টক', 'icon': 'bi-box-seam', 'file': 'products.md'},
     {'slug': 'barcode', 'category': 'প্রোডাক্ট ও স্টক', 'icon': 'bi-upc-scan', 'file': 'barcode.md'},
@@ -48,6 +49,48 @@ GUIDE_REGISTRY = [
     {'slug': 'staff', 'category': 'দোকান চালানো', 'icon': 'bi-people', 'file': 'staff.md'},
     {'slug': 'settings-billing', 'category': 'দোকান চালানো', 'icon': 'bi-gear', 'file': 'settings-billing.md'},
     {'slug': 'buyers', 'category': BUYER_CATEGORY, 'icon': 'bi-bag-heart', 'file': 'buyers.md'},
+]
+
+# ড্যাশবোর্ডের কোন পাতায় কোন গাইড — "AI-কে জিজ্ঞেস করুন" এই পাতার গাইডের লিংক AI-কে দেয়।
+# (পথের শুরু, ?tab= লাগলে সেটা, গাইড) — উপর থেকে প্রথম যেটা মেলে; তাই নির্দিষ্টগুলো আগে।
+PAGE_GUIDES = [
+    ('/products/import/', None, 'move-to-sellpunch'),
+    ('/customers/import/', None, 'move-to-sellpunch'),
+    ('/orders/abandoned/', None, 'marketing'),
+    ('/website/settlement/', None, 'online-payment'),
+    ('/website/', 'payment', 'online-payment'),
+    ('/website/', 'domain', 'custom-domain'),
+    ('/website/', None, 'website'),
+    ('/settings/', 'pos', 'pos'),
+    ('/settings/', 'facebook', 'facebook-automation'),
+    ('/settings/', 'data', 'settings-billing'),
+    ('/settings/', None, 'courier'),
+    ('/products/', None, 'products'),
+    ('/categories/', None, 'products'),
+    ('/barcodes/', None, 'barcode'),
+    ('/pos/', None, 'pos'),
+    ('/orders/', None, 'orders'),
+    ('/order/', None, 'orders'),
+    ('/online-orders/', None, 'orders'),
+    ('/invoice/', None, 'orders'),
+    ('/courier/', None, 'courier'),
+    ('/offers/', None, 'marketing'),
+    ('/reviews/', None, 'marketing'),
+    ('/sms/', None, 'marketing'),
+    ('/landing/', None, 'landing-page'),
+    ('/facebook/', None, 'facebook-automation'),
+    ('/messenger/', None, 'facebook-automation'),
+    ('/customers/', None, 'customers-due'),
+    ('/dues/', None, 'customers-due'),
+    ('/purchases/', None, 'accounts-reports'),
+    ('/suppliers/', None, 'accounts-reports'),
+    ('/expenses/', None, 'accounts-reports'),
+    ('/reports/', None, 'accounts-reports'),
+    ('/staff/', None, 'staff'),
+    ('/billing/', None, 'settings-billing'),
+    ('/payment/', None, 'settings-billing'),
+    ('/dashboard/', None, 'getting-started'),
+    ('/setup-shop/', None, 'getting-started'),
 ]
 
 _META_RE = re.compile(r'\A\s*<!--\s*meta\s*(.*?)-->\s*', re.S)
@@ -111,6 +154,14 @@ def all_guides():
 def get_guide(slug):
     """slug দিয়ে গাইড (meta-সহ), না থাকলে None (view-তে 404)।"""
     return _guide_entry(slug)
+
+
+def guide_for_page(path, tab=''):
+    """ড্যাশবোর্ডের এই পাতার গাইড (PAGE_GUIDES), না মিললে None।"""
+    for prefix, need_tab, slug in PAGE_GUIDES:
+        if path.startswith(prefix) and (need_tab is None or need_tab == tab):
+            return _guide_entry(slug)
+    return None
 
 
 def _body_markdown(guide):

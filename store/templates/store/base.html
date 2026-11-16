@@ -317,6 +317,39 @@
       .topbar-burger { display: flex; align-items: center; }
       .page-content { padding: 18px 16px 40px; }
     }
+    /* "AI-কে জিজ্ঞেস করুন" (partials/ai_help.html) */
+    .topbar-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .aih-btn { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--border); color:var(--text);
+      font-weight:600; font-size:13.5px; padding:6px 13px; border-radius:999px; cursor:pointer; white-space:nowrap; line-height:1.2; }
+    .aih-btn i { color:#2563eb; font-size:15px; }
+    .aih-btn:hover, .aih-btn:focus-visible { border-color:#93c5fd; color:#1d4ed8; }
+    .aih .modal-header { border-bottom:1px solid #eef2f7; }
+    .aih .modal-title { font-size:17px; font-weight:700; margin:0; display:flex; align-items:center; gap:8px; }
+    .aih .modal-title i { color:#2563eb; }
+    .aih-lead { font-size:14px; color:#475569; margin:0 0 14px; }
+    .aih-label { display:block; font-weight:600; font-size:14px; margin-bottom:6px; color:var(--text); }
+    .aih textarea { font-size:14.5px; border-radius:10px; }
+    .aih-msgs { display:flex; gap:8px; margin-top:10px; background:#FEF2F2; border:1px solid #FECACA; color:#7f1d1d; border-radius:10px; padding:9px 11px; font-size:13px; }
+    .aih-msgs i { color:#dc2626; margin-top:1px; }
+    .aih-msgs[hidden] { display:none; }
+    .aih-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
+    .aih-go { display:flex; align-items:center; justify-content:center; gap:6px; background:#0f172a; color:#fff; font-weight:600; font-size:14px;
+      padding:10px 12px; border-radius:10px; text-decoration:none; text-align:center; }
+    .aih-go:hover { background:#1e293b; color:#fff; }
+    .aih-go i { font-size:12px; opacity:.8; }
+    .aih-copy { grid-column:1 / -1; display:flex; align-items:center; justify-content:center; gap:7px; background:#fff; border:1px solid var(--border);
+      color:var(--text); font-weight:600; font-size:13.5px; padding:9px 12px; border-radius:10px; cursor:pointer; }
+    .aih-copy:hover { border-color:#93c5fd; color:#1d4ed8; }
+    .aih-preview { margin-top:12px; font-size:13px; }
+    .aih-preview summary { cursor:pointer; color:#2563eb; font-weight:600; }
+    .aih-preview pre { white-space:pre-wrap; word-break:break-word; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px;
+      margin:8px 0 0; font-size:12.5px; max-height:220px; overflow:auto; font-family:inherit; }
+    .aih-tips { margin:14px 0 0; padding-left:18px; font-size:12.5px; color:#64748b; }
+    .aih-tips li + li { margin-top:4px; }
+    .aih-foot { justify-content:flex-start; gap:6px 16px; flex-wrap:wrap; border-top:1px solid #eef2f7; }
+    .aih-foot a { font-size:13.5px; font-weight:600; text-decoration:none; color:#2563eb; margin:0; }
+    .aih-foot a i { margin-right:3px; }
+    @media (max-width: 420px) { .aih-actions { grid-template-columns:1fr; } .aih-btn { padding:6px 10px; font-size:13px; } }
     </style>
 </head>
 <body>
@@ -485,6 +518,11 @@
       <a href="{% url 'guide_index' %}" class="sb-link" target="_blank" rel="noopener">
         <i class="bi bi-question-circle"></i> <span class="sb-text-hide">গাইড ও সাহায্য</span>
       </a>
+      {% if ai_help %}
+      <a href="#aiHelp" class="sb-link" role="button" data-bs-toggle="modal" data-bs-target="#aiHelp" onclick="sbClose()">
+        <i class="bi bi-robot"></i> <span class="sb-text-hide">AI-কে জিজ্ঞেস করুন</span>
+      </a>
+      {% endif %}
     </nav>
 
     <div class="sb-bottom">
@@ -520,7 +558,9 @@
       </button>
 
       <div class="topbar-title">{% block page_title %}ড্যাশবোর্ড{% endblock %}</div>
-      <div class="topbar-right"></div>
+      <div class="topbar-right">
+        {% if ai_help %}<button type="button" class="aih-btn" data-bs-toggle="modal" data-bs-target="#aiHelp" title="ChatGPT, Claude বা যেকোনো AI-কে এই পাতা নিয়ে জিজ্ঞেস করুন"><i class="bi bi-robot" aria-hidden="true"></i><span>AI সাহায্য</span></button>{% endif %}
+      </div>
     </div>
 
     {% if shop.is_demo %}
@@ -570,6 +610,7 @@
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
 <script src="{% static 'vendor/sweetalert2/sweetalert2.all.min.js' %}"></script>
 {% include 'store/partials/shrink_uploads.html' %}
+{% if ai_help %}{% include 'store/partials/ai_help.html' %}{% endif %}
 <script>
 /* Bootstrap পপআপ খোলার আগে body-তে সরানো — কোনো কার্ড/অংশে transform থাকলেও পপআপ যেন ধূসর পর্দার উপরে আর পর্দার মাঝখানে আসে */
 document.addEventListener('show.bs.modal', function (e) { if (e.target.parentElement !== document.body) document.body.appendChild(e.target); });
@@ -609,6 +650,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var tag = "{{ message.level_tag }}";
         var icon = ['error','warning','success'].includes(tag) ? tag : 'info';
         Toast.fire({ icon: icon, title: "{{ message|escapejs }}" });
+        if (tag === 'error' || tag === 'warning') (window.spPageMsgs = window.spPageMsgs || []).push("{{ message|escapejs }}");
       })();
     {% endfor %}
   {% endif %}{% endblock %}

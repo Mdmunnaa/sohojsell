@@ -1,0 +1,136 @@
+{# "AI-কে জিজ্ঞেস করুন" — সেলার যেকোনো AI-কে (ChatGPT, Claude, Gemini…) প্রশ্ন বা স্ক্রিনশট দিলে AI যেন আন্দাজে না বলে
+   SellPunch-এর আসল গাইড পড়ে উত্তর দেয়। লেখাটা এখানেই (ব্রাউজারে) তৈরি হয়: পাতার নাম, এই পাতার গাইড, প্যাকেজ, পাতায় আসা
+   ভুলের বার্তা (ফোন নম্বরের মতো লম্বা সংখ্যা ঢেকে) আর সেলারের প্রশ্ন। দোকানের কোনো ডাটা সার্ভার থেকে কোথাও যায় না —
+   সেলার নিজে বোতাম চাপলে তবেই লেখাটা AI-এর সাইটে খোলে। লিংক context_processors.plan_info → ai_help থেকে। #}
+<div class="modal fade" id="aiHelp" tabindex="-1" aria-labelledby="aiHelpTitle" aria-hidden="true"
+     data-guide-url="{{ ai_help.guide_url }}" data-fix-url="{{ ai_help.fix_url }}" data-all-url="{{ ai_help.all_url }}"
+     data-contact-url="{{ ai_help.contact_url }}" data-base="{{ ai_help.base }}"
+     data-plan="{{ plan.label }}{% if shop.is_locked %} (মেয়াদ শেষ, ড্যাশবোর্ড লক){% endif %}"
+     data-role="{% if request.user.is_shop_staff %}স্টাফ{% else %}দোকানের মালিক{% endif %}">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content aih">
+      <div class="modal-header">
+        <h2 class="modal-title" id="aiHelpTitle"><i class="bi bi-robot" aria-hidden="true"></i> AI-কে জিজ্ঞেস করুন</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="বন্ধ করুন"></button>
+      </div>
+      <div class="modal-body">
+        <p class="aih-lead">ChatGPT, Claude বা যেকোনো AI-কে SellPunch নিয়ে প্রশ্ন করুন বা স্ক্রিনশট দিন। এখান থেকে পাঠালে AI এই পাতার নাম আর SellPunch-এর গাইডের লিংক পায় — যাতে আন্দাজে না বলে আসল নিয়ম দেখে উত্তর দেয়।</p>
+        <label for="aihQ" class="aih-label">কী করতে চাইছেন, বা কোথায় আটকে গেছেন?</label>
+        <textarea id="aihQ" class="form-control" rows="3" maxlength="600" placeholder="যেমন: Pathao কানেক্ট করতে গেলে লাল লেখা আসছে"></textarea>
+        <div class="aih-msgs" id="aihMsgs" hidden>
+          <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+          <div><b>পাতায় আসা বার্তাও যাবে:</b> <span id="aihMsgText"></span></div>
+        </div>
+
+        <div class="aih-actions">
+          <a class="aih-go" id="aihGpt" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT-তে জিজ্ঞেস করুন <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+          <a class="aih-go" id="aihClaude" href="https://claude.ai/new" target="_blank" rel="noopener">Claude-এ জিজ্ঞেস করুন <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+          <button type="button" class="aih-copy" id="aihCopy"><i class="bi bi-clipboard" aria-hidden="true"></i> <span>লেখাটা কপি করুন — Gemini বা অন্য AI-তে পেস্ট করতে</span></button>
+        </div>
+
+        <details class="aih-preview">
+          <summary>AI-কে যে লেখাটা যাবে</summary>
+          <pre id="aihPrompt"></pre>
+        </details>
+
+        <ul class="aih-tips">
+          <li>স্ক্রিনশট দিতে চাইলে AI-এর চ্যাটে ছবিটা যোগ করুন (পরের মেসেজেও দেওয়া যায়)। ছবিতে কাস্টমারের নম্বর বা ঠিকানা থাকলে ঢেকে দিন।</li>
+          <li>পাসওয়ার্ড, OTP বা কুরিয়ারের চাবি কখনো AI-কে দেবেন না — SellPunch-ও কখনো চায় না।</li>
+          <li>AI-ও ভুল বলতে পারে। টাকা বা ডাটা মোছার মতো কাজের আগে গাইড মিলিয়ে নিন, বা সাপোর্টে জিজ্ঞেস করুন।</li>
+        </ul>
+      </div>
+      <div class="modal-footer aih-foot">
+        {% if ai_help.guide_url %}<a href="{{ ai_help.guide_url }}" target="_blank" rel="noopener"><i class="bi bi-book" aria-hidden="true"></i> এই পাতার গাইড</a>{% endif %}
+        <a href="{{ ai_help.fix_url }}" target="_blank" rel="noopener"><i class="bi bi-life-preserver" aria-hidden="true"></i> সমস্যা ও সমাধান</a>
+        {% if site.whatsapp_url %}<a href="{{ site.whatsapp_url }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp" aria-hidden="true"></i> সাপোর্ট</a>{% else %}<a href="{{ ai_help.contact_url }}" target="_blank" rel="noopener"><i class="bi bi-headset" aria-hidden="true"></i> সাপোর্ট</a>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var box = document.getElementById('aiHelp');
+  if (!box) return;
+  var d = box.dataset, q = document.getElementById('aihQ'), pre = document.getElementById('aihPrompt');
+  var gpt = document.getElementById('aihGpt'), claude = document.getElementById('aihClaude'), copy = document.getElementById('aihCopy');
+  var msgs = [];
+
+  // ফোন/অর্ডার নম্বরের মতো লম্বা সংখ্যা ঢেকে — বার্তায় কাস্টমারের নম্বর থাকলেও AI-তে যায় না
+  function hide(text) { return text.replace(/[0-9০-৯]{6,}/g, '***'); }
+
+  function pageMessages() {
+    var found = (window.spPageMsgs || []).slice();
+    box.ownerDocument.querySelectorAll('.ws-alert.error, .ws-alert.warning, .alert-danger, .alert-warning, .errorlist li, .invalid-feedback')
+      .forEach(function (el) {
+        if (box.contains(el) || !el.offsetParent) return;
+        found.push(el.textContent);
+      });
+    var seen = {}, out = [];
+    found.forEach(function (text) {
+      text = hide(String(text).replace(/\s+/g, ' ').trim()).slice(0, 200);
+      if (text && !seen[text]) { seen[text] = 1; out.push(text); }
+    });
+    return out.slice(0, 3);
+  }
+
+  function pagePath() {
+    var tab = new URLSearchParams(location.search).get('tab');
+    return location.pathname + (tab ? '?tab=' + encodeURIComponent(tab) : '');
+  }
+
+  function build() {
+    var title = (document.querySelector('.topbar-title') || {}).textContent || '';
+    var lines = ['আমি SellPunch (sellpunch.com) দিয়ে দোকান চালাই — বাংলাদেশের অনলাইন দোকান, POS আর হিসাবের সফটওয়্যার। নিচের বিষয়ে সাহায্য করুন।',
+      '', 'উত্তর দেওয়ার আগে SellPunch-এর অফিসিয়াল গাইড পড়ুন:'];
+    if (d.guideUrl) lines.push('- এই পাতার গাইড: ' + d.guideUrl);
+    lines.push('- ভুলের বার্তা ও সমাধান, কোন মেনু কোথায়: ' + d.fixUrl);
+    lines.push('- সব গাইড একসাথে: ' + d.allUrl);
+    lines.push('গাইডে যা নেই তা অনুমান করবেন না; নিশ্চিত না হলে সাপোর্টে জানাতে বলুন: ' + d.contactUrl);
+    lines.push('মেনু আর বোতামের আসল নাম ধরে ধাপে ধাপে বাংলায় বলুন। আমার পাসওয়ার্ড, OTP বা কুরিয়ারের চাবি চাইবেন না।');
+    lines.push('');
+    lines.push('যে পাতায় আছি: ' + title.replace(/\s+/g, ' ').trim() + ' (' + d.base + pagePath() + ')');
+    lines.push('প্যাকেজ: ' + d.plan + ' · অ্যাকাউন্ট: ' + d.role);
+    msgs.forEach(function (text) { lines.push('পাতায় আসা বার্তা: "' + text + '"'); });
+    lines.push('আমার প্রশ্ন: ' + (q.value.trim() || 'এই পাতায় কী সমস্যা, আর এরপর কী করব — ধাপে ধাপে বলুন।'));
+    return lines.join('\n');
+  }
+
+  function refresh() {
+    var text = build();
+    pre.textContent = text;
+    gpt.href = 'https://chatgpt.com/?q=' + encodeURIComponent(text);
+    claude.href = 'https://claude.ai/new?q=' + encodeURIComponent(text);
+  }
+
+  box.addEventListener('show.bs.modal', function () {
+    msgs = pageMessages();
+    var note = document.getElementById('aihMsgs');
+    note.hidden = !msgs.length;
+    document.getElementById('aihMsgText').textContent = msgs.map(function (t) { return '"' + t + '"'; }).join(' ');
+    refresh();
+  });
+  box.addEventListener('shown.bs.modal', function () { q.focus(); });
+  q.addEventListener('input', refresh);
+
+  function copied(ok) {
+    var label = copy.querySelector('span'), old = label.getAttribute('data-old') || label.textContent;
+    label.setAttribute('data-old', old);
+    label.textContent = ok ? 'কপি হয়েছে — এখন যেকোনো AI-এর চ্যাটে পেস্ট করুন' : 'কপি হয়নি — নিচের লেখাটা হাতে সিলেক্ট করে কপি করুন';
+    if (!ok) box.querySelector('.aih-preview').open = true;
+    setTimeout(function () { label.textContent = old; }, 3500);
+  }
+  copy.addEventListener('click', function () {
+    var text = build();
+    function fallback() {
+      var area = document.createElement('textarea');
+      area.value = text; area.setAttribute('readonly', ''); area.style.position = 'fixed'; area.style.opacity = '0';
+      box.querySelector('.modal-body').appendChild(area); area.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      area.remove(); copied(ok);
+    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(function () { copied(true); }, fallback);
+    else fallback();
+  });
+})();
+</script>

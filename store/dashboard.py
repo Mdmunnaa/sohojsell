@@ -300,7 +300,7 @@ def setup_steps(shop, plan_has_facebook):
          has_courier, f"{reverse('settings')}?tab=courier"),
     ]
     if plan_has_facebook:
-        steps.append(('facebook', 'bi-facebook', 'Facebook পেইজ কানেক্ট করুন', 'কমেন্ট থেকে অর্ডার নেওয়া যাবে',
+        steps.append(('facebook', 'bi-facebook', 'Facebook পেইজ কানেক্ট করুন', 'কমেন্ট আর Messenger-এ অটো উত্তর, চ্যাটেই অর্ডার',
                       hasattr(shop, 'fb_page'), reverse('fb_connect')))
     steps.append(('sale', 'bi-bag-check', 'প্রথম বিক্রি করুন', 'POS-এ বিক্রি করুন বা ওয়েবসাইটের লিংক শেয়ার করুন',
                   Order.objects.filter(shop=shop).exists(), reverse('pos')))

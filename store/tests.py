@@ -5917,3 +5917,106 @@ class ImportFromOtherPlatformsTests(ShopTestMixin, TestCase):
         llms = self.client.get('/llms.txt').content.decode()
         self.assertIn('## Moving to SellPunch from another platform', llms)
         self.assertIn('without retyping products?', llms)
+
+
+class AiHelpTests(ShopTestMixin, TestCase):
+    """যেকোনো AI-কে প্রশ্ন বা স্ক্রিনশট দিলে যেন SellPunch-এর আসল নিয়ম দেখে বলে: সমস্যা-সমাধান গাইড, AI সাহায্য বোতাম, llms।"""
+
+    # গাইডে যে বার্তাগুলো হুবহু আছে, সেগুলো কোডেও হুবহু থাকতে হবে — কোডে লেখা বদলালে গাইডও বদলাতে হবে
+    CODE_MESSAGES = [
+        'মোবাইল নম্বর বা পাসওয়ার্ড ভুল।', 'অনেকবার চেষ্টা হয়েছে। এক ঘণ্টা পর আবার চেষ্টা করুন।',
+        'এই নম্বরে আগে থেকেই একটা অ্যাকাউন্ট আছে, লগইন করুন।', 'এই নামটা সংরক্ষিত, অন্য একটা নাম বেছে নিন।',
+        'ডেমো দোকানে এটা করা যায় না।', 'পেমেন্ট সম্পন্ন হয়নি (বাতিল বা ব্যর্থ)। চাইলে আবার চেষ্টা করুন।',
+        'আপনার এখনকার প্যাকেজে নেই। Billing থেকে প্যাকেজ আপগ্রেড করুন।', 'এই বারকোডের কোনো প্রোডাক্ট নেই',
+        'বাকি রাখতে কাস্টমারের নাম আর মোবাইল নম্বর দিন।', 'Settings-এ Steadfast-এর API Key আর Secret Key দিন।',
+        'Steadfast API Key বা Secret Key ভুল।', 'Pathao-র সংযোগের মেয়াদ শেষ।', 'RedX টোকেন ভুল বা মেয়াদ শেষ।',
+        'কাস্টমারের ঠিকানা দেওয়া নেই।', 'বেছে নেওয়া এলাকাটা RedX-এর লিস্টে নেই।',
+        'এই নম্বর থেকে এখন অর্ডার নেওয়া যাচ্ছে না।', 'SMS কিনতে দোকানের মালিককে বলুন।',
+        'ব্যালেন্স থেকে কিছু কাটা হয়নি।', 'ছবি ৩ MB-এর ছোট হতে হবে।', 'কমপক্ষে একটা এলাকা রাখতে হবে।',
+        'রঙটা ঠিকমতো দিন, যেমন #1E88E5', 'কিছু সেভ হয়নি, পেইজটা রিফ্রেশ করে আবার চেষ্টা করুন।',
+        'ফর্মটা জমা দেওয়া যায়নি।', 'একটি পেইজ সিলেক্ট করুন!', 'টাকা তুলতে উপরে টাকা নেওয়ার মাধ্যম আর নম্বর দিয়ে সেভ করুন।',
+        'আগের অনুরোধটা এখনো যাচাই হচ্ছে।', 'ক্যামেরা অন্য অ্যাপে চালু আছে', 'এই ডিভাইসে ক্যামেরা পাওয়া যায়নি।',
+    ]
+
+    def setUp(self):
+        self.user, self.shop = self.make_shop(phone='01755500011', slug='aihelp')
+
+    def source_text(self):
+        from pathlib import Path
+        root = Path(__file__).resolve().parent.parent
+        files = [*root.glob('store/*.py'), *root.glob('accounts/*.py'), *root.glob('store/templates/**/*.html'),
+                 *root.glob('accounts/templates/**/*.html'), *root.glob('store/static/**/*.js')]
+        return '\n'.join(f.read_text(encoding='utf-8', errors='ignore') for f in files if f.name != 'tests.py')
+
+    def test_troubleshooting_guide_messages_match_the_code(self):
+        from . import guides
+        guide = guides.get_guide('troubleshooting')
+        self.assertIsNotNone(guide)
+        text = (guides.GUIDES_DIR / guide['file']).read_text(encoding='utf-8')
+        code = self.source_text()
+        for message in self.CODE_MESSAGES:
+            self.assertIn(message, text, f'গাইডে নেই: {message}')
+            self.assertIn(message, code, f'কোডে আর নেই (গাইড বদলান): {message}')
+        # প্রতিটা ভেতরের গাইড লিংক সত্যি আছে
+        import re
+        for slug in set(re.findall(r'\]\(/guide/([a-z-]+)/', text)):
+            self.assertIsNotNone(guides.get_guide(slug), slug)
+        page = self.client.get(reverse('guide_detail', args=['troubleshooting']))
+        self.assertEqual(page.status_code, 200)
+        body = page.content.decode()
+        self.assertIn('কোন পাতা কোথায়', body)
+        self.assertIn('<table', body)
+        self.assertIn('FAQPage', body)
+
+    def test_page_guides_point_to_the_right_guide(self):
+        from .guides import PAGE_GUIDES, get_guide, guide_for_page
+        for _prefix, _tab, slug in PAGE_GUIDES:
+            self.assertIsNotNone(get_guide(slug), slug)
+        cases = [('/website/', 'domain', 'custom-domain'), ('/website/', 'payment', 'online-payment'),
+                 ('/website/', '', 'website'), ('/settings/', '', 'courier'), ('/settings/', 'pos', 'pos'),
+                 ('/products/import/', '', 'move-to-sellpunch'), ('/products/', '', 'products'),
+                 ('/orders/abandoned/', '', 'marketing'), ('/order/edit/5/', '', 'orders'),
+                 ('/messenger/', '', 'facebook-automation'), ('/dashboard/', '', 'getting-started')]
+        for path, tab, slug in cases:
+            self.assertEqual(guide_for_page(path, tab)['slug'], slug, path)
+        self.assertIsNone(guide_for_page('/guide/', ''))
+
+    def test_dashboard_has_ai_help_with_page_guide(self):
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('id="aiHelp"', body)
+        self.assertIn('class="aih-btn"', body)
+        self.assertIn('https://chatgpt.com/', body)
+        self.assertIn('https://claude.ai/new', body)
+        self.assertIn(reverse('guide_detail', args=['getting-started']), body)
+        self.assertIn(reverse('guide_detail', args=['troubleshooting']), body)
+        self.assertIn('data-role="দোকানের মালিক"', body)
+        domain = self.client.get(reverse('website_settings') + '?tab=domain').content.decode()
+        self.assertIn(reverse('guide_detail', args=['custom-domain']), domain)
+        # পাবলিক পাতায় (লগইন ছাড়া) এই বোতাম নেই
+        self.client.logout()
+        self.assertNotIn('id="aiHelp"', self.client.get(reverse('guide_detail', args=['pos'])).content.decode())
+
+    def test_error_message_is_offered_to_the_ai_for_staff(self):
+        from .models import StaffProfile
+        staff = User.objects.create_user(phone_number='01755500012', password='Staff-pass-1')
+        StaffProfile.objects.create(user=staff, shop=self.shop, can_use_pos=True)
+        self.client.force_login(staff)
+        body = self.client.get(reverse('export_all_data'), follow=True).content.decode()
+        self.assertIn('data-role="স্টাফ"', body)
+        self.assertIn('window.spPageMsgs', body)
+
+    def test_llms_files_brief_ai_assistants(self):
+        llms = self.client.get('/llms.txt').content.decode()
+        self.assertIn('## Helping a seller who is using SellPunch', llms)
+        self.assertIn(reverse('guide_detail', args=['troubleshooting']), llms)
+        self.assertIn('দোকান পুরোপুরি চালু করুন', llms)
+        self.assertIn('Never ask for the seller', llms)
+        full = self.client.get('/llms-full.txt').content.decode()
+        self.assertIn('## Helping a seller who is using SellPunch', full)
+        self.assertIn('Steadfast API Key বা Secret Key ভুল।', full)
+
+    def test_setup_step_mentions_messenger(self):
+        from .dashboard import setup_steps
+        steps = setup_steps(self.shop, plan_has_facebook=True)
+        hint = next(item['hint'] for item in steps['items'] if item['key'] == 'facebook')
+        self.assertIn('Messenger', hint)
