@@ -5574,3 +5574,91 @@ class PublicPageHeadingTests(TestCase):
         self.assertIn('Disallow: /accounts/', robots)
         self.assertContains(self.client.get(reverse('login')), '<meta name="robots" content="noindex, follow">')
         self.assertNotContains(self.client.get(reverse('signup')), 'name="robots"')
+
+
+class BuyerTrustTests(ShopTestMixin, TestCase):
+    """ChatGPT-এর মূল্যায়নে যা অস্পষ্ট ছিল: প্যাকেজে কী নেই, অনলাইন পেমেন্টের ফি ও টাকা তোলা, ডোমেইনের খরচ, অন্য
+    প্ল্যাটফর্মে যাওয়ার ফাইল, নিরাপত্তা-হেডার আর security.txt।"""
+
+    def test_plan_cards_say_what_is_missing_in_words(self):
+        home = self.client.get('/').content.decode()
+        self.assertEqual(home.count('নিজের ডোমেইন নেই (শুধু Premium-এ)'), 2)          # Basic, Standard
+        self.assertEqual(home.count('Facebook অটো রিপ্লাই নেই (Standard ও Premium-এ)'), 1)   # Basic
+        self.assertIn('বিক্রিতে কোনো কমিশন নেই', home)
+        self.assertIn('অনলাইন পেমেন্ট নিলে ২% ফি', home)
+        self.assertNotIn('লুকানো খরচ বা কমিশন নেই', home)
+        self.assertIn('অনলাইন পেমেন্টে কত ফি কাটে, টাকা কবে পাব?', home)
+        self.assertIn('৳৫০০০ জমলে', home.replace(',', ''))
+        en = self.client.get(reverse('landing_page_en')).content.decode()
+        self.assertEqual(en.count('No custom domain (Premium only)'), 2)
+        self.assertIn('2% fee on online payments', en)
+        self.assertIn('at its own cost', en)
+
+    def test_security_page_answers_buyer_questions(self):
+        page = self.client.get(reverse('security')).content.decode()
+        for question in ('অন্য প্ল্যাটফর্মে (Shopify, WooCommerce) চলে যেতে চাইলে?',
+                         'কাস্টমারের অনলাইন পেমেন্টের টাকা কোথায় যায়, কত ফি?', 'নিজের ডোমেইন কোন প্যাকেজে পাব?',
+                         'Facebook কমেন্ট আর Messenger-এর অটো রিপ্লাই কি চালু?'):
+            self.assertIn(question, page)
+        self.assertIn('"FAQPage"', page)
+        self.assertIn('সফটওয়্যারে তৈরি আছে', page)                 # Meta-র যাচাই বাকি
+        self.assertNotIn('আপনারা কি ব্যাকআপ রাখেন?', page)        # পরীক্ষা ছাড়া ব্যাকআপের দাবি নয়
+        self.assertIn('রিপোর্ট, সেটিংস আর SMS পাঠানো', page)
+        llms = self.client.get('/llms.txt').content.decode()
+        self.assertIn('## Fees, money and data (facts for buyers)', llms)
+        self.assertIn('2% fee per payment', llms)
+        self.assertIn('Not included below Premium: own domain.', llms)
+        self.assertIn('Shopify-ready and WooCommerce-ready CSV', llms)
+
+    def test_shopify_and_woocommerce_exports(self):
+        import csv
+        import io
+        from .models import Category, Product, ProductVariant, StaffProfile
+        user, shop = self.make_shop(slug='mover')
+        cat = Category.objects.create(shop=shop, name='শার্ট')
+        plain = Product.objects.create(shop=shop, name='Cotton Polo', price=650, compare_price=800, cost_price=400,
+                                       stock_quantity=12, category=cat, description='নরম কাপড়\n<b>গরমে আরাম</b>')
+        bangla = Product.objects.create(shop=shop, name='থ্রি পিস', price=1450, stock_quantity=0, is_active=False)
+        ProductVariant.objects.create(product=bangla, name='M', stock_quantity=3, barcode='VAR-M')
+        ProductVariant.objects.create(product=bangla, name='L, লাল', price=1500, stock_quantity=0, barcode='VAR-L')
+        Product.objects.filter(pk=bangla.pk).update(has_variants=True)
+
+        shopify = self.client.get(reverse('export_platform_csv', args=['shopify']))
+        self.assertEqual(shopify['Content-Type'], 'text/csv; charset=utf-8')
+        self.assertIn('mover-shopify-products-', shopify['Content-Disposition'])
+        rows = list(csv.DictReader(io.StringIO(shopify.content.decode())))
+        self.assertEqual(len(rows), 3)
+        self.assertEqual((rows[0]['Handle'], rows[0]['Variant Price'], rows[0]['Variant Compare At Price'],
+                          rows[0]['Variant Inventory Qty'], rows[0]['Type'], rows[0]['Option1 Value']),
+                         (f'cotton-polo-{plain.id}', '650.00', '800.00', '12', 'শার্ট', 'Default Title'))
+        self.assertEqual(rows[0]['Body (HTML)'], '<p>নরম কাপড়<br>&lt;b&gt;গরমে আরাম&lt;/b&gt;</p>')
+        self.assertEqual((rows[1]['Handle'], rows[1]['Status'], rows[1]['Option1 Name'], rows[1]['Option1 Value']),
+                         (f'product-{bangla.id}', 'draft', 'Option', 'M'))
+        self.assertEqual((rows[2]['Handle'], rows[2]['Title'], rows[2]['Variant Price']), (f'product-{bangla.id}', '', '1500.00'))
+
+        woo = list(csv.DictReader(io.StringIO(self.client.get(reverse('export_platform_csv', args=['woocommerce'])).content.decode())))
+        self.assertEqual([r['Type'] for r in woo], ['simple', 'variable', 'variation', 'variation'])
+        self.assertEqual((woo[0]['Regular price'], woo[0]['Sale price'], woo[0]['Categories']), ('800.00', '650.00', 'শার্ট'))
+        self.assertEqual(woo[1]['Attribute 1 value(s)'], 'M, L / লাল')
+        self.assertEqual((woo[3]['Parent'], woo[3]['Attribute 1 value(s)'], woo[3]['In stock?']), (woo[1]['SKU'], 'L / লাল', '0'))
+        self.assertEqual(self.client.get('/settings/data/export/excel.csv').status_code, 404)
+        self.assertContains(self.client.get(reverse('settings') + '?tab=data'), reverse('export_platform_csv', args=['shopify']))
+
+        staff = User.objects.create_user(phone_number='01933333399', password='Test-pass-123', name='S')
+        StaffProfile.objects.create(user=staff, shop=shop, can_manage_settings=True)
+        self.client.force_login(staff)
+        self.assertRedirects(self.client.get(reverse('export_platform_csv', args=['shopify'])), reverse('dashboard'),
+                             fetch_redirect_response=False)
+
+    def test_security_headers_and_security_txt(self):
+        response = self.client.get('/')
+        self.assertIn('camera=(self)', response['Permissions-Policy'])
+        self.assertEqual(response['Content-Security-Policy'], "base-uri 'self'; object-src 'none'")
+        secure = self.client.get('/', secure=True)
+        self.assertTrue(secure['Content-Security-Policy'].endswith('upgrade-insecure-requests'))
+        txt = self.client.get('/.well-known/security.txt')
+        body = txt.content.decode()
+        self.assertEqual(txt['Content-Type'], 'text/plain; charset=utf-8')
+        self.assertRegex(body, r'Contact: mailto:\S+@\S+')
+        self.assertRegex(body, r'Expires: \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ')
+        self.assertIn('/security/', body)

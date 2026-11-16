@@ -31,6 +31,7 @@ urlpatterns = [
     path('', views.landing_page, name='landing_page'),
     path('en/', views.landing_page_en, name='landing_page_en'),
     path('robots.txt', views.site_robots, name='site_robots'),
+    path('.well-known/security.txt', views.security_txt, name='security_txt'),
     path('sitemap.xml', views.site_sitemap, name='site_sitemap'),
     path('llms.txt', views.site_llms, name='site_llms'),
     path('internal/cron/daily/', views_cron.cron_daily, name='cron_daily'),   # Cloudflare cron, দিনে একবার
@@ -135,6 +136,7 @@ urlpatterns = [
     # Settings & Billing
     path('settings/', views.shop_settings, name='settings'),
     path('settings/data/export/', views.export_all_data, name='export_all_data'),
+    re_path(r'^settings/data/export/(?P<platform>shopify|woocommerce)\.csv$', views.export_platform_csv, name='export_platform_csv'),
     path('billing/', views.billing_page, name='billing'),
     path('billing/receipt/<str:invoice>/', views.billing_receipt, name='billing_receipt'),
     path('payment/success/<str:plan_name>/', views.payment_success, name='payment_success'),

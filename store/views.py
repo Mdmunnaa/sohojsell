@@ -85,12 +85,33 @@ def _home(request, lang):
         facebook_live = marketing.facebook_live()
     except Exception:    # noqa: BLE001 — ডেটাবেস ছাড়া হোমপেজ আটকাবে না
         facebook_live = False
+    from . import shop_payments
     return render(request, template, {
         'plans': plans, 'sms_rate': rate, 'trial_days': 30, 'home_seo': home_seo, 'facebook_live': facebook_live,
+        'online_fee': shop_payments.fee_percent().normalize(), 'settle_min': int(shop_payments.SETTLEMENT_MIN),
+        'settle_days': shop_payments.SETTLEMENT_HOLD_DAYS,
         # SEO পাতার লিংক (store/marketing.py) — হোমপেজ থেকে প্রতিটায় লিংক থাকলে Google দ্রুত খুঁজে পায়
         'industry_links': views_marketing._cards(marketing.INDUSTRIES, 'industry', lang),
         'features_url': views_marketing._index_url(lang),
     })
+
+
+def security_txt(request):
+    """/.well-known/security.txt — নিরাপত্তার সমস্যা পেলে কাকে জানাবেন (RFC 9116)।"""
+    from datetime import timedelta
+    from django.conf import settings as dj_settings
+    from django.utils import timezone as tz
+    from .seo import main_site_url
+    base = main_site_url(request)
+    expires = (tz.now() + timedelta(days=365)).replace(microsecond=0).strftime('%Y-%m-%dT%H:%M:%SZ')
+    body = '\n'.join([
+        f'Contact: mailto:{dj_settings.SUPPORT_EMAIL}',
+        f'Expires: {expires}',
+        'Preferred-Languages: bn, en',
+        f'Canonical: {base}/.well-known/security.txt',
+        f'Policy: {base}{reverse("security")}',
+    ]) + '\n'
+    return HttpResponse(body, content_type='text/plain; charset=utf-8')
 
 
 def indexnow_key(request, key):
@@ -661,14 +682,87 @@ def _settings_url(tab, anchor=''):
 
 def security_page(request):
     """নিরাপত্তা ও ডাটা — ব্যাকআপের কার্ড শুধু টাটকা সফল পরীক্ষা থাকলে, নজরদারির লাইন শুধু STATUS_PAGE_URL থাকলে।"""
+    import json
     from django.conf import settings as dj_settings
+    from django.utils.html import format_html, strip_tags
+    from . import marketing, shop_payments
     from .plans import STOREFRONT_GRACE_DAYS
+    bn = str.maketrans('0123456789', '০১২৩৪৫৬৭৮৯')
+    site = dj_settings.SITE_NAME
+    backup_test = backups.trust_line()
+    deletion_days_bn = str(retention.DATA_DELETION_DAYS).translate(bn)
+    fee = str(shop_payments.fee_percent().normalize()).translate(bn)
+    try:
+        facebook_live = marketing.facebook_live()
+    except Exception:    # noqa: BLE001
+        facebook_live = False
+    # কেনার আগে মানুষ (আর AI) যা জানতে চায় — প্রতিটা উত্তরের পেছনে কোড আছে; যা এখনো নেই, তা লেখা হয় না
+    faq = [
+        (f'{site} কোনোদিন বন্ধ হয়ে গেলে আমার তথ্যের কী হবে?',
+         'সব তথ্য যেকোনো সময় Excel-এ নামিয়ে নিজের কাছে রাখতে পারেন — নিয়মিত নামিয়ে রাখাই সবচেয়ে নিরাপদ। সার্ভিস বন্ধ '
+         'করার মতো কিছু হলে আগে জানানো হবে, যাতে সবাই তথ্য নিয়ে নিতে পারেন।'),
+        ('অন্য প্ল্যাটফর্মে (Shopify, WooCommerce) চলে যেতে চাইলে?',
+         'সেটিংস → ডাটা ও ব্যাকআপ থেকে প্রোডাক্টের ফাইল নামান — Shopify আর WooCommerce-এর Import যেভাবে চায় ঠিক সেভাবে: '
+         'নাম, বিবরণ, দাম, আগের দাম, স্টক, সাইজ-রং, ক্যাটাগরি আর ছবির লিংক (ছবি ওরা লিংক থেকে নিজেই নামিয়ে নেয়)। কাস্টমার, '
+         'অর্ডার আর হিসাবের সব তথ্য আলাদা Excel ফাইলে। প্ল্যাটফর্মের নিজের সফটওয়্যার বা ডিজাইনের কোড এর মধ্যে দেওয়া হয় না।'),
+        ('কাস্টমারের অনলাইন পেমেন্টের টাকা কোথায় যায়, কত ফি?',
+         f'বিক্রিতে কোনো কমিশন নেই। কাস্টমার ওয়েবসাইটে অনলাইনে টাকা দিলে প্রতিটা পেমেন্টে {fee}% ফি কাটে — পেমেন্ট গেটওয়ের '
+         '(PayStation) চার্জ এর মধ্যেই ধরা; ক্যাশ অন ডেলিভারিতে কোনো ফি নেই। টাকা আগে আমাদের PayStation অ্যাকাউন্টে আসে, '
+         f'প্রতিটা পেমেন্টের {str(shop_payments.SETTLEMENT_HOLD_DAYS).translate(bn)} দিন পর আর অন্তত '
+         f'৳{format(int(shop_payments.SETTLEMENT_MIN), ",").translate(bn)} জমলে আপনার bKash, Nagad, Rocket বা ব্যাংকে তুলে '
+         'নিতে পারেন। কত জমা, কত তোলা যাবে আর কবে — সব ওয়েবসাইট → পেমেন্ট পাতায় দেখায়।'),
+        ('নিজের ডোমেইন কোন প্যাকেজে পাব?',
+         'শুধু Premium প্যাকেজে। ডোমেইনটা (যেমন www.yourshop.com) আপনি যেকোনো ডোমেইন বিক্রেতার কাছ থেকে কিনবেন, তার খরচ '
+         'আলাদা; ডোমেইনের DNS-এ একটা CNAME রেকর্ড বসালে দোকান সেই ঠিকানায় খোলে। সব প্যাকেজেই নিজের নামের সাবডোমেইন ঠিকানা ফ্রি।'),
+        ('আমার কাস্টমারের নম্বর কি অন্য দোকান বা অন্য কেউ দেখতে পায়?',
+         'না। প্রতিটা দোকানের তথ্য আলাদা, শুধু সেই দোকানের মালিক আর যে স্টাফকে কাস্টমার দেখার অনুমতি দেওয়া হয়েছে তারাই দেখেন।'),
+        ('স্টাফ কতটুকু দেখতে পায়?',
+         'যতটুকু আপনি অনুমতি দেন — POS-এ বিক্রি, প্রোডাক্ট, অর্ডার, কাস্টমার, রিপোর্ট, সেটিংস আর SMS পাঠানো আলাদা করে চালু/বন্ধ '
+         'করা যায়। সব ডাটা একসাথে নামানো শুধু মালিক পারেন।'),
+        ('Facebook কমেন্ট আর Messenger-এর অটো রিপ্লাই কি চালু?',
+         'হ্যাঁ, Standard আর Premium প্যাকেজে আর ফ্রি ট্রায়ালে সব দোকানে চালু।' if facebook_live else
+         'সফটওয়্যারে তৈরি আছে। Facebook-এর নিয়মে Meta প্রতিটা অ্যাপ যাচাই করে; সেই যাচাই শেষ হলেই Standard আর Premium '
+         'প্যাকেজের সব দোকানে চালু হবে। এই পাতাতেই তখন জানিয়ে দেওয়া হবে।'),
+        ('বিকাশ বা কার্ডের তথ্য কি আপনারা রাখেন?',
+         'না। পেমেন্ট হয় PayStation-এর পাতায়; আমরা শুধু লেনদেন নম্বর আর পরিমাণ পাই, যা রসিদে দেখায়।'),
+        ('বিল না দিলে তথ্য কত দিন থাকে?',
+         f'মেয়াদ শেষের পর {deletion_days_bn} দিন। এই সময়ে প্যাকেজ কিনলে কিছুই হারায় না, আর যেকোনো দিন সব ডাটা নামাতে পারেন। '
+         'মোছার আগে কয়েকবার SMS যায়।'),
+        ('অ্যাকাউন্ট পুরো মুছে ফেলতে চাইলে?',
+         format_html('আগে সব ডাটা নামিয়ে নিন, তারপর <a href="{}">মুছে ফেলার নিয়ম</a> অনুযায়ী অনুরোধ করুন।',
+                     reverse('data_deletion'))),
+    ]
+    if backup_test:
+        faq.insert(1, ('আপনারা কি ব্যাকআপ রাখেন?',
+                       'হ্যাঁ। প্রতি রাতে পুরো ডাটাবেসের এনক্রিপ্ট করা কপি আলাদা, গোপন স্টোরেজে রাখা হয়, ৩০ দিন পর্যন্ত; নিয়মিত '
+                       f'সেই ব্যাকআপ থেকে পুরো ফেরত এনে মিলিয়ে দেখা হয় — শেষবার {backup_test["date"]}-এ।'))
+    faq_ld = json.dumps({'@context': 'https://schema.org', '@type': 'FAQPage', 'mainEntity': [
+        {'@type': 'Question', 'name': q, 'acceptedAnswer': {'@type': 'Answer', 'text': strip_tags(a)}} for q, a in faq]},
+        ensure_ascii=False).replace('</', '<\\/')
     return render(request, 'store/security.html', {
-        'backup_test': backups.trust_line(),
+        'backup_test': backup_test,
         'status_page': getattr(dj_settings, 'STATUS_PAGE_URL', ''),
-        'grace_days_bn': str(STOREFRONT_GRACE_DAYS).translate(str.maketrans('0123456789', '০১২৩৪৫৬৭৮৯')),
-        'deletion_days_bn': str(retention.DATA_DELETION_DAYS).translate(str.maketrans('0123456789', '০১২৩৪৫৬৭৮৯')),
+        'grace_days_bn': str(STOREFRONT_GRACE_DAYS).translate(bn),
+        'deletion_days_bn': deletion_days_bn,
+        'faq': faq, 'faq_ld': faq_ld,
     })
+
+
+@login_required(login_url='/accounts/login/')
+def export_platform_csv(request, platform):
+    """সেটিংস → ডাটা ও ব্যাকআপ: অন্য প্ল্যাটফর্মে নিতে প্রোডাক্টের CSV (store/platform_export.py)। শুধু মালিক।"""
+    from django.utils import timezone as tz
+    from . import platform_export
+    shop = getattr(request.user, 'shop', None)
+    if shop is None or shop.user_id != request.user.id:
+        messages.error(request, 'এই ফাইল শুধু দোকানের মালিক নামাতে পারেন।')
+        return redirect('dashboard')
+    build = platform_export.shopify_csv if platform == 'shopify' else platform_export.woocommerce_csv
+    body = build(shop, request.build_absolute_uri)
+    response = HttpResponse(body, content_type='text/csv; charset=utf-8')
+    name = f'{shop.slug}-{platform}-products-{tz.localdate():%Y-%m-%d}.csv'
+    response['Content-Disposition'] = f'attachment; filename="{name}"'
+    return response
 
 
 @login_required(login_url='/accounts/login/')

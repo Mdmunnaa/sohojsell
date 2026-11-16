@@ -505,6 +505,19 @@
         <a href="{% url 'security' %}" class="dt-link">নিরাপত্তা ও ডাটা নিয়ে বিস্তারিত <i class="bi bi-arrow-right"></i></a>
       </section>
       <section class="ws-card dt-card">
+        <div class="dt-ic"><i class="bi bi-box-arrow-right"></i></div>
+        <h6>অন্য প্ল্যাটফর্মে নিতে</h6>
+        <p>প্রোডাক্ট, দাম, স্টক, সাইজ-রং আর ছবির লিংক — Shopify বা WooCommerce-এর Import-এ সরাসরি তোলা যায়। ছবি ওরা লিংক থেকে নিজেই নামিয়ে নেয়।</p>
+        {% if is_owner %}
+        <div class="d-flex flex-wrap gap-2">
+          <a href="{% url 'export_platform_csv' 'shopify' %}" class="dt-btn"><i class="bi bi-download"></i> Shopify-র জন্য</a>
+          <a href="{% url 'export_platform_csv' 'woocommerce' %}" class="dt-btn"><i class="bi bi-download"></i> WooCommerce-এর জন্য</a>
+        </div>
+        {% else %}
+        <p class="dt-note">শুধু দোকানের মালিক নামাতে পারেন।</p>
+        {% endif %}
+      </section>
+      <section class="ws-card dt-card">
         <div class="dt-ic muted"><i class="bi bi-trash3"></i></div>
         <h6>অ্যাকাউন্ট মুছতে চাইলে</h6>
         <p>আগে সব ডাটা নামিয়ে নিন। তারপর মুছে ফেলার অনুরোধ করলে দোকানের সব তথ্য মুছে দেওয়া হয়।</p>
@@ -516,7 +529,9 @@
   </div>
 </div>
 <style>
-.dt-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 6px; }
+.dt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 6px; }
+.dt-btn { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13.5px; padding: 8px 12px; border: 1.5px solid #CBD5E1; border-radius: 10px; color: #0F172A; text-decoration: none; background: #fff; }
+.dt-btn:hover { border-color: #4338CA; color: #4338CA; }
 .dt-card { padding: 20px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .dt-card h6 { font-weight: 800; font-size: 16px; margin: 4px 0 0; color: #0F172A; }
 .dt-card p { font-size: 14px; color: #475569; line-height: 1.7; margin: 0; }

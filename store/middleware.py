@@ -158,6 +158,28 @@ class StaffAccessMiddleware:
         return response
 
 
+class SecurityHeadersMiddleware:
+    """
+    Django নিজে যা দেয় না, এমন নিরাপত্তা-হেডার (securityheaders.com / Mozilla Observatory যা দেখে):
+    - Permissions-Policy: ক্যামেরা শুধু নিজের সাইটে (বারকোড স্ক্যান), মাইক-লোকেশন-USB বন্ধ।
+    - Content-Security-Policy: যা কিছু ভাঙে না শুধু সেটুকু — অন্য সাইট <base> বা plugin বসাতে পারবে না, http লিংক https-এ।
+      (স্ক্রিপ্ট সীমিত করা হয়নি — দোকানের ওয়েবসাইটে পেমেন্ট, ভিডিও ইত্যাদির বাইরের স্ক্রিপ্ট আছে।)
+    """
+    PERMISSIONS = 'camera=(self), microphone=(), geolocation=(), usb=(), payment=(self)'
+    CSP = "base-uri 'self'; object-src 'none'"
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        response.headers.setdefault('Permissions-Policy', self.PERMISSIONS)
+        # https-এ থাকলেই http লিংক https করা — লোকাল http-তে করলে নিজের ফাইলই আটকে যায়
+        csp = self.CSP + ('; upgrade-insecure-requests' if request.is_secure() else '')
+        response.headers.setdefault('Content-Security-Policy', csp)
+        return response
+
+
 class SessionRefreshMiddleware:
     """
     লগইন ৩০ দিন থাকে, আর ব্যবহার করলে মেয়াদ আবার ৩০ দিন হয়। আগে এর জন্য প্রতিটা ক্লিকে সেশন ডাটাবেসে নতুন করে লেখা

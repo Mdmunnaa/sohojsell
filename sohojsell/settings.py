@@ -69,6 +69,8 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    # ব্রাউজার এক বছর এই সাইট শুধু https-এ খুলবে (সাবডোমেইনে চাপানো হয়নি — দোকানের নিজের ডোমেইন আলাদা)
+    SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', 31536000))
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -89,6 +91,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'store.middleware.SecurityHeadersMiddleware',       # Permissions-Policy আর নিরাপদ CSP
     'whitenoise.middleware.WhiteNoiseMiddleware',     # static ফাইল (admin-এর CSS ইত্যাদি)
     'django.middleware.gzip.GZipMiddleware',          # HTML ছোট করে পাঠানো (static ফাইল whitenoise নিজেই দেয়, তাই এর পরে)
     'django.contrib.sessions.middleware.SessionMiddleware',

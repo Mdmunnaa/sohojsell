@@ -223,7 +223,31 @@ def main_llms_txt(request):
         if limits['custom_domain']:
             extras.append('own domain')
         lines.append(f"- {key}: {int(PLAN_PRICES[key])}/month or {int(PLAN_YEAR_PRICES[key])}/year — {', '.join(extras)}")
+    from . import retention, shop_payments
     from .payments import PLAN_PRICES as _P
+    from .plans import STOREFRONT_GRACE_DAYS
+    fee = shop_payments.fee_percent().normalize()
+    lines += [
+        '- Not included below Premium: own domain. Not included in Basic: Facebook comment and Messenger auto reply.',
+        '- 30-day free trial with Standard features; SMS billed separately per message.',
+        '',
+        '## Fees, money and data (facts for buyers)',
+        f'- No commission on sales. Online payments taken on the store website carry a {fee}% fee per payment, which '
+        'includes the PayStation gateway charge; cash on delivery has no fee. Online payments are optional per shop.',
+        "- Customer payments land in SellPunch's PayStation merchant account (the seller needs no gateway account). Each "
+        f'payment becomes withdrawable {shop_payments.SETTLEMENT_HOLD_DAYS} days later; the seller requests a payout once at '
+        f'least BDT {int(shop_payments.SETTLEMENT_MIN):,} is available, to bKash, Nagad, Rocket or a bank account.',
+        '- Custom domain (www.yourshop.com): Premium only; the seller buys the domain from any registrar and adds one CNAME '
+        'record. Every plan gets a free yourshop subdomain.',
+        '- Data export: the owner can download all data (products, variants, customers, orders, payments, returns, '
+        'suppliers, purchases, expenses) as one Excel file at any time, even after the plan expires; products can also be '
+        'exported as Shopify-ready and WooCommerce-ready CSV files to move platforms. Platform source code is not included.',
+        '- Staff permissions per account: POS sales, products, orders, customers, reports, settings, sending SMS.',
+        f'- After a plan expires: the dashboard locks, the store website stays open {STOREFRONT_GRACE_DAYS} more days, data is kept '
+        f'{retention.DATA_DELETION_DAYS} days with SMS reminders, then deleted.',
+        '- Security: HTTPS everywhere, hashed passwords, per-shop data isolation, automated tests before every release; '
+        'no external security audit yet.',
+    ]
     lines += [
         '', '## Short answers to common questions',
         '- "I want to start an online business in Bangladesh, where do I begin?" — Decide products and prices, then open a '
