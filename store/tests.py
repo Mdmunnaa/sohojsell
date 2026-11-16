@@ -6063,3 +6063,42 @@ class CommitmentsTests(TestCase):
         from . import guides
         guide = (guides.GUIDES_DIR / 'troubleshooting.md').read_text(encoding='utf-8')
         self.assertIn('সর্বোচ্চ ৬ ঘণ্টার মধ্যে উত্তর', guide)
+
+
+class TemplateCommentTests(ShopTestMixin, TestCase):
+    """Django-র {# … #} মন্তব্য শুধু এক লাইনের — কয়েক লাইনে লিখলে মন্তব্যটা পাতায় লেখা হয়ে দেখায়।
+    কয়েক লাইনের মন্তব্য {% comment %} … {% endcomment %} দিয়ে লিখতে হবে।"""
+
+    def test_no_multiline_hash_comments_in_templates(self):
+        import re
+        from pathlib import Path
+        root = Path(__file__).resolve().parent.parent
+        opened = re.compile(r'\{#\s')   # CSS-এর {#id …} ধরে না, মন্তব্য "{# " দিয়ে শুরু
+        broken = []
+        for path in root.glob('*/templates/**/*.html'):
+            for number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+                for match in opened.finditer(line):
+                    if '#}' not in line[match.end():]:
+                        broken.append(f'{path.relative_to(root)}:{number}')
+        self.assertEqual(broken, [], 'কয়েক লাইনের {# #} মন্তব্য পাতায় দেখা যায় — {% comment %} ব্যবহার করুন')
+
+    def test_rendered_pages_show_no_template_comments(self):
+        user, shop = self.make_shop(phone='01755500031', slug='nocomment')
+        pages = [reverse('dashboard'), reverse('billing'), reverse('product_list'), reverse('order_list'),
+                 reverse('settings'), reverse('website_settings'), reverse('pos')]
+        self.client.force_login(user)
+        self.client.logout()
+        public = ['/', '/en/', reverse('about'), reverse('security'), reverse('contact'), reverse('terms'),
+                  reverse('guide_index'), reverse('guide_detail', args=['troubleshooting'])]
+        for url in public:
+            body = self.client.get(url).content.decode()
+            self.assertNotIn('{# ', body, url)
+            self.assertNotIn('{% comment', body, url)
+        self.client.force_login(user)
+        for url in pages:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200, url)
+            body = response.content.decode()
+            self.assertNotIn('{# ', body, url)
+            self.assertNotIn(' #}', body, url)
+            self.assertNotIn('{% comment', body, url)

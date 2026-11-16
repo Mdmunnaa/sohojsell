@@ -1,7 +1,8 @@
-{# "AI-কে জিজ্ঞেস করুন" — সেলার যেকোনো AI-কে (ChatGPT, Claude, Gemini…) প্রশ্ন বা স্ক্রিনশট দিলে AI যেন আন্দাজে না বলে
+{% comment %} "AI-কে জিজ্ঞেস করুন" — সেলার যেকোনো AI-কে (ChatGPT, Claude, Gemini…) প্রশ্ন বা স্ক্রিনশট দিলে AI যেন আন্দাজে না বলে
    SellPunch-এর আসল গাইড পড়ে উত্তর দেয়। লেখাটা এখানেই (ব্রাউজারে) তৈরি হয়: পাতার নাম, এই পাতার গাইড, প্যাকেজ, পাতায় আসা
    ভুলের বার্তা (ফোন নম্বরের মতো লম্বা সংখ্যা ঢেকে) আর সেলারের প্রশ্ন। দোকানের কোনো ডাটা সার্ভার থেকে কোথাও যায় না —
-   সেলার নিজে বোতাম চাপলে তবেই লেখাটা AI-এর সাইটে খোলে। লিংক context_processors.plan_info → ai_help থেকে। #}
+   সেলার নিজে বোতাম চাপলে তবেই লেখাটা AI-এর সাইটে খোলে। লিংক context_processors.plan_info → ai_help থেকে।
+{% endcomment %}
 <div class="modal fade" id="aiHelp" tabindex="-1" aria-labelledby="aiHelpTitle" aria-hidden="true"
      data-guide-url="{{ ai_help.guide_url }}" data-fix-url="{{ ai_help.fix_url }}" data-all-url="{{ ai_help.all_url }}"
      data-contact-url="{{ ai_help.contact_url }}" data-base="{{ ai_help.base }}"
