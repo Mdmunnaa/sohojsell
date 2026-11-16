@@ -142,7 +142,7 @@ class StaffAccessMiddleware:
                     (('/customers/',), staff.can_manage_customers, "Customer Database"),
                     (('/sms/',), staff.can_send_sms, "SMS Panel"),
                     (('/reports/', '/expenses/'), staff.can_view_reports, "Business Reports"),
-                    (('/settings/', '/staff/', '/banners/', '/billing/', '/website/', '/facebook/'),
+                    (('/settings/', '/staff/', '/banners/', '/billing/', '/website/', '/facebook/', '/settlement/'),
                      staff.can_manage_settings, "Shop Settings"),
                 ]
 

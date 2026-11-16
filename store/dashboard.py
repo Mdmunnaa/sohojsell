@@ -312,10 +312,16 @@ def setup_steps(shop, plan_has_facebook):
             'next': next((item for item in items if not item['done']), None)}
 
 
-def todo_items(can, pipeline, dues, stock, messenger_waiting=0):
-    """"এখন যা করতে হবে" — জরুরিগুলো আগে। যার অনুমতি নেই তার কাজ দেখায় না।"""
+def todo_items(can, pipeline, dues, stock, messenger_waiting=0, money=None):
+    """"এখন যা করতে হবে" — জরুরিগুলো আগে। যার অনুমতি নেই তার কাজ দেখায় না।
+    money: shop_payments.balance_summary — অনলাইনের টাকা তোলা যাবে কিনা (শুধু মালিক/সেটিংসের অনুমতিওয়ালা)।"""
     orders_url = reverse('order_list')
     items = []
+    if can.get('settings') and money and money['can_request']:
+        available = bn_num(f"{money['available']:,.0f}")
+        items.append({'icon': 'bi-wallet2', 'tone': 'green', 'url': reverse('online_money'),
+                      'title': f'অনলাইনে পাওয়া ৳{available} এখন তুলতে পারেন',
+                      'sub': 'অনলাইনের টাকা পাতায় "টাকা তুলুন" চাপুন'})
     if can['orders'] and messenger_waiting:
         items.append({'icon': 'bi-messenger', 'tone': 'blue', 'url': reverse('messenger_inbox'),
                       'title': f'Messenger-এ {bn_num(messenger_waiting)} জন উত্তরের অপেক্ষায়',

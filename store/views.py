@@ -152,6 +152,7 @@ def site_sitemap(request):
 def seller_dashboard(request):
     """দোকানের মূল পাতা: আজকের হিসাব, ৭/৩০ দিনের চার্ট, এখন যা করতে হবে। হিসাবগুলো store/dashboard.py-তে।"""
     from . import dashboard as dash
+    from . import shop_payments
     from .plans import limits_for
 
     if not hasattr(request.user, 'shop'):
@@ -199,7 +200,8 @@ def seller_dashboard(request):
         'stock': stock,
         'todo': dash.todo_items(can, pipeline, dues, stock,
                                 messenger_waiting=MessengerContact.objects.filter(
-                                    shop=shop, waiting_since__isnull=False).count() if limits_for(shop)['facebook'] else 0),
+                                    shop=shop, waiting_since__isnull=False).count() if limits_for(shop)['facebook'] else 0,
+                                money=shop_payments.balance_summary(shop) if can['settings'] else None),
         'recent_orders': dash.recent_orders(shop) if can['orders'] or can['money'] else [],
         'chart': dash.sales_chart(shop, today, chart_days) if can['money'] else None,
         'top_sellers': dash.top_sellers(shop, today) if can['money'] else [],

@@ -151,8 +151,6 @@ def website_settings(request):
             return _back(tab)
 
     delivery.zones_for(shop)   # নতুন দোকানে সাধারণ দুটো এলাকা বানিয়ে রাখে
-    if tab == 'payment':
-        shop_payments.recheck_pending(shop)
     context = {
         **forms,
         'shop': shop,
@@ -168,11 +166,8 @@ def website_settings(request):
         'categories': Category.objects.filter(shop=shop).annotate(product_count=Count('product')).order_by('name'),
         'zones': DeliveryZone.objects.filter(shop=shop),
         'online_gateway_ready': shop_payments.online_available(shop),
-        'fee_percent': shop_payments.fee_percent(),
-        'balance': shop_payments.balance_summary(shop),
-        'recent_payments': StorefrontPayment.objects.filter(shop=shop).select_related('order')[:10],
-        'payouts': ShopPayout.objects.filter(shop=shop).select_related('request')[:10],
-        'settlement_requests': shop.settlement_requests.select_related('payout')[:10],
+        'fee_percent': format(shop_payments.fee_percent().normalize(), 'f'),
+        'balance': shop_payments.balance_summary(shop) if tab == 'payment' else None,
         'product_count': Product.objects.filter(shop=shop).count(),
     }
     return render(request, 'store/website_settings.html', context)
@@ -247,6 +242,46 @@ def zone_delete(request, pk):
 
 
 # ---------------------------------------------------------------- সেলারের টাকা তোলা
+SETTLEMENT_PAGE_SIZE = 30
+
+
+@login_required(login_url='/accounts/login/')
+def online_money(request):
+    """
+    "অনলাইনের টাকা" (Edumi-র Quick Pay সেটেলমেন্টের মতো আলাদা পাতা): কাস্টমার অনলাইনে কত দিল, ফি কত, কবে তোলা যাবে,
+    টাকা তোলার অনুরোধ আর পাঠানোর রেকর্ড। চালু/বন্ধ আর টাকা কোথায় যাবে — ওয়েবসাইট → পেমেন্ট ট্যাবে।
+    স্টাফের জন্য সেটিংসের অনুমতি লাগে (middleware)।
+    """
+    from datetime import timedelta
+    from django.core.paginator import Paginator
+    from django.utils import timezone
+    from .dashboard import bn_date
+
+    shop = request.user.shop
+    if not shop.is_demo:
+        shop_payments.recheck_pending(shop)
+    page = Paginator(StorefrontPayment.objects.filter(shop=shop).select_related('order'), SETTLEMENT_PAGE_SIZE) \
+        .get_page(request.GET.get('page'))
+    now = timezone.now()
+    for payment in page:
+        payment.release_label = ''
+        payment.percent_label = format(payment.fee_percent.normalize(), 'f')
+        if payment.status == StorefrontPayment.STATUS_COMPLETED:
+            release = (payment.completed_at or payment.created_at) + timedelta(days=shop_payments.SETTLEMENT_HOLD_DAYS)
+            payment.released = release <= now
+            payment.release_label = '' if payment.released else bn_date(timezone.localtime(release).date(), weekday=False)
+    return render(request, 'store/online_money.html', {
+        'shop': shop,
+        'balance': shop_payments.balance_summary(shop),
+        'fee_percent': format(shop_payments.fee_percent().normalize(), 'f'),
+        'online_on': shop.payment_rule != Shop.PAYMENT_COD,
+        'gateway_ready': shop_payments.online_available(shop),
+        'page': page,
+        'payouts': ShopPayout.objects.filter(shop=shop).select_related('request')[:20],
+        'settlement_requests': shop.settlement_requests.select_related('payout')[:20],
+    })
+
+
 @login_required(login_url='/accounts/login/')
 @require_POST
 def settlement_request(request):
@@ -255,7 +290,7 @@ def settlement_request(request):
         req = shop_payments.request_settlement(shop, request.POST.get('amount') or '0', user=request.user)
     except shop_payments.SettlementError as exc:
         messages.error(request, str(exc))
-        return redirect(reverse('website_settings') + '?tab=payment#settlement')
+        return redirect('online_money')
     from . import sms
     from django.conf import settings as dj_settings
     admin_phone = sms.normalize(getattr(dj_settings, 'ADMIN_ALERT_PHONE', ''))
@@ -264,7 +299,7 @@ def settlement_request(request):
                                 f'৳{sms.bn_num(f"{req.amount:,.0f}")} ({req.method})')
     messages.success(request, f'৳{req.amount:,.0f} তোলার অনুরোধ জমা হয়েছে। {req.method} {req.account}-এ পাঠানো হলে '
                               'SMS পাবেন আর এখানে লেনদেন নম্বর দেখাবে।')
-    return redirect(reverse('website_settings') + '?tab=payment#settlement')
+    return redirect('online_money')
 
 
 @login_required(login_url='/accounts/login/')
@@ -272,7 +307,7 @@ def settlement_request(request):
 def settlement_cancel(request, pk):
     if shop_payments.cancel_settlement(request.user.shop, pk):
         messages.info(request, 'টাকা তোলার অনুরোধ বাতিল করা হয়েছে।')
-    return redirect(reverse('website_settings') + '?tab=payment#settlement')
+    return redirect('online_money')
 
 
 # ---------------------------------------------------------------- মাস্টার: সেলারদের টাকা পাঠানো

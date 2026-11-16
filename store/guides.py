@@ -58,6 +58,7 @@ PAGE_GUIDES = [
     ('/customers/import/', None, 'move-to-sellpunch'),
     ('/orders/abandoned/', None, 'marketing'),
     ('/website/settlement/', None, 'online-payment'),
+    ('/settlement/', None, 'online-payment'),
     ('/website/', 'payment', 'online-payment'),
     ('/website/', 'domain', 'custom-domain'),
     ('/website/', None, 'website'),

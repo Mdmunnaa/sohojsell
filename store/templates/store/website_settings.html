@@ -100,6 +100,10 @@
   .qp-sub { font-weight: 800; font-size: 14px; color: #0F172A; margin: 18px 0 10px; }
   @media (max-width: 576px) { .qp-switch { flex-wrap: wrap; } .qp-txt { flex-basis: calc(100% - 60px); } .qp-state { margin-left: 60px; } .qp-switch .form-switch { margin-left: auto; } }
   /* টাকা তোলা */
+  .st-link { display: flex; align-items: center; gap: 12px; margin-top: 24px; padding: 14px 16px; border: 1px solid #A7F3D0; border-radius: 16px; background: #ECFDF5; color: #0F172A; text-decoration: none; }
+  .st-link:hover { border-color: #34D399; color: #0F172A; }
+  .st-link .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; background: #fff; color: #047857; font-size: 18px; }
+  .st-link .m { flex: 1; min-width: 0; } .st-link .m b { display: block; font-weight: 800; } .st-link .m small { color: #475569; font-size: 12.5px; }
   .st-card { margin-top: 32px; border: 1px solid #E2E8F0; border-radius: 20px; padding: 18px; background: #fff; scroll-margin-top: 80px; }
   .st-head h6 { font-weight: 800; font-size: 16px; margin: 0; color: #0F172A; }
   .st-head small { display: block; color: #64748B; font-size: 12.5px; margin-top: 2px; }
@@ -478,7 +482,7 @@
 
         <div class="ws-card mt-3">
           <div class="fw-bold mb-1">অনলাইনে নেওয়া টাকা কোথায় পাঠাব</div>
-          <div class="ws-help mb-3">কাস্টমারের টাকা আগে {{ site.name }}-এর PayStation অ্যাকাউন্টে আসে। {{ fee_percent|floatformat:"-2"|bn }}% ফি কেটে বাকিটা এখানে পাঠানো হয় — প্রতিটা পেমেন্টের {{ balance.hold_days|bn }} দিন পর, কমপক্ষে ৳{{ balance.min|floatformat:"0g"|bn }} জমলে।</div>
+          <div class="ws-help mb-3">কাস্টমারের টাকা আগে {{ site.name }}-এর PayStation অ্যাকাউন্টে আসে। {{ fee_percent|bn }}% ফি কেটে বাকিটা এখানে পাঠানো হয় — প্রতিটা পেমেন্টের {{ balance.hold_days|bn }} দিন পর, কমপক্ষে ৳{{ balance.min|floatformat:"0g"|bn }} জমলে।</div>
           <div class="row g-3">
             <div class="col-md-4"><label class="form-label" for="{{ payment_form.payout_method.id_for_label }}">মাধ্যম</label>{{ payment_form.payout_method }}</div>
             <div class="col-md-8"><label class="form-label" for="{{ payment_form.payout_account.id_for_label }}">নম্বর / অ্যাকাউন্ট</label>{{ payment_form.payout_account }}{% for e in payment_form.payout_account.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}</div>
@@ -490,84 +494,11 @@
       <div class="mt-3"><button type="submit" class="ws-save"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button></div>
     </form>
 
-    {# ── টাকা তোলা ── #}
-    <div class="st-card" id="settlement">
-      <div class="st-head">
-        <h6><i class="bi bi-wallet2 me-1 text-success"></i> অনলাইন বিক্রির টাকা</h6>
-        <small>প্রতিটা পেমেন্টের {{ balance.hold_days|bn }} দিন পর সেই টাকা তোলা যায় · কমপক্ষে ৳{{ balance.min|floatformat:"0g"|bn }} জমলে অনুরোধ দিন</small>
-      </div>
-      <div class="st-grid">
-        <div class="st-box main">
-          <span>এখন তোলা যাবে</span>
-          <b>৳{{ balance.available|floatformat:"0g"|bn }}</b>
-          {% if balance.short and not balance.open_request %}
-          <div class="st-bar" aria-hidden="true"><i style="width: {{ balance.progress }}%;"></i></div>
-          <small>আর ৳{{ balance.short|floatformat:"0g"|bn }} জমলে তুলতে পারবেন</small>
-          {% endif %}
-        </div>
-        <div class="st-box"><span>{{ balance.hold_days|bn }} দিনের অপেক্ষায়</span><b>৳{{ balance.holding|floatformat:"0g"|bn }}</b>{% if balance.next_release %}<small>পরেরটা খুলবে {{ balance.next_release_label }}</small>{% endif %}</div>
-        <div class="st-box"><span>আপনাকে পাঠানো হয়েছে</span><b>৳{{ balance.paid_out|floatformat:"0g"|bn }}</b></div>
-        <div class="st-box"><span>কাস্টমার দিয়েছে</span><b>৳{{ balance.gross|floatformat:"0g"|bn }}</b><small>ফি ৳{{ balance.fee|floatformat:"0g"|bn }}</small></div>
-      </div>
-
-      {% if balance.open_request %}
-      <div class="st-action wait">
-        <div class="txt"><i class="bi bi-hourglass-split me-1"></i> <b>৳{{ balance.open_request.amount|floatformat:"0g"|bn }}</b> তোলার অনুরোধ যাচাই হচ্ছে — {{ balance.open_request.method }} {{ balance.open_request.account }}-এ পাঠানো হবে। পাঠানো হলে SMS পাবেন।</div>
-        <form method="post" action="{% url 'settlement_cancel' balance.open_request.pk %}">{% csrf_token %}
-          <button type="submit" class="st-btn light" onclick="return confirm('অনুরোধটা বাতিল করবেন?')">বাতিল করুন</button>
-        </form>
-      </div>
-      {% elif balance.can_request %}
-      <div class="st-action">
-        <div class="txt">টাকা যাবে <b>{{ shop.get_payout_method_display }} {{ shop.payout_account }}</b>{% if shop.payout_account_name %} ({{ shop.payout_account_name }}){% endif %}-এ।</div>
-        <form method="post" action="{% url 'settlement_request' %}">{% csrf_token %}
-          <label class="st-amount"><span>৳</span><input type="number" name="amount" value="{{ balance.available|floatformat:0 }}" min="{{ balance.min|floatformat:0 }}" max="{{ balance.available|floatformat:0 }}" step="1" inputmode="numeric" aria-label="কত টাকা তুলবেন" required></label>
-          <button type="submit" class="st-btn"><i class="bi bi-arrow-down-circle me-1"></i> টাকা তুলুন</button>
-        </form>
-      </div>
-      {% elif not shop.payout_account and balance.net %}
-      <div class="st-action wait"><div class="txt"><i class="bi bi-info-circle me-1"></i> টাকা তুলতে উপরে টাকা নেওয়ার মাধ্যম আর নম্বর দিয়ে সেভ করুন।</div></div>
-      {% endif %}
-
-      {% if settlement_requests or payouts %}
-      <div class="st-list">
-        {% for r in settlement_requests %}
-        <div class="st-row">
-          <span class="ic"><i class="bi bi-arrow-down-circle"></i></span>
-          <div class="m"><b>৳{{ r.amount|floatformat:"0g"|bn }} তোলার অনুরোধ</b><small>{{ r.created_at|date:"j M Y" }} · {{ r.method }} {{ r.account }}{% if r.payout %} · TrxID {{ r.payout.reference }}{% endif %}{% if r.status == 'rejected' and r.note %} · কারণ: {{ r.note }}{% endif %}</small></div>
-          <span class="st-chip {{ r.status }}">{{ r.get_status_display }}</span>
-        </div>
-        {% endfor %}
-        {% for p in payouts %}{% if not p.request %}
-        <div class="st-row">
-          <span class="ic"><i class="bi bi-check2-circle"></i></span>
-          <div class="m"><b>৳{{ p.amount|floatformat:"0g"|bn }} পাঠানো হয়েছে</b><small>{{ p.paid_at|date:"j M Y" }} · {{ p.method }} {{ p.account }}{% if p.reference %} · TrxID {{ p.reference }}{% endif %}</small></div>
-          <span class="st-chip paid">পাঠানো হয়েছে</span>
-        </div>
-        {% endif %}{% endfor %}
-      </div>
-      {% endif %}
-    </div>
-
-    {% if recent_payments %}
-    <h6 class="fw-bold mt-4 mb-2">কাস্টমারের সাম্প্রতিক পেমেন্ট</h6>
-    <div class="table-responsive mb-3">
-      <table class="ws-table">
-        <thead><tr><th>তারিখ</th><th>অর্ডার</th><th class="text-end">টাকা</th><th class="text-end">আপনার</th><th>অবস্থা</th></tr></thead>
-        <tbody>
-        {% for p in recent_payments %}
-          <tr>
-            <td>{{ p.created_at|date:"j M, g:i A" }}</td>
-            <td>{% if p.order_id %}#ORD-{{ p.order_id }}{% endif %} <span class="text-muted small">{% if p.kind == 'advance' %}ডেলিভারি চার্জ{% else %}পুরো টাকা{% endif %}</span></td>
-            <td class="text-end">৳{{ p.amount|floatformat:0 }}</td>
-            <td class="text-end">{% if p.status == 'Completed' %}৳{{ p.net_amount|floatformat:0 }}{% else %}—{% endif %}</td>
-            <td>{% if p.status == 'Completed' %}<span class="text-success fw-bold">সফল</span>{% elif p.status == 'Failed' %}<span class="text-danger">ব্যর্থ</span>{% else %}<span class="text-warning">বাকি</span>{% endif %}</td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
+    <a class="st-link" href="{% url 'online_money' %}">
+      <span class="ic"><i class="bi bi-wallet2"></i></span>
+      <span class="m"><b>অনলাইনের টাকা দেখুন ও তুলুন</b><small>এখন তোলা যাবে ৳{{ balance.available|floatformat:"0g"|bn }} · {{ balance.hold_days|bn }} দিনের অপেক্ষায় ৳{{ balance.holding|floatformat:"0g"|bn }} · প্রতিটা পেমেন্টের হিসাব</small></span>
+      <i class="bi bi-chevron-right"></i>
+    </a>
     <script>
     (function () {
       var sw = document.getElementById('{{ payment_form.online_enabled.id_for_label }}');

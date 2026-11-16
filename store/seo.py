@@ -296,7 +296,9 @@ def main_llms_txt(request):
         'Online payments are optional per shop.',
         "- Customer payments land in SellPunch's PayStation merchant account (the seller needs no gateway account). Each "
         f'payment becomes withdrawable {shop_payments.SETTLEMENT_HOLD_DAYS} days later; the seller requests a payout once at '
-        f'least BDT {int(shop_payments.SETTLEMENT_MIN):,} is available, to bKash, Nagad, Rocket or a bank account.',
+        f'least BDT {int(shop_payments.SETTLEMENT_MIN):,} is available, to bKash, Nagad, Rocket or a bank account. The '
+        'dashboard page "অনলাইনের টাকা" lists every online payment (fee, the seller\'s share, when it can be withdrawn) '
+        'and the payout history with transaction IDs.',
         '- Custom domain (www.yourshop.com): Premium only; the seller buys the domain from any registrar and adds one CNAME '
         'record. Every plan gets a free yourshop subdomain.',
         '- Data export: the owner can download all data (products, variants, customers, orders, payments, returns, '

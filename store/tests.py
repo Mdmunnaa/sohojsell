@@ -2014,12 +2014,12 @@ class SettlementAndBillingTests(ShopTestMixin, TestCase):
     def test_seller_page_and_master_flow(self):
         from .models import SettlementRequest
         self.paid(Decimal('6000'), days_ago=9)
-        page = self.client.get(reverse('website_settings') + '?tab=payment').content.decode()
+        page = self.client.get(reverse('online_money')).content.decode()
         self.assertIn('টাকা তুলুন', page)
         self.assertIn('৳৬,০০০', page)
         self.client.post(reverse('settlement_request'), {'amount': '6000'})
         req = SettlementRequest.objects.get()
-        self.assertIn('তোলার অনুরোধ যাচাই হচ্ছে', self.client.get(reverse('website_settings') + '?tab=payment').content.decode())
+        self.assertIn('তোলার অনুরোধ যাচাই হচ্ছে', self.client.get(reverse('online_money')).content.decode())
         admin = User.objects.create_superuser(phone_number='01900000000', password='Admin-pass-1')
         self.client.force_login(admin)
         self.assertIn('টাকা তোলার অনুরোধ (1)', self.client.get(reverse('master_settlements')).content.decode())
@@ -3065,6 +3065,10 @@ class DemoShopTests(TestCase):
         self.client.force_login(shop.user)
         self.assertContains(self.client.get(reverse('fb_automation'), {'tab': 'sales'}), 'যে পোস্ট সবচেয়ে বেশি বিক্রি আনল')
         self.assertContains(self.client.get(reverse('messenger_inbox')), 'উত্তর দিয়েছি')
+        # "অনলাইনের টাকা" পাতা ডেমোতে ভরা: সফল, ব্যর্থ, আগে পাঠানো টাকা
+        money = self.client.get(reverse('online_money')).content.decode()
+        for text in ('সফল', 'ব্যর্থ', 'TrxID DEMO7K2Q9X', 'এখন তোলা যাবে'):
+            self.assertIn(text, money)
 
     def test_rebuild_keeps_images_and_resets_activity(self):
         from store import demo
@@ -5940,7 +5944,7 @@ class AiHelpTests(ShopTestMixin, TestCase):
         'এই নম্বর থেকে এখন অর্ডার নেওয়া যাচ্ছে না।', 'SMS কিনতে দোকানের মালিককে বলুন।',
         'ব্যালেন্স থেকে কিছু কাটা হয়নি।', 'ছবি ৩ MB-এর ছোট হতে হবে।', 'কমপক্ষে একটা এলাকা রাখতে হবে।',
         'রঙটা ঠিকমতো দিন, যেমন #1E88E5', 'কিছু সেভ হয়নি, পেইজটা রিফ্রেশ করে আবার চেষ্টা করুন।',
-        'ফর্মটা জমা দেওয়া যায়নি।', 'একটি পেইজ সিলেক্ট করুন!', 'টাকা তুলতে উপরে টাকা নেওয়ার মাধ্যম আর নম্বর দিয়ে সেভ করুন।',
+        'ফর্মটা জমা দেওয়া যায়নি।', 'একটি পেইজ সিলেক্ট করুন!', 'আগে ওয়েবসাইট → পেমেন্ট ট্যাবে টাকা নেওয়ার মাধ্যম আর নম্বর দিয়ে সেভ করুন।',
         'আগের অনুরোধটা এখনো যাচাই হচ্ছে।', 'ক্যামেরা অন্য অ্যাপে চালু আছে', 'এই ডিভাইসে ক্যামেরা পাওয়া যায়নি।',
     ]
 
@@ -6132,3 +6136,73 @@ class PaymentFeeTests(ShopTestMixin, TestCase):
         self.assertIn('customers pay nothing on top of the price', self.client.get('/en/').content.decode())
         self.assertIn('২.৫% ফি', self.client.get(reverse('security')).content.decode())
         self.assertIn('2.5% fee per payment', self.client.get('/llms.txt').content.decode())
+
+
+class OnlineMoneyPageTests(ShopTestMixin, TestCase):
+    """"অনলাইনের টাকা" — Edumi-র Quick Pay সেটেলমেন্টের মতো আলাদা পাতা: প্রতিটা পেমেন্ট, কবে তোলা যাবে, টাকা তোলা।"""
+
+    def setUp(self):
+        from decimal import Decimal
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import Customer, Order, Shop, StorefrontPayment
+        self.user, self.shop = self.make_shop(phone='01755500051', slug='moneyshop')
+        Shop.objects.filter(pk=self.shop.pk).update(payment_rule=Shop.PAYMENT_COD_OR_ONLINE, payout_method='bKash',
+                                                    payout_account='01755500051')
+        self.shop.refresh_from_db()
+        customer = Customer.objects.create(shop=self.shop, name='ক', phone='01711111111')
+        self.order = Order.objects.create(shop=self.shop, customer=customer, total_amount=Decimal('8000'),
+                                          status='Confirmed')
+        old = timezone.now() - timedelta(days=10)
+        self.done = StorefrontPayment.objects.create(
+            shop=self.shop, order=self.order, kind='full', amount=Decimal('8000'), fee_percent=Decimal('2.5'),
+            fee_amount=Decimal('200'), net_amount=Decimal('7800'), invoice_number='SF-T-1', status='Completed',
+            payment_method='bKash', completed_at=old)
+        StorefrontPayment.objects.create(
+            shop=self.shop, kind='advance', amount=Decimal('120'), fee_percent=Decimal('2.5'), fee_amount=Decimal('3'),
+            net_amount=Decimal('117'), invoice_number='SF-T-2', status='Completed', completed_at=timezone.now())
+
+    def test_page_lists_payments_and_lets_owner_withdraw(self):
+        body = self.client.get(reverse('online_money')).content.decode()
+        self.assertIn('<h1>অনলাইনের টাকা</h1>', body)
+        self.assertIn(reverse('order_edit', args=[self.order.pk]), body)
+        self.assertIn('৳৭৮০০', body.replace(',', ''))           # এই পেমেন্টে সেলারের অংশ
+        self.assertIn('তোলা যায়', body)                         # ১০ দিন আগের
+        self.assertIn('তোলা যাবে', body)                         # আজকের — ৭ দিন পর
+        self.assertIn('টাকা তুলুন', body)                        # ৳৭,৮০০ ≥ ৳৫,০০০
+        self.assertIn('href="/settlement/" class="sb-link active"', body)
+        # অনুরোধের পর এই পাতাতেই ফেরে
+        response = self.client.post(reverse('settlement_request'), {'amount': '6000'})
+        self.assertRedirects(response, reverse('online_money'))
+        self.assertIn('<b>৳৬,০০০</b> তোলার অনুরোধ যাচাই হচ্ছে', self.client.get(reverse('online_money')).content.decode())
+
+    def test_dashboard_says_money_can_be_withdrawn(self):
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('এখন তুলতে পারেন', body)
+        self.assertIn(reverse('online_money'), body)
+
+    def test_website_payment_tab_links_to_the_page(self):
+        body = self.client.get(reverse('website_settings') + '?tab=payment').content.decode()
+        self.assertIn('অনলাইনের টাকা দেখুন ও তুলুন', body)
+        self.assertNotIn('কাস্টমারের সাম্প্রতিক পেমেন্ট', body)
+
+    def test_staff_needs_settings_permission(self):
+        from .models import StaffProfile
+        staff = User.objects.create_user(phone_number='01755500052', password='Staff-pass-1')
+        profile = StaffProfile.objects.create(user=staff, shop=self.shop, can_use_pos=True)
+        self.client.force_login(staff)
+        self.assertRedirects(self.client.get(reverse('online_money')), reverse('dashboard'), fetch_redirect_response=False)
+        self.assertNotIn('অনলাইনের টাকা</span>', self.client.get(reverse('dashboard')).content.decode())
+        profile.can_manage_settings = True
+        profile.save()
+        self.assertEqual(self.client.get(reverse('online_money')).status_code, 200)
+
+    def test_rejected_request_texts_the_seller(self):
+        from unittest import mock
+        from . import shop_payments
+        req = shop_payments.request_settlement(self.shop, '6000', user=self.user)
+        with mock.patch('store.sms.notify') as notify:
+            self.assertEqual(shop_payments.reject_settlement(req.pk, 'নম্বর মেলেনি'), 1)
+        self.assertIn('ফেরত দেওয়া হয়েছে — নম্বর মেলেনি', notify.call_args.args[1])
+        self.assertEqual(shop_payments.balance_summary(self.shop)['available'], 7800)
+

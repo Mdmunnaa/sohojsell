@@ -35,7 +35,7 @@
  {"id": "website-delivery", "path": "/website/?tab=delivery", "viewport": "desktop"},
  {"id": "website-product-mobile", "path": "/shop/{slug}/product/{product}/", "viewport": "mobile", "anon": true},
  {"id": "payment-settings", "path": "/website/?tab=payment", "viewport": "desktop"},
- {"id": "payment-balance", "path": "/website/?tab=payment", "viewport": "desktop", "scroll_to": "অনলাইন বিক্রির টাকা"},
+ {"id": "payment-balance", "path": "/settlement/", "viewport": "desktop"},
  {"id": "domain-tab", "path": "/website/?tab=domain", "viewport": "desktop"},
  {"id": "landing-list", "path": "/landing/", "viewport": "desktop"},
  {"id": "landing-edit", "path": "/landing/{landing}/", "viewport": "desktop"},

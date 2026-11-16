@@ -199,6 +199,7 @@ def build():
         _coupons(shop, products, state['coupons_used'])
         _landing(shop, products, state)
         _facebook(shop, rng, products, state)
+        _online_money(shop, rng, state)
         _sms_history(shop, state)
         Shop.objects.filter(pk=shop.pk).update(demo_reset_at=timezone.now(), sms_balance=437)
     return shop
@@ -303,9 +304,9 @@ def _shop():
 def _wipe_activity(shop):
     """হিসাবের সবকিছু মুছে ফেলা (প্রোডাক্ট, ক্যাটাগরি, ব্যানার থাকে — ওগুলো আলাদাভাবে মেলানো হয়)।"""
     from .models import (AbandonedCheckout, Coupon, Customer, Expense, LandingPage, Order, PageView, ProductReview,
-                         Purchase, SmsLog, StorefrontOrder, Supplier)
-    for model in (StorefrontOrder, Order, Customer, Purchase, Supplier, Expense, Coupon, AbandonedCheckout,
-                  LandingPage, SmsLog, PageView):
+                         Purchase, SettlementRequest, ShopPayout, SmsLog, StorefrontOrder, StorefrontPayment, Supplier)
+    for model in (SettlementRequest, ShopPayout, StorefrontPayment, StorefrontOrder, Order, Customer, Purchase, Supplier,
+                  Expense, Coupon, AbandonedCheckout, LandingPage, SmsLog, PageView):
         model.objects.filter(shop=shop).delete()
     for review in ProductReview.objects.filter(shop=shop).exclude(image=''):
         review.image.delete(save=False)
@@ -807,6 +808,60 @@ def _facebook(shop, rng, products, state):
             Order.objects.filter(pk=order.pk).update(fb_source='messenger', messenger_contact=rng.choice(chat_contacts))
         elif roll < 0.36:
             Order.objects.filter(pk=order.pk).update(fb_source='chat', messenger_contact=rng.choice(chat_contacts))
+
+
+def _online_money(shop, rng, state):
+    """
+    "অনলাইনের টাকা" পাতা ভরা দেখানো: ওয়েবসাইটের কিছু অর্ডারে কাস্টমার অনলাইনে দিয়েছে (পুরো টাকা বা ডেলিভারি চার্জ আগে),
+    একটা আগে পাঠানো টাকা (TrxID-সহ)। টাকা তোলার অনুরোধ ডেমোতে বন্ধ (BLOCKED_PREFIXES)।
+    """
+    from . import shop_payments
+    from .models import Order, SettlementRequest, Shop, ShopPayout, StorefrontPayment
+    Shop.objects.filter(pk=shop.pk).update(payment_rule=Shop.PAYMENT_COD_OR_ONLINE, payout_method='bKash',
+                                           payout_account='01700000000', payout_account_name='ডেমো সেলার')
+    now = timezone.now()
+    percent = shop_payments.fee_percent()
+    orders = [o for o in state['orders'] if o.source == 'storefront' and o.status not in ('Cancelled', 'Returned')
+              and o.when >= now - timedelta(days=40)]
+    orders = sorted(rng.sample(orders, min(16, len(orders))), key=lambda o: o.when)
+    rows, paid_orders = [], []
+    for i, order in enumerate(orders):
+        full = rng.random() < 0.6
+        amount = Decimal(order.total_amount if full else rng.choice((60, 120))).quantize(Decimal('0.01'))
+        fee = (amount * percent / 100).quantize(Decimal('0.01'))
+        status = StorefrontPayment.STATUS_COMPLETED
+        if i == len(orders) - 2:
+            status = StorefrontPayment.STATUS_FAILED
+        elif i == len(orders) - 1:
+            status = StorefrontPayment.STATUS_PENDING
+        done = status == StorefrontPayment.STATUS_COMPLETED
+        rows.append(StorefrontPayment(
+            shop=shop, order_id=order.pk, kind=StorefrontPayment.KIND_FULL if full else StorefrontPayment.KIND_ADVANCE,
+            amount=amount, fee_percent=percent, fee_amount=fee, net_amount=amount - fee,
+            invoice_number=f'SF-DEMO-{order.pk}', environment='sandbox', status=status,
+            trx_id=f'DEMO{order.pk:06d}' if done else '', payment_method=rng.choice(('bKash', 'bKash', 'Nagad', 'Rocket', 'VISA')) if done else '',
+            completed_at=order.when + timedelta(minutes=3) if done else None))
+        if done:
+            paid_orders.append((order.pk, min(amount, Decimal(order.total_amount))))
+    StorefrontPayment.objects.bulk_create(rows)
+    for row, order in zip(rows, orders):
+        StorefrontPayment.objects.filter(pk=row.pk).update(created_at=order.when)
+    for pk, amount in paid_orders:
+        Order.objects.filter(pk=pk).update(advance_paid=amount, online_payment_status=Order.ONLINE_PAID)
+
+    # তিন সপ্তাহ আগে একবার টাকা তোলা হয়েছে (তখন যা তোলা যেত তার বেশিরভাগ)
+    cutoff = now - timedelta(days=21 + shop_payments.SETTLEMENT_HOLD_DAYS)
+    early = sum((r.net_amount for r in rows if r.status == StorefrontPayment.STATUS_COMPLETED and r.completed_at <= cutoff),
+                Decimal('0'))
+    amount = (early // 100) * 100
+    if amount > 0:
+        payout = ShopPayout.objects.create(shop=shop, amount=amount, method='bKash', account='01700000000',
+                                           reference='DEMO7K2Q9X', note='টাকা তোলার অনুরোধ থেকে')
+        request = SettlementRequest.objects.create(shop=shop, amount=amount, method='bKash', account='01700000000',
+                                                   account_name='ডেমো সেলার', status=SettlementRequest.PAID, payout=payout,
+                                                   decided_at=now - timedelta(days=20))
+        ShopPayout.objects.filter(pk=payout.pk).update(paid_at=now - timedelta(days=20))
+        SettlementRequest.objects.filter(pk=request.pk).update(created_at=now - timedelta(days=21))
 
 
 def _sms_history(shop, state):

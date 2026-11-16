@@ -258,7 +258,7 @@ def request_settlement(shop, amount, user=None):
     with transaction.atomic():
         shop = Shop.objects.select_for_update().get(pk=shop.pk)
         if not (shop.payout_method and shop.payout_account):
-            raise SettlementError('আগে উপরে টাকা নেওয়ার মাধ্যম আর নম্বর/অ্যাকাউন্ট দিয়ে সেভ করুন।')
+            raise SettlementError('আগে ওয়েবসাইট → পেমেন্ট ট্যাবে টাকা নেওয়ার মাধ্যম আর নম্বর দিয়ে সেভ করুন।')
         summary = balance_summary(shop)
         if summary['open_request']:
             raise SettlementError('আগের অনুরোধটা এখনো যাচাই হচ্ছে। সেটা হয়ে গেলে আবার অনুরোধ দিন।')
@@ -302,10 +302,18 @@ def pay_settlement(request_id, reference, user=None):
 
 
 def reject_settlement(request_id, reason):
+    """অনুরোধ ফেরত (কারণসহ); সেলার SMS পায়, টাকা আবার "এখন তোলা যাবে"-তে ফেরে।"""
     from .models import SettlementRequest
     reason = (reason or '').strip()[:200] or 'অ্যাকাউন্টের তথ্য মেলেনি'
-    return SettlementRequest.objects.filter(pk=request_id, status=SettlementRequest.PENDING).update(
+    req = SettlementRequest.objects.select_related('shop').filter(pk=request_id, status=SettlementRequest.PENDING).first()
+    if req is None:
+        return 0
+    updated = SettlementRequest.objects.filter(pk=req.pk, status=SettlementRequest.PENDING).update(
         status=SettlementRequest.REJECTED, note=reason, decided_at=timezone.now())
+    if updated:
+        _notify_seller(req.shop, f'{settings.SITE_NAME}: ৳{_bn(f"{req.amount:,.0f}")} তোলার অনুরোধ ফেরত দেওয়া হয়েছে — '
+                                 f'{reason}। ঠিক করে আবার অনুরোধ দিন।')
+    return updated
 
 
 def _bn_date(day):

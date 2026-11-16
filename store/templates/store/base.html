@@ -457,9 +457,14 @@
         {% endif %}
         {% endif %}
 
-        {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_products or request.user.staff_profile.can_view_reports or request.user.staff_profile.can_use_pos %}
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_products or request.user.staff_profile.can_view_reports or request.user.staff_profile.can_use_pos or request.user.staff_profile.can_manage_settings %}
         <div class="sb-sep"></div>
         <div class="sb-label">হিসাব</div>
+        {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_settings %}
+        <a href="{% url 'online_money' %}" class="sb-link {% if request.path == '/settlement/' %}active{% endif %}">
+          <i class="bi bi-wallet2"></i> <span class="sb-text-hide">অনলাইনের টাকা</span>
+        </a>
+        {% endif %}
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_use_pos %}
         <a href="{% url 'due_list' %}" class="sb-link {% if '/dues/' in request.path %}active{% endif %}">
           <i class="bi bi-journal-bookmark"></i> <span class="sb-text-hide">বাকির খাতা</span>

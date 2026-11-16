@@ -1,0 +1,192 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}অনলাইনের টাকা — {{ shop.name }}{% endblock %}
+{% block page_title %}অনলাইনের টাকা{% endblock %}
+{% block content %}
+{% comment %}
+  Edumi-র Quick Pay সেটেলমেন্টের মতো: কাস্টমার দোকানের ওয়েবসাইটে অনলাইনে যা দিল, ফি কেটে কত পাওনা, কবে তোলা যাবে,
+  টাকা তোলার অনুরোধ আর SellPunch থেকে পাঠানোর রেকর্ড (TrxID-সহ)। website_views.online_money।
+{% endcomment %}
+<style>
+  .om-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .om-head h1 { font-size: 21px; font-weight: 800; margin: 0; color: #0F172A; }
+  .om-head p { margin: 4px 0 0; color: #64748B; font-size: 13.5px; max-width: 640px; }
+  .om-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 700; color: #2563EB; text-decoration: none; padding: 8px 14px; border: 1px solid #DBEAFE; border-radius: 999px; background: #fff; white-space: nowrap; }
+  .om-link:hover { background: #EFF6FF; }
+  .om-note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; font-size: 13.5px; line-height: 1.55; margin-bottom: 14px; background: #FFFBEB; border: 1px solid #FDE68A; color: #78350F; }
+  .om-note a { font-weight: 700; color: #92400E; }
+  .om-card { border: 1px solid #E2E8F0; border-radius: 20px; padding: 18px; background: #fff; margin-bottom: 16px; }
+  .om-card h2 { font-size: 16px; font-weight: 800; margin: 0; color: #0F172A; }
+  .om-card .sub { display: block; color: #64748B; font-size: 12.5px; margin-top: 2px; }
+  .st-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .st-box { border-radius: 16px; padding: 14px; background: #F8FAFC; border: 1px solid #E2E8F0; }
+  .st-box span { display: block; font-size: 12.5px; color: #64748B; font-weight: 700; }
+  .st-box b { display: block; font-size: 20px; font-weight: 800; color: #0F172A; margin-top: 2px; }
+  .st-box small { display: block; font-size: 11.5px; color: #64748B; margin-top: 2px; }
+  .st-box.main { background: #ECFDF5; border-color: #A7F3D0; }
+  .st-box.main b { font-size: 28px; color: #047857; }
+  .st-bar { height: 7px; border-radius: 999px; background: #D1FAE5; margin-top: 10px; overflow: hidden; }
+  .st-bar i { display: block; height: 100%; border-radius: 999px; background: #10B981; }
+  .st-action { margin-top: 14px; padding: 14px; border-radius: 16px; border: 1px solid #E2E8F0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .st-action .txt { flex: 1; min-width: 220px; font-size: 13.5px; color: #334155; line-height: 1.55; }
+  .st-action .txt b { color: #0F172A; }
+  .st-action.wait { background: #FFFBEB; border-color: #FDE68A; }
+  .st-action form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .st-amount { position: relative; }
+  .st-amount span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight: 800; color: #64748B; }
+  .st-amount input { width: 150px; height: 44px; border: 1.5px solid #CBD5E1; border-radius: 12px; padding: 0 12px 0 28px; font-weight: 800; font-size: 16px; }
+  .st-btn { height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: #047857; color: #fff; font-weight: 800; font-size: 14.5px; white-space: nowrap; }
+  .st-btn:hover { background: #065F46; }
+  .st-btn.light { background: #fff; color: #B45309; border: 1px solid #FCD34D; height: 38px; font-size: 13px; }
+  .st-account { margin-top: 12px; font-size: 13px; color: #475569; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .st-account a { font-weight: 700; color: #2563EB; text-decoration: none; }
+  .st-row { display: flex; gap: 12px; align-items: center; padding: 10px 4px; border-top: 1px solid #F1F5F9; font-size: 13.5px; }
+  .st-row:first-of-type { border-top: 0; }
+  .st-row .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; background: #ECFDF5; color: #047857; }
+  .st-row .m { flex: 1; min-width: 0; }
+  .st-row .m b { display: block; color: #0F172A; }
+  .st-row .m small { color: #64748B; }
+  .st-chip { font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+  .st-chip.pending { background: #FEF3C7; color: #B45309; } .st-chip.paid { background: #DCFCE7; color: #15803D; }
+  .st-chip.cancelled { background: #F1F5F9; color: #64748B; } .st-chip.rejected { background: #FEE2E2; color: #B91C1C; }
+  .om-table { width: 100%; font-size: 13.5px; margin-top: 10px; }
+  .om-table th { font-size: 12px; color: #64748B; font-weight: 800; padding: 8px; border-bottom: 1px solid #E2E8F0; white-space: nowrap; }
+  .om-table td { padding: 10px 8px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+  .om-table .r { text-align: right; white-space: nowrap; }
+  .om-table small { display: block; color: #64748B; font-size: 12px; }
+  .om-table a { color: #0F172A; font-weight: 700; text-decoration: none; }
+  .om-table a:hover { color: #2563EB; }
+  .om-ok { color: #15803D; font-weight: 800; } .om-bad { color: #B91C1C; font-weight: 700; } .om-wait { color: #B45309; font-weight: 700; }
+  .om-empty { text-align: center; padding: 26px 12px; color: #64748B; font-size: 14px; }
+  .om-empty i { display: block; font-size: 30px; color: #94A3B8; margin-bottom: 6px; }
+  .om-pager { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 13px; color: #64748B; }
+  .om-pager a { font-weight: 700; color: #2563EB; text-decoration: none; }
+  @media (max-width: 768px) { .st-grid { grid-template-columns: 1fr 1fr; } .st-box.main { grid-column: 1 / -1; } .st-amount input { width: 130px; } }
+  /* ফোনে টেবিল না, প্রতিটা পেমেন্ট একটা সারি-কার্ড: অর্ডার | আপনার, তারিখ | অবস্থা, কাস্টমার দিয়েছে */
+  @media (max-width: 640px) {
+    .om-table thead { display: none; }
+    .om-table, .om-table tbody { display: block; }
+    .om-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "order net" "date status" "paid status"; gap: 2px 12px; padding: 12px 0; border-bottom: 1px solid #F1F5F9; }
+    .om-table td { display: block; padding: 0; border: 0; text-align: left; }
+    .om-table .c-order { grid-area: order; } .om-table .c-net { grid-area: net; text-align: right; }
+    .om-table .c-date { grid-area: date; font-size: 12.5px; color: #64748B; } .om-table .c-date small { display: inline; font-size: inherit; } .om-table .c-date small::before { content: " · "; }
+    .om-table .c-status { grid-area: status; text-align: right; } .om-table .c-fee { display: none; }
+    .om-table .c-paid { grid-area: paid; font-size: 12.5px; color: #64748B; text-align: left; }
+    .om-table .c-paid::before { content: "কাস্টমার দিয়েছে "; }
+  }
+</style>
+
+<div class="om-head">
+  <div>
+    <h1>অনলাইনের টাকা</h1>
+    <p>কাস্টমার আপনার ওয়েবসাইটে bKash, Nagad, Rocket বা কার্ডে যা দিয়েছে, তার হিসাব আর টাকা তোলা। প্রতিটা পেমেন্ট থেকে {{ fee_percent|bn }}% ফি কাটে (গেটওয়ের চার্জসহ), বাকিটা আপনার।</p>
+  </div>
+  <a class="om-link" href="{% url 'website_settings' %}?tab=payment"><i class="bi bi-gear"></i> চালু/বন্ধ ও টাকা কোথায় যাবে</a>
+</div>
+
+{% if not online_on %}
+<div class="om-note"><i class="bi bi-info-circle"></i><div>অনলাইনে টাকা নেওয়া এখন বন্ধ — কাস্টমার শুধু ক্যাশ অন ডেলিভারিতে অর্ডার দিচ্ছে। চালু করতে <a href="{% url 'website_settings' %}?tab=payment">ওয়েবসাইট → পেমেন্ট</a> খুলুন।</div></div>
+{% elif not gateway_ready %}
+<div class="om-note"><i class="bi bi-info-circle"></i><div>অনলাইন পেমেন্টের গেটওয়ে এখনো চালু হয়নি। চালু হলে কাস্টমার অনলাইনে টাকা দিতে পারবে, আর তার হিসাব এখানে আসবে।</div></div>
+{% endif %}
+
+<section class="om-card" id="settlement" aria-labelledby="om-balance">
+  <h2 id="om-balance"><i class="bi bi-wallet2 me-1 text-success"></i> আপনার টাকা</h2>
+  <span class="sub">প্রতিটা পেমেন্টের {{ balance.hold_days|bn }} দিন পর সেই টাকা তোলা যায় · কমপক্ষে ৳{{ balance.min|floatformat:"0g"|bn }} জমলে অনুরোধ দিন</span>
+  <div class="st-grid">
+    <div class="st-box main">
+      <span>এখন তোলা যাবে</span>
+      <b>৳{{ balance.available|floatformat:"0g"|bn }}</b>
+      {% if balance.short and not balance.open_request %}
+      <div class="st-bar" aria-hidden="true"><i style="width: {{ balance.progress }}%;"></i></div>
+      <small>আর ৳{{ balance.short|floatformat:"0g"|bn }} জমলে তুলতে পারবেন</small>
+      {% endif %}
+    </div>
+    <div class="st-box"><span>{{ balance.hold_days|bn }} দিনের অপেক্ষায়</span><b>৳{{ balance.holding|floatformat:"0g"|bn }}</b>{% if balance.next_release %}<small>পরেরটা খুলবে {{ balance.next_release_label }}</small>{% endif %}</div>
+    <div class="st-box"><span>আপনাকে পাঠানো হয়েছে</span><b>৳{{ balance.paid_out|floatformat:"0g"|bn }}</b></div>
+    <div class="st-box"><span>কাস্টমার দিয়েছে</span><b>৳{{ balance.gross|floatformat:"0g"|bn }}</b><small>ফি ৳{{ balance.fee|floatformat:"0g"|bn }}</small></div>
+  </div>
+
+  {% if balance.open_request %}
+  <div class="st-action wait">
+    <div class="txt"><i class="bi bi-hourglass-split me-1"></i> <b>৳{{ balance.open_request.amount|floatformat:"0g"|bn }}</b> তোলার অনুরোধ যাচাই হচ্ছে — {{ balance.open_request.method }} {{ balance.open_request.account }}-এ পাঠানো হবে। পাঠানো হলে SMS পাবেন।</div>
+    <form method="post" action="{% url 'settlement_cancel' balance.open_request.pk %}">{% csrf_token %}
+      <button type="submit" class="st-btn light" onclick="return confirm('অনুরোধটা বাতিল করবেন?')">বাতিল করুন</button>
+    </form>
+  </div>
+  {% elif balance.can_request %}
+  <div class="st-action">
+    <div class="txt"><b>কত টাকা তুলবেন?</b> ৳{{ balance.min|floatformat:"0g"|bn }} থেকে ৳{{ balance.available|floatformat:"0g"|bn }} পর্যন্ত তোলা যায়।</div>
+    <form method="post" action="{% url 'settlement_request' %}">{% csrf_token %}
+      <label class="st-amount"><span>৳</span><input type="number" name="amount" value="{{ balance.available|floatformat:0 }}" min="{{ balance.min|floatformat:0 }}" max="{{ balance.available|floatformat:0 }}" step="1" inputmode="numeric" aria-label="কত টাকা তুলবেন" required></label>
+      <button type="submit" class="st-btn"><i class="bi bi-arrow-down-circle me-1"></i> টাকা তুলুন</button>
+    </form>
+  </div>
+  {% elif not shop.payout_account and balance.net %}
+  <div class="st-action wait"><div class="txt"><i class="bi bi-info-circle me-1"></i> টাকা তুলতে আগে <a href="{% url 'website_settings' %}?tab=payment">ওয়েবসাইট → পেমেন্ট</a>-এ টাকা নেওয়ার মাধ্যম আর নম্বর দিয়ে সেভ করুন।</div></div>
+  {% endif %}
+
+  <div class="st-account">
+    <i class="bi bi-bank"></i>
+    {% if shop.payout_account %}<span>টাকা যায়: <b>{{ shop.get_payout_method_display }} {{ shop.payout_account }}</b>{% if shop.payout_account_name %} ({{ shop.payout_account_name }}){% endif %}</span> <a href="{% url 'website_settings' %}?tab=payment">বদলান</a>
+    {% else %}<span>টাকা কোথায় পাঠাব, এখনো দেওয়া হয়নি।</span> <a href="{% url 'website_settings' %}?tab=payment">এখন দিন</a>{% endif %}
+  </div>
+</section>
+
+<section class="om-card" aria-labelledby="om-payments">
+  <h2 id="om-payments"><i class="bi bi-receipt me-1 text-primary"></i> কাস্টমারের পেমেন্ট</h2>
+  <span class="sub">প্রতিটা অনলাইন পেমেন্ট — কে কত দিল, ফি কেটে আপনার কত, আর কবে তোলা যাবে</span>
+  {% if page.object_list %}
+  <div class="table-responsive">
+    <table class="om-table">
+      <thead><tr><th>তারিখ</th><th>অর্ডার</th><th class="r">কাস্টমার দিয়েছে</th><th class="r">ফি</th><th class="r">আপনার</th><th>অবস্থা</th></tr></thead>
+      <tbody>
+      {% for p in page %}
+        <tr>
+          <td class="c-date">{{ p.created_at|date:"j M Y" }}<small>{{ p.created_at|date:"g:i A" }}</small></td>
+          <td class="c-order">{% if p.order_id %}<a href="{% url 'order_edit' p.order_id %}">#ORD-{{ p.order_id }}</a>{% else %}—{% endif %}<small>{% if p.kind == 'advance' %}ডেলিভারি চার্জ আগে{% else %}পুরো টাকা{% endif %}{% if p.payment_method %} · {{ p.payment_method }}{% endif %}</small></td>
+          <td class="r c-paid">৳{{ p.amount|floatformat:"0g"|bn }}</td>
+          <td class="r c-fee">{% if p.status == 'Completed' %}৳{{ p.fee_amount|floatformat:"-2g"|bn }}<small>{{ p.percent_label|bn }}%</small>{% else %}—{% endif %}</td>
+          <td class="r c-net">{% if p.status == 'Completed' %}<b>৳{{ p.net_amount|floatformat:"-2g"|bn }}</b>{% else %}—{% endif %}</td>
+          <td class="c-status">{% if p.status == 'Completed' %}<span class="om-ok">সফল</span><small>{% if p.released %}তোলা যায়{% else %}তোলা যাবে {{ p.release_label }}{% endif %}</small>
+              {% elif p.status == 'Failed' %}<span class="om-bad">ব্যর্থ</span><small>টাকা কাটেনি</small>
+              {% else %}<span class="om-wait">বাকি</span><small>কাস্টমার এখনো দেয়নি</small>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page.has_other_pages %}
+  <div class="om-pager">
+    <span>{{ page.number|bn }} / {{ page.paginator.num_pages|bn }} পাতা</span>
+    <span>{% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">আগের</a>{% endif %}{% if page.has_previous and page.has_next %} · {% endif %}{% if page.has_next %}<a href="?page={{ page.next_page_number }}">পরের</a>{% endif %}</span>
+  </div>
+  {% endif %}
+  {% else %}
+  <div class="om-empty"><i class="bi bi-credit-card"></i>এখনো কোনো অনলাইন পেমেন্ট আসেনি। কাস্টমার ওয়েবসাইটে অনলাইনে টাকা দিলে এখানে দেখাবে।</div>
+  {% endif %}
+</section>
+
+{% if settlement_requests or payouts %}
+<section class="om-card" aria-labelledby="om-history">
+  <h2 id="om-history"><i class="bi bi-clock-history me-1 text-success"></i> টাকা তোলার ইতিহাস</h2>
+  <span class="sub">আপনার অনুরোধ আর {{ site.name }} থেকে পাঠানো টাকা, লেনদেন নম্বর (TrxID)-সহ</span>
+  <div class="mt-2">
+    {% for r in settlement_requests %}
+    <div class="st-row">
+      <span class="ic"><i class="bi bi-arrow-down-circle"></i></span>
+      <div class="m"><b>৳{{ r.amount|floatformat:"0g"|bn }} তোলার অনুরোধ</b><small>{{ r.created_at|date:"j M Y" }} · {{ r.method }} {{ r.account }}{% if r.payout %} · TrxID {{ r.payout.reference }}{% endif %}{% if r.status == 'rejected' and r.note %} · কারণ: {{ r.note }}{% endif %}</small></div>
+      <span class="st-chip {{ r.status }}">{{ r.get_status_display }}</span>
+    </div>
+    {% endfor %}
+    {% for p in payouts %}{% if not p.request %}
+    <div class="st-row">
+      <span class="ic"><i class="bi bi-check2-circle"></i></span>
+      <div class="m"><b>৳{{ p.amount|floatformat:"0g"|bn }} পাঠানো হয়েছে</b><small>{{ p.paid_at|date:"j M Y" }} · {{ p.method }} {{ p.account }}{% if p.reference %} · TrxID {{ p.reference }}{% endif %}</small></div>
+      <span class="st-chip paid">পাঠানো হয়েছে</span>
+    </div>
+    {% endif %}{% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}
