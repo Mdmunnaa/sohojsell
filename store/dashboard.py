@@ -312,10 +312,14 @@ def setup_steps(shop, plan_has_facebook):
             'next': next((item for item in items if not item['done']), None)}
 
 
-def todo_items(can, pipeline, dues, stock):
+def todo_items(can, pipeline, dues, stock, messenger_waiting=0):
     """"এখন যা করতে হবে" — জরুরিগুলো আগে। যার অনুমতি নেই তার কাজ দেখায় না।"""
     orders_url = reverse('order_list')
     items = []
+    if can['orders'] and messenger_waiting:
+        items.append({'icon': 'bi-messenger', 'tone': 'blue', 'url': reverse('messenger_inbox'),
+                      'title': f'Messenger-এ {bn_num(messenger_waiting)} জন উত্তরের অপেক্ষায়',
+                      'sub': 'বট যেটা পারেনি — Page Inbox থেকে উত্তর দিন'})
     if can['orders'] and pipeline['pending']:
         items.append({'icon': 'bi-bell-fill', 'tone': 'blue', 'url': f'{orders_url}?status=Pending',
                       'title': f"{bn_num(pipeline['pending'])}টা নতুন অর্ডার কনফার্ম করুন",

@@ -137,12 +137,13 @@ class StaffAccessMiddleware:
                     (('/products/', '/categories/', '/barcodes/', '/purchases/', '/suppliers/'),
                      staff.can_manage_products, "Product Management"),
                     (('/orders/', '/order/', '/online-orders/', '/invoice/', '/courier/', '/offers/', '/reviews/',
-                      '/landing/'),
+                      '/landing/', '/messenger/'),
                      staff.can_manage_orders, "Order Management"),
                     (('/customers/',), staff.can_manage_customers, "Customer Database"),
                     (('/sms/',), staff.can_send_sms, "SMS Panel"),
                     (('/reports/', '/expenses/'), staff.can_view_reports, "Business Reports"),
-                    (('/settings/', '/staff/', '/banners/', '/billing/', '/website/'), staff.can_manage_settings, "Shop Settings"),
+                    (('/settings/', '/staff/', '/banners/', '/billing/', '/website/', '/facebook/'),
+                     staff.can_manage_settings, "Shop Settings"),
                 ]
 
                 # যদি লিংকে ঢোকার পারমিশন না থাকে, তবে ড্যাশবোর্ডে পাঠিয়ে দাও

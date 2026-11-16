@@ -1,0 +1,284 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}Facebook অটোমেশন — {{ shop.name }}{% endblock %}
+{% block page_title %}Facebook অটোমেশন{% endblock %}
+{% block content %}
+{% include 'store/partials/panel_styles.html' %}
+{% include 'store/facebook/_style.html' %}
+<div class="ws-wrap">
+  <div class="ws-head">
+    <div class="fb-head-row">
+      <div>
+        <h4>Facebook অটোমেশন</h4>
+        <p>কমেন্ট আর Messenger-এ নিজে থেকে উত্তর — আপনি ব্যস্ত বা ঘুমিয়ে থাকলেও কাস্টমার সাথে সাথে উত্তর পায়।</p>
+      </div>
+      {% if connection %}
+      <a class="ws-open" href="{% url 'messenger_inbox' %}"><i class="bi bi-messenger"></i> কথোপকথন{% if waiting %} · {{ waiting|bn }} জন অপেক্ষায়{% endif %}</a>
+      {% endif %}
+    </div>
+    {% if connection %}
+    <div class="ws-url">
+      <i class="bi bi-facebook"></i>
+      <span class="text-truncate">{{ connection.page_name }}</span>
+      <a href="{% url 'settings' %}?tab=facebook" class="ms-auto fb-head-link">পেইজের সংযোগ <i class="bi bi-arrow-right"></i></a>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if not connection %}
+  <div class="ws-body">
+    <div class="fb-empty">
+      <div class="ico"><i class="bi bi-facebook"></i></div>
+      <h5>আগে Facebook পেইজ যুক্ত করুন</h5>
+      <p>পেইজ যুক্ত করলে কমেন্টের উত্তর, Messenger-এর উত্তর আর চ্যাটে অর্ডার — সব এখান থেকে সাজাতে পারবেন।</p>
+      <a href="{% url 'fb_connect' %}" class="ws-save d-inline-block text-decoration-none"><i class="bi bi-facebook me-1"></i> Facebook দিয়ে যুক্ত করুন</a>
+    </div>
+  </div>
+  {% else %}
+
+  <nav class="ws-tabs" aria-label="Facebook অটোমেশনের ভাগ">
+    {% for key, icon, label in tabs %}
+    <a href="?tab={{ key }}" class="ws-tab {% if tab == key %}active{% endif %}" {% if tab == key %}aria-current="page"{% endif %}>
+      <i class="bi {{ icon }}"></i> {{ label }}
+      {% if key == 'faq' and faq_count %}<span class="tab-badge">{{ faq_count|bn }}</span>{% endif %}
+    </a>
+    {% endfor %}
+  </nav>
+
+  <div class="ws-body">
+
+  {% if tab == 'comments' %}
+    {% with f=comment_form %}
+    <form method="post" novalidate>{% csrf_token %}
+      <input type="hidden" name="tab" value="comments">
+      {% if f.non_field_errors %}<div class="ws-alert error"><i class="bi bi-exclamation-circle"></i><div>{{ f.non_field_errors|join:" " }}</div></div>{% endif %}
+      <h5 class="ws-section-title">কমেন্টের উত্তর</h5>
+      <p class="ws-section-sub">পোস্টে কেউ কমেন্ট করলে তার ইনবক্সে দাম আর অর্ডারের লিংক যায়। পোস্টে প্রোডাক্টের কোড (যেমন <code>#P12</code>) থাকলে সেই প্রোডাক্ট, না থাকলে দোকানের লিংক।</p>
+      <div class="switch-stack">
+        <label class="switch-row" for="id_comment_bot_enabled">
+          <span><span class="t">কমেন্ট করলে ইনবক্সে দাম আর অর্ডারের লিংক</span>
+            <span class="d">একই মানুষকে একই পোস্টে একবারই যায় — কেউ দশবার কমেন্ট করলেও স্প্যাম হয় না।</span></span>
+          <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="id_comment_bot_enabled" name="comment_bot_enabled" {% if f.comment_bot_enabled.value %}checked{% endif %}></span>
+        </label>
+        <label class="switch-row" for="id_public_reply_enabled">
+          <span><span class="t">কমেন্টের নিচেও উত্তর</span>
+            <span class="d">সবাই দেখে পেইজ সাথে সাথে উত্তর দেয় — তাতে অন্যরাও কমেন্ট করতে উৎসাহ পায়।</span></span>
+          <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="id_public_reply_enabled" name="public_reply_enabled" {% if f.public_reply_enabled.value %}checked{% endif %}></span>
+        </label>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-md-6">
+          <label class="form-label" for="{{ f.public_reply_texts.id_for_label }}">কমেন্টের নিচের উত্তর — এক লাইনে একটা</label>
+          {{ f.public_reply_texts }}
+          <div class="ws-help">কয়েকটা লিখলে প্রতিবার এলোমেলো একটা যায় — একই লেখা বারবার গেলে Facebook স্প্যাম ভাবতে পারে। খালি রাখলে: "ইনবক্স চেক করুন, বিস্তারিত পাঠানো হয়েছে।"</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ f.comment_dm_intro.id_for_label }}">ইনবক্সের প্রথম লাইন</label>
+          {{ f.comment_dm_intro }}
+          <div class="ws-help"><code>{name}</code> লিখলে কমেন্টকারীর নাম বসে। খালি রাখলে: "আসসালামু আলাইকুম {name}! {{ shop.name }}-এ কমেন্ট করার জন্য ধন্যবাদ।" এর নিচে দাম আর লিংক নিজে থেকে বসে।</div>
+          {% if f.comment_dm_intro.errors %}<div class="ws-err">{{ f.comment_dm_intro.errors|join:" " }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="sub-h">কমেন্ট লুকানো</div>
+      <div class="switch-stack">
+        <label class="switch-row" for="id_hide_phone_comments">
+          <span><span class="t">ফোন নম্বর লেখা কমেন্ট লুকান</span>
+            <span class="d">কাস্টমারের নম্বর অন্য দোকান দেখে নিতে পারবে না। ইনবক্সে উত্তর ঠিকই যায়। লুকানো কমেন্ট শুধু কমেন্টকারী আর তার বন্ধুরা দেখে।</span></span>
+          <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="id_hide_phone_comments" name="hide_phone_comments" {% if f.hide_phone_comments.value %}checked{% endif %}></span>
+        </label>
+        <label class="switch-row" for="id_hide_link_comments">
+          <span><span class="t">লিংক দেওয়া কমেন্ট লুকান</span>
+            <span class="d">অন্য পেইজের বিজ্ঞাপন বা স্প্যামের লিংক। এসব কমেন্টে ইনবক্সে কিছু যায় না।</span></span>
+          <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="id_hide_link_comments" name="hide_link_comments" {% if f.hide_link_comments.value %}checked{% endif %}></span>
+        </label>
+      </div>
+      <div class="mt-3">
+        <label class="form-label" for="{{ f.hide_words.id_for_label }}">এই শব্দগুলো থাকলে কমেন্ট লুকান</label>
+        {{ f.hide_words }}
+        <div class="ws-help">কমা দিয়ে আলাদা করুন। এসব কমেন্টে ইনবক্সেও কিছু যায় না।</div>
+      </div>
+      <div class="mt-4"><button type="submit" class="ws-save"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button></div>
+    </form>
+    {% endwith %}
+
+  {% elif tab == 'messenger' %}
+    {% with f=messenger_form %}
+    <form method="post" novalidate>{% csrf_token %}
+      <input type="hidden" name="tab" value="messenger">
+      {% if f.non_field_errors %}<div class="ws-alert error"><i class="bi bi-exclamation-circle"></i><div>{{ f.non_field_errors|join:" " }}</div></div>{% endif %}
+      <h5 class="ws-section-title">Messenger-এর উত্তর</h5>
+      <p class="ws-section-sub">কাস্টমার পেইজের ইনবক্সে লিখলে দোকানের তথ্য থেকে নিজে থেকে উত্তর যায়। বট না বুঝলে বা কাস্টমার মানুষের সাথে কথা বলতে চাইলে <a href="{% url 'messenger_inbox' %}">কথোপকথন</a>-এ দেখায়।</p>
+      <div class="ws-warn mb-3"><i class="bi bi-info-circle me-1"></i> Facebook-এর নিজের "Instant reply" বা অটো-রিপ্লাই চালু থাকলে বন্ধ করে দিন (Meta Business Suite → Inbox → Automations)। নাহলে দুটো একসাথে উত্তর দেবে।</div>
+      <div class="switch-stack">
+        <label class="switch-row" for="id_messenger_bot_enabled">
+          <span><span class="t">Messenger-এ নিজে থেকে উত্তর</span>
+            <span class="d">স্বাগত মেসেজ, দাম, ডেলিভারি চার্জ, পেমেন্ট, ঠিকানা, ফোন, রিটার্ন পলিসি আর "অর্ডার কোথায়" — আর আপনার নিজের প্রশ্ন-উত্তর।</span></span>
+          <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="id_messenger_bot_enabled" name="messenger_bot_enabled" {% if f.messenger_bot_enabled.value %}checked{% endif %}></span>
+        </label>
+        <label class="switch-row" for="id_messenger_order_enabled">
+          <span><span class="t">চ্যাটেই অর্ডার নেওয়া</span>
+            <span class="d">কাস্টমার কয়টা, নাম, মোবাইল, ঠিকানা আর এলাকা দিলে অর্ডার সরাসরি "ওয়েবসাইটের অর্ডার"-এ আসে — ক্যাশ অন ডেলিভারি, স্টক আর দাম ওয়েবসাইটের মতোই।</span></span>
+          <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="id_messenger_order_enabled" name="messenger_order_enabled" {% if f.messenger_order_enabled.value %}checked{% endif %}></span>
+        </label>
+        <label class="switch-row" for="id_order_updates_enabled">
+          <span><span class="t">অর্ডারের খবর Messenger-এ</span>
+            <span class="d">Messenger থেকে আসা অর্ডার কনফার্ম, কুরিয়ারে দেওয়া, ডেলিভারি বা বাতিল হলে কাস্টমার Messenger-এ খবর পায় — SMS-এর খরচ ছাড়াই।</span></span>
+          <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="id_order_updates_enabled" name="order_updates_enabled" {% if f.order_updates_enabled.value %}checked{% endif %}></span>
+        </label>
+      </div>
+
+      <div class="mt-3">
+        <label class="form-label" for="{{ f.welcome_text.id_for_label }}">স্বাগত মেসেজ</label>
+        {{ f.welcome_text }}
+        <div class="ws-help"><code>{name}</code> লিখলে কাস্টমারের নাম বসে। খালি রাখলে: "আসসালামু আলাইকুম {name}! {{ shop.name }}-এ স্বাগতম। কী জানতে চান, নিচে থেকে বেছে নিন বা লিখুন।" নিচে বাটনগুলো নিজে থেকে বসে।</div>
+      </div>
+
+      <div class="sub-h">উত্তর দেওয়ার সময়</div>
+      <div class="row g-3">
+        <div class="col-6 col-md-3"><label class="form-label" for="{{ f.open_time.id_for_label }}">খোলে</label>{{ f.open_time }}</div>
+        <div class="col-6 col-md-3"><label class="form-label" for="{{ f.close_time.id_for_label }}">বন্ধ হয়</label>{{ f.close_time }}</div>
+        <div class="col-md-6">
+          <label class="form-label" for="{{ f.offhours_text.id_for_label }}">বন্ধের সময়ে যা জানাবে</label>
+          {{ f.offhours_text }}
+        </div>
+      </div>
+      <div class="ws-help">খালি রাখলে সবসময় খোলা। বন্ধের সময়ে বট দাম-ডেলিভারির উত্তর ঠিকই দেয়; শুধু যেটা আপনাকে দেখতে হবে সেখানে দিনে একবার জানায় কখন উত্তর পাবে।</div>
+      <div class="mt-4"><button type="submit" class="ws-save"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button></div>
+    </form>
+    {% endwith %}
+
+  {% elif tab == 'faq' %}
+    <h5 class="ws-section-title">নিজের প্রশ্ন-উত্তর</h5>
+    <p class="ws-section-sub">কাস্টমার Messenger-এ নিচের কোনো শব্দ লিখলে উত্তরটা নিজে থেকে যায়। দাম, ডেলিভারি চার্জ, পেমেন্ট, ঠিকানা আর রিটার্ন পলিসি বট দোকানের তথ্য থেকেই বলে দেয় — এগুলো লিখতে হবে না, তবে লিখলে আপনার উত্তরটাই যাবে।</p>
+    <form method="post" action="{% url 'fb_faq_save' %}" class="ws-card mb-4">{% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label" for="id_keywords">কাস্টমার যা লিখবে</label>
+          {{ reply_form.keywords }}
+          <div class="ws-help">কমা দিয়ে কয়েকটা — বাংলা আর ইংরেজি দুটোই দিন।</div>
+        </div>
+        <div class="col-md-8">
+          <label class="form-label" for="id_answer">উত্তর</label>
+          {{ reply_form.answer }}
+        </div>
+      </div>
+      <div class="mt-3"><button type="submit" class="ws-save"><i class="bi bi-plus-lg me-1"></i> যোগ করুন</button></div>
+    </form>
+
+    {% for r in replies %}
+    <div class="faq-row {% if not r.is_active %}off{% endif %}">
+      <div class="faq-main">
+        <div class="faq-words">{% for w in r.keyword_list %}<span>{{ w }}</span>{% endfor %}</div>
+        <div class="faq-ans">{{ r.answer|linebreaksbr }}</div>
+        <div class="faq-meta">{% if r.hits %}{{ r.hits|bn }} বার উত্তর গেছে{% else %}এখনো কাজে লাগেনি{% endif %}{% if not r.is_active %} · বন্ধ{% endif %}</div>
+        <details class="faq-edit">
+          <summary>বদলান</summary>
+          <form method="post" action="{% url 'fb_faq_save' %}" class="mt-2">{% csrf_token %}
+            <input type="hidden" name="id" value="{{ r.id }}">
+            <input type="text" name="keywords" value="{{ r.keywords }}" class="form-control mb-2" maxlength="300" aria-label="কাস্টমার যা লিখবে">
+            <textarea name="answer" rows="3" class="form-control mb-2" maxlength="1500" aria-label="উত্তর">{{ r.answer }}</textarea>
+            <button type="submit" class="ws-save py-2">সেভ</button>
+          </form>
+        </details>
+      </div>
+      <div class="faq-actions">
+        <form method="post" action="{% url 'fb_faq_action' r.id %}">{% csrf_token %}<input type="hidden" name="action" value="toggle">
+          <button class="btn-icon" type="submit">{% if r.is_active %}বন্ধ করুন{% else %}চালু করুন{% endif %}</button></form>
+        <form method="post" action="{% url 'fb_faq_action' r.id %}">{% csrf_token %}<input type="hidden" name="action" value="delete">
+          <button class="btn-icon text-danger" type="submit" data-confirm="এই প্রশ্ন-উত্তর মুছবেন?" aria-label="মুছুন"><i class="bi bi-trash"></i></button></form>
+      </div>
+    </div>
+    {% empty %}
+    <div class="ws-note">এখনো কিছু যোগ করেননি। যেমন: "সাইজ, size, মাপ" → "M, L, XL আর XXL সাইজ আছে।"</div>
+    {% endfor %}
+
+    <div class="sub-h">বট নিজে থেকে যা পারে</div>
+    <div class="fb-can">
+      <div><i class="bi bi-tag"></i><b>দাম</b>কোড (P12) লিখলে বা আগে যে প্রোডাক্ট নিয়ে কথা হয়েছে — ছবি, দাম আর অর্ডারের বাটনসহ</div>
+      <div><i class="bi bi-truck"></i><b>ডেলিভারি চার্জ</b>আপনার এলাকা আর চার্জ, ফ্রি ডেলিভারির সীমা</div>
+      <div><i class="bi bi-wallet2"></i><b>পেমেন্ট</b>ক্যাশ অন ডেলিভারি বা অনলাইন — আপনার নিয়ম অনুযায়ী</div>
+      <div><i class="bi bi-geo-alt"></i><b>ঠিকানা ও ফোন</b>ওয়েবসাইটের সেটিংসে যা দিয়েছেন</div>
+      <div><i class="bi bi-arrow-counterclockwise"></i><b>রিটার্ন পলিসি</b>ওয়েবসাইটে লেখা থাকলে</div>
+      <div><i class="bi bi-box-seam"></i><b>অর্ডার কোথায়</b>অর্ডার নম্বর আর মোবাইল দিলে অবস্থা আর কুরিয়ারের কোড</div>
+    </div>
+
+  {% elif tab == 'sales' %}
+    <div class="fb-head-row mb-3">
+      <div>
+        <h5 class="ws-section-title">Facebook থেকে বিক্রি</h5>
+        <p class="ws-section-sub mb-0">কমেন্টের পর ইনবক্সের লিংক, Messenger-এর লিংক বা চ্যাটে দেওয়া অর্ডার — বাতিল আর ফেরত বাদে।</p>
+      </div>
+      <div class="fb-periods">{% for d, label in periods %}<a href="?tab=sales&days={{ d }}" class="{% if report.days == d %}on{% endif %}">{{ label }}</a>{% endfor %}</div>
+    </div>
+    <div class="fb-stats">
+      <div class="stat-box"><div class="v">{{ report.orders|bn }}</div><div class="l">অর্ডার</div></div>
+      <div class="stat-box"><div class="v">{{ report.amount|taka }}</div><div class="l">বিক্রি</div></div>
+      <div class="stat-box"><div class="v">{{ report.comments.sent|bn }}</div><div class="l">কমেন্টে ইনবক্সে উত্তর</div></div>
+      <div class="stat-box"><div class="v">{{ report.chats|bn }}</div><div class="l">Messenger-এ কথা হয়েছে</div></div>
+    </div>
+    <div class="row g-3 mt-1">
+      <div class="col-lg-6">
+        <div class="sub-h mt-2">কোন পথে এল</div>
+        <div class="ws-card py-1">
+          {% for s in report.sources %}
+          <div class="reply-row"><span>{{ s.label }}</span><span class="when"><b>{{ s.n|bn }}টা</b> · {{ s.amount|taka }}</span></div>
+          {% endfor %}
+        </div>
+        {% if report.comments.hidden or report.comments.failed %}
+        <div class="ws-help mt-2">{% if report.comments.hidden %}{{ report.comments.hidden|bn }}টা কমেন্ট লুকানো হয়েছে। {% endif %}{% if report.comments.failed %}{{ report.comments.failed|bn }}টা কমেন্টে ইনবক্সে পাঠানো যায়নি — <a href="?tab=log">কারণ দেখুন</a>।{% endif %}</div>
+        {% endif %}
+      </div>
+      <div class="col-lg-6">
+        <div class="sub-h mt-2">যে পোস্ট সবচেয়ে বেশি বিক্রি আনল</div>
+        <div class="ws-card py-1">
+          {% for p in report.posts %}
+          <div class="reply-row"><a href="{{ p.url }}" target="_blank" rel="noopener">পোস্ট দেখুন <i class="bi bi-box-arrow-up-right"></i></a><span class="when"><b>{{ p.n|bn }}টা অর্ডার</b> · {{ p.amount|taka }}</span></div>
+          {% empty %}
+          <div class="reply-row text-muted">কমেন্ট থেকে এখনো অর্ডার আসেনি।</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="sub-h">সাম্প্রতিক অর্ডার</div>
+    <div class="ws-card py-1">
+      {% for o in report.recent %}
+      <div class="reply-row">
+        <a href="{% url 'invoice' o.id %}">নং {{ o.id|bn }}</a>
+        <span class="text-truncate">{{ o.customer.name }}</span>
+        <span class="fb-src">{% if o.fb_source == 'chat' %}চ্যাট{% elif o.fb_source == 'comment' %}কমেন্ট{% else %}Messenger{% endif %}</span>
+        <span class="when">{{ o.total_amount|taka }} · {{ o.created_at|bn_when }}</span>
+      </div>
+      {% empty %}
+      <div class="reply-row text-muted">এই সময়ে Facebook থেকে অর্ডার আসেনি।</div>
+      {% endfor %}
+    </div>
+    {% if report.cancelled %}<div class="ws-help mt-2">এর বাইরে {{ report.cancelled|bn }}টা অর্ডার বাতিল বা ফেরত হয়েছে।</div>{% endif %}
+
+  {% elif tab == 'log' %}
+    <h5 class="ws-section-title">কমেন্টের হিসাব</h5>
+    <p class="ws-section-sub">কোন কমেন্টে কী হয়েছে — শেষ ৬০টা।</p>
+    <div class="ws-card py-1">
+      {% for r in log %}
+      <div class="log-row">
+        <div class="min-w-0">
+          <div class="log-name">{{ r.commenter_name|default:"একজন কাস্টমার" }}{% if r.product %} <span class="text-muted">· {{ r.product.name }}</span>{% endif %}</div>
+          {% if r.message %}<div class="log-msg">{{ r.message|truncatechars:120 }}</div>{% endif %}
+          {% if r.error %}<div class="log-err">{{ r.error|truncatechars:160 }}</div>{% endif %}
+        </div>
+        <div class="log-side">
+          {% if r.status == 'sent' %}<span class="fb-tag ok">ইনবক্সে গেছে</span>{% elif r.status == 'failed' %}<span class="fb-tag bad">পাঠানো যায়নি</span>{% elif r.status == 'skipped' %}<span class="fb-tag">উত্তর দেওয়া হয়নি</span>{% endif %}
+          {% if r.hidden_reason == 'phone' %}<span class="fb-tag warn">লুকানো: ফোন নম্বর</span>{% elif r.hidden_reason == 'link' %}<span class="fb-tag warn">লুকানো: লিংক</span>{% elif r.hidden_reason == 'word' %}<span class="fb-tag warn">লুকানো: নিষেধের শব্দ</span>{% endif %}
+          <span class="when">{{ r.created_at|bn_when }}</span>
+        </div>
+      </div>
+      {% empty %}
+      <div class="reply-row text-muted">এখনো কোনো কমেন্ট আসেনি।</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

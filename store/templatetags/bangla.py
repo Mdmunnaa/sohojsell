@@ -70,3 +70,22 @@ def bn_when(value):
     part = 'রাত' if hour < 5 else 'সকাল' if hour < 12 else 'দুপুর' if hour < 16 else 'বিকাল' if hour < 18 else 'সন্ধ্যা' if hour < 20 else 'রাত'
     clock = f'{hour % 12 or 12}:{value.minute:02d}'
     return f'{value.day} {BN_MONTHS[value.month - 1]}, {part} {clock}'.translate(BN_DIGITS)
+
+
+@register.filter
+def bn_ago(value):
+    """{{ contact.waiting_since|bn_ago }} → ২৫ মিনিট / ১ ঘণ্টা ২০ মিনিট / ৩ দিন (কতক্ষণ আগে)।"""
+    if not value:
+        return ''
+    from django.utils import timezone
+    minutes = max(0, int((timezone.now() - value).total_seconds() // 60))
+    if minutes < 1:
+        text = 'এইমাত্র'
+    elif minutes < 60:
+        text = f'{minutes} মিনিট'
+    elif minutes < 24 * 60:
+        hours, rest = divmod(minutes, 60)
+        text = f'{hours} ঘণ্টা' + (f' {rest} মিনিট' if rest and hours < 3 else '')
+    else:
+        text = f'{minutes // (24 * 60)} দিন'
+    return text.translate(BN_DIGITS)

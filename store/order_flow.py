@@ -105,8 +105,13 @@ def set_status(order, new_status, *, notify=True):
 
 
 def notify_customer(order, status):
-    """অবস্থা বদলালে কাস্টমারকে SMS — সেলার সেই সুইচ চালু রাখলে তবেই। কোনো সমস্যায় অর্ডার আটকায় না।"""
-    from . import sms
+    """
+    অবস্থা বদলালে কাস্টমারকে খবর: Messenger থেকে আসা অর্ডারে Messenger-এ (ফ্রি, store/messenger.py), আর SMS —
+    সেলার সেই সুইচ চালু রাখলে তবেই। কোনো সমস্যায় অর্ডার আটকায় না।
+    """
+    from . import messenger, sms
+    if order.messenger_contact_id:
+        messenger.order_update(order, status)
     switch = SMS_SWITCH.get(status)
     shop = order.shop
     if not switch or order.source == 'pos' or not shop.is_sms_active or not getattr(shop, switch):

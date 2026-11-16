@@ -95,6 +95,12 @@
   .step .n { width: 24px; height: 24px; border-radius: 50%; background: #0F172A; color: #fff; font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
   .step b { color: #0F172A; display: block; font-size: 13px; margin-bottom: 2px; }
   .sub-h { font-weight: 800; font-size: 14px; color: #0F172A; margin: 22px 0 10px; }
+  .fb-auto-card { display: flex; align-items: center; gap: 14px; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 14px 16px; text-decoration: none; color: inherit; background: #fff; }
+  .fb-auto-card:hover { border-color: #93C5FD; background: #F8FAFF; }
+  .fb-auto-card .ico { width: 42px; height: 42px; border-radius: 12px; background: #EBF3FF; color: #1877F2; display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
+  .fb-auto-card b { display: block; font-size: 14.5px; color: #0F172A; }
+  .fb-auto-card span:not(.go) { display: block; font-size: 12.5px; color: #64748B; margin-top: 2px; }
+  .fb-auto-card .go { margin-left: auto; color: #2563EB; font-weight: 800; font-size: 13px; white-space: nowrap; }
   .reply-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px; color: #334155; }
   .reply-row:last-child { border-bottom: 0; }
   .reply-row .when { margin-left: auto; color: #94A3B8; font-size: 12px; white-space: nowrap; }
@@ -426,44 +432,22 @@
         <span class="chip on">যুক্ত</span>
       </div>
 
-      <div class="sub-h">কমেন্ট থেকে অর্ডার</div>
-      <form method="post" action="{% url 'fb_bot_settings' %}" class="switch-stack">{% csrf_token %}
-        <label class="switch-row" for="cb-bot">
-          <span>
-            <span class="t">কমেন্ট করলে ইনবক্সে দাম আর অর্ডারের লিংক</span>
-            <span class="d">পোস্টে কেউ কমেন্ট করলে তার Messenger-এ প্রোডাক্টের দাম আর অর্ডার করার লিংক নিজে থেকে চলে যাবে।</span>
-          </span>
-          <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="cb-bot" name="comment_bot_enabled" {% if fb_page.comment_bot_enabled %}checked{% endif %}></span>
-        </label>
-        <label class="switch-row" for="cb-public">
-          <span>
-            <span class="t">কমেন্টের নিচে "ইনবক্স চেক করুন"</span>
-            <span class="d">পোস্টে সবাই দেখবে যে উত্তর দেওয়া হয়েছে, তাতে অন্যরাও কমেন্ট করতে উৎসাহ পায়।</span>
-          </span>
-          <span class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="cb-public" name="public_reply_enabled" {% if fb_page.public_reply_enabled %}checked{% endif %}></span>
-        </label>
-        <div class="mt-3"><button type="submit" class="ws-save"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button></div>
-      </form>
-
-      <div class="sub-h">কীভাবে কাজ করে</div>
-      <div class="steps">
-        <div class="step"><div class="n">১</div><b>পোস্টে কোড লিখুন</b>প্রোডাক্টের কোড, যেমন <code>#P12</code>। কোড প্রোডাক্ট লিস্টে পাবেন।</div>
-        <div class="step"><div class="n">২</div><b>কাস্টমার কমেন্ট করে</b>সাথে সাথে তার ইনবক্সে দাম আর অর্ডারের লিংক যায়। কোড না থাকলে দোকানের লিংক যায়।</div>
-        <div class="step"><div class="n">৩</div><b>নিজেই অর্ডার করে</b>লিংকে গিয়ে অর্ডার দিলে সেটা "ওয়েবসাইটের অর্ডার"-এ চলে আসে।</div>
-      </div>
-
-      {% if fb_recent_replies %}
-      <div class="sub-h">সাম্প্রতিক উত্তর</div>
-      <div class="ws-card py-1">
-        {% for r in fb_recent_replies %}
-        <div class="reply-row">
-          {% if r.status == 'sent' %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-exclamation-triangle-fill text-warning"></i>{% endif %}
-          <span>{{ r.commenter_name|default:"একজন কাস্টমার" }}{% if r.product %} · {{ r.product.name }}{% endif %}</span>
-          <span class="when">{{ r.created_at|date:"j M, g:i A" }}</span>
+      <a class="fb-auto-card" href="{% url 'fb_automation' %}">
+        <div class="ico"><i class="bi bi-robot"></i></div>
+        <div class="min-w-0">
+          <b>Facebook অটোমেশন</b>
+          <span>কমেন্টে ইনবক্সে দাম-লিংক {% if fb_page.comment_bot_enabled %}চালু{% else %}বন্ধ{% endif %} · Messenger-এর বট {% if fb_page.messenger_bot_enabled %}চালু{% else %}বন্ধ{% endif %} · চ্যাটে অর্ডার {% if fb_page.messenger_order_enabled %}চালু{% else %}বন্ধ{% endif %}</span>
         </div>
-        {% endfor %}
-      </div>
-      {% endif %}
+        <span class="go">সাজান <i class="bi bi-arrow-right"></i></span>
+      </a>
+      <a class="fb-auto-card mt-2" href="{% url 'messenger_inbox' %}">
+        <div class="ico"><i class="bi bi-messenger"></i></div>
+        <div class="min-w-0">
+          <b>Messenger-এর কথোপকথন</b>
+          <span>{% if messenger_waiting %}{{ messenger_waiting|bn }} জন আপনার উত্তরের অপেক্ষায়{% else %}বট যেটা পারেনি সেটা এখানে দেখাবে{% endif %}</span>
+        </div>
+        <span class="go">খুলুন <i class="bi bi-arrow-right"></i></span>
+      </a>
 
       <form method="post" action="{% url 'fb_disconnect' %}" class="danger-zone">{% csrf_token %}
         <div><b>পেইজের সংযোগ সরান</b>পেইজের তথ্য আর Facebook টোকেন আমাদের সার্ভার থেকে মুছে যাবে, কমেন্টের উত্তরও বন্ধ হবে।</div>

@@ -93,6 +93,7 @@ MIDDLEWARE = [
     'django.middleware.gzip.GZipMiddleware',          # HTML ছোট করে পাঠানো (static ফাইল whitenoise নিজেই দেয়, তাই এর পরে)
     'django.contrib.sessions.middleware.SessionMiddleware',
     'store.middleware.SessionRefreshMiddleware',         # লগইনের মেয়াদ দিনে একবার বাড়ায়
+    'store.fb_ref.FacebookRefMiddleware',               # Facebook-এর বটের লিংক থেকে এলে মনে রাখে
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',

@@ -1,0 +1,80 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}Messenger — {{ shop.name }}{% endblock %}
+{% block page_title %}Facebook ও Messenger{% endblock %}
+{% block content %}
+{% include 'store/partials/panel_styles.html' %}
+{% include 'store/facebook/_style.html' %}
+<div class="ws-wrap">
+  <div class="ws-head">
+    <div class="fb-head-row">
+      <div>
+        <h4>Messenger-এর কথোপকথন</h4>
+        <p>বট যেটা পারেনি, ছবি পাঠিয়েছে বা মানুষের সাথে কথা বলতে চেয়েছে — সেগুলো এখানে আসে। উত্তর দিন Facebook-এর Page Inbox থেকে; আপনি লিখলে বট সেই কাস্টমারের সাথে ১২ ঘণ্টা চুপ থাকে।</p>
+      </div>
+      {% if inbox_url %}<a class="ws-open" href="{{ inbox_url }}" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> Page Inbox খুলুন</a>{% endif %}
+    </div>
+    <a class="st-shortcut-lite" href="{% url 'fb_automation' %}"><i class="bi bi-gear"></i> কমেন্ট আর Messenger-এর বট সাজান <i class="bi bi-arrow-right ms-auto"></i></a>
+  </div>
+
+  <nav class="ws-tabs fit" aria-label="কথোপকথনের ভাগ">
+    <a href="?view=waiting" class="ws-tab {% if view == 'waiting' %}active{% endif %}"><i class="bi bi-hourglass-split"></i> উত্তরের অপেক্ষায় <span class="tab-badge">{{ waiting|bn }}</span></a>
+    <a href="?view=all" class="ws-tab {% if view != 'waiting' %}active{% endif %}"><i class="bi bi-chat-dots"></i> সব কথোপকথন <span class="tab-badge">{{ total|bn }}</span></a>
+  </nav>
+
+  <div class="ws-body">
+    {% if not connection %}
+    <div class="fb-empty">
+      <div class="ico"><i class="bi bi-facebook"></i></div>
+      <h5>আগে Facebook পেইজ যুক্ত করুন</h5>
+      <p>পেইজ যুক্ত হলে কাস্টমারের Messenger-এর মেসেজে নিজে থেকে উত্তর যাবে, আর যেগুলো আপনাকে দেখতে হবে সেগুলো এখানে আসবে।</p>
+      <a href="{% url 'fb_connect' %}" class="ws-save d-inline-block text-decoration-none"><i class="bi bi-facebook me-1"></i> Facebook দিয়ে যুক্ত করুন</a>
+    </div>
+    {% else %}
+    {% for row in rows %}{% with c=row.c %}
+    <div class="mc-row">
+      <div class="mc-av" aria-hidden="true">{{ c.name|default:"?"|slice:":1" }}</div>
+      <div class="mc-main">
+        <div class="mc-name">
+          {{ c.name|default:"Facebook কাস্টমার" }}
+          {% if c.waiting_since %}<span class="fb-tag warn">অপেক্ষায় · {{ c.waiting_since|bn_ago }}</span>{% endif %}
+          {% if row.paused %}<span class="fb-tag blue">বট চুপ — আপনি কথা বলছেন</span>{% endif %}
+          {% if row.orders %}<span class="fb-tag ok">{{ row.orders|bn }}টা অর্ডার</span>{% endif %}
+        </div>
+        {% if c.last_text %}<div class="mc-text">"{{ c.last_text }}"</div>{% endif %}
+        <div class="mc-meta">
+          {% if c.last_in_at %}শেষ মেসেজ {{ c.last_in_at|bn_when }}{% endif %}
+          {% if c.last_product %} · প্রোডাক্ট: {{ c.last_product.name }}{% endif %}
+          {% if c.waiting_since and not row.in_window %} · <span class="text-danger fw-bold">২৪ ঘণ্টা পার হয়ে গেছে — Facebook-এর নিয়মে এখন শুধু অর্ডারের খবর পাঠানো যায়</span>{% endif %}
+        </div>
+        <div class="mc-actions">
+          {% if c.waiting_since %}
+          <form method="post" action="{% url 'messenger_action' c.id %}">{% csrf_token %}<input type="hidden" name="action" value="done"><input type="hidden" name="view" value="{{ view }}">
+            <button type="submit" class="btn-icon"><i class="bi bi-check2"></i> উত্তর দিয়েছি</button></form>
+          {% endif %}
+          {% if row.paused %}
+          <form method="post" action="{% url 'messenger_action' c.id %}">{% csrf_token %}<input type="hidden" name="action" value="resume"><input type="hidden" name="view" value="{{ view }}">
+            <button type="submit" class="btn-icon"><i class="bi bi-play-fill"></i> বট আবার চালু</button></form>
+          {% else %}
+          <form method="post" action="{% url 'messenger_action' c.id %}">{% csrf_token %}<input type="hidden" name="action" value="pause"><input type="hidden" name="view" value="{{ view }}">
+            <button type="submit" class="btn-icon"><i class="bi bi-pause-fill"></i> বট থামান</button></form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endwith %}{% empty %}
+    <div class="fb-empty">
+      <div class="ico"><i class="bi bi-chat-heart"></i></div>
+      {% if view == 'waiting' %}
+      <h5>কেউ অপেক্ষায় নেই</h5>
+      <p>সব মেসেজের উত্তর বট দিয়েছে, বা আপনি দিয়ে দিয়েছেন।</p>
+      {% else %}
+      <h5>এখনো কেউ Messenger-এ লেখেনি</h5>
+      <p>কাস্টমার পেইজের ইনবক্সে লিখলে এখানে দেখাবে।</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

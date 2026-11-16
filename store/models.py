@@ -374,6 +374,11 @@ class Order(models.Model):
     coupon_code = models.CharField(max_length=30, blank=True, default='')
     # কোন ল্যান্ডিং পেজ থেকে অর্ডার এসেছে (store/views_landing.py)
     landing = models.ForeignKey('LandingPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')
+    # Facebook থেকে এলে: comment (কমেন্টের পর ইনবক্সের লিংক) বা messenger (চ্যাটে বা চ্যাটের লিংক থেকে)
+    fb_source = models.CharField(max_length=10, blank=True, default='', db_index=True)
+    fb_post_id = models.CharField(max_length=100, blank=True, default='')
+    messenger_contact = models.ForeignKey('MessengerContact', null=True, blank=True, on_delete=models.SET_NULL,
+                                          related_name='orders')
     # বাতিল/ফেরত হয়ে মাল স্টকে ফিরে গেছে কিনা (store/order_flow.py) — দুবার ফেরত না যায়
     stock_returned = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -666,6 +671,21 @@ class FacebookPageConnection(models.Model):
     # কমেন্ট করলে ইনবক্সে প্রোডাক্টের লিংক যাবে কিনা, আর কমেন্টের নিচে "ইনবক্স চেক করুন" লিখবে কিনা
     comment_bot_enabled = models.BooleanField(default=True)
     public_reply_enabled = models.BooleanField(default=True)
+    # ---- কমেন্ট অটোমেশন (store/facebook_bot.py)
+    # কমেন্টের নিচের উত্তর: এক লাইনে একটা, প্রতিবার এলোমেলো একটা (একই লেখা বারবার গেলে Meta স্প্যাম ভাবতে পারে)
+    public_reply_texts = models.TextField(blank=True, default='')
+    comment_dm_intro = models.CharField(max_length=300, blank=True, default='')   # ইনবক্সের প্রথম লাইন
+    hide_phone_comments = models.BooleanField(default=False)   # কমেন্টে ফোন নম্বর থাকলে লুকানো
+    hide_link_comments = models.BooleanField(default=False)    # লিংকওয়ালা (স্প্যাম) কমেন্ট লুকানো
+    hide_words = models.TextField(blank=True, default='')      # এই শব্দ থাকলে লুকানো, কমা দিয়ে আলাদা
+    # ---- Messenger বট (store/messenger.py)
+    messenger_bot_enabled = models.BooleanField(default=True)
+    welcome_text = models.CharField(max_length=500, blank=True, default='')
+    messenger_order_enabled = models.BooleanField(default=True)   # চ্যাটেই অর্ডার নেওয়া
+    order_updates_enabled = models.BooleanField(default=True)     # অর্ডারের খবর Messenger-এ
+    open_time = models.TimeField(null=True, blank=True)           # দোকান খোলা থাকার সময় (খালি = সবসময়)
+    close_time = models.TimeField(null=True, blank=True)
+    offhours_text = models.CharField(max_length=500, blank=True, default='')
     connected_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -687,8 +707,9 @@ class FacebookCommentReply(models.Model):
     commenter_name = models.CharField(max_length=150, blank=True, default='')
     message = models.TextField(blank=True, default='')
     product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True)
-    status = models.CharField(max_length=10, default='pending')   # pending / sent / failed
+    status = models.CharField(max_length=10, default='pending')   # pending / sent / failed / skipped
     error = models.CharField(max_length=300, blank=True, default='')
+    hidden_reason = models.CharField(max_length=10, blank=True, default='')   # phone / link / word (লুকানো হলে)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -697,6 +718,61 @@ class FacebookCommentReply(models.Model):
 
     def __str__(self):
         return f'{self.commenter_name or self.commenter_id} → {self.status}'
+
+
+class FacebookAutoReply(models.Model):
+    """সেলারের নিজের প্রশ্ন-উত্তর: কাস্টমার Messenger-এ এই শব্দগুলোর কোনোটা লিখলে উত্তরটা যায়।"""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='fb_auto_replies')
+    keywords = models.CharField(max_length=300)          # কমা দিয়ে আলাদা: দাম, price, pp
+    answer = models.TextField(max_length=1500)
+    is_active = models.BooleanField(default=True)
+    hits = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+
+    def keyword_list(self):
+        import re as _re
+        return [k.strip().lower() for k in _re.split(r'[,\n،]', self.keywords or '') if k.strip()]
+
+    def __str__(self):
+        return self.keywords
+
+
+class MessengerContact(models.Model):
+    """
+    Messenger-এ যে কাস্টমার দোকানের পেইজে লিখেছে (PSID = পেইজভিত্তিক আইডি)।
+    শেষ মেসেজের সময় (২৪ ঘণ্টার নিয়ম), বট থামানো আছে কিনা, চ্যাটে অর্ডারের কোন ধাপে আছে — সব এখানে।
+    """
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='messenger_contacts')
+    page_id = models.CharField(max_length=50)
+    psid = models.CharField(max_length=50)
+    name = models.CharField(max_length=150, blank=True, default='')
+    last_text = models.CharField(max_length=300, blank=True, default='')
+    last_in_at = models.DateTimeField(null=True, blank=True)        # কাস্টমারের শেষ মেসেজ
+    last_out_at = models.DateTimeField(null=True, blank=True)       # পেইজের (বট বা মানুষ) শেষ উত্তর
+    welcomed_at = models.DateTimeField(null=True, blank=True)
+    waiting_since = models.DateTimeField(null=True, blank=True)     # মানুষের উত্তরের অপেক্ষায় (ড্যাশবোর্ডে দেখায়)
+    bot_paused_until = models.DateTimeField(null=True, blank=True)  # মানুষ কথা বলছে, বট চুপ
+    fallback_sent_at = models.DateTimeField(null=True, blank=True)
+    offhours_sent_on = models.DateField(null=True, blank=True)
+    last_product = models.ForeignKey('Product', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    state = models.CharField(max_length=20, blank=True, default='')     # চ্যাটে অর্ডারের ধাপ
+    state_data = models.JSONField(default=dict, blank=True)
+    state_at = models.DateTimeField(null=True, blank=True)
+    recent_mids = models.CharField(max_length=600, blank=True, default='')   # একই মেসেজ দুবার এলে একবারই
+    burst_start = models.DateTimeField(null=True, blank=True)       # অন্য বটের সাথে ঝগড়া ঠেকাতে
+    burst_count = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-last_in_at']
+        constraints = [models.UniqueConstraint(fields=['page_id', 'psid'], name='uniq_messenger_contact')]
+        indexes = [models.Index(fields=['shop', 'waiting_since'])]
+
+    def __str__(self):
+        return self.name or self.psid
 
 
 # ============================================================

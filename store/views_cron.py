@@ -41,5 +41,11 @@ def cron_daily(request):
     except Exception as exc:    # noqa: BLE001
         logger.exception('daily cron: optimize_images failed')
         result['optimize_images'] = str(exc)[:200]
+    try:
+        from . import messenger
+        result['facebook_pages'] = messenger.refresh_pages()   # webhook-এর ঘটনা আর Messenger-এর সাজ আবার বসানো
+    except Exception as exc:    # noqa: BLE001
+        logger.exception('daily cron: facebook refresh failed')
+        result['facebook_pages'] = str(exc)[:200]
     logger.info('daily cron: %s', result)
     return JsonResponse(result)

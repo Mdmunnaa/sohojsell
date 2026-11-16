@@ -54,7 +54,12 @@ def plan_info(request):
     from .plans import limits_for, plan_label
     from .models import Order, ProductReview
     limits = limits_for(shop)
+    waiting = 0
+    if limits['facebook']:
+        from .models import MessengerContact
+        waiting = MessengerContact.objects.filter(shop=shop, waiting_since__isnull=False).count()
     return {'pending_reviews': ProductReview.objects.filter(shop=shop, is_approved=False).count(),
+            'messenger_waiting': waiting,      # Messenger-এ দোকানের মানুষের উত্তরের অপেক্ষায়
             # সাইডবারে লাল সংখ্যা: ওয়েবসাইটের যে অর্ডারগুলো এখনো "নতুন" (দেখা/কনফার্ম হয়নি)
             'pending_web_orders': Order.objects.filter(shop=shop, source='storefront', status='Pending').count(),
             'plan': {

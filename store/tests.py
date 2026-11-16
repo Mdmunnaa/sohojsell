@@ -4850,3 +4850,562 @@ class DashboardSpeedTests(ShopTestMixin, TestCase):
             exists.assert_not_called()
             storage.get_available_name('banners/b.jpg')
             exists.assert_called()
+
+
+class FakeGraph:
+    """Graph API-র বদলে: কে কী পাঠাল সব মনে রাখে। store.facebook_bot.requests.post/get-এ বসে।"""
+
+    def __init__(self, post_text='', profile=None):
+        self.calls, self.post_text = [], post_text
+        self.profile = profile if profile is not None else {'first_name': 'Rahima', 'last_name': 'Akter'}
+        self.fail_messages = False
+
+    def post(self, url, params=None, timeout=None, **kwargs):
+        self.calls.append((url, kwargs))
+        if url.endswith('/messages'):
+            if self.fail_messages:
+                return FakeResponse({'error': {'message': 'blocked'}}, 400)
+            return FakeResponse({'recipient_id': '1', 'message_id': 'm1'})
+        return FakeResponse({'success': True, 'id': 'x1'})
+
+    def get(self, url, params=None, timeout=None):
+        if '/55_' in url or url.rsplit('/', 1)[-1].count('_'):
+            return FakeResponse({'message': self.post_text})
+        return FakeResponse(self.profile)
+
+    def sent(self):
+        """Messenger-এ যাওয়া মেসেজগুলো (recipient id থাকলে)।"""
+        return [kw['json'] for url, kw in self.calls if url.endswith('/messages') and 'id' in kw.get('json', {}).get('recipient', {})]
+
+    def texts(self):
+        return [m['message'].get('text', '') for m in self.sent()]
+
+
+@override_settings(FACEBOOK_WEBHOOK_VERIFY_TOKEN='verify-me', FACEBOOK_APP_SECRET='app-secret',
+                   SITE_URL='https://sohojsell.onrender.com')
+class FacebookAutomationTests(ShopTestMixin, TestCase):
+    PAGE = '111222333'
+
+    def setUp(self):
+        from django.core.cache import cache
+        from .models import DeliveryZone, Product
+        cache.clear()
+        self.user, self.shop = self.make_shop(slug='fbshop')
+        self.shop.address = 'বাড়ি ১২, রোড ৫, মিরপুর, ঢাকা'
+        self.shop.return_policy = '৭ দিনের মধ্যে ফেরত দেওয়া যায়।'
+        self.shop.save()
+        DeliveryZone.objects.create(shop=self.shop, name='ঢাকার ভিতরে', charge=60, sort_order=0)
+        DeliveryZone.objects.create(shop=self.shop, name='ঢাকার বাইরে', charge=120, sort_order=1)
+        self.product = Product.objects.create(shop=self.shop, name='Three Piece', price=1450, compare_price=1800,
+                                              cost_price=900, stock_quantity=4)
+        self.conn = FacebookPageConnection.objects.create(shop=self.shop, page_id=self.PAGE, page_name='Munna Page',
+                                                          page_access_token='PAGE-TOKEN')
+        self.graph = FakeGraph()
+        for name in ('post', 'get'):
+            patcher = mock.patch(f'store.facebook_bot.requests.{name}', getattr(self.graph, name))
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.mid = 0
+
+    # ---------------------------------------------------------- সহায়ক
+    def _hook(self, payload):
+        import hashlib, hmac
+        body = json.dumps(payload).encode()
+        sig = 'sha256=' + hmac.new(b'app-secret', body, hashlib.sha256).hexdigest()
+        response = self.client.post(reverse('facebook_webhook'), body, content_type='application/json',
+                                    HTTP_X_HUB_SIGNATURE_256=sig)
+        self.assertEqual(response.status_code, 200)
+
+    def msg(self, text=None, *, quick=None, postback=None, attachments=None, psid='PS1', mid=None):
+        self.mid += 1
+        event = {'sender': {'id': psid}, 'recipient': {'id': self.PAGE}, 'timestamp': 1}
+        if postback:
+            event['postback'] = {'title': 'x', 'payload': postback, 'mid': mid or f'pb{self.mid}'}
+        else:
+            message = {'mid': mid or f'm{self.mid}'}
+            if text is not None:
+                message['text'] = text
+            if quick:
+                message['quick_reply'] = {'payload': quick}
+            if attachments:
+                message['attachments'] = attachments
+            event['message'] = message
+        self._hook({'object': 'page', 'entry': [{'id': self.PAGE, 'time': 1, 'messaging': [event]}]})
+
+    def echo(self, metadata=None, psid='PS1'):
+        message = {'mid': f'e{self.mid}', 'is_echo': True, 'text': 'আমি দেখছি'}
+        if metadata:
+            message['metadata'] = metadata
+        self._hook({'object': 'page', 'entry': [{'id': self.PAGE, 'messaging': [
+            {'sender': {'id': self.PAGE}, 'recipient': {'id': psid}, 'message': message}]}]})
+
+    def comment(self, message, comment='C1', sender='999', parent=None):
+        post = f'{self.PAGE}_55'
+        self._hook({'object': 'page', 'entry': [{'id': self.PAGE, 'changes': [{'field': 'feed', 'value': {
+            'item': 'comment', 'verb': 'add', 'comment_id': f'55_{comment}', 'post_id': post,
+            'parent_id': parent or post, 'from': {'id': sender, 'name': 'Rahim Uddin'}, 'message': message}}]}]})
+
+    def contact(self, psid='PS1'):
+        from .models import MessengerContact
+        return MessengerContact.objects.get(page_id=self.PAGE, psid=psid)
+
+    def last_text(self):
+        texts = self.graph.texts()
+        return texts[-1] if texts else ''
+
+    # ---------------------------------------------------------- কমেন্ট
+    def test_phone_comment_is_hidden_but_still_gets_inbox_reply(self):
+        from .models import FacebookCommentReply
+        self.conn.hide_phone_comments = True
+        self.conn.save()
+        self.comment('দাম কত? ০১৭১২-৩৪৫ ৬৭৮')
+        hide = [c for c in self.graph.calls if c[0].endswith('/55_C1') and c[1].get('data') == {'is_hidden': 'true'}]
+        self.assertEqual(len(hide), 1)
+        private = [kw['json'] for url, kw in self.graph.calls if url.endswith('/messages')]
+        self.assertEqual(private[0]['recipient'], {'comment_id': '55_C1'})
+        self.assertEqual(private[0]['message']['metadata'], 'sp-bot')
+        self.assertFalse([c for c in self.graph.calls if c[0].endswith('/comments')])   # লুকানোর নিচে উত্তর না
+        record = FacebookCommentReply.objects.get(comment_id='55_C1')
+        self.assertEqual((record.status, record.hidden_reason), ('sent', 'phone'))
+
+    def test_link_and_word_comments_are_hidden_without_reply(self):
+        from .models import FacebookCommentReply
+        self.conn.hide_link_comments = True
+        self.conn.hide_words = 'ফেক, scam'
+        self.conn.save()
+        self.comment('ভালো অফার দেখুন www.cheap-deal.xyz', comment='C1', sender='1')
+        self.comment('এটা SCAM পেইজ', comment='C2', sender='2')
+        self.comment('দাম কত', comment='C3', sender='3')
+        records = {r.comment_id: r for r in FacebookCommentReply.objects.all()}
+        self.assertEqual((records['55_C1'].hidden_reason, records['55_C1'].status), ('link', 'skipped'))
+        self.assertEqual((records['55_C2'].hidden_reason, records['55_C2'].status), ('word', 'skipped'))
+        self.assertEqual((records['55_C3'].hidden_reason, records['55_C3'].status), ('', 'sent'))
+        private = [kw['json']['recipient'] for url, kw in self.graph.calls if url.endswith('/messages')]
+        self.assertEqual(private, [{'comment_id': '55_C3'}])
+
+    def test_reply_comment_with_phone_is_hidden_only(self):
+        self.conn.hide_phone_comments = True
+        self.conn.save()
+        self.comment('01712345678', comment='C5', parent='55_C1')
+        self.assertTrue([c for c in self.graph.calls if c[0].endswith('/55_C5')])
+        self.assertFalse([c for c in self.graph.calls if c[0].endswith('/messages')])
+
+    def test_custom_texts_and_attribution_link(self):
+        from . import fb_ref
+        from .models import FacebookCommentReply
+        self.conn.comment_dm_intro = 'হ্যালো {name}, ধন্যবাদ!'
+        self.conn.public_reply_texts = 'ইনবক্সে দেখুন\nমেসেজ পাঠিয়েছি'
+        self.conn.save()
+        self.graph.post_text = f'নতুন কালেকশন #P{self.product.id}'
+        self.comment('price?')
+        text = [kw['json'] for url, kw in self.graph.calls if url.endswith('/messages')][0]['message']['text']
+        self.assertTrue(text.startswith('হ্যালো Rahim, ধন্যবাদ!'))
+        record = FacebookCommentReply.objects.get()
+        self.assertIn(f'?fb={fb_ref.make("c", record.id)}', text)
+        self.assertIn(f'অর্ডার P{self.product.id}', text)            # চ্যাটেই অর্ডারের কথা
+        public = [kw['data']['message'] for url, kw in self.graph.calls if url.endswith('/comments')]
+        self.assertIn(public[0], ('ইনবক্সে দেখুন', 'মেসেজ পাঠিয়েছি'))
+
+    def test_subscribe_includes_messenger_events(self):
+        from .facebook_bot import subscribe_page
+        subscribe_page(self.PAGE, 'T')
+        data = self.graph.calls[-1][1]['data']['subscribed_fields']
+        for field in ('feed', 'messages', 'messaging_postbacks', 'message_echoes'):
+            self.assertIn(field, data)
+
+    # ---------------------------------------------------------- কোথা থেকে অর্ডার
+    def _web_order(self, client):
+        from . import delivery
+        zone = delivery.zones_for(self.shop)[0].id
+        return client.post(reverse('storefront_place_order', args=[self.shop.slug]),
+                           json.dumps({'cart': [{'id': self.product.id, 'qty': 1}], 'name': 'ক', 'phone': '01812345678',
+                                       'address': 'ঢাকা', 'payment': 'cod', 'zone': zone}),
+                           content_type='application/json').json()
+
+    def test_orders_from_comment_and_messenger_links_are_attributed(self):
+        from django.test import Client
+        from . import fb_ref
+        from .models import FacebookCommentReply, MessengerContact
+        record = FacebookCommentReply.objects.create(shop=self.shop, page_id=self.PAGE, post_id='111_77', comment_id='c')
+        visitor = Client()
+        visitor.get(reverse('storefront_home', args=[self.shop.slug]), {'fb': fb_ref.make('c', record.id)})
+        self.assertTrue(self._web_order(visitor)['success'])
+        order = Order.objects.latest('id')
+        self.assertEqual((order.fb_source, order.fb_post_id), ('comment', '111_77'))
+
+        forged = Client()
+        forged.get(reverse('storefront_home', args=[self.shop.slug]), {'fb': f'c{record.id}.0000000000'})
+        self._web_order(forged)
+        self.assertEqual(Order.objects.latest('id').fb_source, '')
+
+        contact = MessengerContact.objects.create(shop=self.shop, page_id=self.PAGE, psid='PS9',
+                                                  last_in_at=timezone.now())
+        chat = Client()
+        chat.get(reverse('storefront_home', args=[self.shop.slug]), {'fb': fb_ref.make('m', contact.id)})
+        self._web_order(chat)
+        order = Order.objects.latest('id')
+        self.assertEqual((order.fb_source, order.messenger_contact), ('messenger', contact))
+        self.assertIn(f'অর্ডার পেয়েছি! অর্ডার নং {order.id}', self.last_text())     # Messenger-এ সাথে সাথে
+
+    # ---------------------------------------------------------- Messenger
+    def test_first_message_gets_welcome_with_menu(self):
+        self.msg('hi')
+        sent = self.graph.sent()
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0]['messaging_type'], 'RESPONSE')
+        self.assertEqual(sent[0]['message']['metadata'], 'sp-bot')
+        self.assertIn('আসসালামু আলাইকুম Rahima!', sent[0]['message']['text'])
+        titles = [q['title'] for q in sent[0]['message']['quick_replies']]
+        self.assertEqual(titles, ['প্রোডাক্ট দেখুন', 'দাম জানতে চাই', 'ডেলিভারি চার্জ', 'অর্ডার কোথায়?', 'দোকানে কথা বলুন'])
+        self.assertTrue(all(len(t) <= 20 for t in titles))
+        contact = self.contact()
+        self.assertEqual((contact.name, contact.last_text), ('Rahima Akter', 'hi'))
+        self.msg('hi', mid='m1')                          # Meta একই মেসেজ আবার পাঠালে
+        self.assertEqual(len(self.graph.sent()), 1)
+
+    def test_seller_faq_wins_and_counts(self):
+        from .models import FacebookAutoReply
+        reply = FacebookAutoReply.objects.create(shop=self.shop, keywords='সাইজ, size', answer='M, L, XL আছে।')
+        self.msg('hi')
+        self.msg('Size koto ache?')
+        self.assertEqual(self.last_text(), 'M, L, XL আছে।')
+        reply.refresh_from_db()
+        self.assertEqual(reply.hits, 1)
+        FacebookAutoReply.objects.create(shop=self.shop, keywords='ডেলিভারি', answer='আমাদের নিজের ডেলিভারি।')
+        self.msg('ডেলিভারি চার্জ কত')
+        self.assertEqual(self.last_text(), 'আমাদের নিজের ডেলিভারি।')     # সেলারেরটা দোকানের তথ্যের আগে
+
+    def test_shop_info_answers(self):
+        self.msg('hi')
+        self.msg('ডেলিভারি চার্জ কত টাকা?')
+        self.assertIn('ঢাকার ভিতরে: ৳60', self.last_text())
+        self.assertIn('ঢাকার বাইরে: ৳120', self.last_text())
+        self.msg('payment kivabe korbo')
+        self.assertIn('ক্যাশ অন ডেলিভারি', self.last_text())
+        self.msg('আপনাদের ঠিকানা কোথায়')
+        self.assertIn('মিরপুর', self.last_text())
+        self.msg('return korte parbo?')
+        self.assertIn('৭ দিনের মধ্যে', self.last_text())
+
+    def test_product_code_sends_card_and_price(self):
+        self.msg(f'P{self.product.id} er dam koto')
+        sent = self.graph.sent()
+        card = sent[0]['message']['attachment']['payload']['elements'][0]
+        self.assertEqual(card['title'], 'Three Piece')
+        self.assertIn('৳1,450', card['subtitle'])
+        self.assertIn('?fb=m', card['default_action']['url'])
+        self.assertIn({'type': 'postback', 'title': 'এখানেই অর্ডার করুন', 'payload': f'SP_ORDER:{self.product.id}'},
+                      card['buttons'])
+        self.assertIn('৳1,450 (আগে ৳1,800, ১৯% ছাড়)', sent[1]['message']['text'])
+        self.assertEqual(self.contact().last_product, self.product)
+        self.msg('dam koto?')                              # আগের প্রোডাক্টই
+        self.assertIn('Three Piece', self.last_text())
+
+    def test_order_tracking(self):
+        from .models import Customer
+        customer = Customer.objects.create(shop=self.shop, name='R', phone='01712345678', address='x')
+        order = Order.objects.create(shop=self.shop, customer=customer, source='storefront', total_amount=1510,
+                                     status='Shipped', steadfast_tracking_code='SF9', courier_partner='Steadfast')
+        self.msg('hi')
+        self.msg('আমার অর্ডার কোথায়?')
+        self.assertIn('অর্ডার নম্বর আর যে মোবাইল নম্বরে', self.last_text())
+        self.msg(f'{order.id} 01712345678')
+        text = self.last_text()
+        self.assertIn(f'অর্ডার নং {order.id}: কুরিয়ারে', text)
+        self.assertIn('ট্র্যাকিং কোড: SF9', text)
+        self.assertIn(f'/t/{order.id}-', text)
+        self.msg(f'{order.id} 01999999999')
+        self.assertIn('পাওয়া যায়নি', self.last_text())
+
+    def test_human_handoff_and_page_reply_pause_the_bot(self):
+        from .models import MessengerContact
+        self.msg('hi')
+        self.msg('মানুষের সাথে কথা বলতে চাই')
+        self.assertIn('দোকানের একজন শীঘ্রই', self.last_text())
+        contact = self.contact()
+        self.assertIsNotNone(contact.waiting_since)
+        self.assertGreater(contact.bot_paused_until, timezone.now())
+        count = len(self.graph.sent())
+        self.msg('ডেলিভারি চার্জ কত?')                    # বট চুপ
+        self.assertEqual(len(self.graph.sent()), count)
+        self.msg(None, postback='SP_DELIVERY')              # তবে বাটন চাপলে উত্তর দেয়
+        self.assertEqual(len(self.graph.sent()), count + 1)
+
+        self.echo()                                         # দোকানদার নিজে লিখলেন
+        contact.refresh_from_db()
+        self.assertIsNone(contact.waiting_since)
+        self.echo(metadata='sp-bot')                         # বটের নিজের echo-তে কিছু হয় না
+        MessengerContact.objects.update(bot_paused_until=None)
+        self.msg('ধন্যবাদ')
+        self.assertIn('আপনাকেও ধন্যবাদ', self.last_text())
+
+    def test_fallback_offhours_attachments_and_switch(self):
+        import datetime
+        self.msg('hi')
+        self.msg('ভাই একটা কথা ছিল')
+        self.assertIn('আপনার মেসেজ পেয়েছি', self.last_text())
+        count = len(self.graph.sent())
+        self.msg('আরেকটা কথা')                              # ৬ ঘণ্টার মধ্যে আবার না
+        self.assertEqual(len(self.graph.sent()), count)
+        self.assertIsNotNone(self.contact().waiting_since)
+
+        now = timezone.localtime()
+        self.conn.open_time = (now + datetime.timedelta(hours=1)).time().replace(second=0, microsecond=0)
+        self.conn.close_time = (now + datetime.timedelta(hours=2)).time().replace(second=0, microsecond=0)
+        self.conn.save()
+        self.msg('ছবিটা দেখুন', psid='PS2')
+        self.msg(None, attachments=[{'type': 'image', 'payload': {'url': 'https://x/y.jpg'}}], psid='PS2')
+        self.assertIn('উত্তর দিই', self.last_text())        # বন্ধের সময়ের লেখা
+        count = len(self.graph.sent())
+        self.msg(None, attachments=[{'type': 'image', 'payload': {'url': 'https://x/z.jpg'}}], psid='PS2')
+        self.assertEqual(len(self.graph.sent()), count)     # দিনে একবারই
+
+        self.conn.messenger_bot_enabled = False
+        self.conn.save()
+        self.msg('hi', psid='PS3')
+        self.assertEqual(len(self.graph.sent()), count)
+        self.assertIsNotNone(self.contact('PS3').waiting_since)
+
+    def test_basic_plan_and_burst_limit(self):
+        from . import messenger
+        with mock.patch.object(messenger, 'BURST_MAX', 2):
+            self.msg('hi')
+            self.msg('ডেলিভারি চার্জ')
+            self.msg('payment')
+        self.assertEqual(len(self.graph.sent()), 2)
+        self.shop.subscription_plan = 'Basic'
+        self.shop.valid_until = timezone.localdate() + timedelta(days=10)
+        self.shop.save()
+        self.msg('hi', psid='PS7')
+        self.assertEqual(len(self.graph.sent()), 2)
+
+    # ---------------------------------------------------------- চ্যাটে অর্ডার
+    def test_full_chat_order(self):
+        from .models import StorefrontOrder, DeliveryZone
+        outside = DeliveryZone.objects.get(name='ঢাকার বাইরে')
+        self.msg(None, postback=f'SP_ORDER:{self.product.id}')
+        self.assertIn('কয়টা নেবেন', self.last_text())
+        self.msg('2', quick='SP_QTY:2')
+        self.assertIn('আপনার নাম', self.last_text())
+        self.assertEqual(self.graph.sent()[-1]['message']['quick_replies'][0]['title'], 'Rahima Akter')
+        self.msg('Rahima Akter', quick='SP_NAME')
+        self.assertEqual(self.graph.sent()[-1]['message']['quick_replies'][0], {'content_type': 'user_phone_number'})
+        self.msg('123')
+        self.assertIn('নম্বরটা ঠিক নেই', self.last_text())
+        self.msg('+8801712345678', quick='+8801712345678')
+        self.msg('ছোট')
+        self.assertIn('আরেকটু বিস্তারিত', self.last_text())
+        self.msg('বাড়ি ৩, রোড ২, চকবাজার, চট্টগ্রাম')
+        self.assertIn('ডেলিভারি কোন এলাকায়', self.last_text())
+        self.msg('ঢাকার বাইরে', quick=f'SP_ZONE:{outside.id}')
+        summary = self.last_text()
+        self.assertIn('Three Piece × 2 = ৳2,900', summary)
+        self.assertIn('মোট: ৳3,020', summary)
+        self.msg('কনফার্ম', quick='SP_CONFIRM')
+        order = Order.objects.get()
+        self.assertEqual((order.source, order.fb_source, order.messenger_contact, order.total_amount),
+                         ('storefront', 'chat', self.contact(), Decimal('3020')))
+        self.assertEqual(order.customer.phone, '01712345678')
+        self.assertTrue(StorefrontOrder.objects.filter(order=order).exists())
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_quantity, 2)
+        self.assertIn(f'অর্ডার হয়েছে! অর্ডার নং {order.id}', self.last_text())
+        self.assertEqual(self.contact().state, '')
+
+    def test_chat_order_with_variant_cancel_and_blocked(self):
+        from .models import Customer, ProductVariant, Product
+        shirt = Product.objects.create(shop=self.shop, name='শার্ট', price=500, stock_quantity=3, has_variants=True)
+        ProductVariant.objects.create(product=shirt, name='M', stock_quantity=0)
+        large = ProductVariant.objects.create(product=shirt, name='L', stock_quantity=3)
+        self.msg(f'অর্ডার P{shirt.id}')
+        options = [q['title'] for q in self.graph.sent()[-1]['message']['quick_replies']]
+        self.assertEqual(options, ['L', 'বাতিল'])           # স্টক শেষের সাইজ দেখায় না
+        self.msg('L', quick=f'SP_VAR:{large.id}')
+        self.assertIn('শার্ট (L)', self.last_text())
+        self.msg('বাতিল')
+        self.assertIn('বাতিল করা হলো', self.last_text())
+        self.assertEqual(self.contact().state, '')
+
+        Customer.objects.create(shop=self.shop, name='x', phone='01812345678', address='x', is_blocked=True)
+        self.msg(None, postback=f'SP_ORDER:{self.product.id}')
+        self.msg('1', quick='SP_QTY:1')
+        self.msg('Karim')
+        self.msg('01812345678')
+        self.assertIn('অর্ডার নেওয়া যাচ্ছে না', self.last_text())
+        self.assertFalse(Order.objects.exists())
+
+    # ---------------------------------------------------------- অর্ডারের খবর
+    def test_status_updates_go_to_messenger(self):
+        from . import order_flow
+        from .models import Customer, MessengerContact
+        contact = MessengerContact.objects.create(shop=self.shop, page_id=self.PAGE, psid='PS5',
+                                                  last_in_at=timezone.now())
+        customer = Customer.objects.create(shop=self.shop, name='R', phone='01712345678', address='x')
+        order = Order.objects.create(shop=self.shop, customer=customer, source='storefront', total_amount=500,
+                                     messenger_contact=contact, fb_source='chat')
+        order_flow.set_status(order, 'Confirmed')
+        sent = self.graph.sent()[-1]
+        self.assertEqual(sent['messaging_type'], 'RESPONSE')
+        self.assertIn(f'অর্ডার নং {order.id} কনফার্ম হয়েছে', sent['message']['text'])
+        MessengerContact.objects.filter(pk=contact.pk).update(last_in_at=timezone.now() - timedelta(days=3))
+        order.refresh_from_db()
+        order.steadfast_tracking_code = 'SF1'
+        order.save()
+        order_flow.set_status(order, 'Shipped')
+        sent = self.graph.sent()[-1]
+        self.assertEqual((sent['messaging_type'], sent['tag']), ('MESSAGE_TAG', 'POST_PURCHASE_UPDATE'))
+        self.assertIn('ট্র্যাকিং কোড: SF1', sent['message']['text'])
+        self.conn.order_updates_enabled = False
+        self.conn.save()
+        count = len(self.graph.sent())
+        order_flow.set_status(order, 'Delivered')
+        self.assertEqual(len(self.graph.sent()), count)
+
+    # ---------------------------------------------------------- ড্যাশবোর্ড
+    def test_automation_pages_and_saving(self):
+        for tab in ('comments', 'messenger', 'faq', 'sales', 'log'):
+            response = self.client.get(reverse('fb_automation'), {'tab': tab})
+            self.assertEqual(response.status_code, 200, tab)
+        response = self.client.post(reverse('fb_automation'), {
+            'tab': 'comments', 'comment_bot_enabled': 'on', 'hide_phone_comments': 'on', 'hide_words': 'ফেক',
+            'public_reply_texts': 'ইনবক্স দেখুন', 'comment_dm_intro': ''})
+        self.assertEqual(response.status_code, 302)
+        self.conn.refresh_from_db()
+        self.assertEqual((self.conn.hide_phone_comments, self.conn.public_reply_enabled, self.conn.hide_words),
+                         (True, False, 'ফেক'))
+        bad = self.client.post(reverse('fb_automation'), {'tab': 'messenger', 'messenger_bot_enabled': 'on',
+                                                           'open_time': '10:00'})
+        self.assertContains(bad, 'দুটো সময়ই দিন')
+        self.client.post(reverse('fb_automation'), {'tab': 'messenger', 'messenger_bot_enabled': 'on',
+                                                    'order_updates_enabled': 'on', 'open_time': '10:00',
+                                                    'close_time': '22:00', 'welcome_text': 'স্বাগতম {name}!'})
+        self.conn.refresh_from_db()
+        self.assertEqual((self.conn.messenger_order_enabled, str(self.conn.close_time)), (False, '22:00:00'))
+        profile = [kw['json'] for url, kw in self.graph.calls if url.endswith('me/messenger_profile')]
+        self.assertEqual(profile[-1]['get_started'], {'payload': 'SP_START'})
+        self.assertEqual(len(profile[-1]['ice_breakers'][0]['call_to_actions']), 4)
+
+    def test_faq_editing_is_per_shop(self):
+        from .models import FacebookAutoReply
+        self.client.post(reverse('fb_faq_save'), {'keywords': 'সাইজ, size, সাইজ', 'answer': 'M, L'})
+        reply = FacebookAutoReply.objects.get()
+        self.assertEqual(reply.keywords, 'সাইজ, size')
+        self.client.post(reverse('fb_faq_save'), {'id': reply.id, 'keywords': 'মাপ', 'answer': 'XL'})
+        reply.refresh_from_db()
+        self.assertEqual((reply.keywords, reply.answer), ('মাপ', 'XL'))
+        self.client.post(reverse('fb_faq_action', args=[reply.id]), {'action': 'toggle'})
+        reply.refresh_from_db()
+        self.assertFalse(reply.is_active)
+        other_user = User.objects.create_user(phone_number='01700000009', password='Test-pass-123')
+        Shop.objects.create(user=other_user, name='O', phone='01700000009', address='x', slug='othershop')
+        self.client.force_login(other_user)
+        self.assertEqual(self.client.post(reverse('fb_faq_action', args=[reply.id]), {'action': 'delete'}).status_code, 404)
+        self.assertTrue(FacebookAutoReply.objects.filter(pk=reply.pk).exists())
+
+    def test_inbox_actions_badges_and_report(self):
+        from .models import Customer, MessengerContact
+        now = timezone.now()
+        waiting = MessengerContact.objects.create(shop=self.shop, page_id=self.PAGE, psid='W1', name='Karim',
+                                                  last_text='এটা কি আছে?', last_in_at=now, waiting_since=now)
+        html = self.client.get(reverse('messenger_inbox')).content.decode()
+        self.assertIn('Karim', html)
+        self.assertIn('এটা কি আছে?', html)
+        self.assertIn(f'business.facebook.com/latest/inbox/all?asset_id={self.PAGE}', html)
+        dashboard = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('Messenger-এ ১ জন উত্তরের অপেক্ষায়', dashboard)
+        self.assertIn('title="Messenger-এ উত্তরের অপেক্ষায়">1<', dashboard)
+        self.client.post(reverse('messenger_action', args=[waiting.id]), {'action': 'pause'})
+        waiting.refresh_from_db()
+        self.assertGreater(waiting.bot_paused_until, now)
+        self.client.post(reverse('messenger_action', args=[waiting.id]), {'action': 'resume'})
+        self.client.post(reverse('messenger_action', args=[waiting.id]), {'action': 'done'})
+        waiting.refresh_from_db()
+        self.assertEqual((waiting.bot_paused_until, waiting.waiting_since), (None, None))
+
+        customer = Customer.objects.create(shop=self.shop, name='R', phone='01712345678', address='x')
+        Order.objects.create(shop=self.shop, customer=customer, source='storefront', total_amount=1000,
+                             fb_source='comment', fb_post_id='111_77')
+        Order.objects.create(shop=self.shop, customer=customer, source='storefront', total_amount=500, fb_source='chat')
+        Order.objects.create(shop=self.shop, customer=customer, source='storefront', total_amount=900,
+                             fb_source='chat', status='Cancelled')
+        Order.objects.create(shop=self.shop, customer=customer, source='storefront', total_amount=300)
+        from .views_facebook import sales_report
+        report = sales_report(self.shop, 30)
+        self.assertEqual((report['orders'], report['amount'], report['cancelled']), (2, Decimal('1500'), 1))
+        self.assertEqual(report['posts'][0]['url'], 'https://www.facebook.com/111_77')
+        self.assertContains(self.client.get(reverse('fb_automation'), {'tab': 'sales'}), 'facebook.com/111_77')
+
+    def test_plan_and_staff_permissions(self):
+        from .models import StaffProfile
+        staff = User.objects.create_user(phone_number='01933333334', password='Test-pass-123', name='S')
+        StaffProfile.objects.create(user=staff, shop=self.shop, can_manage_orders=True)
+        self.client.force_login(staff)
+        self.assertEqual(self.client.get(reverse('messenger_inbox')).status_code, 200)
+        self.assertRedirects(self.client.get(reverse('fb_automation')), reverse('dashboard'),
+                             fetch_redirect_response=False)
+        self.client.force_login(self.user)
+        self.shop.subscription_plan = 'Basic'
+        self.shop.valid_until = timezone.localdate() + timedelta(days=10)
+        self.shop.save()
+        self.assertRedirects(self.client.get(reverse('messenger_inbox')), reverse('billing'), fetch_redirect_response=False)
+        self.assertNotIn(reverse('messenger_inbox'), self.client.get(reverse('product_list')).content.decode())
+
+    def test_daily_cron_refreshes_pages(self):
+        with override_settings(CRON_SECRET='s3'), mock.patch('store.dues.run_auto_reminders', return_value={}), \
+                mock.patch('django.core.management.call_command'):
+            result = self.client.post(reverse('cron_daily'), HTTP_X_CRON_SECRET='s3').json()
+        self.assertEqual(result['facebook_pages'], 1)
+        urls = [url for url, _kw in self.graph.calls]
+        self.assertTrue(any(u.endswith(f'{self.PAGE}/subscribed_apps') for u in urls))
+        self.assertTrue(any(u.endswith('me/messenger_profile') for u in urls))
+
+    def test_english_shop_bot_speaks_english(self):
+        import ast
+        import re
+        from pathlib import Path
+        from . import sf_lang
+        from .facebook_bot import build_private_message
+        from .models import DeliveryZone
+        # কোডে t('...') দিয়ে লেখা প্রতিটা বাংলা লেখার ইংরেজি আছে
+        for name in ('messenger.py', 'facebook_bot.py'):
+            tree = ast.parse((Path(__file__).parent / name).read_text())
+            for node in ast.walk(tree):
+                func = getattr(node, 'func', None)
+                called = getattr(func, 'attr', None) or getattr(func, 'id', None)
+                if called == 't' and node.args and isinstance(node.args[0], ast.Constant):
+                    self.assertNotRegex(sf_lang.t(node.args[0].value, 'en'), '[\u0980-\u09F2\u09F4-\u09FF]', f'{name}:{node.lineno}')
+        bengali = re.compile('[\u0980-\u09F2\u09F4-\u09FF]')
+        self.shop.storefront_language = 'en'
+        self.shop.name, self.shop.address, self.shop.return_policy = 'Munna Fashion', 'Mirpur, Dhaka', ''
+        self.shop.save()
+        DeliveryZone.objects.filter(name='ঢাকার ভিতরে').update(name='Inside Dhaka')
+        DeliveryZone.objects.filter(name='ঢাকার বাইরে').update(name='Outside Dhaka')
+        self.msg('hello')
+        self.msg('delivery charge?')
+        self.msg(f'P{self.product.id}')
+        self.msg(None, postback=f'SP_ORDER:{self.product.id}')
+        self.msg('1', quick='SP_QTY:1')
+        self.msg('Rahima Akter', quick='SP_NAME')
+        self.msg('01712345678')
+        self.msg('House 3, Road 2, Mirpur, Dhaka')
+        zone = DeliveryZone.objects.get(name='Inside Dhaka')
+        self.msg('Inside Dhaka', quick=f'SP_ZONE:{zone.id}')
+        self.msg('Confirm', quick='SP_CONFIRM')
+        self.assertTrue(Order.objects.filter(fb_source='chat').exists())
+        for message in self.graph.sent():
+            self.assertNotRegex(json.dumps(message, ensure_ascii=False), bengali)
+        self.assertIn('Welcome to Munna Fashion', self.graph.texts()[0])
+        self.assertNotRegex(build_private_message(self.shop, self.product, 'Rahim Uddin', chat_order=True), bengali)
+
+    def test_subscribe_falls_back_to_comments_without_messenger_permission(self):
+        from .facebook_bot import subscribe_page
+        sent = []
+
+        def post(url, params=None, timeout=None, **kwargs):
+            sent.append(kwargs['data']['subscribed_fields'])
+            if 'messages' in kwargs['data']['subscribed_fields']:
+                return FakeResponse({'error': {'message': '(#200) pages_messaging permission required'}}, 403)
+            return FakeResponse({'success': True})
+        with mock.patch('store.facebook_bot.requests.post', post):
+            self.assertTrue(subscribe_page(self.PAGE, 'T'))
+        self.assertEqual(sent[-1], 'feed')

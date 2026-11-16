@@ -18,7 +18,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from datetime import timedelta
 import random
 
-from .models import Shop, Product, Category, Order, OrderItem, Customer, MasterSetting, Banner
+from .models import Shop, Product, Category, Order, OrderItem, Customer, MasterSetting, Banner, MessengerContact
 from . import backups, retention
 from .plans import (
     can_add_staff, has_custom_domain, has_facebook, plan_label, product_limit, products_remaining,
@@ -164,7 +164,9 @@ def seller_dashboard(request):
         'numbers': dash.today_numbers(shop, today),
         'pipeline': pipeline,
         'stock': stock,
-        'todo': dash.todo_items(can, pipeline, dues, stock),
+        'todo': dash.todo_items(can, pipeline, dues, stock,
+                                messenger_waiting=MessengerContact.objects.filter(
+                                    shop=shop, waiting_since__isnull=False).count() if limits_for(shop)['facebook'] else 0),
         'recent_orders': dash.recent_orders(shop) if can['orders'] or can['money'] else [],
         'chart': dash.sales_chart(shop, today, chart_days) if can['money'] else None,
         'top_sellers': dash.top_sellers(shop, today) if can['money'] else [],
@@ -722,7 +724,6 @@ def shop_settings(request):
         'courier_count': sum(connected.values()),
         'facebook_allowed': has_facebook(shop),
         'fb_page': fb_page,
-        'fb_recent_replies': shop.fb_comment_replies.select_related('product')[:5] if fb_page else [],
         'is_owner': shop.user_id == request.user.id,
         'backup_test': backups.trust_line() if active_tab == 'data' else None,
         'steadfast_webhook_url': request.build_absolute_uri(reverse('steadfast_webhook')),
@@ -1404,12 +1405,10 @@ def _storefront_customer_phone(raw):
 def storefront_place_order(request, shop_slug):
     """
     দোকানের ওয়েবসাইট থেকে অর্ডার (AJAX POST, JSON)।
-    দাম, ডেলিভারি চার্জ আর অনলাইনে কত দিতে হবে, সব সার্ভারে হিসাব হয়; ব্রাউজার থেকে শুধু
-    প্রোডাক্ট-পরিমাণ, এলাকার id আর পেমেন্টের ধরন আসে।
+    দাম, ডেলিভারি চার্জ আর অনলাইনে কত দিতে হবে, সব সার্ভারে হিসাব হয় (store/storefront_orders.py — Messenger-এর
+    চ্যাট-অর্ডারও একই রাস্তায়); ব্রাউজার থেকে শুধু প্রোডাক্ট-পরিমাণ, এলাকার id আর পেমেন্টের ধরন আসে।
     """
-    from decimal import Decimal
-    from django.db import transaction
-    from . import delivery, shop_payments
+    from . import fb_ref, storefront_orders
 
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Invalid request'}, status=405)
@@ -1428,95 +1427,31 @@ def storefront_place_order(request, shop_slug):
             quantities[product_id] = quantities.get(product_id, 0) + qty
     except (ValueError, TypeError, KeyError):
         return JsonResponse({'success': False, 'error': sf_lang.t('অর্ডারের তথ্য ঠিক নেই, পেইজটা আবার খুলুন।', shop)})
-    if not quantities:
-        return JsonResponse({'success': False, 'error': sf_lang.t('কার্ট খালি!', shop)})
 
-    name = (data.get('name') or '').strip()[:150]
-    address = (data.get('address') or '').strip()[:500]
-    note = (data.get('note') or '').strip()[:500]
+    source = fb_ref.from_session(request, shop)     # Facebook-এর কমেন্ট/Messenger-এর লিংক থেকে এলে
     phone = _storefront_customer_phone(data.get('phone') or '')
-    if not name or not address:
-        return JsonResponse({'success': False, 'error': sf_lang.t('নাম, মোবাইল নম্বর আর ঠিকানা দিন।', shop)})
-    if not phone:
-        return JsonResponse({'success': False, 'error': sf_lang.t('সঠিক মোবাইল নম্বর দিন (০১ দিয়ে শুরু, ১১ সংখ্যা)।', shop)})
-
-    if risk.is_blocked(shop, phone):
-        return JsonResponse({'success': False,
-                             'error': sf_lang.t('এই নম্বর থেকে এখন অর্ডার নেওয়া যাচ্ছে না। দোকানে সরাসরি যোগাযোগ করুন।', shop)})
-
-    choices = shop_payments.checkout_choices(shop)
-    choice = data.get('payment') or choices[0]
-    if choice not in choices:
-        return JsonResponse({'success': False, 'error': sf_lang.t('পেমেন্টের ধরন বেছে নিন।', shop)})
-
-    with transaction.atomic():
-        # একসাথে অনেকে অর্ডার দিলেও স্টকের চেয়ে বেশি বিক্রি না হয়
-        chosen = variants.resolve(shop, quantities.keys(), lock=True)
-        if len(chosen) != len(quantities) or any(not item.product.is_active for item in chosen.values()):
-            return JsonResponse({'success': False, 'error': sf_lang.t('কার্টের একটা প্রোডাক্ট আর পাওয়া যাচ্ছে না। কার্ট দেখে আবার চেষ্টা করুন।', shop)})
-        subtotal = Decimal('0')
-        for key, qty in quantities.items():
-            item = chosen[key]
-            if item.needs_choice:
-                return JsonResponse({'success': False,
-                                     'error': sf_lang.t("'{name}'-এর সাইজ/রং বেছে নিয়ে আবার কার্টে যোগ করুন।", shop, name=item.name)})
-            if item.stock < qty:
-                return JsonResponse({'success': False,
-                                     'error': sf_lang.t("'{name}' স্টকে আছে মাত্র {n}টা।", shop, name=item.name, n=item.stock)})
-            subtotal += item.price * qty
-
-        zone, delivery_charge = delivery.charge_for(shop, data.get('zone'), subtotal)
-        if delivery_charge is None:
-            return JsonResponse({'success': False, 'error': sf_lang.t('ডেলিভারির এলাকা বেছে নিন।', shop)})
-        try:
-            coupon, discount, delivery_off = offers.find(shop, data.get('coupon'), subtotal, delivery_charge)
-        except offers.CouponError as exc:
-            return JsonResponse({'success': False, 'error': str(exc), 'coupon_error': True})
-        delivery_charge = delivery_charge - delivery_off
-        total = subtotal - discount + delivery_charge
-        pay_now = shop_payments.amount_now(choice, total, delivery_charge)
-
-        sf_order = StorefrontOrder.objects.create(
-            shop=shop, customer_name=name, customer_phone=phone, customer_address=address,
-            customer_note=note, total_amount=total, delivery_charge=delivery_charge,
-            delivery_zone=zone.name if zone else '', status='Pending')
-        customer, _ = Customer.objects.get_or_create(shop=shop, phone=phone,
-                                                     defaults={'name': name, 'address': address})
-        customer.name, customer.address = name, address
-        customer.save(update_fields=['name', 'address'])
-        landing = None
-        if data.get('landing'):
-            from .models import LandingPage
-            landing = LandingPage.objects.filter(shop=shop, slug=str(data['landing'])[:60]).first()
-        order_note = ' · '.join(x for x in [f'এলাকা: {zone.name}' if zone else '',
-                                            f'কুপন {coupon.code}' if coupon else '',
-                                            f'ল্যান্ডিং পেজ: {landing.headline}' if landing else '', note] if x) or None
-        main_order = Order.objects.create(
-            shop=shop, customer=customer, source='storefront', delivery_charge=delivery_charge, discount=discount,
-            payment_method='COD', status='Pending', total_amount=total, note=order_note,
-            coupon_code=coupon.code if coupon else '', landing=landing,
-            online_payment_status=Order.ONLINE_PENDING if pay_now > 0 else Order.ONLINE_NONE)
-        sf_order.order = main_order
-        sf_order.save(update_fields=['order'])
-        if coupon:
-            offers.mark_used(coupon)
-        offers.mark_recovered(shop, phone, main_order)
-        for key, qty in quantities.items():
-            item = chosen[key]
-            StorefrontOrderItem.objects.create(order=sf_order, product=item.product, quantity=qty, price=item.price,
-                                               variant_name=item.variant_name)
-            OrderItem.objects.create(order=main_order, product=item.product, variant=item.variant,
-                                     variant_name=item.variant_name, price=item.price, quantity=qty,
-                                     cost_price=item.cost_price)
-            variants.take(item, qty)
+    try:
+        placed = storefront_orders.place(
+            shop, quantities=quantities, name=data.get('name'), phone=phone, address=data.get('address'),
+            note=data.get('note'), zone_id=data.get('zone'), coupon_code=data.get('coupon'),
+            payment_choice=data.get('payment'), landing_slug=data.get('landing'), **source)
+    except storefront_orders.OrderError as exc:
+        reply = {'success': False, 'error': str(exc)}
+        if exc.coupon_error:
+            reply['coupon_error'] = True
+        return JsonResponse(reply)
+    main_order, sf_order, pay_now = placed.order, placed.sf_order, placed.pay_now
 
     # অর্ডার-সফল পেইজে কাস্টমারের নাম-ঠিকানা থাকে; শুধু যে ব্রাউজার থেকে অর্ডার হয়েছে সে-ই দেখতে পাবে
-    placed = request.session.get('sf_orders', [])
-    request.session['sf_orders'] = (placed + [sf_order.id])[-20:]
+    placed_ids = request.session.get('sf_orders', [])
+    request.session['sf_orders'] = (placed_ids + [sf_order.id])[-20:]
     success_url = storefront_link(shop, 'storefront_order_success', sf_order.id, request=request)
+    if main_order.messenger_contact_id:
+        from . import messenger
+        messenger.order_received(main_order)
 
     if pay_now > 0:
-        result = _start_customer_payment(request, shop, main_order, sf_order, choice, pay_now)
+        result = _start_customer_payment(request, shop, main_order, sf_order, placed.choice, pay_now)
         if not result.get('ok'):
             # গেটওয়ে কাজ না করলে অর্ডারটা বাতিল না করে রেখে দেওয়া হয়; কাস্টমার অর্ডার পেইজ থেকে আবার চেষ্টা করতে পারবে
             return JsonResponse({'success': True, 'order_id': sf_order.id, 'redirect': success_url,
@@ -2163,8 +2098,10 @@ def fb_page_select(request):
 
         from .facebook_bot import subscribe_page
         if subscribe_page(selected_page_id, page_token):
+            from . import messenger
+            messenger.setup_profile(FacebookPageConnection.objects.select_related('shop').get(shop=shop))
             messages.success(request, f"'{selected_page.get('name')}' পেইজ যুক্ত হয়েছে। "
-                                      "এখন পোস্টে কেউ কমেন্ট করলে তার ইনবক্সে অর্ডারের লিংক চলে যাবে।",
+                                      "এখন পোস্টে কেউ কমেন্ট করলে বা ইনবক্সে লিখলে নিজে থেকে উত্তর যাবে।",
                              extra_tags='facebook')
         else:
             messages.warning(request, f"'{selected_page.get('name')}' পেইজ যুক্ত হয়েছে, কিন্তু কমেন্টের খবর পাওয়া "

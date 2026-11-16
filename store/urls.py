@@ -12,7 +12,7 @@ from . import views_ledger
 from . import views_offers
 from . import views_landing
 from . import views_marketing
-from . import views_guides
+from . import views_facebook, views_guides
 from . import views_dues
 from . import views_demo
 from . import hq_views
@@ -237,4 +237,9 @@ urlpatterns = [
     path('facebook/bot-settings/', views.fb_bot_settings, name='fb_bot_settings'),
     path('facebook/pages/', views.fb_page_select, name='fb_page_select'),
     path('facebook/disconnect/', views.fb_disconnect, name='fb_disconnect'),
+    path('facebook/automation/', views_facebook.fb_automation, name='fb_automation'),
+    path('facebook/automation/faq/', views_facebook.fb_faq_save, name='fb_faq_save'),
+    path('facebook/automation/faq/<int:pk>/', views_facebook.fb_faq_action, name='fb_faq_action'),
+    path('messenger/', views_facebook.messenger_inbox, name='messenger_inbox'),
+    path('messenger/<int:pk>/', views_facebook.messenger_action, name='messenger_action'),
 ]
