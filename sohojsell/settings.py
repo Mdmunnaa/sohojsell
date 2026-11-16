@@ -258,12 +258,11 @@ POLICY_UPDATED_ON = '১৬ নভেম্বর ২০২৬'
 # ============================================================
 # ডিফল্ট মানগুলো PayStation-এর পাবলিক sandbox (টেস্ট) অ্যাকাউন্ট — আসল টাকা কাটে না।
 # Merchant অ্যাকাউন্ট পেলে Render-এ এই চারটা বসাবেন:
-#   PAYSTATION_MERCHANT_ID, PAYSTATION_PASSWORD, PAYSTATION_ENVIRONMENT=live, PAYSTATION_PAY_WITH_CHARGE=0
+#   PAYSTATION_MERCHANT_ID, PAYSTATION_PASSWORD, PAYSTATION_ENVIRONMENT=live
 PAYSTATION_MERCHANT_ID = os.environ.get('PAYSTATION_MERCHANT_ID', '104-1653730183')
 PAYSTATION_PASSWORD = os.environ.get('PAYSTATION_PASSWORD', 'gamecoderstorepass')
 PAYSTATION_ENVIRONMENT = os.environ.get('PAYSTATION_ENVIRONMENT', 'sandbox')  # 'sandbox' বা 'live'
 # 0 = গেটওয়ে চার্জ আমরা দেব, 1 = কাস্টমার দেবে
-PAYSTATION_PAY_WITH_CHARGE = os.environ.get('PAYSTATION_PAY_WITH_CHARGE', '0')
 # sandbox চলার সময় শুধু এই শপগুলো (slug, কমা দিয়ে) অনলাইন পেমেন্ট বাটন দেখবে —
 # যাতে টেস্ট মোডে কোনো আসল সেলার বিনা টাকায় প্ল্যান চালু করতে না পারে।
 PAYSTATION_TEST_SHOPS = env_list('PAYSTATION_TEST_SHOPS')
@@ -280,7 +279,9 @@ IMPORT_BACKGROUND = env_bool('IMPORT_BACKGROUND', default=sys.argv[1:2] != ['tes
 ADMIN_ALERT_PHONE = os.environ.get('ADMIN_ALERT_PHONE', '01923513404')
 # কাস্টমার দোকানের ওয়েবসাইটে অনলাইনে টাকা দিলে প্ল্যাটফর্ম কত % রাখবে (বাকিটা সেলারের পাওনা)।
 # PayStation-এর নিজের চার্জ এর মধ্যেই ধরা।
-STOREFRONT_PAYMENT_FEE_PERCENT = os.environ.get('STOREFRONT_PAYMENT_FEE_PERCENT', '2')
+# PayStation কাটে: bKash ২%, Nagad/Rocket ও অন্যান্য ১.৮%, Visa/Master ২.২৫%, Amex ৩.২% (নভেম্বর ২০২৬)। ২.৫% রাখলে
+# সবচেয়ে বেশি ব্যবহার হওয়া পথগুলোয় লোকসান নেই। বদলালে শুধু নতুন পেমেন্টে লাগে (প্রতিটা পেমেন্টে % লেখা থাকে)।
+STOREFRONT_PAYMENT_FEE_PERCENT = os.environ.get('STOREFRONT_PAYMENT_FEE_PERCENT', '2.5')
 
 # Render-এর Logs-এ error দেখার জন্য
 LOGGING = {

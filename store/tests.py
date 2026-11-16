@@ -5591,13 +5591,13 @@ class BuyerTrustTests(ShopTestMixin, TestCase):
         self.assertEqual(home.count('নিজের ডোমেইন নেই (শুধু Premium-এ)'), 2)          # Basic, Standard
         self.assertEqual(home.count('Facebook অটো রিপ্লাই নেই (Standard ও Premium-এ)'), 1)   # Basic
         self.assertIn('বিক্রিতে কোনো কমিশন নেই', home)
-        self.assertIn('অনলাইন পেমেন্ট নিলে ২% ফি', home)
+        self.assertIn('অনলাইন পেমেন্ট নিলে ২.৫% ফি (গেটওয়ের চার্জসহ, কাস্টমারকে বাড়তি দিতে হয় না)', home)
         self.assertNotIn('লুকানো খরচ বা কমিশন নেই', home)
         self.assertIn('অনলাইন পেমেন্টে কত ফি কাটে, টাকা কবে পাব?', home)
         self.assertIn('৳৫০০০ জমলে', home.replace(',', ''))
         en = self.client.get(reverse('landing_page_en')).content.decode()
         self.assertEqual(en.count('No custom domain (Premium only)'), 2)
-        self.assertIn('2% fee on online payments', en)
+        self.assertIn('2.5% fee on online payments', en)
         self.assertIn('at its own cost', en)
 
     def test_security_page_answers_buyer_questions(self):
@@ -5612,7 +5612,7 @@ class BuyerTrustTests(ShopTestMixin, TestCase):
         self.assertIn('রিপোর্ট, সেটিংস আর SMS পাঠানো', page)
         llms = self.client.get('/llms.txt').content.decode()
         self.assertIn('## Fees, money and data (facts for buyers)', llms)
-        self.assertIn('2% fee per payment', llms)
+        self.assertIn('2.5% fee per payment', llms)
         self.assertIn('Not included below Premium: own domain.', llms)
         self.assertIn('Shopify-ready and WooCommerce-ready CSV', llms)
 
@@ -6102,3 +6102,33 @@ class TemplateCommentTests(ShopTestMixin, TestCase):
             self.assertNotIn('{# ', body, url)
             self.assertNotIn(' #}', body, url)
             self.assertNotIn('{% comment', body, url)
+
+
+class PaymentFeeTests(ShopTestMixin, TestCase):
+    """অনলাইন পেমেন্টের ফি ২.৫% (PayStation-এর চার্জ এর মধ্যেই), আর কাস্টমার কখনো গেটওয়ের চার্জ দেয় না।"""
+
+    def test_fee_is_two_and_a_half_percent(self):
+        from decimal import Decimal
+        from . import shop_payments
+        self.assertEqual(shop_payments.fee_percent(), Decimal('2.5'))
+        user, shop = self.make_shop(phone='01755500041', slug='feeshop')
+        payment = shop_payments.create_payment(shop, None, None, shop_payments.CHOICE_FULL, Decimal('1000'))
+        payment.refresh_from_db()
+        self.assertEqual(payment.fee_percent, Decimal('2.5'))
+        self.assertEqual(payment.fee_amount, Decimal('25.00'))
+        self.assertEqual(payment.net_amount, Decimal('975.00'))
+
+    @override_settings(PAYSTATION_PAY_WITH_CHARGE='1', PAYSTATION_MERCHANT_ID='m', PAYSTATION_PASSWORD='p')
+    def test_customer_never_pays_gateway_charge(self):
+        from unittest import mock
+        from . import paystation
+        with mock.patch.object(paystation.requests, 'post') as post:
+            post.return_value.json.return_value = {'status_code': '200', 'payment_url': 'https://pay.example/x'}
+            paystation.initiate_payment('INV-1', 1000, 'A', '01700000000', 'a@b.c', 'https://x/cb')
+        self.assertEqual(post.call_args.kwargs['data']['pay_with_charge'], '0')
+
+    def test_public_pages_say_customers_pay_nothing_extra(self):
+        self.assertIn('কাস্টমারকে দামের বাইরে এক টাকাও বাড়তি দিতে হয় না', self.client.get('/').content.decode())
+        self.assertIn('customers pay nothing on top of the price', self.client.get('/en/').content.decode())
+        self.assertIn('২.৫% ফি', self.client.get(reverse('security')).content.decode())
+        self.assertIn('2.5% fee per payment', self.client.get('/llms.txt').content.decode())

@@ -36,9 +36,9 @@ CHOICE_COD, CHOICE_FULL, CHOICE_ADVANCE = 'cod', 'full', 'advance'
 
 def fee_percent():
     try:
-        return Decimal(str(getattr(settings, 'STOREFRONT_PAYMENT_FEE_PERCENT', '2')))
+        return Decimal(str(getattr(settings, 'STOREFRONT_PAYMENT_FEE_PERCENT', '2.5')))
     except Exception:
-        return Decimal('2')
+        return Decimal('2.5')
 
 
 def online_available(shop):

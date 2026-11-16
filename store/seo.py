@@ -292,7 +292,8 @@ def main_llms_txt(request):
         '',
         '## Fees, money and data (facts for buyers)',
         f'- No commission on sales. Online payments taken on the store website carry a {fee}% fee per payment, which '
-        'includes the PayStation gateway charge; cash on delivery has no fee. Online payments are optional per shop.',
+        'includes the PayStation gateway charge; customers pay nothing on top of the price; cash on delivery has no fee. '
+        'Online payments are optional per shop.',
         "- Customer payments land in SellPunch's PayStation merchant account (the seller needs no gateway account). Each "
         f'payment becomes withdrawable {shop_payments.SETTLEMENT_HOLD_DAYS} days later; the seller requests a payout once at '
         f'least BDT {int(shop_payments.SETTLEMENT_MIN):,} is available, to bKash, Nagad, Rocket or a bank account.',

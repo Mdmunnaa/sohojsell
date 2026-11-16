@@ -60,7 +60,9 @@ def initiate_payment(invoice_number, amount, cust_name, cust_phone, cust_email, 
         'invoice_number': str(invoice_number),
         'currency': 'BDT',
         'payment_amount': f'{Decimal(str(amount)):.2f}',
-        'pay_with_charge': str(getattr(settings, 'PAYSTATION_PAY_WITH_CHARGE', '0')),
+        # গেটওয়ের চার্জ সবসময় আমরা দিই — কাস্টমার বা সেলার দামের বাইরে এক টাকাও বাড়তি দেয় না (মালিকের সিদ্ধান্ত)।
+        # তাই কোনো সেটিং বা env দিয়ে এটা চালু করা যায় না।
+        'pay_with_charge': '0',
         'cust_name': (cust_name or 'Customer')[:100],
         'cust_phone': (cust_phone or '01700000000')[:20],
         'cust_email': (cust_email or 'billing@example.com')[:100],
