@@ -314,6 +314,126 @@ FEATURES = [
         },
     },
     {
+        'slug': 'move-to-sellpunch', 'icon': 'bi-box-arrow-in-down', 'image': 'import', 'image_en': 'import',
+        'related': ['online-shop', 'inventory', 'facebook-auto-reply', 'courier-integration'],
+        'bn': {
+            'nav': 'অন্য প্ল্যাটফর্ম থেকে আসুন',
+            'title': 'Shopify, WooCommerce বা Excel থেকে SellPunch-এ আসুন',
+            'description': 'আগের দোকানের সব প্রোডাক্ট এক ফাইলে — ছবি, দাম, আগের দাম, স্টক আর সাইজ-রংসহ। Shopify, '
+                           'WooCommerce, যেকোনো Excel/CSV। কাস্টমারের তালিকাও। ৩০ দিন ফ্রি।',
+            'h1': 'অন্য প্ল্যাটফর্ম থেকে <em>SellPunch-এ আসুন</em> — সব প্রোডাক্ট এক ফাইলে',
+            'lead': 'Shopify, WooCommerce, অন্য সফটওয়্যার বা Excel-এ দোকান চালাতেন? এক এক করে আবার লিখতে হবে না। আগের জায়গা '
+                    'থেকে একটা ফাইল নামিয়ে তুলুন — প্রোডাক্ট আসবে ছবি, দাম, ছাড়, স্টক আর সাইজ-রংসহ। তোলার আগে দেখে নেবেন কয়টা '
+                    'আসবে আর কোনগুলো কেন বাদ যাবে।',
+            'points': [
+                ('bi-bag', 'Shopify থেকে সরাসরি',
+                 'Products → Export-এর CSV যেমন আছে তেমনই — সাইজ-রং (Option1-3), আগের দাম, কেনা দাম, SKU, ক্যাটাগরি, '
+                 'লুকানো (draft) প্রোডাক্ট সব চেনে।'),
+                ('bi-wordpress', 'WooCommerce থেকে সরাসরি',
+                 'Products → Export-এর CSV — simple আর variable প্রোডাক্ট, প্রতিটা সাইজ-রং আলাদা স্টক আর দামসহ, '
+                 'Regular আর Sale দাম থেকে ছাড়।'),
+                ('bi-file-earmark-spreadsheet', 'যেকোনো Excel বা CSV',
+                 'কলামের নাম বাংলা বা ইংরেজি — "নাম", "দাম", "Rate", "Qty" নিজে চিনে নেয়। না চিনলে কোন কলামে কী আছে '
+                 'বেছে দেন। দাম "৳ ১,৪৫০" বা "Tk. 1450" — সবভাবে চলে।'),
+                ('bi-images', 'ছবিসহ',
+                 'ফাইলে ছবির লিংক থাকলে ছবি নিজে নেমে প্রোডাক্টে বসে, ওয়েবসাইটের জন্য ছোট করে — পাতা বন্ধ করলেও পেছনে চলে।'),
+                ('bi-eye', 'আগে দেখে নিন',
+                 'কয়টা প্রোডাক্ট আসবে, কয়টা সাইজ-রংসহ, কোন সারি কেন বাদ যাবে — নিশ্চিত না করা পর্যন্ত কিছুই যোগ হয় না।'),
+                ('bi-shield-check', 'দুবার তৈরি হয় না',
+                 'একই বারকোড/SKU-র প্রোডাক্ট দোকানে আগে থেকে থাকলে বাদ যায় — ভুল করে একই ফাইল দুবার তুললেও ঝামেলা নেই।'),
+                ('bi-people', 'কাস্টমারের তালিকাও',
+                 'নাম, মোবাইল আর ঠিকানা — +880, ড্যাশ বা বাংলা সংখ্যার নম্বর ঠিক করে নেয়, একই নম্বর দুবার আসে না। '
+                 'Shopify-র কাস্টমার export-ও চলে।'),
+                ('bi-box-arrow-right', 'চলে যেতে চাইলেও সহজ',
+                 'যেকোনো সময় প্রোডাক্ট Shopify আর WooCommerce-এর ফরম্যাটে নামানো যায়, আর সব ডাটা Excel-এ — আটকে থাকতে হয় না।'),
+            ],
+            'steps': [
+                ('আগের জায়গা থেকে ফাইল নামান', 'Shopify বা WooCommerce-এ Products → Export; অন্য সফটওয়্যার থেকে Excel।'),
+                ('SellPunch-এ তুলুন', 'সব প্রোডাক্ট → অন্য জায়গা থেকে আনুন → ফাইল বেছে "ফাইল দেখুন"।'),
+                ('দেখে যোগ করুন', 'কয়টা আসবে দেখে "যোগ করুন" — প্রোডাক্ট সাথে সাথে ওয়েবসাইট আর POS-এ, ছবি কয়েক মিনিটে।'),
+            ],
+            'faq': [
+                ('Shopify থেকে SellPunch-এ কীভাবে আসব?',
+                 'Shopify Admin → Products → Export → All products → CSV। ফাইলটা SellPunch-এ সব প্রোডাক্ট → অন্য জায়গা থেকে '
+                 'আনুন-এ তুলুন — সাইজ-রং, দাম, আগের দাম, স্টক আর ছবিসহ সব প্রোডাক্ট চলে আসে। কাস্টমারের তালিকা আনতে '
+                 'Customers → Export করে কাস্টমার → তালিকা আনুন-এ তুলুন।'),
+                ('WooCommerce বা WordPress সাইট থেকে আনা যায়?',
+                 'হ্যাঁ। WordPress → Products → Export → Generate CSV। variable প্রোডাক্টের সাইজ-রং, Regular আর Sale দাম, '
+                 'স্টক, ক্যাটাগরি আর ছবি আসে।'),
+                ('প্রোডাক্টের ছবি কি আসে?',
+                 'ফাইলে ছবির লিংক থাকলে (Shopify আর WooCommerce-এর export-এ থাকে) SellPunch নিজে ছবি নামিয়ে বসায়। কোনো ছবি '
+                 'না এলে তালিকায় দেখায়, সেগুলো নিজে দিতে পারেন।'),
+                ('আনতে কি আলাদা টাকা লাগে?',
+                 'না, সব প্যাকেজে আর ৩০ দিনের ফ্রি ট্রায়ালে আছে। শুধু প্যাকেজের প্রোডাক্টের সীমা মানে — Basic-এ ২০০, '
+                 'Standard-এ ১,০০০, Premium-এ সীমাহীন।'),
+                ('Daraz বা অন্য বাংলাদেশি সফটওয়্যার থেকে?',
+                 'যেখান থেকে Excel বা CSV নামানো যায়, সেখান থেকেই আনা যায়। কলামের নাম চিনলে নিজে মিলে যায়; না চিনলে কোন '
+                 'কলামে কী আছে বেছে দিলেই হয়।'),
+                ('পুরনো অর্ডারের ইতিহাস আসে?',
+                 'না — প্রোডাক্ট আর কাস্টমারের তালিকা আসে, নতুন অর্ডার SellPunch-এ শুরু হয়। পুরনো অর্ডারের ফাইল নিজের কাছে রাখুন।'),
+            ],
+        },
+        'en': {
+            'nav': 'Move from another platform',
+            'title': 'Move from Shopify, WooCommerce or Excel to SellPunch',
+            'description': 'Bring every product in one file — images, prices, discounts, stock and variants — from Shopify, '
+                           'WooCommerce or any Excel/CSV, plus customers. 30 days free.',
+            'h1': 'Move to <em>SellPunch</em> from another platform — every product in one file',
+            'lead': 'Ran your shop on Shopify, WooCommerce, other software or Excel? No retyping. Export one file from where '
+                    'you are and upload it — products arrive with images, prices, discounts, stock and variants. You see '
+                    'how many will come in, and why any row is skipped, before anything is added.',
+            'points': [
+                ('bi-bag', 'Straight from Shopify',
+                 'The Products → Export CSV as it is — variants (Option1-3), compare-at price, cost, SKU, type and draft '
+                 'products are all understood.'),
+                ('bi-wordpress', 'Straight from WooCommerce',
+                 'The Products → Export CSV — simple and variable products, each variation with its own stock and price, '
+                 'discounts from regular and sale prices.'),
+                ('bi-file-earmark-spreadsheet', 'Any Excel or CSV',
+                 'Column names in Bangla or English — "Name", "Price", "Rate", "Qty" are recognised. If not, you pick which '
+                 'column is which. Prices like "৳ 1,450" or "Tk. 1450" work.'),
+                ('bi-images', 'With images',
+                 'Image links in the file are downloaded and attached automatically, resized for the web — it keeps going '
+                 'even if you close the page.'),
+                ('bi-eye', 'Preview first',
+                 'How many products, how many with variants, which rows are skipped and why — nothing is added until you confirm.'),
+                ('bi-shield-check', 'No duplicates',
+                 'Products whose barcode/SKU already exists in your shop are skipped, so uploading the same file twice is safe.'),
+                ('bi-people', 'Customer lists too',
+                 'Name, mobile and address — numbers with +880, dashes or Bangla digits are normalised and each number '
+                 'comes in once. Shopify customer exports work.'),
+                ('bi-box-arrow-right', 'Easy to leave, too',
+                 'Export products in Shopify and WooCommerce formats and all data to Excel any time — no lock-in.'),
+            ],
+            'steps': [
+                ('Export from your old platform', 'Shopify or WooCommerce: Products → Export; other software: download Excel.'),
+                ('Upload to SellPunch', 'All products → "অন্য জায়গা থেকে আনুন" (import) → choose the file.'),
+                ('Check and add', 'See what will come in, then add — products go live on your website and POS at once.'),
+            ],
+            'faq': [
+                ('How do I move from Shopify to SellPunch?',
+                 'In Shopify Admin go to Products → Export → All products → CSV, then upload the file in SellPunch under All '
+                 'products → "অন্য জায়গা থেকে আনুন" (import). Products arrive with variants, prices, compare-at prices, stock and images. '
+                 'For customers, use Customers → Export and upload it under Customers.'),
+                ('Can I import from a WooCommerce or WordPress store?',
+                 'Yes. WordPress → Products → Export → Generate CSV. Variations, regular and sale prices, stock, categories and '
+                 'images come in.'),
+                ('Do product images come across?',
+                 'If the file has image links (Shopify and WooCommerce exports do), SellPunch downloads and attaches them. Any '
+                 'that fail are listed so you can add them yourself.'),
+                ('Does importing cost extra?',
+                 'No — it is in every plan and the 30-day free trial. Plan product limits apply: 200 on Basic, 1,000 on '
+                 'Standard, unlimited on Premium.'),
+                ('Can I import from Daraz or other software?',
+                 'Anywhere you can download Excel or CSV from. Recognised column names match automatically; otherwise you pick '
+                 'which column is which.'),
+                ('Is order history imported?',
+                 'No — products and customers come across, and new orders start in SellPunch. Keep your old order export for '
+                 'your records.'),
+            ],
+        },
+    },
+    {
         'slug': 'pos-software', 'icon': 'bi-upc-scan', 'image': 'pos', 'image_en': 'pos',
         'phone': 'pos-phone', 'phone_en': 'pos-phone',
         'related': ['inventory', 'due-book', 'accounting', 'online-shop'],

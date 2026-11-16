@@ -139,6 +139,26 @@
   "w": 520,
   "h": 1125
  },
+ "import-customers": {
+  "w": 1004,
+  "h": 753
+ },
+ "import-done": {
+  "w": 1004,
+  "h": 491
+ },
+ "import-mapping": {
+  "w": 1004,
+  "h": 873
+ },
+ "import-preview": {
+  "w": 1004,
+  "h": 836
+ },
+ "import-start": {
+  "w": 1004,
+  "h": 945
+ },
  "landing-edit": {
   "w": 1280,
   "h": 780
@@ -240,8 +260,8 @@
   "h": 780
  },
  "products-import": {
-  "w": 500,
-  "h": 252
+  "w": 1004,
+  "h": 945
  },
  "products-list": {
   "w": 1280,

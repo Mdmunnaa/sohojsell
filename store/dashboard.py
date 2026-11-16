@@ -288,7 +288,7 @@ def setup_steps(shop, plan_has_facebook):
     website = reverse('website_settings')
     has_courier = any(couriers.connected(shop).values())
     steps = [
-        ('product', 'bi-box-seam', 'প্রথম প্রোডাক্ট যোগ করুন', 'ছবি, দাম আর স্টক দিলেই ওয়েবসাইট আর POS-এ চলে আসবে',
+        ('product', 'bi-box-seam', 'প্রথম প্রোডাক্ট যোগ করুন', 'ছবি, দাম আর স্টক — অন্য জায়গায় দোকান থাকলে একসাথে সব আনা যায়',
          Product.objects.filter(shop=shop).exists(), reverse('add_product')),
         ('logo', 'bi-image', 'দোকানের লোগো দিন', 'ওয়েবসাইট আর রসিদে লোগো দেখাবে',
          bool(shop.logo), f'{website}?tab=store'),

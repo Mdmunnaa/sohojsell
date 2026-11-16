@@ -11,16 +11,16 @@
     </p>
   </div>
 
-  <div class="d-flex gap-2">
-    <a href="{% url 'download_csv_template' %}" class="btn btn-outline-primary fw-bold rounded-pill">
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'download_csv_template' %}" class="btn btn-outline-primary fw-bold rounded-pill text-nowrap">
       <i class="bi bi-download me-1"></i> CSV Template
     </a>
 
-    <button type="button" class="btn btn-warning fw-bold rounded-pill" data-bs-toggle="modal" data-bs-target="#bulkUploadModal">
-      <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Bulk Upload
-    </button>
+    <a href="{% url 'product_import' %}" class="btn btn-warning fw-bold rounded-pill text-nowrap">
+      <i class="bi bi-box-arrow-in-down me-1"></i> অন্য জায়গা থেকে আনুন
+    </a>
 
-    <a href="{% url 'add_product' %}" class="btn btn-primary fw-bold rounded-pill shadow-sm">
+    <a href="{% url 'add_product' %}" class="btn btn-primary fw-bold rounded-pill shadow-sm text-nowrap">
       <i class="bi bi-plus-lg me-1"></i> Add Product
     </a>
   </div>
@@ -142,34 +142,4 @@
   {% endif %}
 </div>
 
-<div class="modal fade" id="bulkUploadModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content rounded-4 border-0 shadow-lg">
-      <div class="modal-header border-0 pb-0">
-        <h5 class="modal-title fw-bold"><i class="bi bi-cloud-arrow-up-fill text-primary me-2"></i>Import Products</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <form method="POST" action="{% url 'import_bulk_products' %}" enctype="multipart/form-data">
-        {% csrf_token %}
-        <div class="modal-body py-4">
-          <p class="text-muted small mb-3">Download the template, fill in your product details, and upload the <b>.csv</b> file here.</p>
-          <input type="file" name="csv_file" class="form-control rounded-3 py-2" accept=".csv" required>
-        </div>
-        <div class="modal-footer border-0 pt-0">
-          <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Upload & Import</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-<script>
-  // Modal Freeze Fix (Moves modal to body to avoid z-index trap)
-  document.addEventListener('DOMContentLoaded', function() {
-    var bulkModal = document.getElementById('bulkUploadModal');
-    if (bulkModal) {
-      document.body.appendChild(bulkModal);
-    }
-  });
-</script>
 {% endblock %}

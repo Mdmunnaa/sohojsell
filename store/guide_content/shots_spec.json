@@ -8,7 +8,7 @@
  {"id": "products-add-mobile", "path": "/products/add/", "viewport": "mobile"},
  {"id": "products-variants", "path": "/products/edit/{product}/", "viewport": "desktop", "element": ".vr-box"},
  {"id": "products-categories", "path": "/website/?tab=categories", "viewport": "desktop"},
- {"id": "products-import", "path": "/products/", "viewport": "desktop", "click": "text=Bulk Upload", "wait": 700, "element": ".modal.show .modal-content", "css": ".modal-backdrop{opacity:0!important}"},
+ {"id": "products-import", "path": "/products/import/", "viewport": "desktop", "element": ".ws-wrap", "height": 1300},
  {"id": "barcode-field", "path": "/products/add/", "viewport": "desktop", "scroll_to": "বারকোড / QR কোড"},
  {"id": "barcode-camera-mobile", "path": "/products/edit/{plain_product}/", "viewport": "mobile", "js_before": "window.onScanSuccess = function () {}", "click": "button[onclick='startScanner()']", "js": "document.getElementById('reader-container').scrollIntoView({block: 'center'})", "wait": 3000},
  {"id": "barcode-print", "path": "/barcodes/", "viewport": "desktop", "click": [".psi >> nth=0", ".psi >> nth=1", ".psi >> nth=2"], "wait": 900},
@@ -70,5 +70,10 @@
  {"id": "fb-inbox", "path": "/messenger/?view=all", "viewport": "desktop", "element": ".ws-wrap", "height": 1700},
  {"id": "fb-inbox-mobile", "path": "/messenger/?view=waiting", "viewport": "mobile"},
  {"id": "fb-sales", "path": "/facebook/automation/?tab=sales", "viewport": "desktop", "element": ".ws-wrap", "height": 1500},
- {"id": "fb-log", "path": "/facebook/automation/?tab=log", "viewport": "desktop", "element": ".ws-wrap", "height": 1400}
+ {"id": "fb-log", "path": "/facebook/automation/?tab=log", "viewport": "desktop", "element": ".ws-wrap", "height": 1400},
+ {"id": "import-start", "path": "/products/import/", "viewport": "desktop", "element": ".ws-wrap", "height": 1300},
+ {"id": "import-preview", "path": "/products/import/{import_preview}/", "viewport": "desktop", "element": ".ws-wrap", "height": 1500},
+ {"id": "import-mapping", "path": "/products/import/{import_mapping}/", "viewport": "desktop", "element": ".ws-wrap", "height": 1300},
+ {"id": "import-done", "path": "/products/import/{import_done}/", "viewport": "desktop", "element": ".ws-wrap", "height": 1100},
+ {"id": "import-customers", "path": "/customers/import/{import_customers}/", "viewport": "desktop", "element": ".ws-wrap", "height": 1200}
 ]

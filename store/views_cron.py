@@ -48,6 +48,12 @@ def cron_daily(request):
         logger.exception('daily cron: facebook refresh failed')
         result['facebook_pages'] = str(exc)[:200]
     try:
+        from . import views_import
+        result['imports'] = views_import.daily_cleanup()      # থেমে যাওয়া ছবি আবার, পুরনো কাজ মোছা
+    except Exception as exc:    # noqa: BLE001
+        logger.exception('daily cron: import cleanup failed')
+        result['imports'] = str(exc)[:200]
+    try:
         from . import indexnow
         result['indexnow'] = indexnow.submit(request)   # পাতা বদলালে Bing-কে খবর (ChatGPT/Copilot Bing দেখে)
     except Exception as exc:    # noqa: BLE001

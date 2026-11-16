@@ -56,11 +56,63 @@ pos_order = Order.objects.filter(shop=shop, source='pos', status='Delivered').or
 due = (Order.objects.filter(shop=shop, source='pos', advance_paid__lt=F('total_amount'))
        .exclude(customer__phone='00000000000').order_by('-id').first())
 landing = shop.landing_pages.order_by('id').first()
+# "অন্য প্ল্যাটফর্ম থেকে আসা" গাইডের জন্য নমুনা ফাইল — Shopify, অচেনা কলামের Excel, শেষ হওয়া কাজ, কাস্টমার
+from store.models import ImportJob
+ImportJob.objects.filter(shop=shop).delete()
+H = ['Handle', 'Title', 'Body (HTML)', 'Type', 'Published', 'Option1 Name', 'Option1 Value', 'Option2 Name',
+     'Option2 Value', 'Variant SKU', 'Variant Inventory Qty', 'Variant Price', 'Variant Compare At Price', 'Image Src',
+     'Cost per item', 'Status']
+rows = []
+for i, (title, kind, price, compare, sizes, colors) in enumerate([
+        ('সুতি থ্রি-পিস (ব্লক প্রিন্ট)', 'থ্রি-পিস', 1450, 1800, ['M', 'L', 'XL'], ['নীল', 'মেরুন']),
+        ('জামদানি শাড়ি', 'শাড়ি', 4200, 4800, [], []),
+        ('লিনেন পাঞ্জাবি', 'পাঞ্জাবি', 1850, None, ['40', '42', '44'], ['সাদা']),
+        ('লেদার ওয়ালেট', 'এক্সেসরিজ', 650, 850, [], []),
+        ('হিজাব (জর্জেট)', 'হিজাব', 350, None, [], ['কালো', 'বেইজ', 'গোলাপি']),
+        ('কটন টি-শার্ট', 'টি-শার্ট', 450, 550, ['M', 'L', 'XL'], []),
+        ('কিডস ফ্রক', 'বাচ্চাদের', 780, 950, ['2-3Y', '4-5Y'], []),
+        ('সিল্ক ওড়না', 'এক্সেসরিজ', 520, None, [], [])]):
+    handle = f'item-{i}'
+    combos = [(a, b) for a in (sizes or ['']) for b in (colors or [''])]
+    for j, (size, color) in enumerate(combos):
+        first = j == 0
+        option = 'Default Title' if not size and not color else (size or color)
+        rows.append([handle, title if first else '', '<p>নরম কাপড়, ধোয়ার পরেও রং ঠিক থাকে।</p>' if first else '',
+                     kind if first else '', 'TRUE' if first else '', ('Size' if size else 'Color') if first and option != 'Default Title' else ('Title' if first else ''),
+                     option, 'Color' if first and size and color else '', color if size and color else '',
+                     f'SP-IMP-{i}-{j}', str(3 + (i * 7 + j * 3) % 11), str(price), str(compare or ''),
+                     f'https://cdn.shopify.com/s/files/demo/{handle}.jpg' if first else '', str(int(price * 0.6)) if first else '',
+                     'active' if first else ''])
+rows.append(['old-item', 'পুরনো স্যাম্পল', '', '', 'TRUE', 'Title', 'Default Title', '', '', '', '', '', '', '', '', 'active'])
+preview = ImportJob.objects.create(shop=shop, kind='products', filename='products_export_1.csv', source='shopify',
+                                   headers=H, rows=rows, mapping={})
+mapping_job = ImportJob.objects.create(
+    shop=shop, kind='products', filename='মালের হিসাব.xlsx', source='generic',
+    headers=['ক্রমিক', 'পণ্য', 'রেট (টাকা)', 'মজুত', 'মাপ', 'ছবি'],
+    rows=[['1', 'সুতি থ্রি-পিস', '1450', '12', 'M', ''], ['2', 'জামদানি শাড়ি', '4200', '3', '', '']],
+    mapping={'name': 1, 'option1': 4, 'image': 5})
+from django.utils import timezone
+done = ImportJob.objects.create(
+    shop=shop, kind='products', filename='wc-product-export.csv', source='woocommerce', status='done',
+    result={'created': 86, 'variants': 214, 'over_limit': 0, 'skipped_count': 2,
+            'skipped': [[41, 'Gift Card', 'এই ধরনের প্রোডাক্ট (external) আনা যায় না'], [77, 'স্যাম্পল', 'দাম নেই বা দাম সংখ্যায় লেখা নেই']]},
+    images_total=86, images_done=86, finished_at=timezone.now())
+customers = ImportJob.objects.create(
+    shop=shop, kind='customers', filename='customers.xlsx', source='generic',
+    headers=['নাম', 'মোবাইল', 'ঠিকানা'],
+    rows=[['রাহিমা আক্তার', '+880 1712-345601', 'বাড়ি ১২, রোড ৩, মিরপুর ১০, ঢাকা'],
+          ['করিম উদ্দিন', '01812345602', 'জিন্দাবাজার, সিলেট'],
+          ['নুসরাত জাহান', '০১৯১২৩৪৫৬০৩', 'আগ্রাবাদ, চট্টগ্রাম'],
+          ['সুমাইয়া ইসলাম', '8801612345604', 'সাভার, ঢাকা'],
+          ['ভুল নম্বর', '12345', ''],
+          ['রাহিমা আক্তার', '01712345601', 'মিরপুর']],
+    mapping={'name': 0, 'phone': 1, 'address': 2})
 print(json.dumps({
     'slug': shop.slug, 'product': product.id, 'plain_product': plain.id, 'order': web.id,
     'track_order': track.id, 'track_phone': track.customer.phone, 'pos_order': pos_order.id,
     'due_phone': due.customer.phone if due else '', 'landing': landing.id, 'landing_slug': landing.slug,
-    'design': shop.storefront_design,
+    'design': shop.storefront_design, 'import_preview': preview.id, 'import_mapping': mapping_job.id,
+    'import_done': done.id, 'import_customers': customers.id,
 }))
 '''
 

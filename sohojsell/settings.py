@@ -274,6 +274,8 @@ SMS_GATEWAY_CLIENT_ID = os.environ.get('SMS_GATEWAY_CLIENT_ID', '').strip()
 SMS_GATEWAY_API_KEY = os.environ.get('SMS_GATEWAY_API_KEY', '').strip()
 # SMS: ১০০-র বেশি নম্বর বা অর্ডারের অটো SMS পেছনে (thread) যায়, যাতে পেইজ আটকে না থাকে। টেস্টে সরাসরি।
 SMS_BACKGROUND = env_bool('SMS_BACKGROUND', default=sys.argv[1:2] != ['test'])
+# অন্য জায়গা থেকে আনা প্রোডাক্টের ছবি লিংক থেকে পেছনে নামে (store/views_import.py)। টেস্টে সরাসরি।
+IMPORT_BACKGROUND = env_bool('IMPORT_BACKGROUND', default=sys.argv[1:2] != ['test'])
 # সেলার টাকা তোলার অনুরোধ দিলে এই নম্বরে SMS যায় (non-masking)
 ADMIN_ALERT_PHONE = os.environ.get('ADMIN_ALERT_PHONE', '01923513404')
 # কাস্টমার দোকানের ওয়েবসাইটে অনলাইনে টাকা দিলে প্ল্যাটফর্ম কত % রাখবে (বাকিটা সেলারের পাওনা)।

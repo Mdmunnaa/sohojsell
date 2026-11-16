@@ -1,0 +1,84 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}অন্য জায়গা থেকে আনুন — {{ shop.name }}{% endblock %}
+{% block page_title %}অন্য জায়গা থেকে আনুন{% endblock %}
+{% block content %}
+{% include 'store/partials/panel_styles.html' %}
+{% include 'store/import/_style.html' %}
+<div class="ws-wrap">
+  <div class="ws-head">
+    <div class="im-head-row">
+      <div>
+        <h4>অন্য জায়গা থেকে {% if kind == 'products' %}প্রোডাক্ট{% else %}কাস্টমার{% endif %} আনুন</h4>
+        {% if kind == 'products' %}
+        <p>Shopify, WooCommerce বা যেকোনো Excel/CSV ফাইল থেকে — ছবি, দাম, আগের দাম, স্টক আর সাইজ-রংসহ। তোলার আগে দেখাবে কয়টা আসবে আর কোনগুলো কেন বাদ যাবে।</p>
+        {% else %}
+        <p>খাতা, Excel বা অন্য সফটওয়্যারের কাস্টমারের তালিকা — নাম, মোবাইল আর ঠিকানা। একই নম্বর দুবার আসে না।</p>
+        {% endif %}
+      </div>
+      <a class="ws-open" href="{% url 'guide_detail' 'move-to-sellpunch' %}" target="_blank" rel="noopener"><i class="bi bi-book"></i> কীভাবে করবেন — গাইড</a>
+    </div>
+  </div>
+
+  <nav class="ws-tabs fit" aria-label="কী আনবেন">
+    <a href="{% url 'product_import' %}" class="ws-tab {% if kind == 'products' %}active{% endif %}"><i class="bi bi-box-seam"></i> প্রোডাক্ট</a>
+    <a href="{% url 'customer_import' %}" class="ws-tab {% if kind == 'customers' %}active{% endif %}"><i class="bi bi-people"></i> কাস্টমার</a>
+  </nav>
+
+  <div class="ws-body">
+    <form method="post" enctype="multipart/form-data" class="im-drop">
+      {% csrf_token %}
+      <i class="bi bi-cloud-arrow-up big"></i>
+      <h5>ফাইল বেছে নিন</h5>
+      <p>.xlsx বা .csv — প্রথম সারিতে কলামের নাম, তার নিচে প্রতিটা সারিতে একটা করে {% if kind == 'products' %}প্রোডাক্ট{% else %}কাস্টমার{% endif %}। ৫,০০০ সারি পর্যন্ত।</p>
+      <input type="file" name="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="form-control" required>
+      <button type="submit" class="ws-save"><i class="bi bi-eye me-1"></i> ফাইল দেখুন</button>
+      <p class="ws-help mt-2 mb-0">এখনই কিছু যোগ হবে না — আগে দেখে নিশ্চিত করবেন।</p>
+    </form>
+    {% if kind == 'products' and remaining is not None %}
+    <p class="ws-note mt-3 mb-0"><i class="bi bi-info-circle me-1"></i> আপনার প্যাকেজে আর {{ remaining|bn }}টা প্রোডাক্ট যোগ করা যাবে। ফাইলে এর বেশি থাকলে প্রথম {{ remaining|bn }}টা আসবে; বাকিগুলোর জন্য প্যাকেজ বড় করুন।</p>
+    {% endif %}
+
+    <h5 class="ws-section-title mt-4">ফাইল কোথা থেকে পাবেন</h5>
+    {% if kind == 'products' %}
+    <div class="im-src">
+      <div class="ws-card">
+        <h6><i class="bi bi-bag"></i> Shopify</h6>
+        <ol><li>Shopify Admin → <b>Products</b></li><li>উপরে <b>Export</b></li><li><b>All products</b> আর <b>CSV for Excel</b> বা <b>Plain CSV</b> → Export</li><li>ইমেইলে আসা ফাইলটা এখানে তুলুন</li></ol>
+      </div>
+      <div class="ws-card">
+        <h6><i class="bi bi-wordpress"></i> WooCommerce</h6>
+        <ol><li>WordPress → <b>Products</b> → <b>All Products</b></li><li>উপরে <b>Export</b></li><li>সব কলাম আর সব প্রোডাক্ট রেখে <b>Generate CSV</b></li><li>নামা ফাইলটা এখানে তুলুন</li></ol>
+      </div>
+      <div class="ws-card">
+        <h6><i class="bi bi-file-earmark-spreadsheet"></i> Excel, Google Sheets বা অন্য সফটওয়্যার</h6>
+        <ol><li>প্রথম সারিতে কলামের নাম: <b>নাম</b>, <b>দাম</b>, স্টক, আগের দাম, কেনা দাম, ক্যাটাগরি, ছবির লিংক, সাইজ, রং — বাংলা বা ইংরেজিতে</li><li>অন্য সফটওয়্যার থেকে Excel-এ export করা ফাইলও চলে</li><li>না চিনলে কোন কলাম কী, তা বেছে দেবেন</li></ol>
+        <a href="{% url 'download_csv_template' %}" class="d-inline-block mt-2 fw-bold text-decoration-none"><i class="bi bi-download"></i> খালি টেমপ্লেট নামান</a>
+      </div>
+    </div>
+    {% else %}
+    <div class="im-src">
+      <div class="ws-card">
+        <h6><i class="bi bi-file-earmark-spreadsheet"></i> Excel বা Google Sheets</h6>
+        <ol><li>কলাম: <b>নাম</b>, <b>মোবাইল</b>, ঠিকানা</li><li>মোবাইল যেকোনোভাবে লেখা চলে: 01712345678, +8801712-345678, ০১৭১২৩৪৫৬৭৮</li></ol>
+      </div>
+      <div class="ws-card">
+        <h6><i class="bi bi-bag"></i> Shopify</h6>
+        <ol><li>Shopify Admin → <b>Customers</b> → <b>Export</b></li><li>নামা CSV এখানে তুলুন — নাম আর ঠিকানার কলাম নিজে থেকে জোড়া লাগে</li></ol>
+      </div>
+      <div class="ws-card">
+        <h6><i class="bi bi-journal-text"></i> খাতায় লেখা থাকলে</h6>
+        <ol><li>Google Sheets-এ তিনটা কলাম বানিয়ে লিখে ফেলুন</li><li>File → Download → <b>.xlsx</b> বা <b>.csv</b></li></ol>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if recent %}
+    <h5 class="ws-section-title mt-4">আগে যা এনেছেন</h5>
+    <ul class="im-recent">
+      {% for job in recent %}<li><a href="{% if kind == 'products' %}{% url 'product_import_job' job.pk %}{% else %}{% url 'customer_import_job' job.pk %}{% endif %}">{{ job.filename }}</a> — {{ job.result.created|default:0|bn }}টা যোগ হয়েছে, {{ job.finished_at|bn_when }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

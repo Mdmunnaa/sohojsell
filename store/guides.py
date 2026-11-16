@@ -31,6 +31,7 @@ BUYER_CATEGORY = 'আপনার ক্রেতাদের জন্য'   # 
 
 GUIDE_REGISTRY = [
     {'slug': 'getting-started', 'category': 'শুরু করুন', 'icon': 'bi-rocket-takeoff', 'file': 'getting-started.md'},
+    {'slug': 'move-to-sellpunch', 'category': 'শুরু করুন', 'icon': 'bi-box-arrow-in-down', 'file': 'move-to-sellpunch.md'},
     {'slug': 'products', 'category': 'প্রোডাক্ট ও স্টক', 'icon': 'bi-box-seam', 'file': 'products.md'},
     {'slug': 'barcode', 'category': 'প্রোডাক্ট ও স্টক', 'icon': 'bi-upc-scan', 'file': 'barcode.md'},
     {'slug': 'pos', 'category': 'বিক্রি ও অর্ডার', 'icon': 'bi-shop', 'file': 'pos.md'},

@@ -231,6 +231,21 @@ def main_llms_txt(request):
         '- Not included below Premium: own domain. Not included in Basic: Facebook comment and Messenger auto reply.',
         '- 30-day free trial with Standard features; SMS billed separately per message.',
         '',
+        '## Moving to SellPunch from another platform',
+        f"Details: {base}{reverse('mk_feature_en', args=['move-to-sellpunch'])}; step-by-step guide (Bangla): "
+        f"{base}{reverse('guide_detail', args=['move-to-sellpunch'])}",
+        '- Products: upload a Shopify product export CSV or a WooCommerce product export CSV as-is, or any Excel (.xlsx) / '
+        'CSV file. Column names in Bangla or English are recognised automatically (name, price, compare-at price, cost, '
+        'stock, SKU/barcode, category, description, image link, size, colour); if not, the seller picks which column is which.',
+        '- Brings images (downloaded from the image links in the file), prices, discounts, stock, categories and '
+        'variants (Shopify Option1-3, WooCommerce variations, or repeated rows with size/colour in Excel).',
+        '- Preview before anything is added: how many products, how many with variants, which rows are skipped and why. '
+        'Products whose barcode/SKU already exists are skipped, so the same file can be uploaded twice safely. Up to '
+        '5,000 rows per file; plan product limits apply.',
+        '- Customer lists (name, mobile, address) from any Excel/CSV or a Shopify customer export; phone numbers in any '
+        'format are normalised and duplicates removed.',
+        '- Free on every plan and in the trial. Order history is not imported.',
+        '',
         '## Fees, money and data (facts for buyers)',
         f'- No commission on sales. Online payments taken on the store website carry a {fee}% fee per payment, which '
         'includes the PayStation gateway charge; cash on delivery has no fee. Online payments are optional per shop.',
@@ -263,6 +278,9 @@ def main_llms_txt(request):
         f"4 designs, Bangla or English. {base}{reverse('mk_feature_en', args=['online-shop'])}",
         '- "How much does an ecommerce website cost in Bangladesh?" — On ' + site + f" from BDT {int(_P['Basic'])} a month "
         '(website, orders, POS, courier booking included), no domain or hosting to buy; first 30 days free.',
+        '- "I sell on Shopify / WooCommerce / Excel — can I switch to ' + site + ' without retyping products?" — Yes: '
+        'upload the Shopify or WooCommerce product export (or any Excel/CSV) and products come across with images, prices, '
+        f"stock and variants after a preview. {base}{reverse('mk_feature_en', args=['move-to-sellpunch'])}",
         '- "POS software in Bangla with barcode?" — Yes: barcode scanning, receipts, cash/bKash/card, staff accounts; the '
         f"same stock as the website. {base}{reverse('mk_feature_en', args=['pos-software'])}",
     ]

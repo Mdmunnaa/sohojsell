@@ -1,0 +1,160 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}{{ job.filename }} — অন্য জায়গা থেকে আনুন{% endblock %}
+{% block page_title %}অন্য জায়গা থেকে আনুন{% endblock %}
+{% block content %}
+{% include 'store/partials/panel_styles.html' %}
+{% include 'store/import/_style.html' %}
+<div class="ws-wrap">
+  <div class="ws-head">
+    <div class="im-head-row">
+      <div>
+        <h4>{{ job.filename }}</h4>
+        <p>{% if source_label %}<span class="im-tag ok">{{ source_label }}{% if job.source != 'generic' %}-এর ফাইল চেনা গেছে{% endif %}</span> {% endif %}{{ job.created_at|bn_when }}</p>
+      </div>
+      <a class="ws-open" href="{% url conf.start_url %}"><i class="bi bi-arrow-left"></i> অন্য ফাইল তুলুন</a>
+    </div>
+  </div>
+
+  <div class="ws-body">
+  {% if job.status == 'new' %}
+
+    {% if missing or job.source == 'generic' or job.source == 'sellpunch' %}
+    <details class="ws-card mb-3" {% if missing %}open{% endif %}>
+      <summary class="fw-bold" style="cursor:pointer">{% if missing %}কোন কলামে কী আছে, বেছে দিন{% else %}কলাম মিলিয়ে নেওয়া হয়েছে — বদলাতে চাইলে এখানে{% endif %}</summary>
+      {% if missing %}<p class="ws-warn mt-2 mb-3">{{ missing|join:", " }} — কোন কলামে আছে, তা নিজে থেকে চেনা যায়নি। নিচে বেছে দিন।</p>{% endif %}
+      <form method="post" class="mt-3">
+        {% csrf_token %}<input type="hidden" name="action" value="map">
+        <div class="im-map">
+          {% for row in field_rows %}
+          <div>
+            <label for="map_{{ row.field }}">{{ row.label }}{% if row.required %} <span class="text-danger">*</span>{% endif %}</label>
+            <select class="form-select" name="map_{{ row.field }}" id="map_{{ row.field }}">
+              <option value="">— নেই —</option>
+              {% if row.current == 'first+last' %}<option value="auto" selected>First Name + Last Name</option>{% endif %}
+              {% if row.current == 'shopify' %}<option value="auto" selected>Address1 + Address2 + City</option>{% endif %}
+              {% for index, header in columns %}<option value="{{ index }}" {% if row.current == index %}selected{% endif %}>{{ header|default:"(নাম নেই)"|truncatechars:40 }}</option>{% endfor %}
+            </select>
+          </div>
+          {% endfor %}
+        </div>
+        <button type="submit" class="ws-save mt-3">এভাবে মিলিয়ে দেখুন</button>
+      </form>
+    </details>
+    {% endif %}
+
+    {% if info %}
+    <div class="im-stats mb-3">
+      <div class="im-stat"><b>{{ info.will|bn }}</b><span>{% if kind == 'products' %}প্রোডাক্ট যোগ হবে{% else %}নতুন কাস্টমার যোগ হবে{% endif %}</span></div>
+      {% if kind == 'products' %}
+      <div class="im-stat"><b>{{ info.with_variants|bn }}</b><span>সাইজ-রংসহ</span></div>
+      <div class="im-stat"><b>{{ info.images|bn }}</b><span>ছবি আসবে লিংক থেকে</span></div>
+      {% else %}
+      <div class="im-stat"><b>{{ info.dupes|length|bn }}</b><span>আগে থেকেই আছে (বাদ)</span></div>
+      {% endif %}
+      <div class="im-stat"><b>{{ info.skipped|length|bn }}</b><span>সারি বাদ যাবে</span></div>
+    </div>
+
+    {% if kind == 'products' %}
+      {% if info.over_limit %}<p class="ws-warn"><i class="bi bi-exclamation-triangle me-1"></i> প্যাকেজে আর {{ info.remaining|bn }}টা প্রোডাক্ট রাখা যায় — তাই প্রথম {{ info.will|bn }}টা আসবে, বাকি {{ info.over_limit|bn }}টা আসবে না। সব আনতে আগে <a href="{% url 'billing' %}">প্যাকেজ বড় করুন</a>।</p>{% endif %}
+      {% if info.dupes %}<p class="ws-note"><i class="bi bi-info-circle me-1"></i> {{ info.dupes|length|bn }}টা প্রোডাক্টের বারকোড/SKU দোকানে আগে থেকেই আছে — সেগুলো বাদ যাবে, দুবার তৈরি হবে না।</p>{% endif %}
+      {% if info.stock_missing %}<p class="ws-note"><i class="bi bi-info-circle me-1"></i> {{ info.stock_missing|bn }}টা প্রোডাক্টের স্টক ফাইলে নেই — স্টক ০ ধরে আসবে, যোগ হওয়ার পর বসিয়ে দেবেন।</p>{% endif %}
+      {% if info.inactive %}<p class="ws-note"><i class="bi bi-info-circle me-1"></i> {{ info.inactive|bn }}টা প্রোডাক্ট আগের জায়গায় লুকানো (draft) ছিল — এখানেও লুকানো থাকবে, ওয়েবসাইটে দেখাবে না।</p>{% endif %}
+    {% endif %}
+
+    {% if info.sample %}
+    <div class="ws-card mb-3">
+      <h5 class="ws-section-title">কেমন দেখাবে (প্রথম {{ info.sample|length|bn }}টা)</h5>
+      <div class="im-scroll">
+      <table class="im-table">
+        {% if kind == 'products' %}
+        <thead><tr><th>নাম</th><th>দাম</th><th>আগের দাম</th><th>স্টক</th><th>সাইজ-রং</th><th>ক্যাটাগরি</th><th>ছবি</th></tr></thead>
+        <tbody>
+        {% for p in info.sample %}
+          <tr><td>{{ p.name }}</td><td class="num">৳{{ p.price|floatformat:"-2" }}</td><td class="num">{% if p.compare_price %}৳{{ p.compare_price|floatformat:"-2" }}{% else %}—{% endif %}</td>
+            <td class="num">{% if p.stock_known %}{{ p.stock|bn }}{% else %}<span class="im-tag warn">নেই</span>{% endif %}</td>
+            <td>{% if p.variants %}{{ p.variants|length|bn }}টা{% else %}—{% endif %}</td><td>{{ p.category|default:"—" }}</td>
+            <td>{% if p.image %}<span class="im-tag ok">আছে</span>{% else %}—{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+        {% else %}
+        <thead><tr><th>নাম</th><th>মোবাইল</th><th>ঠিকানা</th></tr></thead>
+        <tbody>{% for c in info.sample %}<tr><td>{{ c.name }}</td><td class="num">{{ c.phone }}</td><td>{{ c.address|default:"—" }}</td></tr>{% endfor %}</tbody>
+        {% endif %}
+      </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if info.skipped %}
+    <details class="ws-card im-skip mb-3">
+      <summary>যে সারিগুলো বাদ যাবে ({{ info.skipped|length|bn }}টা) — কেন</summary>
+      <ul class="mt-2 mb-0">{% for row, name, reason in info.skipped|slice:":100" %}<li>সারি {{ row|bn }} — {{ name }}: {{ reason }}</li>{% endfor %}</ul>
+    </details>
+    {% endif %}
+
+    {% if info.will %}
+    <form method="post">
+      {% csrf_token %}<input type="hidden" name="action" value="confirm">
+      <button type="submit" class="ws-save" onclick="this.disabled=true;this.innerHTML='যোগ হচ্ছে…';this.form.submit()"><i class="bi bi-check2-circle me-1"></i> {{ info.will|bn }}টা {% if kind == 'products' %}প্রোডাক্ট{% else %}কাস্টমার{% endif %} যোগ করুন</button>
+    </form>
+    {% else %}
+    <p class="ws-warn">যোগ করার মতো কিছু পাওয়া যায়নি। উপরে কলাম ঠিক আছে কিনা দেখুন, বা বাদ যাওয়ার কারণগুলো দেখুন।</p>
+    {% endif %}
+    {% endif %}
+
+  {% else %}
+    <div class="ws-alert success"><i class="bi bi-check-circle-fill"></i><div>
+      {% if kind == 'products' %}{{ job.result.created|bn }}টা প্রোডাক্ট যোগ হয়েছে{% if job.result.variants %}, সাথে {{ job.result.variants|bn }}টা সাইজ-রং{% endif %}।
+      {% else %}{{ job.result.created|bn }}জন নতুন কাস্টমার যোগ হয়েছে{% if job.result.exists %}; {{ job.result.exists|bn }}জন আগে থেকেই ছিলেন{% endif %}।{% endif %}
+    </div></div>
+    {% if job.result.over_limit %}<p class="ws-warn">প্যাকেজের সীমার কারণে {{ job.result.over_limit|bn }}টা প্রোডাক্ট আসেনি। <a href="{% url 'billing' %}">প্যাকেজ বড় করে</a> একই ফাইল আবার তুললে বাকিগুলো আসবে — যেগুলো এসেছে সেগুলো বারকোড মিলিয়ে বাদ যাবে।</p>{% endif %}
+
+    {% if job.images_total %}
+    <div class="ws-card mb-3" id="imBox" data-url="{% url 'import_status' job.pk %}">
+      <h5 class="ws-section-title">ছবি নামানো হচ্ছে</h5>
+      <div class="im-bar mb-2"><div id="imBar" style="width:{% widthratio job.images_done|add:job.images_failed job.images_total 100 %}%"></div></div>
+      <p class="mb-0" style="font-size:14px"><b id="imDone">{{ job.images_done|bn }}</b> / {{ job.images_total|bn }}টা ছবি এসেছে<span id="imFailWrap"{% if not job.images_failed %} hidden{% endif %}> · <b id="imFail">{{ job.images_failed|bn }}</b>টা আনা যায়নি</span>।
+        <span id="imLeft"{% if not job.images_left %} hidden{% endif %}>পাতা বন্ধ করলেও পেছনে চলতে থাকবে।</span></p>
+      {% if stalled %}
+      <form method="post" class="mt-2">{% csrf_token %}<input type="hidden" name="action" value="images">
+        <button type="submit" class="btn-icon"><i class="bi bi-arrow-repeat"></i> বাকি ছবি আনুন</button></form>
+      {% endif %}
+      {% if job.result.image_failed %}
+      <details class="im-skip mt-2"><summary>যে ছবিগুলো আনা যায়নি</summary>
+        <p class="ws-help">লিংক ভুল, ছবি সরিয়ে ফেলা হয়েছে, বা ছবি ১০ MB-র বেশি। এগুলো প্রোডাক্ট এডিট করে নিজে দিন।</p>
+        <ul class="mb-0">{% for url in job.result.image_failed %}<li style="word-break:break-all">{{ url }}</li>{% endfor %}</ul></details>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if job.result.skipped %}
+    <details class="ws-card im-skip mb-3">
+      <summary>যে সারিগুলো বাদ গেছে ({{ job.result.skipped_count|bn }}টা)</summary>
+      <ul class="mt-2 mb-0">{% for row, name, reason in job.result.skipped %}<li>সারি {{ row|bn }} — {{ name }}: {{ reason }}</li>{% endfor %}</ul>
+    </details>
+    {% endif %}
+
+    <a href="{% url conf.list_url %}" class="ws-save d-inline-block text-decoration-none"><i class="bi bi-arrow-right me-1"></i> {% if kind == 'products' %}প্রোডাক্টগুলো দেখুন{% else %}কাস্টমারের তালিকা দেখুন{% endif %}</a>
+  {% endif %}
+  </div>
+</div>
+{% if job.status == 'done' and job.images_left %}
+<script>
+(function () {
+  var box = document.getElementById('imBox'); if (!box) return;
+  var bn = function (n) { return String(n).replace(/\d/g, function (d) { return '০১২৩৪৫৬৭৮৯'[d]; }); };
+  var tick = function () {
+    fetch(box.dataset.url, {credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (d) {
+      document.getElementById('imDone').textContent = bn(d.done);
+      document.getElementById('imFail').textContent = bn(d.failed);
+      document.getElementById('imFailWrap').hidden = !d.failed;
+      document.getElementById('imBar').style.width = (d.total ? Math.round((d.done + d.failed) * 100 / d.total) : 100) + '%';
+      if (d.left) { setTimeout(tick, 3000); } else { document.getElementById('imLeft').hidden = true; }
+    }).catch(function () { setTimeout(tick, 6000); });
+  };
+  setTimeout(tick, 2000);
+})();
+</script>
+{% endif %}
+{% endblock %}

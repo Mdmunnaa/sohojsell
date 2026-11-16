@@ -5662,3 +5662,258 @@ class BuyerTrustTests(ShopTestMixin, TestCase):
         self.assertRegex(body, r'Contact: mailto:\S+@\S+')
         self.assertRegex(body, r'Expires: \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ')
         self.assertIn('/security/', body)
+
+
+SHOPIFY_EXPORT = (
+    'Handle,Title,Body (HTML),Vendor,Product Category,Type,Tags,Published,Option1 Name,Option1 Value,Option2 Name,'
+    'Option2 Value,Variant SKU,Variant Inventory Qty,Variant Price,Variant Compare At Price,Variant Barcode,Image Src,'
+    'Image Position,Cost per item,Status\n'
+    'cotton-tee,Cotton Tee,"<p>Soft <b>cotton</b></p><ul><li>180 GSM</li></ul>",Shop,Apparel > Shirts,T-Shirts,,TRUE,'
+    'Size,M,Color,Red,TEE-M,5,450.00,550.00,,https://cdn.example.com/tee.png,1,260.00,active\n'
+    'cotton-tee,,,,,,,,,L,,Red,TEE-L,3,450.00,550.00,,https://cdn.example.com/tee2.png,2,260.00,\n'
+    'cotton-tee,,,,,,,,,XL,,Blue,TEE-XL,0,480.00,550.00,,,,,\n'
+    'mug,Coffee Mug,,Shop,,Kitchen,,TRUE,Title,Default Title,,,MUG1,12,"1,250.00",,8900000000001,'
+    'https://cdn.example.com/mug.png,1,700,draft\n'
+    'broken,Broken Item,,Shop,,,,TRUE,Title,Default Title,,,,,,,,,,,active\n'
+)
+WOO_EXPORT = (
+    'ID,Type,SKU,Name,Published,Short description,Description,In stock?,Stock,Regular price,Sale price,Categories,Images,'
+    'Parent,Attribute 1 name,Attribute 1 value(s),Attribute 2 name,Attribute 2 value(s)\n'
+    '10,simple,WOO-1,Leather Wallet,1,Short,<p>Genuine leather</p>,1,7,1500,1200,Accessories > Wallets,'
+    '"https://shop.example/w1.jpg, https://shop.example/w2.jpg",,,,,\n'
+    '11,variable,WOO-2,Panjabi,1,,Eid collection,1,,,,Clothing > Panjabi,https://shop.example/p.jpg,,Size,"M, L",Color,White\n'
+    '12,variation,WOO-2-M,Panjabi - M,1,,,1,4,2500,2200,,,id:11,Size,M,Color,White\n'
+    '13,variation,WOO-2-L,Panjabi - L,1,,,1,2,2500,,,,WOO-2,Size,L,Color,White\n'
+    '14,external,EXT,Affiliate,1,,,1,,99,,,,,,,,\n'
+)
+
+
+class ImportFromOtherPlatformsTests(ShopTestMixin, TestCase):
+    """অন্য জায়গা থেকে আনা: Shopify, WooCommerce, বাংলা Excel, কলাম মেলানো, প্যাকেজের সীমা, ছবি, কাস্টমার।"""
+
+    def setUp(self):
+        import shutil
+        import tempfile
+        self.media = tempfile.mkdtemp()
+        override = override_settings(MEDIA_ROOT=self.media, IMPORT_BACKGROUND=False)
+        override.enable()
+        self.addCleanup(override.disable)
+        self.addCleanup(shutil.rmtree, self.media, True)
+        self.user, self.shop = self.make_shop(slug='mover2')
+
+    def upload(self, content, name='products.csv', url='product_import'):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        data = content if isinstance(content, bytes) else content.encode('utf-8')
+        response = self.client.post(reverse(url), {'file': SimpleUploadedFile(name, data)})
+        self.assertEqual(response.status_code, 302, getattr(response, 'content', b'')[:300])
+        from .models import ImportJob
+        return ImportJob.objects.latest('id'), response
+
+    def fake_images(self):
+        from io import BytesIO
+        from PIL import Image
+
+        class Resp:
+            def __init__(self, url):
+                self.status_code = 404 if 'missing' in url else 200
+                self.headers = {'Content-Type': 'image/png'}
+                buffer = BytesIO()
+                Image.new('RGB', (900, 600), (10, 120, 200)).save(buffer, format='PNG')
+                self.body = buffer.getvalue()
+
+            def iter_content(self, size):
+                yield self.body
+
+            def close(self):
+                pass
+        calls = []
+
+        def get(url, **kwargs):
+            calls.append(url)
+            return Resp(url)
+        patches = [mock.patch('store.views_import.requests.get', get),
+                   mock.patch('store.views_import._public_host', return_value=True)]
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+        return calls
+
+    def test_shopify_export_with_variants_and_images(self):
+        from .models import ImportJob, Product
+        calls = self.fake_images()
+        job, response = self.upload(SHOPIFY_EXPORT)
+        self.assertEqual((job.source, job.status), ('shopify', ImportJob.NEW))
+        page = self.client.get(response.url).content.decode()
+        self.assertIn('Shopify-এর ফাইল চেনা গেছে', page)
+        self.assertIn('<b>২</b><span>প্রোডাক্ট যোগ হবে</span>', page)
+        self.assertIn('দাম নেই বা দাম সংখ্যায় লেখা নেই', page)
+        self.assertIn('আগের জায়গায় লুকানো (draft)', page)
+        self.client.post(response.url, {'action': 'confirm'})
+        job.refresh_from_db()
+        self.assertEqual((job.status, job.result['created'], job.result['variants'], job.rows), (ImportJob.DONE, 2, 3, []))
+        tee = Product.objects.get(shop=self.shop, name='Cotton Tee')
+        self.assertEqual((tee.price, tee.compare_price, tee.cost_price, tee.stock_quantity, tee.category.name,
+                          tee.has_variants), (Decimal('450.00'), Decimal('550.00'), Decimal('260.00'), 8, 'T-Shirts', True))
+        self.assertEqual(tee.description, 'Soft cotton\n• 180 GSM')
+        self.assertEqual([(v.name, v.price, v.stock_quantity) for v in tee.variants.all()],
+                         [('M / Red', None, 5), ('L / Red', None, 3), ('XL / Blue', Decimal('480.00'), 0)])
+        mug = Product.objects.get(shop=self.shop, name='Coffee Mug')
+        self.assertEqual((mug.price, mug.is_active, mug.barcode, mug.has_variants), (Decimal('1250.00'), False, '8900000000001', False))
+        self.assertTrue(tee.image and tee.thumbnail and mug.image)                 # ছবি নেমে বসেছে
+        self.assertEqual(calls, ['https://cdn.example.com/tee.png', 'https://cdn.example.com/mug.png'])
+        self.assertEqual((job.images_total, job.images_done, job.images_failed), (2, 2, 0))
+        done = self.client.get(response.url).content.decode()
+        self.assertIn('২টা প্রোডাক্ট যোগ হয়েছে, সাথে ৩টা সাইজ-রং', done)
+        # একই ফাইল আবার — বারকোড মিলে যাওয়া প্রোডাক্ট দুবার হয় না
+        again, response = self.upload(SHOPIFY_EXPORT)
+        self.assertIn('বারকোড/SKU দোকানে আগে থেকেই আছে', self.client.get(response.url).content.decode())
+
+    def test_woocommerce_export(self):
+        from .models import Product
+        self.fake_images()
+        job, response = self.upload(WOO_EXPORT)
+        self.assertEqual(job.source, 'woocommerce')
+        self.client.post(response.url, {'action': 'confirm'})
+        wallet = Product.objects.get(shop=self.shop, name='Leather Wallet')
+        self.assertEqual((wallet.price, wallet.compare_price, wallet.stock_quantity, wallet.category.name, wallet.barcode),
+                         (Decimal('1200.00'), Decimal('1500.00'), 7, 'Wallets', 'WOO-1'))
+        panjabi = Product.objects.get(shop=self.shop, name='Panjabi')
+        self.assertEqual((panjabi.price, panjabi.compare_price, panjabi.stock_quantity), (Decimal('2200.00'), Decimal('2500.00'), 6))
+        self.assertEqual([(v.name, v.price, v.barcode) for v in panjabi.variants.all()],
+                         [('M / White', None, 'WOO-2-M'), ('L / White', Decimal('2500.00'), 'WOO-2-L')])
+        job.refresh_from_db()
+        self.assertIn('এই ধরনের প্রোডাক্ট (external) আনা যায় না', str(job.result['skipped']))
+
+    def test_bangla_excel_and_column_matching(self):
+        from io import BytesIO
+        from openpyxl import Workbook
+        from .models import Product
+        book = Workbook()
+        sheet = book.active
+        sheet.append(['নাম', 'দাম', 'আগের দাম', 'স্টক', 'সাইজ', 'রং'])
+        sheet.append(['থ্রি পিস', '৳ ১,৪৫০', 1800, 5, 'M', 'লাল'])
+        sheet.append(['থ্রি পিস', 1450, None, 2, 'L', 'লাল'])
+        sheet.append(['শাড়ি', 'Tk. 2500', None, None, None, None])
+        sheet.append(['ভুল দাম', 'abc', None, 1, None, None])
+        buffer = BytesIO()
+        book.save(buffer)
+        job, response = self.upload(buffer.getvalue(), name='মাল.xlsx')
+        self.assertEqual(job.source, 'generic')
+        page = self.client.get(response.url).content.decode()
+        self.assertIn('কলাম মিলিয়ে নেওয়া হয়েছে', page)
+        self.assertIn('১টা প্রোডাক্টের স্টক ফাইলে নেই', page)
+        self.client.post(response.url, {'action': 'confirm'})
+        three = Product.objects.get(shop=self.shop, name='থ্রি পিস')
+        self.assertEqual((three.price, three.compare_price, three.stock_quantity), (Decimal('1450.00'), Decimal('1800.00'), 7))
+        self.assertEqual(sorted(three.variants.values_list('name', flat=True)), ['L / লাল', 'M / লাল'])
+        self.assertEqual(Product.objects.get(shop=self.shop, name='শাড়ি').price, Decimal('2500.00'))
+        self.assertFalse(Product.objects.filter(shop=self.shop, name='ভুল দাম').exists())
+
+        # অচেনা কলাম: সেলার নিজে বেছে দেন
+        job, response = self.upload('Col A,Col B,Col C\nBag,350,4\n', name='other.csv')
+        page = self.client.get(response.url).content.decode()
+        self.assertIn('কোন কলামে কী আছে, বেছে দিন', page)
+        self.assertIn('প্রোডাক্টের নাম, বিক্রির দাম', page.replace('</span>', ''))
+        self.client.post(response.url, {'action': 'map', 'map_name': '0', 'map_price': '1', 'map_stock': '2'})
+        self.client.post(response.url, {'action': 'confirm'})
+        bag = Product.objects.get(shop=self.shop, name='Bag')
+        self.assertEqual((bag.price, bag.stock_quantity), (Decimal('350.00'), 4))
+
+    def test_plan_limit_bad_files_and_permissions(self):
+        from .models import ImportJob, Product, StaffProfile
+        self.shop.subscription_plan = 'Basic'
+        self.shop.valid_until = timezone.localdate() + timedelta(days=10)
+        self.shop.save()
+        Product.objects.bulk_create([Product(shop=self.shop, name=f'p{i}', price=10, barcode=f'B{i}') for i in range(198)])
+        job, response = self.upload('Name,Price\n' + ''.join(f'n{i},{i + 1}\n' for i in range(5)))
+        self.assertIn('প্রথম ২টা আসবে, বাকি ৩টা আসবে না', self.client.get(response.url).content.decode())
+        self.client.post(response.url, {'action': 'confirm'})
+        job.refresh_from_db()
+        self.assertEqual((job.result['created'], job.result['over_limit'], Product.objects.filter(shop=self.shop).count()),
+                         (2, 3, 200))
+
+        bad = self.client.post(reverse('product_import'), {'file': __import__('django').core.files.uploadedfile.SimpleUploadedFile('old.xls', b'\xd0\xcf')}, follow=True)
+        self.assertContains(bad, 'পুরনো .xls ফাইল চলে না')
+        empty = self.client.post(reverse('product_import'), {'file': __import__('django').core.files.uploadedfile.SimpleUploadedFile('e.csv', b'Name,Price\n')}, follow=True)
+        self.assertContains(empty, 'ফাইলে কোনো সারি পাওয়া যায়নি')
+
+        other_user, other = self.make_shop(phone='01722222222', slug='someoneelse')
+        self.assertEqual(self.client.get(reverse('product_import_job', args=[job.pk])).status_code, 404)
+        self.assertEqual(self.client.get(reverse('customer_import_job', args=[job.pk])).status_code, 404)
+
+        staff = User.objects.create_user(phone_number='01933333377', password='Test-pass-123', name='S')
+        StaffProfile.objects.create(user=staff, shop=other, can_manage_products=False, can_manage_customers=True)
+        self.client.force_login(staff)
+        self.assertRedirects(self.client.get(reverse('product_import')), reverse('dashboard'), fetch_redirect_response=False)
+        self.assertEqual(self.client.get(reverse('customer_import')).status_code, 200)
+
+    def test_customer_list_import(self):
+        from .models import Customer
+        Customer.objects.create(shop=self.shop, name='Old', phone='01711111112', address='x')
+        content = ('First Name,Last Name,Email,Default Address Address1,Default Address Address2,Default Address City,Phone\n'
+                   'Rahima,Akter,r@x.com,House 3,Road 2,Dhaka,+880 1712-345678\n'
+                   'Karim,,k@x.com,,,Sylhet,০১৮১২৩৪৫৬৭৮\n'
+                   'Same,Person,,,,,8801712345678\n'
+                   'Old,One,,,,,01711111112\n'
+                   'No,Phone,,,,,12345\n')
+        job, response = self.upload(content, name='customers_export.csv', url='customer_import')
+        page = self.client.get(response.url).content.decode()
+        self.assertIn('First Name + Last Name', page)
+        self.assertIn('একই নম্বর ফাইলে আগেও আছে', page)
+        self.client.post(response.url, {'action': 'confirm'})
+        rahima = Customer.objects.get(shop=self.shop, phone='01712345678')
+        self.assertEqual((rahima.name, rahima.address), ('Rahima Akter', 'House 3, Road 2, Dhaka'))
+        self.assertTrue(Customer.objects.filter(shop=self.shop, phone='01812345678', name='Karim').exists())
+        job.refresh_from_db()
+        self.assertEqual((job.result['created'], job.result['exists'], job.result['skipped_count']), (2, 1, 2))
+        self.assertEqual(Customer.objects.filter(shop=self.shop).count(), 3)
+
+    def test_images_stay_on_the_public_internet_and_resume(self):
+        from . import views_import
+        from .models import ImportJob, Product
+        self.assertFalse(views_import._public_host('localhost'))
+        self.assertFalse(views_import._public_host('169.254.169.254'))
+        for url in ('file:///etc/passwd', 'http://127.0.0.1/admin', 'ftp://example.com/a.png'):
+            with self.assertRaises(ValueError):
+                views_import.fetch_image(url)
+        calls = self.fake_images()
+        product = Product.objects.create(shop=self.shop, name='X', price=10)
+        job = ImportJob.objects.create(shop=self.shop, kind='products', status='done',
+                                       image_queue=[[product.pk, 'https://cdn.example.com/missing.png'],
+                                                    [product.pk, 'https://cdn.example.com/ok.png']],
+                                       images_total=2, images_failed=0, images_done=0)
+        self.assertTrue(views_import.start_images(job.pk))
+        job.refresh_from_db()
+        self.assertEqual((job.images_done, job.images_failed, job.result['image_failed']),
+                         (1, 1, ['https://cdn.example.com/missing.png']))
+        self.assertFalse(views_import.start_images(job.pk))           # এইমাত্র চলেছে — আবার না
+        ImportJob.objects.filter(pk=job.pk).update(created_at=timezone.now() - timedelta(days=8))
+        self.assertEqual(views_import.daily_cleanup()['deleted'], 1)
+        self.assertEqual(len(calls), 2)
+
+    def test_entry_points_and_demo(self):
+        self.assertContains(self.client.get(reverse('product_list')), reverse('product_import'))
+        self.assertContains(self.client.get(reverse('customer_list')), reverse('customer_import'))
+        self.assertContains(self.client.get(reverse('add_product')), reverse('product_import'))
+        start = self.client.get(reverse('product_import'))
+        self.assertContains(start, 'Shopify Admin')
+        self.assertContains(start, reverse('guide_detail', args=['move-to-sellpunch']))
+
+    def test_public_pages_explain_moving(self):
+        self.client.logout()
+        page = self.client.get(reverse('mk_feature', args=['move-to-sellpunch']))
+        self.assertContains(page, 'Shopify থেকে সরাসরি')
+        self.assertContains(page, '"FAQPage"')
+        self.assertContains(self.client.get(reverse('mk_feature_en', args=['move-to-sellpunch'])), 'How do I move from Shopify to SellPunch?')
+        guide = self.client.get(reverse('guide_detail', args=['move-to-sellpunch']))
+        self.assertContains(guide, 'guides/import-preview')
+        self.assertContains(guide, 'Shopify বা WooCommerce থেকে SellPunch-এ আসতে কত সময় লাগে?')
+        home = self.client.get('/').content.decode()
+        self.assertIn('অন্য প্ল্যাটফর্ম থেকে আনুন', home)
+        self.assertIn(reverse('mk_feature', args=['move-to-sellpunch']), home)
+        sitemap = self.client.get('/sitemap.xml').content.decode()
+        self.assertIn(reverse('mk_feature_en', args=['move-to-sellpunch']), sitemap)
+        self.assertIn(reverse('guide_detail', args=['move-to-sellpunch']), sitemap)
+        llms = self.client.get('/llms.txt').content.decode()
+        self.assertIn('## Moving to SellPunch from another platform', llms)
+        self.assertIn('without retyping products?', llms)

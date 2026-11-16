@@ -5,6 +5,7 @@ from django.views.generic import RedirectView
 from . import website_views
 from . import views
 from . import views_cron
+from . import views_import
 from . import payment_views
 from . import views_pos
 from . import views_sms
@@ -232,6 +233,11 @@ urlpatterns = [
 
     path('products/download-template/', views.download_csv_template, name='download_csv_template'),
     path('products/import-csv/', views.import_bulk_products, name='import_bulk_products'),
+    path('products/import/', views_import.product_import, name='product_import'),
+    path('products/import/<int:pk>/', views_import.import_job, name='product_import_job'),
+    path('products/import/<int:pk>/status/', views_import.import_status, name='import_status'),
+    path('customers/import/', views_import.customer_import, name='customer_import'),
+    path('customers/import/<int:pk>/', views_import.import_job, name='customer_import_job'),
 
     # Facebook Integration (নতুন)
     path('facebook/connect/', views.fb_connect, name='fb_connect'),

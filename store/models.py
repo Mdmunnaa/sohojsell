@@ -1237,3 +1237,40 @@ class BackupCheck(models.Model):
 
     def __str__(self):
         return f"{self.checked_at:%Y-%m-%d} {'ok' if self.ok else 'failed'}"
+
+
+class ImportJob(models.Model):
+    """
+    অন্য জায়গা থেকে আনা (store/views_import.py): ফাইলের সারি এখানে থাকে যতক্ষণ সেলার দেখে নিশ্চিত না করেন;
+    তারপর কী যোগ হলো আর ছবি নামানোর অগ্রগতি। ৭ দিন পর মুছে যায় (রোজের cron)।
+    """
+    PRODUCTS, CUSTOMERS = 'products', 'customers'
+    KIND_CHOICES = [(PRODUCTS, 'প্রোডাক্ট'), (CUSTOMERS, 'কাস্টমার')]
+    NEW, DONE = 'new', 'done'
+
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='import_jobs')
+    kind = models.CharField(max_length=12, choices=KIND_CHOICES)
+    filename = models.CharField(max_length=200, blank=True, default='')
+    source = models.CharField(max_length=20, blank=True, default='')
+    headers = models.JSONField(default=list)
+    rows = models.JSONField(default=list)
+    mapping = models.JSONField(default=dict)
+    status = models.CharField(max_length=8, default=NEW)
+    result = models.JSONField(default=dict)                 # কয়টা যোগ, কয়টা বাদ ইত্যাদি
+    image_queue = models.JSONField(default=list)            # [[product_id, url], ...] — নামানো বাকি
+    images_total = models.PositiveIntegerField(default=0)
+    images_done = models.PositiveIntegerField(default=0)
+    images_failed = models.PositiveIntegerField(default=0)
+    images_started_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.shop_id} {self.kind} {self.filename}'
+
+    @property
+    def images_left(self):
+        return max(0, self.images_total - self.images_done - self.images_failed)
