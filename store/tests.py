@@ -12,7 +12,7 @@ from decimal import Decimal
 from unittest import mock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -3051,6 +3051,20 @@ class DemoShopTests(TestCase):
         # হিসাব মেলে: অর্ডারের তারিখ ৯০ দিনে ছড়ানো
         oldest = shop.orders.order_by('created_at').first().created_at
         self.assertLess(oldest, timezone.now() - timedelta(days=80))
+        # Facebook অটোমেশনের নমুনা — Facebook-এ কিছু যায় না
+        from . import messenger
+        from .models import FacebookPageConnection, MessengerContact
+        shop = self.shop
+        self.assertTrue(FacebookPageConnection.objects.filter(shop=shop).exists())
+        self.assertEqual(MessengerContact.objects.filter(shop=shop, waiting_since__isnull=False).count(), 2)
+        self.assertTrue(Order.objects.filter(shop=shop, fb_source='comment').exclude(fb_post_id='').exists())
+        self.assertTrue(Order.objects.filter(shop=shop, fb_source='chat', messenger_contact__isnull=False).exists())
+        with mock.patch('store.facebook_bot.subscribe_page') as subscribe:
+            self.assertEqual(messenger.refresh_pages(), 0)
+        subscribe.assert_not_called()
+        self.client.force_login(shop.user)
+        self.assertContains(self.client.get(reverse('fb_automation'), {'tab': 'sales'}), 'যে পোস্ট সবচেয়ে বেশি বিক্রি আনল')
+        self.assertContains(self.client.get(reverse('messenger_inbox')), 'উত্তর দিয়েছি')
 
     def test_rebuild_keeps_images_and_resets_activity(self):
         from store import demo
@@ -5409,3 +5423,114 @@ class FacebookAutomationTests(ShopTestMixin, TestCase):
         with mock.patch('store.facebook_bot.requests.post', post):
             self.assertTrue(subscribe_page(self.PAGE, 'T'))
         self.assertEqual(sent[-1], 'feed')
+
+
+    def test_photos_get_one_reply_and_linked_orders_need_no_number(self):
+        from .models import Customer, MessengerContact
+        self.msg('hi')
+        count = len(self.graph.sent())
+        for _ in range(3):
+            self.msg(None, attachments=[{'type': 'image', 'payload': {'url': 'https://x/y.jpg'}}])
+        self.assertEqual(len(self.graph.sent()), count + 1)        # তিনটা ছবিতে একটাই উত্তর
+        customer = Customer.objects.create(shop=self.shop, name='R', phone='01712345678', address='x')
+        order = Order.objects.create(shop=self.shop, customer=customer, source='storefront', total_amount=800,
+                                     messenger_contact=self.contact(), status='Confirmed')
+        MessengerContact.objects.update(bot_paused_until=None)
+        self.msg('আমার অর্ডার কোথায়?')
+        self.assertIn(f'অর্ডার নং {order.id}: ', self.last_text())
+
+
+class FacebookSeoTests(TestCase):
+    """Facebook অটো রিপ্লাই আর নতুন ব্যবসার SEO পাতা, হোমপেজ, গাইড, llms.txt, HQ-র সুইচ আর IndexNow।"""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def go_live(self, on=True):
+        from django.core.cache import cache
+        from .models import MasterSetting
+        MasterSetting.objects.update_or_create(id=1, defaults={'facebook_live': on})
+        cache.clear()
+
+    def test_feature_pages_tell_the_truth_about_meta_review(self):
+        bn = self.client.get(reverse('mk_feature', args=['facebook-auto-reply'])).content.decode()
+        en = self.client.get(reverse('mk_feature_en', args=['facebook-auto-reply'])).content.decode()
+        self.assertIn('ফেসবুক পেজের <em>অটো রিপ্লাই</em>', bn)
+        self.assertIn('"FAQPage"', bn)
+        self.assertIn('SellPunch-এর যাচাই এখন চলছে', bn)
+        self.assertIn('class="mk-pending"', bn)
+        self.assertIn('class="mk-pending"', en)
+        self.assertIn('Facebook পেজ যুক্ত করুন', bn)          # এই পাতার নিজের ধাপ
+        self.go_live()
+        bn = self.client.get(reverse('mk_feature', args=['facebook-auto-reply'])).content.decode()
+        self.assertNotIn('class="mk-pending"', bn)
+        page = self.client.get(reverse('mk_industry', args=['new-business']))
+        self.assertContains(page, 'অনলাইন ব্যবসা শুরু করতে কী কী লাগে?')
+        self.assertNotContains(page, 'class="mk-pending"')
+        self.assertContains(self.client.get(reverse('mk_industry_en', args=['new-business'])),
+                            'What do I need to start an online business in Bangladesh?')
+
+    def test_homepage_sitemap_and_llms(self):
+        home = self.client.get('/').content.decode()
+        self.assertIn('Facebook অটো রিপ্লাই', home)
+        self.assertIn('class="feat-pending"', home)
+        self.assertIn('"featureList"', home)
+        self.assertIn(reverse('mk_feature', args=['facebook-auto-reply']), home)
+        self.assertIn(reverse('mk_industry', args=['new-business']), home)
+        self.assertIn('Is there auto reply for my Facebook page?', self.client.get(reverse('landing_page_en')).content.decode())
+        sitemap = self.client.get('/sitemap.xml').content.decode()
+        for path in (reverse('mk_feature', args=['facebook-auto-reply']), reverse('mk_industry_en', args=['new-business']),
+                     reverse('guide_detail', args=['facebook-automation'])):
+            self.assertIn(path, sitemap)
+        llms = self.client.get('/llms.txt').content.decode()
+        self.assertIn('## Facebook page auto reply (comments and Messenger)', llms)
+        self.assertIn("Status: built and in Meta's app review", llms)
+        self.assertIn('"I want to start an online business in Bangladesh, where do I begin?"', llms)
+        self.go_live()
+        self.assertNotIn('class="feat-pending"', self.client.get('/').content.decode())
+        self.assertIn('Status: live for every shop.', self.client.get('/llms.txt').content.decode())
+
+    def test_guide_page(self):
+        response = self.client.get(reverse('guide_detail', args=['facebook-automation']))
+        self.assertContains(response, 'class="g-pending"')
+        self.assertContains(response, 'guides/fb-comments')
+        self.assertContains(response, '"FAQPage"')
+        self.assertContains(self.client.get(reverse('guide_index')), reverse('guide_detail', args=['facebook-automation']))
+
+    def test_hq_switch(self):
+        from .models import MasterSetting
+        admin = User.objects.create_superuser(phone_number='01700000150', password='Admin-pass-150', name='Boss')
+        self.client.force_login(admin)
+        self.assertContains(self.client.get(reverse('master_settings')), 'name="facebook_live"')
+        self.client.get(reverse('mk_feature', args=['facebook-auto-reply']))      # ক্যাশে "চালু না" বসে
+        self.client.post(reverse('master_settings'), {'signups_open': 'on', 'facebook_live': 'on', 'sms_rate': '0.40'})
+        self.assertTrue(MasterSetting.objects.get().facebook_live)
+        self.assertNotContains(self.client.get(reverse('mk_feature', args=['facebook-auto-reply'])), 'class="mk-pending"')
+
+    @override_settings(STORE_BASE_DOMAIN='sellpunch.com', INDEXNOW_KEY='')
+    def test_indexnow(self):
+        from . import indexnow
+        key = indexnow.key()
+        self.assertRegex(key, r'^[0-9a-f]{32}$')
+        self.assertEqual(self.client.get(f'/{key}.txt').content.decode(), key)
+        self.assertEqual(self.client.get('/' + '0' * 32 + '.txt').status_code, 404)
+        sent = []
+
+        def post(url, json=None, timeout=None, headers=None):
+            sent.append(json)
+            return FakeResponse({}, 202)
+        request = RequestFactory().get('/')
+        with mock.patch('store.indexnow.requests.post', post):
+            first = indexnow.submit(request)
+            second = indexnow.submit(request)
+            self.go_live()                          # পাতার লেখা বদলালে আবার পাঠায়
+            third = indexnow.submit(request)
+        self.assertGreater(first['sent'], 20)
+        self.assertIn('unchanged', second)
+        self.assertIn('sent', third)
+        self.assertEqual(sent[0]['host'], 'sellpunch.com')
+        self.assertEqual(sent[0]['keyLocation'], f'https://sellpunch.com/{key}.txt')
+        self.assertIn('https://sellpunch.com/features/facebook-auto-reply/', sent[0]['urlList'])
+        with override_settings(STORE_BASE_DOMAIN=''):
+            self.assertEqual(indexnow.submit(request), {'skipped': 'no domain'})

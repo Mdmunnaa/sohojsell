@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from django.views.generic import TemplateView
 from django.views.generic import RedirectView
 
@@ -58,6 +58,7 @@ urlpatterns = [
     path('guide/', views_guides.guide_index, name='guide_index'),
     path('guide/<slug:slug>/', views_guides.guide_detail, name='guide_detail'),
     path('llms-full.txt', views.site_llms_full, name='site_llms_full'),
+    re_path(r'^(?P<key>[0-9a-f]{32})\.txt$', views.indexnow_key, name='indexnow_key'),
 
     # Dashboard
     path('dashboard/', views.seller_dashboard, name='dashboard'),

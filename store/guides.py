@@ -23,7 +23,7 @@ from markdown.extensions.toc import slugify_unicode
 GUIDES_DIR = Path(__file__).resolve().parent / 'guide_content'
 SHOTS_MANIFEST = GUIDES_DIR / 'shots.json'
 SHOT_STATIC_DIR = 'guides'           # store/static/guides/<id>.webp
-GUIDES_UPDATED = '2026-11-15'        # গাইড বড় করে বদলালে এই তারিখ বদলান (structured data-র dateModified)
+GUIDES_UPDATED = '2026-11-16'        # গাইড বড় করে বদলালে এই তারিখ বদলান (structured data-র dateModified)
 FAQ_HEADING = 'প্রশ্ন ও উত্তর'
 
 # ক্রমটাই গাইড সেন্টারের ক্রম। title/summary .md-র meta থেকে আসে।
@@ -39,6 +39,7 @@ GUIDE_REGISTRY = [
     {'slug': 'website', 'category': 'ওয়েবসাইট', 'icon': 'bi-globe2', 'file': 'website.md'},
     {'slug': 'online-payment', 'category': 'ওয়েবসাইট', 'icon': 'bi-credit-card', 'file': 'online-payment.md'},
     {'slug': 'custom-domain', 'category': 'ওয়েবসাইট', 'icon': 'bi-link-45deg', 'file': 'custom-domain.md'},
+    {'slug': 'facebook-automation', 'category': 'মার্কেটিং', 'icon': 'bi-messenger', 'file': 'facebook-automation.md'},
     {'slug': 'landing-page', 'category': 'মার্কেটিং', 'icon': 'bi-window-stack', 'file': 'landing-page.md'},
     {'slug': 'marketing', 'category': 'মার্কেটিং', 'icon': 'bi-megaphone', 'file': 'marketing.md'},
     {'slug': 'customers-due', 'category': 'কাস্টমার ও হিসাব', 'icon': 'bi-journal-text', 'file': 'customers-due.md'},

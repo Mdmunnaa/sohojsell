@@ -410,6 +410,9 @@ class Bot:
         self.wait_for_human()
         if not is_open(self.connection, self.now):
             return self.offhours()
+        if self.contact.fallback_sent_at and self.now - self.contact.fallback_sent_at < FALLBACK_GAP:
+            return False          # কয়েকটা ছবি একসাথে পাঠালে প্রতিটায় একই উত্তর না
+        self.contact.fallback_sent_at = self.now
         return self.say(self.t('পেয়েছি! দোকানের একজন দেখে শীঘ্রই উত্তর দেবেন। দাম জানতে প্রোডাক্টের কোড (যেমন P12) লিখতে পারেন।'),
                         self.menu())
 
@@ -564,7 +567,7 @@ class Bot:
             return self.say(self.status_text(order), self.menu())
         latest = (Order.objects.filter(shop=self.shop, messenger_contact=self.contact).exclude(source='pos')
                   .order_by('-id').first())
-        if latest and not raw:
+        if latest and not (number or phone):       # Messenger থেকে অর্ডার করে থাকলে নম্বর লাগে না
             return self.say(self.status_text(latest), self.menu())
         self.set_state('track', {})
         link = absolute_storefront_link(self.shop, 'storefront_track')
@@ -891,7 +894,8 @@ def refresh_pages(limit=300):
     from .models import FacebookPageConnection
     from .plans import has_facebook
     done = 0
-    for connection in FacebookPageConnection.objects.filter(is_active=True).select_related('shop')[:limit]:
+    pages = FacebookPageConnection.objects.filter(is_active=True).exclude(shop__is_demo=True).select_related('shop')
+    for connection in pages[:limit]:
         if not has_facebook(connection.shop):
             continue
         facebook_bot.subscribe_page(connection.page_id, connection.page_access_token)

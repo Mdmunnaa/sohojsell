@@ -148,8 +148,10 @@ def _page(request, kind, slug, lang):
     related = [marketing.get('feature', s) for s in page.get('related', [])]
     crumbs = [(ui['home'], _home_url(lang)), (ui['features'] if kind == 'feature' else ui['industries'], _index_url(lang)),
               (text['nav'], _page_url(kind, slug, lang))]
+    pending = text.get('pending', '') if page.get('facebook') and not marketing.facebook_live() else ''
     return _render(request, lang, 'store/marketing/page.html', {
-        'page': page, 'text': text, 'kind': kind, 'image': _image(page, lang),
+        'page': page, 'text': text, 'kind': kind, 'image': _image(page, lang), 'pending': pending,
+        'steps': text.get('steps') or ui['steps'],
         'related': _cards([p for p in related if p], 'feature', lang),
     }, path_bn=_page_url(kind, slug, 'bn'), path_en=_page_url(kind, slug, 'en'),
         title=text['title'], description=text['description'], crumbs=crumbs, faq=text['faq'])

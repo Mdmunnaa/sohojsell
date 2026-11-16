@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ site.name }} — ১ মিনিটে ই-কমার্স ওয়েবসাইট, POS আর কুরিয়ার</title>
-<meta name="description" content="১ মিনিটে নিজের ই-কমার্স ওয়েবসাইট — সাথে দোকানের POS, Steadfast/Pathao/RedX কুরিয়ার, SMS, বাকির খাতা আর লাভের হিসাব। Facebook সেলার আর ছোট দোকানের জন্য, পুরোটা বাংলায়। ৩০ দিন ফ্রি।">
+<meta name="description" content="১ মিনিটে নিজের ই-কমার্স ওয়েবসাইট — সাথে Facebook কমেন্ট আর Messenger-এ অটো রিপ্লাই, দোকানের POS, Steadfast/Pathao/RedX কুরিয়ার, বাকির খাতা আর লাভের হিসাব। পুরোটা বাংলায়, ৩০ দিন ফ্রি।">
 <meta property="og:title" content="{{ site.name }} — ১ মিনিটে ই-কমার্স ওয়েবসাইট, POS আর কুরিয়ার">
 <meta property="og:description" content="ওয়েবসাইট, POS, অর্ডার, কুরিয়ার, SMS, বাকির খাতা আর লাভের হিসাব — সব এক জায়গায়। ৩০ দিন ফ্রি, কার্ড লাগে না।">
 {% include 'store/partials/landing_seo.html' %}
@@ -107,7 +107,7 @@
         <div class="ic red"><i class="bi bi-facebook"></i></div>
         <h3>Facebook পেজের সেলার</h3>
         <p>ইনবক্সে অর্ডার নেন, কুরিয়ারে পাঠান, কে টাকা দিল মনে রাখতে হয়?</p>
-        <ul><li>অর্ডার লিখে রাখার বদলে নিজের ওয়েবসাইটের লিংক</li><li>এক ক্লিকে কুরিয়ারে পার্সেল বুক</li><li>ভুয়া অর্ডার দেওয়া নম্বর আগেই চেনা যায়</li></ul>
+        <ul><li>অর্ডার লিখে রাখার বদলে নিজের ওয়েবসাইটের লিংক</li><li>কমেন্ট আর Messenger-এ নিজে থেকে উত্তর</li><li>এক ক্লিকে কুরিয়ারে পার্সেল বুক</li><li>ভুয়া অর্ডার দেওয়া নম্বর আগেই চেনা যায়</li></ul>
       </div>
       <div class="card">
         <div class="ic green"><i class="bi bi-shop"></i></div>
@@ -162,6 +162,27 @@
 
     <div class="feat rev">
       <div class="feat-text">
+        <span class="kicker">Facebook অটো রিপ্লাই</span>
+        <h3>কমেন্ট আর Messenger-এ নিজে থেকে উত্তর — চ্যাটেই অর্ডার</h3>
+        <p>"দাম কত?" এর উত্তর দিতে দিতে দিন শেষ? পেজ যুক্ত করলে দোকানের আসল দাম, স্টক আর ডেলিভারি চার্জ দেখে উত্তর যায় — আপনি ঘুমালেও।</p>
+        <ul>
+          <li><i class="ic red bi bi-chat-left-text-fill"></i><span><b>কমেন্ট করলেই ইনবক্সে</b> দাম আর অর্ডারের লিংক; ফোন নম্বর লেখা কমেন্ট নিজে লুকায়</span></li>
+          <li><i class="ic blue bi bi-messenger"></i><span><b>Messenger বট</b> — দাম, ডেলিভারি চার্জ, পেমেন্ট, অর্ডার কোথায়; বাংলা, ইংরেজি আর বাংলিশ বোঝে</span></li>
+          <li><i class="ic green bi bi-bag-check"></i><span><b>চ্যাটেই অর্ডার</b> — নাম, মোবাইল, ঠিকানা নিয়ে অর্ডার; কুরিয়ারে গেলে খবরও Messenger-এ</span></li>
+          <li><i class="ic amber bi bi-graph-up-arrow"></i><span><b>কোন পোস্ট থেকে কত বিক্রি</b> — বুস্টের টাকা ঠিক পোস্টে যায়</span></li>
+        </ul>
+        {% if not facebook_live %}<p class="feat-pending"><i class="bi bi-hourglass-split"></i> Facebook-এর নিয়মে Meta অ্যাপটা যাচাই করছে — শেষ হলেই সব দোকানে চালু হবে।</p>{% endif %}
+        <a href="{% url 'mk_feature' 'facebook-auto-reply' %}" class="feat-link" style="margin-right:18px">Facebook অটো রিপ্লাইয়ের বিস্তারিত <i class="bi bi-arrow-right"></i></a>
+        <a href="{% url 'guide_detail' 'facebook-automation' %}" class="feat-link">কীভাবে সাজাবেন — গাইড <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <div class="feat-shot">
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/facebook</i></div><img src="{% static 'landing/fb-auto.webp' %}" srcset="{% img_srcset 'landing/fb-auto.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="Facebook থেকে বিক্রি — কমেন্ট, Messenger-এর লিংক আর চ্যাট থেকে কত অর্ডার" width="1800" height="1125" loading="lazy"></div>
+        <div class="phone"><img src="{% static 'landing/fb-inbox-phone.webp' %}" srcset="{% img_srcset 'landing/fb-inbox-phone.webp' 780 %}" sizes="(max-width: 900px) 36vw, 230px" alt="মোবাইলে Messenger-এর কথোপকথন — কারা উত্তরের অপেক্ষায়" width="780" height="1688" loading="lazy"></div>
+      </div>
+    </div>
+
+    <div class="feat">
+      <div class="feat-text">
         <span class="kicker">দোকানে বিক্রি (POS)</span>
         <h3>কাউন্টারে বিল — বারকোড স্ক্যান, রসিদ, বাকি</h3>
         <p>মোবাইল, ট্যাব বা কম্পিউটার — যেকোনোটায় চলে। বিক্রি হলেই স্টক নিজে থেকে কমে, ওয়েবসাইটেও একই স্টক দেখায়।</p>
@@ -179,7 +200,7 @@
       </div>
     </div>
 
-    <div class="feat">
+    <div class="feat rev">
       <div class="feat-text">
         <span class="kicker">অর্ডার ও ডেলিভারি</span>
         <h3>ওয়েবসাইট, ফোন আর দোকানের সব অর্ডার — এক তালিকায়</h3>
@@ -198,7 +219,7 @@
       </div>
     </div>
 
-    <div class="feat rev">
+    <div class="feat">
       <div class="feat-text">
         <span class="kicker">রিপোর্ট</span>
         <h3>লাভ হচ্ছে না লোকসান — এক নজরে</h3>
@@ -216,7 +237,7 @@
       </div>
     </div>
 
-    <div class="feat">
+    <div class="feat rev">
       <div class="feat-text">
         <span class="kicker">বাকির খাতা</span>
         <h3>কার কাছে কত বাকি, কবে দেবে — আর ভুলে যাওয়া না</h3>
@@ -233,7 +254,7 @@
       </div>
     </div>
 
-    <div class="feat rev">
+    <div class="feat">
       <div class="feat-text">
         <span class="kicker">মার্কেটিং</span>
         <h3>পুরনো কাস্টমারকে ফিরিয়ে আনা — SMS, অফার, ল্যান্ডিং পেজ</h3>
@@ -265,7 +286,7 @@
       <div class="fcell"><i class="bi bi-grid-3x3-gap"></i><b>সাইজ ও রং (ভ্যারিয়েন্ট)</b><span>M/L/XL বা লাল/নীল — প্রতিটার আলাদা দাম ও স্টক</span></div>
       <div class="fcell"><i class="bi bi-upc"></i><b>বারকোড প্রিন্ট</b><span>স্টিকার ছাপিয়ে প্রোডাক্টে লাগান, স্ক্যান করে বিক্রি</span></div>
       <div class="fcell"><i class="bi bi-person-badge"></i><b>স্টাফ ও পারমিশন</b><span>কে POS চালাবে, কে রিপোর্ট দেখবে — আপনি ঠিক করবেন</span></div>
-      <div class="fcell"><i class="bi bi-facebook"></i><b>Facebook কমেন্ট থেকে অর্ডার</b><span>পেজ কানেক্ট করলে কমেন্টের জবাব আর অর্ডার লিংক নিজে থেকে</span></div>
+      <div class="fcell"><i class="bi bi-eye-slash"></i><b>ফোন নম্বরের কমেন্ট লুকানো</b><span>পেজে কাস্টমারের নম্বর অন্য দোকান দেখতে পায় না; লিংক আর বাজে শব্দের কমেন্টও</span></div>
       <div class="fcell"><i class="bi bi-globe2"></i><b>নিজের ডোমেইন</b><span>www.yourshop.com — DNS বসিয়ে দিলেই চালু (Premium)</span></div>
       <div class="fcell"><i class="bi bi-star-half"></i><b>কাস্টমারের রিভিউ</b><span>যাচাই করা ক্রেতার রিভিউ, আপনি অনুমোদন দিলে দেখাবে</span></div>
       <div class="fcell"><i class="bi bi-geo-alt"></i><b>এলাকাভিত্তিক ডেলিভারি চার্জ</b><span>ঢাকার ভেতরে/বাইরে আলাদা চার্জ, নির্দিষ্ট টাকার উপরে ফ্রি</span></div>
@@ -384,6 +405,8 @@
     </div>
     <div class="faq">
       <details open><summary>কম্পিউটার বা টেকনিক্যাল জ্ঞান না থাকলে চালাতে পারব?</summary><p>হ্যাঁ। পুরো সফটওয়্যার বাংলায়, আর মোবাইল থেকেই সব কাজ করা যায়। প্রোডাক্ট তোলা, অর্ডার দেখা, POS-এ বিল করা — Facebook চালানোর চেয়ে কঠিন কিছু না। আটকে গেলে WhatsApp-এ আমরা আছি।</p></details>
+      <details><summary>Facebook পেজে অটো রিপ্লাই আছে?</summary><p>হ্যাঁ — Standard আর Premium প্যাকেজে, আর ফ্রি ট্রায়ালেও। পেজ যুক্ত করলে কমেন্টকারীর ইনবক্সে দাম আর অর্ডারের লিংক যায়, Messenger-এ দাম, ডেলিভারি চার্জ আর অর্ডার কোথায় — এসবের উত্তর বট দেয়, আর চ্যাটেই নাম-ঠিকানা নিয়ে অর্ডার নেয়।{% if not facebook_live %} Facebook-এর নিয়মে Meta অ্যাপটা যাচাই করছে, শেষ হলেই সব দোকানে চালু হবে।{% endif %} বিস্তারিত: <a href="{% url 'mk_feature' 'facebook-auto-reply' %}" style="color:var(--brand);font-weight:700">Facebook অটো রিপ্লাই</a>।</p></details>
+      <details><summary>নতুন ব্যবসা শুরু করছি — কোথা থেকে শুরু করব?</summary><p>প্রোডাক্ট আর দাম ঠিক করে {{ site.name }}-এ অ্যাকাউন্ট খুলুন — ১ মিনিটে ওয়েবসাইট চালু। প্রোডাক্ট তুলে লিংকটা Facebook পেজ আর WhatsApp-এ দিন; অর্ডার এলে এক ক্লিকে কুরিয়ারে পাঠান। ধাপে ধাপে: <a href="{% url 'mk_industry' 'new-business' %}" style="color:var(--brand);font-weight:700">নতুন ব্যবসা শুরু</a> আর <a href="{% url 'guide_index' %}" style="color:var(--brand);font-weight:700">গাইড সেন্টার</a>।</p></details>
       <details><summary>ডোমেইন বা হোস্টিং কিনতে হবে?</summary><p>না। অ্যাকাউন্ট খুললেই <span class="en">yourshop.{{ site.store_domain }}</span> ঠিকানায় দোকান চালু হয়ে যায়, হোস্টিংয়ের কিছু ভাবতে হয় না। পরে নিজের ডোমেইন (www.yourshop.com) লাগাতে চাইলে Premium প্যাকেজে সেটাও যোগ করা যায়।</p></details>
       <details><summary>ওয়েবসাইট কি ইংরেজিতে করা যায়?</summary><p>হ্যাঁ। ওয়েবসাইট → ডিজাইনে <span class="en">English</span> বাছলে কাস্টমার যা দেখে — বাটন, চেকআউট, অর্ডার ট্র্যাকিং, ইনভয়েস, অর্ডারের SMS — সব ইংরেজিতে হয়ে যায়। আপনার ড্যাশবোর্ড বাংলাতেই থাকে। প্রোডাক্টের নাম আর বিবরণ আপনি যে ভাষায় লিখবেন সেভাবেই দেখাবে।</p></details>
       <details><summary>কাস্টমার কীভাবে টাকা দেবে?</summary><p>ক্যাশ অন ডেলিভারি সবচেয়ে বেশি চলে — কুরিয়ার টাকা তুলে আপনাকে দেয়। চাইলে bKash/Nagad/কার্ডে অগ্রিম নেওয়ার নিয়মও চালু করতে পারেন (পুরো টাকা, বা শুধু ডেলিভারি চার্জ অগ্রিম)। অনলাইন পেমেন্ট চলে PayStation গেটওয়ে দিয়ে — আসল লেনদেনে পরীক্ষিত।</p></details>

@@ -62,5 +62,13 @@
  {"id": "buyers-product", "path": "/shop/{slug}/product/{product}/", "viewport": "mobile", "anon": true, "click": ".var-chip:not([disabled])", "js": "document.querySelector('.var-chip').scrollIntoView({block: 'center'})"},
  {"id": "buyers-checkout", "path": "/shop/{slug}/product/{plain_product}/", "viewport": "mobile", "anon": true, "click": "[onclick^='buyChosen']", "fill": {"#co-name": "রাকিব হাসান", "#co-phone": "01712345678", "#co-address": "বাড়ি ১২, রোড ৫, মিরপুর ১০, ঢাকা"}, "wait": 600},
  {"id": "buyers-success", "path": "/shop/{slug}/product/{plain_product}/", "viewport": "mobile", "anon": true, "click": "[onclick^='buyChosen']", "fill": {"#co-name": "রাকিব হাসান", "#co-phone": "01712345678", "#co-address": "বাড়ি ১২, রোড ৫, মিরপুর ১০, ঢাকা"}, "click_nav": "#place-order-btn", "wait": 600},
- {"id": "buyers-track", "path": "/shop/{slug}/track/?order={track_order}&phone={track_phone}", "viewport": "mobile", "anon": true}
+ {"id": "buyers-track", "path": "/shop/{slug}/track/?order={track_order}&phone={track_phone}", "viewport": "mobile", "anon": true},
+ {"id": "fb-settings", "path": "/settings/?tab=facebook", "viewport": "desktop"},
+ {"id": "fb-comments", "path": "/facebook/automation/?tab=comments", "viewport": "desktop", "element": ".ws-wrap", "height": 1500},
+ {"id": "fb-messenger", "path": "/facebook/automation/?tab=messenger", "viewport": "desktop", "element": ".ws-wrap", "height": 1400},
+ {"id": "fb-faq", "path": "/facebook/automation/?tab=faq", "viewport": "desktop", "element": ".ws-wrap", "height": 1800},
+ {"id": "fb-inbox", "path": "/messenger/?view=all", "viewport": "desktop", "element": ".ws-wrap", "height": 1700},
+ {"id": "fb-inbox-mobile", "path": "/messenger/?view=waiting", "viewport": "mobile"},
+ {"id": "fb-sales", "path": "/facebook/automation/?tab=sales", "viewport": "desktop", "element": ".ws-wrap", "height": 1500},
+ {"id": "fb-log", "path": "/facebook/automation/?tab=log", "viewport": "desktop", "element": ".ws-wrap", "height": 1400}
 ]

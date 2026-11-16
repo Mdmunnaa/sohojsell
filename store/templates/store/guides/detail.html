@@ -9,6 +9,7 @@
     <span class="g-kicker"><i class="bi {{ guide.icon }}"></i> {{ guide.category }}</span>
     <h1>{{ guide.h1 }}</h1>
     <p class="lead">{{ guide.summary }}</p>
+    {% if fb_pending %}<p class="g-pending"><i class="bi bi-hourglass-split"></i> Facebook-এর নিয়মে Meta প্রতিটা অ্যাপ যাচাই করে; SellPunch-এর যাচাই চলছে — শেষ হলেই সব দোকানে পেইজ যুক্ত করা যাবে। গাইডটা আগে থেকে পড়ে রাখুন।</p>{% endif %}
     <p class="g-stats"><span><i class="bi bi-clock"></i> {{ guide.minutes|bn }} মিনিটে পড়া</span>{% if guide.shots %}<span><i class="bi bi-image"></i> {{ guide.shots|bn }}টা ছবি</span>{% endif %}<span><i class="bi bi-arrow-repeat"></i> হালনাগাদ: <time datetime="{{ guides_updated }}">{{ guides_updated_date|bn_day }}</time></span></p>
   </div>
 </header>

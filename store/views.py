@@ -81,12 +81,24 @@ def _home(request, lang):
     home_seo['canonical'] = home_seo['url_en'] if lang == 'en' else home_seo['url_bn']
     template = 'store/landing_en.html' if lang == 'en' else 'store/landing.html'
     from . import marketing, views_marketing
+    try:
+        facebook_live = marketing.facebook_live()
+    except Exception:    # noqa: BLE001 — ডেটাবেস ছাড়া হোমপেজ আটকাবে না
+        facebook_live = False
     return render(request, template, {
-        'plans': plans, 'sms_rate': rate, 'trial_days': 30, 'home_seo': home_seo,
+        'plans': plans, 'sms_rate': rate, 'trial_days': 30, 'home_seo': home_seo, 'facebook_live': facebook_live,
         # SEO পাতার লিংক (store/marketing.py) — হোমপেজ থেকে প্রতিটায় লিংক থাকলে Google দ্রুত খুঁজে পায়
         'industry_links': views_marketing._cards(marketing.INDUSTRIES, 'industry', lang),
         'features_url': views_marketing._index_url(lang),
     })
+
+
+def indexnow_key(request, key):
+    """https://sellpunch.com/<চাবি>.txt — IndexNow-কে দেখানো যে পাতাগুলোর খবর আমরাই পাঠাচ্ছি (store/indexnow.py)।"""
+    from . import indexnow
+    if key != indexnow.key():
+        raise Http404
+    return HttpResponse(key, content_type='text/plain; charset=utf-8')
 
 
 def site_llms(request):

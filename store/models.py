@@ -498,6 +498,10 @@ class MasterSetting(models.Model):
     sms_rate = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal('0.400'),
                                    help_text='সেলাররা প্রতি SMS কত টাকায় কিনবে')
     signups_open = models.BooleanField(default=True, help_text='বন্ধ করলে নতুন কেউ অ্যাকাউন্ট খুলতে পারে না')
+    facebook_live = models.BooleanField(
+        default=False, help_text='Meta-র App Review পাশ করলে চালু করুন — তখন ওয়েবসাইটে Facebook অটোমেশন "চালু" হিসেবে দেখায়')
+    indexnow_fingerprint = models.CharField(max_length=64, blank=True, default='',
+                                            help_text='শেষবার Bing/IndexNow-এ যে পাতাগুলোর খবর গেছে তার ছাপ')
 
     def __str__(self):
         return "SaaS Master Settings"

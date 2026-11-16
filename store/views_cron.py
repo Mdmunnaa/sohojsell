@@ -47,5 +47,11 @@ def cron_daily(request):
     except Exception as exc:    # noqa: BLE001
         logger.exception('daily cron: facebook refresh failed')
         result['facebook_pages'] = str(exc)[:200]
+    try:
+        from . import indexnow
+        result['indexnow'] = indexnow.submit(request)   # পাতা বদলালে Bing-কে খবর (ChatGPT/Copilot Bing দেখে)
+    except Exception as exc:    # noqa: BLE001
+        logger.exception('daily cron: indexnow failed')
+        result['indexnow'] = str(exc)[:200]
     logger.info('daily cron: %s', result)
     return JsonResponse(result)

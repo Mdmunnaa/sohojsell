@@ -332,6 +332,8 @@ FACEBOOK_DOMAIN_VERIFICATION = (os.environ.get('FACEBOOK_DOMAIN_VERIFICATION') o
 SITE_URL = os.environ.get('SITE_URL', '').rstrip('/')
 # দিনে একবারের কাজের (বাকির অটো-তাগাদা) গোপন চাবি — Cloudflare-এর Secrets-এ CRON_SECRET (store/views_cron.py)
 CRON_SECRET = os.environ.get('CRON_SECRET', '').strip()
+# IndexNow (Bing ইত্যাদিকে নতুন পাতার খবর) — না দিলে SECRET_KEY থেকে বানানো হয় (store/indexnow.py)
+INDEXNOW_KEY = os.environ.get('INDEXNOW_KEY', '').strip()
 
 # কুরিয়ারের API ঠিকানা। টেস্টের সময় sandbox বসানো যায়:
 # PATHAO_BASE_URL=https://courier-api-sandbox.pathao.com, REDX_BASE_URL=https://sandbox.redx.com.bd/v1.0.0-beta

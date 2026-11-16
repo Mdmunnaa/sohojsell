@@ -24,6 +24,10 @@
           <label class="switch"><input type="checkbox" name="signups_open"{% if setting.signups_open %} checked{% endif %}><span>নতুন সাইনআপ চালু</span></label>
           <div class="help">বন্ধ করলে নতুন কেউ অ্যাকাউন্ট খুলতে পারে না (ফোন বা Facebook কোনোটা দিয়েই)। যাদের অ্যাকাউন্ট আছে, তারা আগের মতো ঢুকতে পারে।</div>
         </div>
+        <div class="field">
+          <label class="switch"><input type="checkbox" name="facebook_live"{% if setting.facebook_live %} checked{% endif %}><span>Facebook অটোমেশন সবার জন্য চালু (Meta-র অনুমোদন পাওয়া গেছে)</span></label>
+          <div class="help">Meta-র App Review পাশ করলে চালু করুন। বন্ধ থাকলে ওয়েবসাইটের Facebook অটো-রিপ্লাইয়ের পাতা, হোমপেজ আর llms.txt-এ লেখা থাকে "Meta-র যাচাই চলছে — শেষ হলেই চালু"; চালু করলে সেই লেখা সরে যায়।</div>
+        </div>
         <div class="field"><label for="stName">প্ল্যাটফর্মের নাম</label><input id="stName" type="text" name="platform_name" maxlength="100" value="{{ setting.platform_name }}"></div>
         <div class="field"><label for="stRate">সেলারের কাছে প্রতি SMS-এর দাম (টাকা)</label><input id="stRate" type="number" name="sms_rate" step="0.01" min="0.05" max="5" value="{{ setting.sms_rate|floatformat:2 }}"><div class="help">০.০৫ থেকে ৫ টাকা। নতুন রিচার্জ থেকে এই দামে হিসাব হয়।</div></div>
         {% if env_keys %}

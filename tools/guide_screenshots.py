@@ -13,6 +13,7 @@ store/static/guides/<id>.webp-তে রাখে, আর মাপ store/guide_
 spec-এর প্রতিটা ছবি: id, path ({product} ইত্যাদি ডেমোর আসল আইডি দিয়ে বসে), viewport (desktop/mobile), ঐচ্ছিক:
   anon (লগইন ছাড়া — ক্রেতার চোখে), js_reload (JS চালিয়ে পাতা আবার খোলা), js_before (ক্লিকের আগে JS), click (selector বা তালিকা), fill ({selector: লেখা}),
   click_nav (চেপে নতুন পাতার অপেক্ষা), js (ছবির ঠিক আগে JS), scroll_to (এই লেখা পর্যন্ত নামো), wait (মিলিসেকেন্ড),
+  height (জানালার উচ্চতা — element লম্বা হলে পুরোটা ধরতে),
   element (শুধু এই অংশের ছবি), css (বাড়তি CSS), designs: true (চার ডিজাইনের দোকান পাশাপাশি)।
 ছবিতে মোবাইল নম্বর ঢেকে দেয় (ডেমোর নম্বরও কারো আসল নম্বর হতে পারে)।
 """
@@ -70,7 +71,7 @@ from store.models import Shop
 Shop.objects.filter(pk=demo_shop().pk).update(storefront_design=sys.argv[1])
 '''
 
-HIDE_CSS = ('.demo-bar,.toast-container,.messages,.alert-dismissible{display:none!important}'
+HIDE_CSS = ('.demo-bar,.toast-container,.messages,.alert-dismissible,.pn{display:none!important}'
             '*{animation-duration:0s!important;transition:none!important;caret-color:transparent!important}')
 
 MASK_JS = r"""() => {
@@ -166,6 +167,8 @@ def capture(spec, ids, port, only, camera):
                     page.goto(f'{host}/demo/', wait_until='networkidle')     # ডেমো দোকানে পাসওয়ার্ড ছাড়া লগইন
                 contexts[key] = page
             page = contexts[key]
+            vp = VIEWPORTS[shot['viewport']]
+            page.set_viewport_size({'width': vp['width'], 'height': shot.get('height', vp['height'])})   # লম্বা অংশ পুরোটা
             url = host + shot['path'].format(**ids)
             try:
                 page.goto('about:blank')

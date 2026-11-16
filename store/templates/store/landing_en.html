@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ site.name }} — Ecommerce Website in 1 Minute, POS &amp; Courier | Bangladesh</title>
-<meta name="description" content="Create your ecommerce website in 1 minute — plus shop POS, Steadfast/Pathao/RedX courier booking, SMS, due book and profit reports for small businesses in Bangladesh. 30 days free, no card.">
+<meta name="description" content="Create your ecommerce website in 1 minute — plus Facebook comment and Messenger auto reply, shop POS, Steadfast/Pathao/RedX courier booking and profit reports. Bangladesh, 30 days free.">
 <meta property="og:title" content="{{ site.name }} — Ecommerce Website in 1 Minute, POS &amp; Courier | Bangladesh">
 <meta property="og:description" content="Online store, POS billing, courier booking, customer SMS, due tracking and profit reports — in one place. 30 days free, no card needed.">
 {% include 'store/partials/landing_seo.html' %}
@@ -101,7 +101,7 @@
         <div class="ic red"><i class="bi bi-facebook"></i></div>
         <h3>Facebook &amp; f-commerce sellers</h3>
         <p>Taking orders in Messenger, sending parcels by courier, remembering who has paid?</p>
-        <ul><li>A link to your own online store instead of typing orders</li><li>Book the courier in one click</li><li>Spot fake orders from numbers that returned parcels before</li></ul>
+        <ul><li>A link to your own online store instead of typing orders</li><li>Automatic replies on comments and Messenger</li><li>Book the courier in one click</li><li>Spot fake orders from numbers that returned parcels before</li></ul>
       </div>
       <div class="card">
         <div class="ic green"><i class="bi bi-shop"></i></div>
@@ -156,6 +156,26 @@
 
     <div class="feat rev">
       <div class="feat-text">
+        <span class="kicker">Facebook auto reply</span>
+        <h3>Automatic replies on comments and Messenger — and orders in the chat</h3>
+        <p>Spending the day answering "price?"? Connect your page and replies go out from your real prices, stock and delivery charges — even while you sleep.</p>
+        <ul>
+          <li><i class="ic red bi bi-chat-left-text-fill"></i><span><b>Every comment gets the price</b> and order link in the inbox; comments with phone numbers are hidden</span></li>
+          <li><i class="ic blue bi bi-messenger"></i><span><b>Messenger bot</b> — prices, delivery charges, payment, order status; understands Bangla, English and Banglish</span></li>
+          <li><i class="ic green bi bi-bag-check"></i><span><b>Orders in the chat</b> — name, mobile and address, then order updates on Messenger</span></li>
+          <li><i class="ic amber bi bi-graph-up-arrow"></i><span><b>Sales by post</b> — see which post sold the most before you boost</span></li>
+        </ul>
+        {% if not facebook_live %}<p class="feat-pending"><i class="bi bi-hourglass-split"></i> Meta is reviewing the app, as Facebook requires — it turns on for every shop once approved.</p>{% endif %}
+        <a href="{% url 'mk_feature_en' 'facebook-auto-reply' %}" class="feat-link">More about Facebook auto reply <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <div class="feat-shot">
+        <div class="frame"><div class="frame-bar"><span></span><span></span><span></span><i>{{ site.store_domain }}/facebook</i></div><img src="{% static 'landing/fb-auto.webp' %}" srcset="{% img_srcset 'landing/fb-auto.webp' 1800 %}" sizes="(max-width: 900px) 92vw, 640px" alt="Sales from Facebook — orders from comments, Messenger links and chat" width="1800" height="1125" loading="lazy"></div>
+        <div class="phone"><img src="{% static 'landing/fb-inbox-phone.webp' %}" srcset="{% img_srcset 'landing/fb-inbox-phone.webp' 780 %}" sizes="(max-width: 900px) 36vw, 230px" alt="Messenger conversations on a phone — customers waiting for a reply" width="780" height="1688" loading="lazy"></div>
+      </div>
+    </div>
+
+    <div class="feat">
+      <div class="feat-text">
         <span class="kicker">POS billing</span>
         <h3>Point of sale for your counter — barcode, receipt, credit</h3>
         <p>Works on a phone, tablet or computer. Every sale reduces stock automatically, and your website shows the same stock.</p>
@@ -173,7 +193,7 @@
       </div>
     </div>
 
-    <div class="feat">
+    <div class="feat rev">
       <div class="feat-text">
         <span class="kicker">Orders &amp; delivery</span>
         <h3>Website, phone and shop orders — in one list</h3>
@@ -192,7 +212,7 @@
       </div>
     </div>
 
-    <div class="feat rev">
+    <div class="feat">
       <div class="feat-text">
         <span class="kicker">Reports</span>
         <h3>Profit or loss — at a glance</h3>
@@ -210,7 +230,7 @@
       </div>
     </div>
 
-    <div class="feat">
+    <div class="feat rev">
       <div class="feat-text">
         <span class="kicker">Due book</span>
         <h3>Who owes you, how much, and since when</h3>
@@ -227,7 +247,7 @@
       </div>
     </div>
 
-    <div class="feat rev">
+    <div class="feat">
       <div class="feat-text">
         <span class="kicker">Marketing</span>
         <h3>Bring customers back — SMS, offers, landing pages</h3>
@@ -259,7 +279,7 @@
       <div class="fcell"><i class="bi bi-grid-3x3-gap"></i><b>Sizes &amp; colors (variants)</b><span>M/L/XL or red/blue — each with its own price and stock</span></div>
       <div class="fcell"><i class="bi bi-upc"></i><b>Barcode printing</b><span>Print stickers, stick them on products, scan to sell</span></div>
       <div class="fcell"><i class="bi bi-person-badge"></i><b>Staff &amp; permissions</b><span>Decide who uses the POS and who sees reports</span></div>
-      <div class="fcell"><i class="bi bi-facebook"></i><b>Orders from Facebook comments</b><span>Connect your Page for automatic replies and order links</span></div>
+      <div class="fcell"><i class="bi bi-eye-slash"></i><b>Hide phone-number comments</b><span>Other sellers cannot see your customers' numbers; spam links and words too</span></div>
       <div class="fcell"><i class="bi bi-globe2"></i><b>Custom domain</b><span>www.yourshop.com — add the DNS records and you are live (Premium)</span></div>
       <div class="fcell"><i class="bi bi-star-half"></i><b>Customer reviews</b><span>Reviews from verified buyers, shown after your approval</span></div>
       <div class="fcell"><i class="bi bi-geo-alt"></i><b>Delivery charge by area</b><span>Inside/outside Dhaka rates, free above an amount you set</span></div>
@@ -378,6 +398,8 @@
     </div>
     <div class="faq">
       <details open><summary>Is {{ site.name }} in English?</summary><p>Your online store can be fully in English — product pages, cart, checkout, order tracking, invoices and the customer SMS. You choose English or Bangla in Website → Design. The seller dashboard (POS, orders, reports) is in Bangla, so shop owners and staff across Bangladesh can use it without training.</p></details>
+      <details><summary>Is there auto reply for my Facebook page?</summary><p>Yes — on the Standard and Premium plans, and in the free trial. Connect your page and commenters get the price and order link in their inbox, the Messenger bot answers questions about prices, delivery charges and order status, and it takes orders in the chat.{% if not facebook_live %} Meta is reviewing the app, as Facebook requires; it turns on for every shop once approved.{% endif %} More: <a href="{% url 'mk_feature_en' 'facebook-auto-reply' %}" style="color:var(--brand);font-weight:700">Facebook auto reply</a>.</p></details>
+      <details><summary>I am starting a new business — where do I begin?</summary><p>Decide your products and prices, then open a {{ site.name }} account — your website is live in 1 minute. Add products, share the link on your Facebook page and WhatsApp, and send orders by courier in one click. Step by step: <a href="{% url 'mk_industry_en' 'new-business' %}" style="color:var(--brand);font-weight:700">Starting a business</a>.</p></details>
       <details><summary>Do I need technical skills?</summary><p>No. Everything works from your phone. Adding products, checking orders and billing at the POS is no harder than using Facebook. If you get stuck, we're on WhatsApp.</p></details>
       <details><summary>Do I need to buy a domain or hosting?</summary><p>No. Your store goes live at <b>yourshop.{{ site.store_domain }}</b> as soon as you sign up — hosting is included. If you want your own domain (www.yourshop.com) later, you can add it on the Premium plan.</p></details>
       <details><summary>How do customers pay?</summary><p>Cash on delivery is the most common — the courier collects the money and pays you. You can also take advance payment with bKash, Nagad or card (the full amount, or just the delivery charge). Online payments run through the PayStation gateway, tested with real transactions.</p></details>

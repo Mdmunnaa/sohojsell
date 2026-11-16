@@ -197,6 +197,7 @@ def build():
         _reviews(shop, rng, products, state)
         _coupons(shop, products, state['coupons_used'])
         _landing(shop, products, state)
+        _facebook(shop, rng, products, state)
         _sms_history(shop, state)
         Shop.objects.filter(pk=shop.pk).update(demo_reset_at=timezone.now(), sms_balance=437)
     return shop
@@ -726,6 +727,85 @@ def _landing(shop, products, state):
                 'সাইজ না মিললে ৩ দিনের মধ্যে বদলে দেওয়া হয়\n১০০% কম্বড কটন, ১৮০ GSM',
         offer_text='আজ অর্ডার করলে ডেলিভারি চার্জ ফ্রি', cta_text='এখনই অর্ডার করুন', views=1240)
     Order.objects.filter(pk__in=[o.pk for o in state['landing_orders']]).update(landing=page)
+
+
+FB_PAGE_ID = 'demo-page'          # Graph API-তে যায় না (refresh_pages ডেমো বাদ দেয়, webhook-এ এই পেইজ আসে না)
+FB_FAQ = [
+    ('সাইজ, size, মাপ', 'টি-শার্ট আর শার্ট M, L, XL; জিন্স কোমর ৩০–৩৪। বুকের বা কোমরের মাপ লিখলে মিলিয়ে দেব।', 64),
+    ('কাপড়, fabric, কটন', 'টি-শার্ট ১০০% কম্বড কটন (১৮০ GSM), শার্ট নরম কটন। ধোয়ার পরেও রং-সাইজ ঠিক থাকে।', 31),
+    ('বদল, এক্সচেঞ্জ, exchange', 'হাতে পাওয়ার ৩ দিনের মধ্যে জানালে সাইজ বদলে দেওয়া হয় — শুধু যাওয়া-আসার ডেলিভারি চার্জ।', 12),
+    ('দোকান, শোরুম, সরাসরি', 'নিউ মার্কেট লেভেল ২, দোকান নং ১২ — সকাল ১০টা থেকে রাত ৯টা, মঙ্গলবার বন্ধ।', 9),
+]
+FB_COMMENTS = [
+    ('দাম কত?', 'sent', ''), ('price plz', 'sent', ''), ('M সাইজ আছে?', 'sent', ''), ('ইনবক্স প্লিজ', 'sent', ''),
+    ('০১৭XX-XXXXXX এ কল দিন', 'sent', 'phone'), ('কালারটা সুন্দর, দাম?', 'sent', ''),
+    ('সস্তায় পাবেন www.cheap-deal.xyz', 'skipped', 'link'), ('ডেলিভারি চার্জ কত?', 'sent', ''),
+    ('XL হবে?', 'sent', ''), ('দাম জানাবেন', 'sent', ''),
+]
+FB_CHATS = [   # (শেষ মেসেজ, কত মিনিট আগে, অপেক্ষায়, বট থামানো)
+    ('এই রংটা কি L সাইজে আছে? ছবি পাঠালাম', 18, True, False),
+    ('দোকানের কারো সাথে কথা বলতে চাই', 52, True, False),
+    ('দুইটা নিলে একটু কম রাখা যাবে?', 190, False, True),
+    ('ধন্যবাদ, অর্ডার পেয়ে গেছি', 60 * 26, False, False),
+    ('কুরিয়ারে দিয়েছেন?', 60 * 30, False, False),
+    ('ডেলিভারি চার্জ কত?', 60 * 50, False, False),
+    ('অর্ডার করব, M সাইজ', 60 * 75, False, False),
+    ('জিন্সের কোমর ৩২ আছে?', 60 * 98, False, False),
+]
+
+
+def _facebook(shop, rng, products, state):
+    """Facebook পেইজ যুক্ত দেখানো: কমেন্টের হিসাব, Messenger-এর কথোপকথন, নিজের প্রশ্ন-উত্তর আর Facebook থেকে আসা অর্ডার।"""
+    import datetime as dt
+    from .models import FacebookAutoReply, FacebookCommentReply, FacebookPageConnection, MessengerContact, Order
+    now = timezone.now()
+    FacebookPageConnection.objects.update_or_create(shop=shop, defaults=dict(
+        page_id=FB_PAGE_ID, page_name=SHOP_NAME, page_access_token='demo', is_active=True, fan_count=18400,
+        comment_bot_enabled=True, public_reply_enabled=True,
+        public_reply_texts='ইনবক্স চেক করুন, দাম আর লিংক পাঠিয়েছি।\nমেসেজ পাঠানো হয়েছে, দেখে নিন।\nইনবক্সে বিস্তারিত দেওয়া হয়েছে।',
+        comment_dm_intro='', hide_phone_comments=True, hide_link_comments=True, hide_words='ভুয়া, ফেক',
+        messenger_bot_enabled=True, welcome_text='', messenger_order_enabled=True, order_updates_enabled=True,
+        open_time=dt.time(10, 0), close_time=dt.time(23, 0), offhours_text=''))
+    FacebookAutoReply.objects.filter(shop=shop).delete()
+    FacebookAutoReply.objects.bulk_create([FacebookAutoReply(shop=shop, keywords=k, answer=a, hits=h) for k, a, h in FB_FAQ])
+
+    FacebookCommentReply.objects.filter(shop=shop).delete()
+    posts = [f'{FB_PAGE_ID}_{n}' for n in (101, 102, 103)]
+    rows = []
+    for i, (message, status, hidden) in enumerate(FB_COMMENTS):
+        rows.append(FacebookCommentReply(
+            shop=shop, page_id=FB_PAGE_ID, post_id=posts[i % 3], comment_id=f'demo-comment-{i}', commenter_id=f'demo-{i}',
+            commenter_name=_name(rng), message=message, product=products[i % len(products)] if status == 'sent' else None,
+            status=status, hidden_reason=hidden))
+    FacebookCommentReply.objects.bulk_create(rows)
+    for i, row in enumerate(rows):
+        row.created_at = now - timedelta(minutes=7 + i * 41)
+    FacebookCommentReply.objects.bulk_update(rows, ['created_at'])
+
+    MessengerContact.objects.filter(shop=shop).delete()
+    contacts = []
+    for i, (text, minutes, waiting, paused) in enumerate(FB_CHATS):
+        at = now - timedelta(minutes=minutes)
+        contacts.append(MessengerContact(
+            shop=shop, page_id=FB_PAGE_ID, psid=f'demo-psid-{i}', name=_name(rng), last_text=text, last_in_at=at,
+            last_out_at=at + timedelta(seconds=3), welcomed_at=at - timedelta(days=rng.randint(0, 20)),
+            waiting_since=at if waiting else None, bot_paused_until=now + timedelta(hours=9) if paused else None,
+            last_product=rng.choice(products)))
+    MessengerContact.objects.bulk_create(contacts)
+
+    # গত ৩০ দিনের ওয়েবসাইটের অর্ডারের একটা অংশ Facebook থেকে আসা (কমেন্টের লিংক, Messenger-এর লিংক, চ্যাটে অর্ডার)
+    since = now - timedelta(days=30)
+    landing = {o.pk for o in state['landing_orders']}
+    recent = [o for o in state['orders'] if o.source == 'storefront' and o.when >= since and o.pk not in landing]
+    chat_contacts = contacts[3:]
+    for order in recent:
+        roll = rng.random()
+        if roll < 0.2:
+            Order.objects.filter(pk=order.pk).update(fb_source='comment', fb_post_id=rng.choice(posts))
+        elif roll < 0.28:
+            Order.objects.filter(pk=order.pk).update(fb_source='messenger', messenger_contact=rng.choice(chat_contacts))
+        elif roll < 0.36:
+            Order.objects.filter(pk=order.pk).update(fb_source='chat', messenger_contact=rng.choice(chat_contacts))
 
 
 def _sms_history(shop, state):

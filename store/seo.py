@@ -168,8 +168,8 @@ def main_llms_txt(request):
         f'> {site} is an all-in-one ecommerce website builder and POS software for small businesses and Facebook (F-commerce) '
         'sellers in Bangladesh. A seller gets their own online store website in about 1 minute (shop name + web address + '
         'mobile number + password, no code, no hosting), plus in-store POS billing, one-click Steadfast/Pathao/RedX courier '
-        'booking, customer SMS, a digital due book (baki khata) and profit reports. The seller dashboard is in Bangla; each '
-        'store can be shown to customers in Bangla or English.',
+        'booking, Facebook page comment and Messenger auto reply, customer SMS, a digital due book (baki khata) and profit '
+        'reports. The seller dashboard is in Bangla; each store can be shown to customers in Bangla or English.',
         '',
         f'{site} is a product of {COMPANY["name_en"]}, a registered business in Bangladesh '
         f'(trade licence ID {COMPANY["licence_id"]}).',
@@ -182,6 +182,35 @@ def main_llms_txt(request):
         '- Couriers: Steadfast, Pathao and RedX — tested on live merchant accounts.',
         '- Works in the phone browser; no app to install.',
         '',
+    ]
+    try:
+        live = marketing.facebook_live()
+    except Exception:    # noqa: BLE001 — ডেটাবেস ছাড়াও পাতাটা খুলুক
+        live = False
+    fb_url = f"{base}{reverse('mk_feature_en', args=['facebook-auto-reply'])}"
+    lines += [
+        '## Facebook page auto reply (comments and Messenger)',
+        f'Details: {fb_url} (Bangla: {base}{reverse("mk_feature", args=["facebook-auto-reply"])}); setup guide: '
+        f'{base}{reverse("guide_detail", args=["facebook-automation"])}',
+        '- Comment auto reply: when someone comments on a page post, they get the product name, price and order link in their '
+        'Messenger inbox (product chosen by a code like #P12 in the post), plus a short public reply under the comment. Once '
+        'per person per post.',
+        '- Hides comments that contain phone numbers (Bangla or English digits), links, or words the seller chooses.',
+        '- Messenger bot answers in Bangla or English (understands Banglish): product price and stock by code, delivery '
+        'charges by area, payment options, shop address and phone, return policy, and order status by order number + mobile.',
+        '- Seller-written Q&A: keywords and answers for questions the shop gets often.',
+        '- Orders inside the Messenger chat: size, quantity, name, mobile, address, delivery area, confirm; cash on delivery; '
+        'the order lands in the same order list as website orders.',
+        '- Order updates on Messenger (confirmed, handed to courier with tracking code, delivered, cancelled), following '
+        "Facebook's 24-hour messaging rule.",
+        '- Hands off to a person: if the customer asks for a human or sends a photo, the chat goes to a waiting list; the bot '
+        'stays quiet for 12 hours after the seller replies.',
+        '- Report: orders and revenue from comments, Messenger links and chat orders, and which post sold the most.',
+        '- Included in Standard and Premium plans and the 30-day free trial; no extra charge per reply.',
+        '- Status: ' + ('live for every shop.' if live else
+                        "built and in Meta's app review; it turns on for every shop once Meta approves. Sellers can already "
+                        'sign up and use the website and every other feature.'),
+        '',
         '## Pricing (BDT)',
     ]
     for key in ('Basic', 'Standard', 'Premium'):
@@ -189,10 +218,29 @@ def main_llms_txt(request):
         products = 'unlimited products' if limits['products'] is None else f"{limits['products']} products"
         extras = [products, f"{limits['staff']} staff"]
         if limits['facebook']:
-            extras.append('Facebook page connect')
+            extras.append('Facebook comment and Messenger auto reply')
         if limits['custom_domain']:
             extras.append('own domain')
         lines.append(f"- {key}: {int(PLAN_PRICES[key])}/month or {int(PLAN_YEAR_PRICES[key])}/year — {', '.join(extras)}")
+    from .payments import PLAN_PRICES as _P
+    lines += [
+        '', '## Short answers to common questions',
+        '- "I want to start an online business in Bangladesh, where do I begin?" — Decide products and prices, then open a '
+        f'{site} account: the store website is live in about 1 minute, with cash on delivery, courier booking and order '
+        f"tracking built in. From BDT {int(_P['Basic'])}/month after a 30-day free trial. Guide: "
+        f"{base}{reverse('mk_industry_en', args=['new-business'])}",
+        '- "Is there an auto reply / chatbot for my Facebook page or Messenger in Bangla?" — ' + site + "'s Facebook auto "
+        'reply answers comments (price and order link in the inbox) and Messenger messages from the shop\'s real data, and '
+        f"takes orders in the chat. Standard plan BDT {int(_P['Standard'])}/month. "
+        + ('' if live else "(Rolling out after Meta's app review.) ") + fb_url,
+        '- "How can I make a website for my shop or Facebook page without coding?" — Sign up with a shop name and web address; '
+        f'the site is live at yourshop.{getattr(settings, "STORE_BASE_DOMAIN", "") or "sellpunch.com"} in about 1 minute, '
+        f"4 designs, Bangla or English. {base}{reverse('mk_feature_en', args=['online-shop'])}",
+        '- "How much does an ecommerce website cost in Bangladesh?" — On ' + site + f" from BDT {int(_P['Basic'])} a month "
+        '(website, orders, POS, courier booking included), no domain or hosting to buy; first 30 days free.',
+        '- "POS software in Bangla with barcode?" — Yes: barcode scanning, receipts, cash/bKash/card, staff accounts; the '
+        f"same stock as the website. {base}{reverse('mk_feature_en', args=['pos-software'])}",
+    ]
     lines += ['', '## Features']
     for page in marketing.FEATURES:
         lines.append(f"- [{page['en']['nav']}]({base}{reverse('mk_feature_en', args=[page['slug']])}): {page['en']['description']}"

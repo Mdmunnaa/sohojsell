@@ -805,6 +805,10 @@ def system_settings(request):
         if signups != setting.signups_open:
             changes.append('সাইনআপ ' + ('চালু' if signups else 'বন্ধ'))
         setting.signups_open = signups
+        facebook_live = request.POST.get('facebook_live') == 'on'
+        if facebook_live != setting.facebook_live:
+            changes.append('Facebook অটোমেশন ' + ('সবার জন্য চালু' if facebook_live else 'Meta-র অনুমোদনের অপেক্ষায়'))
+        setting.facebook_live = facebook_live
         client_id = (request.POST.get('sms_client_id') or '').strip()
         if client_id != (setting.sms_client_id or ''):
             changes.append('SMS Client ID')
@@ -830,6 +834,9 @@ def system_settings(request):
         if name:
             setting.platform_name = name
         setting.save()
+        from django.core.cache import cache
+        from .marketing import FACEBOOK_LIVE_CACHE
+        cache.delete(FACEBOOK_LIVE_CACHE)
         hq.log_action(request, 'settings', None, ', '.join(changes) or 'কিছু বদলায়নি')
         messages.success(request, 'সেটিংস রাখা হয়েছে।')
         return redirect('master_settings')

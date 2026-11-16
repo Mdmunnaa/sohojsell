@@ -99,8 +99,9 @@ def guide_detail(request, slug):
     index = next(i for i, g in enumerate(ordered) if g['slug'] == slug)
     others = [g for g in ordered if g['slug'] != slug]
     same = [g for g in others if g['category'] == guide['category']]
+    from .marketing import facebook_live
     context.update({
-        'guide': guide,
+        'guide': guide, 'fb_pending': slug == 'facebook-automation' and not facebook_live(),
         'content_html': guides.render_guide_html(guide),
         'guide_toc': guides.guide_toc(guide),
         'guides_updated': guides.GUIDES_UPDATED,

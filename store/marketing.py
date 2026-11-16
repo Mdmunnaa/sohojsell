@@ -106,7 +106,7 @@ FEATURES = [
     {
         'slug': 'facebook-page-website', 'icon': 'bi-facebook', 'image': 'shop-phone', 'image_en': 'shop-phone-en',
         'tall': True,
-        'related': ['online-shop', 'landing-page', 'courier-integration', 'due-book'],
+        'related': ['facebook-auto-reply', 'online-shop', 'landing-page', 'courier-integration'],
         'bn': {
             'nav': 'ফেসবুক পেজের ওয়েবসাইট',
             'title': 'ফেসবুক পেজের জন্য ওয়েবসাইট — F-commerce সেলারদের অনলাইন শপ',
@@ -121,8 +121,9 @@ FEATURES = [
                  'পোস্টে শেয়ার করলে ছবি আর দাম দেখায়।'),
                 ('bi-bag-check-fill', 'কাস্টমার নিজেই অর্ডার করে',
                  'নাম, মোবাইল, ঠিকানা লিখে অর্ডার — রাত তিনটায়ও। অর্ডার এলেই ড্যাশবোর্ডে দেখবেন, কাস্টমার SMS পাবে।'),
-                ('bi-chat-dots-fill', 'Facebook কমেন্ট থেকে অর্ডার',
-                 'পেজ কানেক্ট করলে (Standard ও Premium) কমেন্টের জবাব আর অর্ডারের লিংক নিজে থেকে যায়।'),
+                ('bi-chat-dots-fill', 'কমেন্ট আর Messenger-এ অটো উত্তর',
+                 'পেজ যুক্ত করলে (Standard ও Premium) কমেন্টকারীর ইনবক্সে দাম আর অর্ডারের লিংক, Messenger-এ দাম-ডেলিভারির '
+                 'উত্তর আর চ্যাটেই অর্ডার — নিজে থেকে।'),
                 ('bi-whatsapp', 'WhatsApp-এ অর্ডারের বাটন',
                  'যে কাস্টমার কথা বলে কিনতে চায়, তার জন্য ওয়েবসাইটেই WhatsApp-এ অর্ডারের বাটন।'),
                 ('bi-shield-exclamation', 'ভুয়া অর্ডার চেনা',
@@ -156,8 +157,9 @@ FEATURES = [
                  'and price when shared.'),
                 ('bi-bag-check-fill', 'Customers order on their own',
                  'Name, mobile and address — even at 3 a.m. Orders show up in your dashboard and the customer gets an SMS.'),
-                ('bi-chat-dots-fill', 'Orders from Facebook comments',
-                 'Connect your page (Standard and Premium) and comment replies with an order link go out automatically.'),
+                ('bi-chat-dots-fill', 'Comment and Messenger auto reply',
+                 'Connect your page (Standard and Premium): commenters get the price and order link in their inbox, Messenger '
+                 'questions about price and delivery are answered, and orders are taken in the chat — automatically.'),
                 ('bi-whatsapp', 'WhatsApp order button',
                  'For customers who want to talk first, a WhatsApp order button right on your website.'),
                 ('bi-shield-exclamation', 'Spot fake orders',
@@ -175,6 +177,139 @@ FEATURES = [
                  'Yes. Cash on delivery only, or advance payment with bKash/Nagad — the full amount or just the delivery charge.'),
                 ('What do I get in the free trial?',
                  'Every feature free for 30 days — website, orders, courier, POS. No card needed; if you do not like it, do nothing.'),
+            ],
+        },
+    },
+    {
+        'slug': 'facebook-auto-reply', 'icon': 'bi-messenger', 'image': 'fb-auto', 'image_en': 'fb-auto',
+        'phone': 'fb-inbox-phone', 'phone_en': 'fb-inbox-phone', 'facebook': True,
+        'related': ['facebook-page-website', 'online-shop', 'courier-integration', 'landing-page'],
+        'bn': {
+            'nav': 'ফেসবুক অটো রিপ্লাই',
+            'title': 'ফেসবুক পেজে অটো রিপ্লাই — কমেন্ট আর Messenger বট, বাংলায়',
+            'description': 'কমেন্ট করলেই ইনবক্সে দাম আর অর্ডারের লিংক, Messenger-এ দিনরাত বাংলায় উত্তর, চ্যাটেই অর্ডার। '
+                           'ফোন নম্বরের কমেন্ট নিজে লুকায়। ৩০ দিন ফ্রি।',
+            'h1': 'ফেসবুক পেজের <em>অটো রিপ্লাই</em> — কমেন্টে, Messenger-এ, আর চ্যাটেই অর্ডার',
+            'lead': '"দাম কত?" "ডেলিভারি চার্জ কত?" "আমার অর্ডার কোথায়?" — দিনে শত শত একই প্রশ্ন। পেজ যুক্ত করলে SellPunch '
+                    'আপনার দোকানের আসল তথ্য দেখে নিজে থেকে উত্তর দেয়, আর যেটা আপনাকে দেখতে হবে শুধু সেটাই আপনার কাছে আসে।',
+            'pending': 'Facebook-এর নিয়মে Meta প্রতিটা অ্যাপ আলাদা করে যাচাই করে। SellPunch-এর যাচাই এখন চলছে — শেষ হলেই সব '
+                       'দোকানে এই সুবিধা চালু হবে। এর মধ্যে অ্যাকাউন্ট খুলে ওয়েবসাইট আর বাকি সব ফিচার ব্যবহার করতে পারবেন।',
+            'points': [
+                ('bi-chat-left-text-fill', 'কমেন্টে ইনবক্সে দাম আর লিংক',
+                 'পোস্টে প্রোডাক্টের কোড (#P12) থাকলে কমেন্টকারীর ইনবক্সে সেই প্রোডাক্টের নাম, দাম আর অর্ডারের লিংক যায়; '
+                 'কমেন্টের নিচে ছোট উত্তর। একজনকে এক পোস্টে একবারই — স্প্যাম হয় না।'),
+                ('bi-eye-slash-fill', 'ফোন নম্বরের কমেন্ট লুকানো',
+                 'কাস্টমারের নম্বর লেখা কমেন্ট, অন্য পেজের লিংক আর আপনার বাছাই করা শব্দের কমেন্ট নিজে থেকে লুকায় — '
+                 'অন্য দোকান আপনার কাস্টমারের নম্বর নিতে পারে না।'),
+                ('bi-messenger', 'Messenger-এ দিনরাত উত্তর',
+                 'দাম, ডেলিভারি চার্জ, পেমেন্টের নিয়ম, ঠিকানা, রিটার্ন পলিসি — দোকানের তথ্য থেকে সাথে সাথে উত্তর। '
+                 'বাংলা, ইংরেজি আর বাংলিশ ("dam koto") বোঝে।'),
+                ('bi-bag-check-fill', 'চ্যাটেই অর্ডার',
+                 'সাইজ, কয়টা, নাম, মোবাইল, ঠিকানা আর এলাকা জেনে বট নিজেই অর্ডার বানায় — ক্যাশ অন ডেলিভারিতে, '
+                 'স্টক মিলিয়ে, ব্লক করা নম্বর আটকে। অর্ডার আসে আপনার অর্ডারের তালিকায়।'),
+                ('bi-truck', 'অর্ডারের খবর Messenger-এ',
+                 'কনফার্ম, কুরিয়ারে দেওয়া (ট্র্যাকিং কোডসহ), ডেলিভারি — কাস্টমার Messenger-এ জানে, SMS-এর খরচ ছাড়াই। '
+                 '"অর্ডার কোথায়?" জিজ্ঞেস করলে বট নিজেই বলে দেয়।'),
+                ('bi-question-circle-fill', 'নিজের প্রশ্ন-উত্তর',
+                 'সাইজ চার্ট, কাপড়, এক্সচেঞ্জ — যে প্রশ্ন বারবার আসে তার উত্তর একবার লিখে রাখুন। কোন উত্তর কতবার গেল, তা-ও দেখবেন।'),
+                ('bi-person-raised-hand', 'দরকার হলে মানুষ',
+                 'কাস্টমার মানুষের সাথে কথা বলতে চাইলে বা ছবি পাঠালে বট সরে যায়, কথোপকথন আসে আপনার "অপেক্ষায়" তালিকায়। '
+                 'আপনি নিজে উত্তর দিলে বট সেই কাস্টমারের সাথে ১২ ঘণ্টা চুপ থাকে।'),
+                ('bi-graph-up-arrow', 'Facebook থেকে কত বিক্রি',
+                 'কমেন্ট, Messenger-এর লিংক আর চ্যাট থেকে কয়টা অর্ডার আর কত টাকা — কোন পোস্ট সবচেয়ে বেশি বিক্রি আনল, '
+                 'যাতে বুস্টের টাকা ঠিক পোস্টে যায়।'),
+            ],
+            'steps': [
+                ('অ্যাকাউন্ট খুলুন', '১ মিনিটে দোকান আর ওয়েবসাইট চালু; প্রোডাক্টের ছবি আর দাম তুলুন।'),
+                ('Facebook পেজ যুক্ত করুন', 'সেটিংস → Facebook → পেজ বাছুন। কমেন্ট আর Messenger-এর অটো রিপ্লাই সাথে সাথে চালু।'),
+                ('পোস্টে কোড দিন', 'পোস্টে প্রোডাক্টের কোড (#P12) লিখুন — কমেন্টকারী ইনবক্সে সেই প্রোডাক্টের দাম আর অর্ডারের লিংক পাবে।'),
+            ],
+            'faq': [
+                ('ফেসবুক পেজে অটো রিপ্লাই কীভাবে চালু করব?',
+                 'SellPunch-এ অ্যাকাউন্ট খুলে সেটিংস → Facebook থেকে পেজ যুক্ত করুন — কমেন্ট আর Messenger-এর অটো রিপ্লাই সাথে '
+                 'সাথে চালু হয়। তারপর স্বাগত মেসেজ, নিজের প্রশ্ন-উত্তর আর কোন কমেন্ট লুকাবে ঠিক করে নিন। ধাপে ধাপে দেখতে '
+                 'গাইড সেন্টারের "Facebook অটো রিপ্লাই" গাইড দেখুন।'),
+                ('Meta Business Suite-এর অটো রিপ্লাইয়ের সাথে পার্থক্য কী?',
+                 'Meta-র অটো রিপ্লাই আগে থেকে লেখা একই উত্তর পাঠায়। SellPunch-এর বট আপনার দোকানের আসল তথ্য দেখে উত্তর দেয় — '
+                 'কোন প্রোডাক্টের দাম কত, স্টকে আছে কিনা, কোন এলাকায় ডেলিভারি চার্জ কত, অর্ডার কোথায় — আর চ্যাটেই অর্ডার নিয়ে '
+                 'আপনার অর্ডারের তালিকায় তোলে। দুটো একসাথে চালু রাখবেন না।'),
+                ('কোন প্যাকেজে পাব, খরচ কত?',
+                 'Standard (মাসে ৯৯৯ টাকা) আর Premium (মাসে ১,৯৯৯ টাকা) প্যাকেজে, আর ৩০ দিনের ফ্রি ট্রায়ালেও। কমেন্ট বা '
+                 'Messenger-এর উত্তরের জন্য আলাদা কোনো খরচ নেই।'),
+                ('বট না বুঝলে বা কাস্টমার মানুষের সাথে কথা বলতে চাইলে?',
+                 'বট জানিয়ে দেয় যে দোকানের একজন শীঘ্রই উত্তর দেবেন, আর কথোপকথনটা আপনার "উত্তরের অপেক্ষায়" তালিকায় আসে। '
+                 'আপনি Page Inbox থেকে উত্তর দিলে বট ১২ ঘণ্টা চুপ থাকে; কোনো কাস্টমারের সাথে বট থামিয়েও রাখা যায়।'),
+                ('বট কি ইংরেজিতেও উত্তর দেয়?',
+                 'হ্যাঁ। দোকানের ওয়েবসাইট English-এ থাকলে বটের উত্তর, বাটন আর অর্ডারের খবর ইংরেজিতে যায়। কাস্টমার বাংলা, '
+                 'ইংরেজি বা বাংলিশে লিখলেও বোঝে।'),
+                ('Facebook-এর ২৪ ঘণ্টার নিয়ম মানা হয়?',
+                 'হ্যাঁ। কাস্টমারের শেষ মেসেজের ২৪ ঘণ্টা পর Facebook সাধারণ মেসেজ পাঠাতে দেয় না — তখন শুধু তার অর্ডারের খবর '
+                 '(কনফার্ম, কুরিয়ার, ডেলিভারি) যায়, Facebook-এর অনুমোদিত নিয়মে।'),
+            ],
+        },
+        'en': {
+            'nav': 'Facebook auto reply',
+            'title': 'Facebook Page Auto Reply — Comment & Messenger Bot, Bangladesh',
+            'description': 'Facebook page auto reply: price and order link in the inbox for every comment, a Messenger bot that '
+                           'answers day and night, orders in the chat. 30 days free.',
+            'h1': '<em>Auto reply</em> for your Facebook page — comments, Messenger, and orders in the chat',
+            'lead': '"Price?" "Delivery charge?" "Where is my order?" — the same questions hundreds of times a day. Connect your page '
+                    'and SellPunch answers from your real shop data, and only what needs you comes to you.',
+            'pending': 'Meta reviews every app that works with Facebook pages. SellPunch is in that review now — once it is '
+                       'approved, this turns on for every shop. Meanwhile you can open an account and use the website and every '
+                       'other feature.',
+            'points': [
+                ('bi-chat-left-text-fill', 'Price and link in the inbox',
+                 'When a post has a product code (#P12), commenters get that product\'s name, price and order link in their '
+                 'inbox, plus a short reply under the comment. Once per person per post, so it never spams.'),
+                ('bi-eye-slash-fill', 'Hide comments with phone numbers',
+                 'Comments with a customer\'s number, links to other pages or words you choose are hidden automatically, so '
+                 'other sellers cannot take your customers\' numbers.'),
+                ('bi-messenger', 'Messenger answers, day and night',
+                 'Prices, delivery charges, payment rules, address and return policy, answered from your shop data instantly. '
+                 'Understands Bangla, English and Banglish ("dam koto").'),
+                ('bi-bag-check-fill', 'Orders right in the chat',
+                 'The bot asks size, quantity, name, mobile, address and area and creates the order — cash on delivery, '
+                 'stock-checked, blocked numbers refused. It lands in your order list.'),
+                ('bi-truck', 'Order updates on Messenger',
+                 'Confirmed, handed to the courier (with tracking code), delivered — customers hear it on Messenger, no SMS cost. '
+                 'Ask "where is my order?" and the bot answers.'),
+                ('bi-question-circle-fill', 'Your own Q&A',
+                 'Size charts, fabric, exchanges — write the answer once for questions you get every day, and see how often each '
+                 'one was sent.'),
+                ('bi-person-raised-hand', 'A person when needed',
+                 'If a customer asks for a person or sends a photo, the bot steps aside and the chat joins your waiting list. '
+                 'When you reply yourself, the bot stays quiet with that customer for 12 hours.'),
+                ('bi-graph-up-arrow', 'Sales from Facebook',
+                 'Orders and revenue from comments, Messenger links and chat orders — and which post sold the most, so your boost '
+                 'money goes to the right post.'),
+            ],
+            'steps': [
+                ('Open an account', 'Your shop and website are live in 1 minute; add product photos and prices.'),
+                ('Connect your Facebook page', 'Settings → Facebook → choose your page. Comment and Messenger auto reply start right away.'),
+                ('Add codes to posts', 'Write the product code (#P12) in a post — commenters get that product\'s price and order link in their inbox.'),
+            ],
+            'faq': [
+                ('How do I turn on auto reply for my Facebook page?',
+                 'Open a SellPunch account and connect your page from Settings → Facebook — comment and Messenger auto reply start '
+                 'right away. Then set your welcome message, your own Q&A and which comments to hide. The guide centre has a '
+                 'step-by-step guide (in Bangla).'),
+                ('How is it different from Meta Business Suite auto replies?',
+                 'Meta\'s automated replies send the same pre-written text. SellPunch answers from your real shop data — the price '
+                 'of a product, whether it is in stock, the delivery charge for an area, where an order is — and takes orders in '
+                 'the chat straight into your order list. Do not run both at once.'),
+                ('Which plans include it, and what does it cost?',
+                 'Standard (BDT 999 a month) and Premium (BDT 1,999 a month), and the 30-day free trial. There is no extra charge '
+                 'for comment or Messenger replies.'),
+                ('What if the bot does not understand, or the customer wants a person?',
+                 'The bot says someone from the shop will reply soon and the chat joins your "waiting" list. When you reply from '
+                 'the Page Inbox, the bot stays quiet for 12 hours; you can also pause it for any customer.'),
+                ('Does the bot reply in English?',
+                 'Yes. If your store is set to English, the bot\'s replies, buttons and order updates are in English. It also '
+                 'understands customers writing in Bangla, English or Banglish.'),
+                ('Does it follow Facebook\'s 24-hour rule?',
+                 'Yes. After 24 hours from a customer\'s last message Facebook does not allow ordinary messages, so only that '
+                 'customer\'s order updates (confirmed, courier, delivered) are sent, using Facebook\'s approved method.'),
             ],
         },
     },
@@ -606,6 +741,118 @@ FEATURES = [
 
 INDUSTRIES = [
     {
+        'slug': 'new-business', 'icon': 'bi-rocket-takeoff-fill', 'image': 'dashboard', 'image_en': 'dashboard',
+        'phone': 'shop-phone', 'phone_en': 'shop-phone-en',
+        'related': ['online-shop', 'facebook-auto-reply', 'courier-integration', 'accounting'],
+        'bn': {
+            'nav': 'নতুন ব্যবসা শুরু',
+            'title': 'অনলাইন ব্যবসা শুরু করবেন? ওয়েবসাইট, অর্ডার, ডেলিভারি — এক জায়গায়',
+            'description': 'নতুন অনলাইন ব্যবসা শুরু করতে যা লাগে: ১ মিনিটে নিজের ওয়েবসাইট, ক্যাশ অন ডেলিভারি, কুরিয়ার বুকিং, '
+                           'Facebook অটো রিপ্লাই আর লাভের হিসাব। ৩০ দিন ফ্রি।',
+            'h1': '<em>অনলাইন ব্যবসা শুরু</em> করতে চান? প্রথম দিন থেকেই গোছানো দোকান',
+            'lead': 'প্রোডাক্ট ঠিক করেছেন, Facebook পেজও আছে বা খুলবেন — এবার দরকার এমন একটা জায়গা যেখানে কাস্টমার নিজে দেখে '
+                    'অর্ডার করবে, আর আপনি অর্ডার, ডেলিভারি আর টাকার হিসাব এক জায়গায় দেখবেন। SellPunch-এ সেটা ১ মিনিটে চালু হয়, '
+                    'ডেভেলপার বা হোস্টিং ছাড়া।',
+            'points': [
+                ('bi-lightning-charge-fill', '১ মিনিটে নিজের ওয়েবসাইট',
+                 'দোকানের নাম আর পছন্দের ঠিকানা দিলেই yourshop.sellpunch.com চালু। ডোমেইন, হোস্টিং, ডিজাইনার — কিছুই কিনতে হয় না।'),
+                ('bi-facebook', 'Facebook পেজের সাথে',
+                 'ওয়েবসাইটের লিংক পেজে দিন। পেজ যুক্ত করলে কমেন্ট আর Messenger-এ দাম-ডেলিভারির উত্তর নিজে থেকে যায় '
+                 '(Standard ও Premium)।'),
+                ('bi-cash-coin', 'ক্যাশ অন ডেলিভারি থেকেই শুরু',
+                 'কাস্টমার পণ্য হাতে পেয়ে টাকা দেবে; চাইলে bKash/Nagad-এ অগ্রিম — শুধু ডেলিভারি চার্জ বা পুরো টাকা।'),
+                ('bi-truck', 'কুরিয়ারে এক ক্লিকে',
+                 'Steadfast, Pathao বা RedX-এর মার্চেন্ট অ্যাকাউন্ট যুক্ত করলে অর্ডার থেকেই পার্সেল বুক, ট্র্যাকিং কোড নিজে বসে।'),
+                ('bi-shield-exclamation', 'ভুয়া অর্ডার থেকে বাঁচা',
+                 'যে নম্বর আগে পার্সেল ফেরত দিয়েছে তার অর্ডারের পাশে সতর্কতা; চাইলে নম্বরটা ব্লক করে রাখুন।'),
+                ('bi-graph-up-arrow', 'শুরু থেকেই লাভের হিসাব',
+                 'কেনা দাম আর খরচ (বুস্ট, প্যাকেজিং) লিখলে আসল লাভ দেখায় — কোন প্রোডাক্টে লাভ বেশি।'),
+                ('bi-phone', 'শুধু মোবাইল দিয়েই',
+                 'কম্পিউটার লাগে না, অ্যাপ ইনস্টলও না — ফোনের ব্রাউজারেই সব।'),
+                ('bi-shop', 'পরে দোকান খুললেও একই সফটওয়্যার',
+                 'দোকান বা শোরুম দিলে POS-এ বারকোড স্ক্যান করে বিল — ওয়েবসাইট আর দোকানের স্টক এক।'),
+            ],
+            'steps': [
+                ('প্রোডাক্ট আর দাম ঠিক করুন', 'কী বিক্রি করবেন, কেনা দাম কত, কত টাকায় বেচবেন — প্রোডাক্টের ভালো ছবি তুলে রাখুন।'),
+                ('১ মিনিটে ওয়েবসাইট খুলুন', 'দোকানের নাম আর ঠিকানা দিয়ে অ্যাকাউন্ট খুলুন, প্রোডাক্ট তুলুন, ডেলিভারি চার্জ ঠিক করুন।'),
+                ('লিংক ছড়িয়ে দিন', 'Facebook পেজ, পোস্ট আর WhatsApp-এ লিংক দিন। অর্ডার এলে কনফার্ম করে কুরিয়ারে পাঠান।'),
+            ],
+            'faq': [
+                ('অনলাইন ব্যবসা শুরু করতে কী কী লাগে?',
+                 'বিক্রির মতো প্রোডাক্ট, ভালো ছবি, একটা মোবাইল, আর এমন জায়গা যেখানে কাস্টমার দেখে অর্ডার করবে — সাধারণত '
+                 'Facebook পেজ আর নিজের ওয়েবসাইট। ডেলিভারির জন্য একটা কুরিয়ারের মার্চেন্ট অ্যাকাউন্ট। SellPunch-এ ওয়েবসাইট, '
+                 'অর্ডার, কুরিয়ার বুকিং, Facebook অটো রিপ্লাই আর হিসাব এক জায়গায় পাবেন।'),
+                ('শুরুতে কত টাকা লাগবে?',
+                 'SellPunch-এ প্রথম ৩০ দিন ফ্রি, তারপর মাসে ৪৯৯ টাকা থেকে — ডোমেইন বা হোস্টিং আলাদা কিনতে হয় না। বাকি খরচ '
+                 'আপনার প্রোডাক্ট, প্যাকেজিং আর বিজ্ঞাপনের।'),
+                ('শুধু Facebook পেজ দিয়ে ব্যবসা করলে সমস্যা কী?',
+                 'পেজে প্রোডাক্ট খুঁজতে কাস্টমারকে পোস্ট ঘাঁটতে হয়, প্রতিটা দাম ইনবক্সে বলতে হয়, আর অর্ডার খাতায় লিখে রাখতে হয়। '
+                 'ওয়েবসাইটে কাস্টমার নিজে অর্ডার করে, অর্ডার হারায় না, আর পেজের পাশে নিজের ওয়েবসাইট থাকলে কাস্টমার বেশি বিশ্বাস করে।'),
+                ('ওয়েবসাইট বানানো না জানলে চলবে?',
+                 'হ্যাঁ। কোড বা ডিজাইন জানতে হয় না — ৪টা তৈরি ডিজাইন থেকে একটা বাছুন, লোগো আর ব্যানার দিন। Facebook চালাতে '
+                 'পারলেই পারবেন।'),
+                ('ট্রেড লাইসেন্স ছাড়া শুরু করা যায়?',
+                 'SellPunch-এ সাইনআপের জন্য ট্রেড লাইসেন্স লাগে না; ব্যবসা বড় হলে আইন অনুযায়ী লাইসেন্স করে নেওয়া ভালো।'),
+                ('কেনার আগে দেখে নেওয়া যায়?',
+                 'হ্যাঁ — লাইভ ডেমো দোকানে ঢুকে পুরো ড্যাশবোর্ড চালিয়ে দেখুন, অ্যাকাউন্ট খুলতে হয় না।'),
+            ],
+        },
+        'en': {
+            'nav': 'Starting a business',
+            'title': 'Start an Online Business in Bangladesh — Website, Orders, Delivery',
+            'description': 'Start an online business in Bangladesh: your website in 1 minute, cash on delivery, courier booking, '
+                           'Facebook auto reply and profit tracking. 30 days free.',
+            'h1': 'Want to <em>start an online business</em>? Be organised from day one',
+            'lead': 'You have your products, and a Facebook page or the plan to open one. Now you need a place where customers '
+                    'browse and order on their own, and where you see orders, deliveries and money in one place. On SellPunch '
+                    'it is live in 1 minute, without a developer or hosting.',
+            'points': [
+                ('bi-lightning-charge-fill', 'Your website in 1 minute',
+                 'Enter a shop name and the address you want and yourshop.sellpunch.com is live. No domain, hosting or designer to buy.'),
+                ('bi-facebook', 'Works with your Facebook page',
+                 'Put the website link on your page. Connect the page and comment and Messenger questions about price and '
+                 'delivery are answered automatically (Standard and Premium).'),
+                ('bi-cash-coin', 'Start with cash on delivery',
+                 'Customers pay when they receive the product; or take bKash/Nagad advance — just the delivery charge or the full amount.'),
+                ('bi-truck', 'Courier in one click',
+                 'Connect your Steadfast, Pathao or RedX merchant account and book parcels from the order; the tracking code fills in itself.'),
+                ('bi-shield-exclamation', 'Avoid fake orders',
+                 'Numbers that returned parcels before get a warning next to their order; block a number if you want.'),
+                ('bi-graph-up-arrow', 'Profit from the start',
+                 'Add buying prices and costs (boosts, packaging) to see real profit — and which products earn the most.'),
+                ('bi-phone', 'Just your phone',
+                 'No computer and no app to install — everything works in the phone browser.'),
+                ('bi-shop', 'Same software when you open a shop',
+                 'Open a shop or showroom later and bill with the barcode POS — website and shop share one stock.'),
+            ],
+            'steps': [
+                ('Decide products and prices', 'What you will sell, what it costs you and your selling price — take good product photos.'),
+                ('Open your website in 1 minute', 'Sign up with a shop name and address, add products and set delivery charges.'),
+                ('Share your link', 'Post it on your Facebook page, in posts and on WhatsApp. Confirm orders and send them by courier.'),
+            ],
+            'faq': [
+                ('What do I need to start an online business in Bangladesh?',
+                 'Products worth selling, good photos, a phone, and a place where customers can see and order — usually a Facebook '
+                 'page and your own website — plus a courier merchant account for delivery. SellPunch gives you the website, orders, '
+                 'courier booking, Facebook auto reply and accounts in one place.'),
+                ('How much money do I need to start?',
+                 'SellPunch is free for the first 30 days, then from BDT 499 a month — no separate domain or hosting. The rest '
+                 'is your products, packaging and ads.'),
+                ('What is wrong with selling only through a Facebook page?',
+                 'On a page, customers scroll through posts to find products, ask every price in the inbox, and orders get written '
+                 'in a notebook. On a website customers order themselves, orders are not lost, and a website next to your page '
+                 'earns more trust.'),
+                ('Can I do it without knowing how to build websites?',
+                 'Yes. No code or design skills — pick one of 4 ready-made designs and add your logo and banner. If you can use '
+                 'Facebook you can use SellPunch.'),
+                ('Can I start without a trade licence?',
+                 'Signing up to SellPunch does not need a trade licence; as the business grows, getting one under the law is wise.'),
+                ('Can I try it before paying?',
+                 'Yes — open the live demo shop and use the whole dashboard, no account needed.'),
+            ],
+        },
+    },
+    {
         'slug': 'clothing', 'icon': 'bi-handbag-fill', 'image': 'design-bold', 'image_en': 'design-bold-en', 'image_w': 1200,
         'related': ['online-shop', 'inventory', 'facebook-page-website', 'courier-integration'],
         'bn': {
@@ -937,6 +1184,20 @@ INDUSTRIES = [
 KINDS = {'feature': FEATURES, 'industry': INDUSTRIES}
 BY_SLUG = {('feature', p['slug']): p for p in FEATURES}
 BY_SLUG.update({('industry', p['slug']): p for p in INDUSTRIES})
+
+
+FACEBOOK_LIVE_CACHE = 'mk:facebook_live'
+
+
+def facebook_live():
+    """Meta-র App Review পাশ করে Facebook অটোমেশন সবার জন্য চালু কিনা (HQ → সেটিংসের সুইচ)। ১ মিনিট মনে রাখে।"""
+    from django.core.cache import cache
+    value = cache.get(FACEBOOK_LIVE_CACHE)
+    if value is None:
+        from .models import MasterSetting
+        value = bool(MasterSetting.objects.order_by('pk').values_list('facebook_live', flat=True).first())
+        cache.set(FACEBOOK_LIVE_CACHE, value, 60)
+    return value
 
 
 def get(kind, slug):

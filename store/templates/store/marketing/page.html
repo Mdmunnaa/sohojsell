@@ -7,6 +7,7 @@
       <nav class="crumbs" aria-label="breadcrumb">{% for name, url in crumbs %}{% if not forloop.last %}<a href="{{ url }}">{{ name }}</a><i class="bi bi-chevron-right"></i>{% else %}<span aria-current="page">{{ name }}</span>{% endif %}{% endfor %}</nav>
       <h1>{{ text.h1|safe }}</h1>
       <p class="lead">{{ text.lead }}</p>
+      {% if pending %}<p class="mk-pending"><i class="bi bi-hourglass-split"></i><span>{{ pending }}</span></p>{% endif %}
       <div class="hero-cta">
         <a href="{% url 'signup' %}" class="btn btn-lg btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> {{ ui.start }}</a>
         <a href="{% url 'demo_start' %}" class="btn btn-lg btn-out"><i class="bi bi-play-circle-fill" style="color:var(--brand)"></i> {{ ui.demo }}</a>
@@ -49,7 +50,7 @@
       <h2>{{ ui.how_title }}</h2>
     </div>
     <div class="steps">
-      {% for heading, body in ui.steps %}
+      {% for heading, body in steps %}
       <div class="step"><div class="n">{% if lang == 'en' %}{{ forloop.counter }}{% else %}{{ forloop.counter|bn }}{% endif %}</div><h3>{{ heading }}</h3><p>{{ body }}</p></div>
       {% endfor %}
     </div>
