@@ -5534,3 +5534,24 @@ class FacebookSeoTests(TestCase):
         self.assertIn('https://sellpunch.com/features/facebook-auto-reply/', sent[0]['urlList'])
         with override_settings(STORE_BASE_DOMAIN=''):
             self.assertEqual(indexnow.submit(request), {'skipped': 'no domain'})
+
+
+class PublicPageHeadingTests(TestCase):
+    """Bing Site Scan-এর "H1 tag missing" — sitemap-এর প্রতিটা পাতায় (আর লগইন-সাইনআপে) ঠিক একটা <h1>।"""
+
+    def test_every_public_page_has_one_h1(self):
+        import re
+        from urllib.parse import urlparse
+        sitemap = self.client.get('/sitemap.xml').content.decode()
+        paths = {urlparse(url).path for url in re.findall(r'<loc>([^<]+)</loc>', sitemap)}
+        paths |= {reverse('signup'), reverse('login')}
+        self.assertGreater(len(paths), 30)
+        problems = []
+        for path in sorted(paths):
+            response = self.client.get(path)
+            if response.status_code != 200 or 'text/html' not in response.get('Content-Type', ''):
+                continue
+            count = len(re.findall(r'<h1[\s>]', response.content.decode()))
+            if count != 1:
+                problems.append(f'{path}: {count}')
+        self.assertEqual(problems, [])
