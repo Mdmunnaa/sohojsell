@@ -147,7 +147,7 @@ def _create_products(job, shop):
     items, skipped = _parse(job)
     existing = set(Product.objects.filter(shop=shop).exclude(barcode=None).values_list('barcode', flat=True))
     skus = [v['barcode'] for p in items for v in p['variants'] if v['barcode']]
-    taken = set(ProductVariant.objects.filter(barcode__in=skus).values_list('barcode', flat=True))
+    taken = set(ProductVariant.objects.filter(product__shop=shop, barcode__in=skus).values_list('barcode', flat=True))
     remaining = products_remaining(shop)
     categories = {c.name.lower(): c for c in Category.objects.filter(shop=shop)}
     over_limit = 0

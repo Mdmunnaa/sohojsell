@@ -402,7 +402,7 @@ def product_ld(request, shop, product, meta, rating=None):
     if rating and rating.get('count'):
         data['aggregateRating'] = {'@type': 'AggregateRating', 'ratingValue': str(rating['avg']),
                                    'reviewCount': rating['count'], 'bestRating': '5', 'worstRating': '1'}
-    return json.dumps(data, ensure_ascii=False)
+    return safe_ld(data)
 
 
 def shop_ld(request, shop, meta):
@@ -421,12 +421,22 @@ def shop_ld(request, shop, meta):
     same_as = [link for link in (shop.facebook_page_url, shop.instagram_link, shop.youtube_link) if link]
     if same_as:
         data['sameAs'] = same_as
-    return json.dumps(data, ensure_ascii=False)
+    return safe_ld(data)
 
 
 def breadcrumb_ld(request, shop, crumbs):
     """[(নাম, লিংক), ...] → BreadcrumbList।"""
     import json
-    return json.dumps({'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': [
+    return safe_ld({'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': [
         {'@type': 'ListItem', 'position': index, 'name': name, 'item': request.build_absolute_uri(link)}
-        for index, (name, link) in enumerate(crumbs, start=1)]}, ensure_ascii=False)
+        for index, (name, link) in enumerate(crumbs, start=1)]})
+
+
+def safe_ld(data):
+    """
+    <script type="application/ld+json">-এর ভেতরে বসানোর JSON। প্রোডাক্ট বা দোকানের নামে "</script>" থাকলে পাতা ভেঙে
+    যেত (আর সেখানে স্ক্রিপ্ট বসানো যেত) — তাই <, >, & ইউনিকোড-এস্কেপ হয়ে যায়; JSON-এর মান একই থাকে।
+    """
+    import json
+    return (json.dumps(data, ensure_ascii=False)
+            .replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026'))

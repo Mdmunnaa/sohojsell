@@ -200,3 +200,17 @@ class SessionRefreshMiddleware:
                 session[self.KEY] = today
         return response
 
+
+
+class BadInputMiddleware:
+    """ঠিকানার প্রশ্ন-অংশে NUL অক্ষর (%00) থাকলে 400 — PostgreSQL এটা নেয় না, খোঁজার পাতাগুলো ক্র্যাশ করত।"""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        query = request.META.get('QUERY_STRING', '')
+        if '%00' in query or '\x00' in query:
+            from django.http import HttpResponseBadRequest
+            return HttpResponseBadRequest('Bad request')
+        return self.get_response(request)

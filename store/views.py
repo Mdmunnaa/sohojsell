@@ -12,6 +12,7 @@ from django.template.loader import get_template
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from decimal import Decimal
 
+from django.db import transaction
 from django.db.models import Count, F, Sum, Q
 from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -258,10 +259,12 @@ def product_list(request):
     # Search
     q = request.GET.get('q', '')
     if q:
-        products = products.filter(name__icontains=q)
+        # নাম বা বারকোড (সাইজ/রংয়ের বারকোডও) দিয়ে খোঁজা
+        code = q.strip().translate(BN_TO_EN_DIGITS)
+        products = products.filter(Q(name__icontains=q) | Q(barcode=code) | Q(variants__barcode=code)).distinct()
     # Category filter
     cat_id = request.GET.get('cat', '')
-    if cat_id:
+    if cat_id.isdigit():
         products = products.filter(category__id=cat_id)
     # Status filter
     status = request.GET.get('status', '')
@@ -357,75 +360,108 @@ def delete_product(request, pk):
 # ============================================================
 # ORDER MANAGEMENT (Multi-Product)
 # ============================================================
+def _money_field(raw, label):
+    """ফর্মের টাকার ঘর → Decimal (ফাঁকা = ০)। অক্ষর বা ঋণাত্মক হলে FlowError।"""
+    from decimal import Decimal, InvalidOperation
+    text = str(raw or '').strip().translate(BN_TO_EN_DIGITS).replace(',', '')
+    if not text:
+        return Decimal('0')
+    try:
+        value = Decimal(text).quantize(Decimal('0.01'))
+    except (InvalidOperation, ValueError):
+        raise order_flow.FlowError(f'{label} সংখ্যায় লিখুন।')
+    if not value.is_finite() or value < 0 or value > Decimal('99999999'):
+        raise order_flow.FlowError(f'{label} ঠিক নেই।')
+    return value
+
+
+def _create_manual_order(shop, post):
+    """
+    ফোন/ইনবক্সের অর্ডার হাতে তোলা। সব একসাথে (atomic): ভুল হলে কিছুই তৈরি হয় না।
+    পরিমাণ ১-এর কম বা স্টকের বেশি হলে আটকায় — আগে ঋণাত্মক পরিমাণে স্টক বেড়ে যেত, আর স্টকের বেশি লিখে
+    পরে বাতিল করলে বাড়তি মাল স্টকে ঢুকত।
+    """
+    name = (post.get('customer_name') or '').strip()[:150]
+    address = (post.get('customer_address') or '').strip()[:500]
+    phone = _storefront_customer_phone(post.get('customer_phone') or '')
+    if not name or not address:
+        raise order_flow.FlowError('কাস্টমারের নাম আর ঠিকানা দিন।')
+    if not phone:
+        raise order_flow.FlowError('সঠিক মোবাইল নম্বর দিন (০১ দিয়ে শুরু, ১১ সংখ্যা)।')
+    delivery_charge = _money_field(post.get('delivery_charge'), 'ডেলিভারি চার্জ')
+    discount = _money_field(post.get('discount'), 'ছাড়')
+
+    # "Full Paid" = আগে পুরো টাকা নেওয়া (কুরিয়ার ৳০ তুলবে)। আংশিক অগ্রিম হলে COD, অগ্রিমটা advance_paid-এ —
+    # কুরিয়ার শুধু বাকিটা তোলে (store/couriers.py cod_amount)
+    payment_method, advance = post.get('payment_method', 'COD'), 0
+    if payment_method == 'Full Paid':
+        payment_method = 'Paid'
+    elif payment_method == 'Partial Paid':
+        advance = _money_field(post.get('advance_amount'), 'অগ্রিম')
+        payment_method = 'COD'
+    elif payment_method not in ('COD', 'Paid'):
+        payment_method = 'COD'
+
+    lines = {}
+    product_ids, prices, quantities = post.getlist('product[]'), post.getlist('price[]'), post.getlist('quantity[]')
+    for index, raw_id in enumerate(product_ids):
+        if not raw_id:
+            continue
+        try:
+            key = int(raw_id)
+            qty = int(str(quantities[index] if index < len(quantities) else '1').strip().translate(BN_TO_EN_DIGITS) or 1)
+        except ValueError:
+            raise order_flow.FlowError('প্রোডাক্ট বা পরিমাণ ঠিক নেই।')
+        if qty < 1 or qty > 9999:
+            raise order_flow.FlowError('পরিমাণ কমপক্ষে ১ হতে হবে।')
+        price = _money_field(prices[index] if index < len(prices) else '', 'দাম')
+        if key in lines:
+            lines[key]['qty'] += qty
+        else:
+            lines[key] = {'qty': qty, 'price': price}
+    if not lines:
+        raise order_flow.FlowError('অন্তত একটা প্রোডাক্ট বেছে নিন।')
+
+    with transaction.atomic():
+        # ড্রপডাউনের মান: প্রোডাক্টের id, আর সাইজ/রং হলে ঋণাত্মক ভ্যারিয়েন্ট id (store/variants.py)
+        chosen = variants.resolve(shop, lines.keys(), lock=True)
+        subtotal = 0
+        for key, line in lines.items():
+            item = chosen.get(key)
+            if item is None or item.needs_choice:
+                raise order_flow.FlowError('একটা প্রোডাক্ট আর পাওয়া যাচ্ছে না। পাতাটা আবার খুলে চেষ্টা করুন।')
+            if item.stock < line['qty']:
+                raise order_flow.FlowError(f'"{item.name}" স্টকে আছে মাত্র {item.stock}টা।')
+            subtotal += line['price'] * line['qty']
+        total = max(subtotal + delivery_charge - discount, 0)
+        customer, _created = Customer.objects.get_or_create(shop=shop, phone=phone,
+                                                            defaults={'name': name, 'address': address})
+        if not _created:
+            customer.name, customer.address = name, address
+            customer.save(update_fields=['name', 'address'])
+        order = Order.objects.create(
+            shop=shop, customer=customer, delivery_charge=delivery_charge, discount=discount,
+            payment_method=payment_method, status='Pending', total_amount=total, advance_paid=min(advance, total))
+        for key, line in lines.items():
+            item = chosen[key]
+            OrderItem.objects.create(order=order, product=item.product, variant=item.variant,
+                                     variant_name=item.variant_name, price=line['price'], quantity=line['qty'],
+                                     cost_price=item.cost_price)
+            variants.take(item, line['qty'])
+    return order
+
+
 @login_required(login_url='/accounts/login/')
 def order_create(request):
     shop = request.user.shop
 
     if request.method == 'POST':
-        c_name = request.POST.get('customer_name')
-        c_phone = request.POST.get('customer_phone')
-        c_address = request.POST.get('customer_address')
-        delivery_charge = float(request.POST.get('delivery_charge') or 0)
-        discount = float(request.POST.get('discount') or 0)
-        payment_method = request.POST.get('payment_method', 'COD')
-        # "Full Paid" = আগে পুরো টাকা নেওয়া (কুরিয়ার ৳০ তুলবে)। আংশিক অগ্রিম হলে COD, অগ্রিমটা advance_paid-এ —
-        # কুরিয়ার শুধু বাকিটা তোলে (store/couriers.py cod_amount)
-        advance = 0.0
-        if payment_method == 'Full Paid':
-            payment_method = 'Paid'
-        elif payment_method == 'Partial Paid':
-            try:
-                advance = max(0.0, float(request.POST.get('advance_amount') or 0))
-            except ValueError:
-                advance = 0.0
-            payment_method = 'COD'
-        elif payment_method not in ('COD', 'Paid'):
-            payment_method = 'COD'
-
-        customer, created = Customer.objects.get_or_create(
-            shop=shop, phone=c_phone,
-            defaults={'name': c_name, 'address': c_address}
-        )
-        if not created:
-            customer.name = c_name
-            customer.address = c_address
-            customer.save()
-
-        order = Order.objects.create(
-            shop=shop, customer=customer,
-            delivery_charge=delivery_charge, discount=discount,
-            payment_method=payment_method, status='Pending', total_amount=0
-        )
-
-        product_ids = request.POST.getlist('product[]')
-        prices = request.POST.getlist('price[]')
-        quantities = request.POST.getlist('quantity[]')
-        subtotal = 0
-
-        for i in range(len(product_ids)):
-            p_id = product_ids[i]
-            if p_id:
-                price = float(prices[i] or 0)
-                qty = int(quantities[i] or 1)
-                # ড্রপডাউনের মান: প্রোডাক্টের id, আর সাইজ/রং হলে ঋণাত্মক ভ্যারিয়েন্ট id (store/variants.py)
-                try:
-                    item = variants.resolve(shop, [int(p_id)]).get(int(p_id))
-                except ValueError:
-                    item = None
-                if item is None or item.needs_choice:
-                    continue
-                OrderItem.objects.create(
-                    order=order, product=item.product, variant=item.variant, variant_name=item.variant_name,
-                    price=price, quantity=qty, cost_price=item.cost_price
-                )
-                if item.stock > 0:
-                    variants.take(item, min(qty, item.stock))
-                subtotal += price * qty
-
-        order.total_amount = max(0, subtotal + delivery_charge - discount)
-        order.advance_paid = min(advance, float(order.total_amount))
-        order.save()
-        messages.success(request, f"Order #ORD-{order.id} created successfully!")
+        try:
+            order = _create_manual_order(shop, request.POST)
+        except order_flow.FlowError as exc:
+            messages.error(request, str(exc))
+            return redirect('order_create')
+        messages.success(request, f'অর্ডার #ORD-{order.id} তৈরি হয়েছে।')
         return redirect('order_list')
 
     options = []
@@ -479,32 +515,61 @@ def order_list(request):
 @login_required(login_url='/accounts/login/')
 def order_edit(request, order_id):
     shop = request.user.shop
-    order = get_object_or_404(Order, id=order_id, shop=shop)
+    order = get_object_or_404(Order.objects.select_related('customer'), id=order_id, shop=shop)
     if request.method == 'POST':
-        customer = order.customer
-        customer.name = request.POST.get('customer_name')
-        customer.phone = request.POST.get('customer_phone')
-        customer.address = request.POST.get('customer_address')
-        customer.save()
-        order.total_amount = request.POST.get('total_amount')
-        order.save()
-        messages.success(request, f'Order #ORD-{order.id} updated!')
+        name = (request.POST.get('customer_name') or '').strip()[:150]
+        address = (request.POST.get('customer_address') or '').strip()[:500]
+        raw_phone = (request.POST.get('customer_phone') or '').strip()
+        # নম্বর না বদলালে যেমন আছে তেমন (POS-এর নাম ছাড়া কাস্টমারের নম্বর আসল নম্বর না)
+        phone = order.customer.phone if raw_phone == order.customer.phone else _storefront_customer_phone(raw_phone)
+        try:
+            if not name or not address:
+                raise order_flow.FlowError('কাস্টমারের নাম আর ঠিকানা দিন।')
+            if not phone:
+                raise order_flow.FlowError('সঠিক মোবাইল নম্বর দিন (০১ দিয়ে শুরু, ১১ সংখ্যা)।')
+            total = _money_field(request.POST.get('total_amount'), 'মোট টাকা')
+        except order_flow.FlowError as exc:
+            messages.error(request, str(exc))
+            return redirect('order_edit', order_id=order.id)
+        with transaction.atomic():
+            customer = order.customer
+            if phone != customer.phone:
+                # নম্বর বদলালে: সেই নম্বরের কাস্টমার আগে থেকে থাকলে অর্ডারটা তার নামে যায় (এক নম্বরে দুজন কাস্টমার হয় না);
+                # না থাকলে নতুন কাস্টমার — পুরনো কাস্টমারের অন্য অর্ডারের নম্বর বদলায় না
+                customer, _created = Customer.objects.get_or_create(shop=shop, phone=phone,
+                                                                    defaults={'name': name, 'address': address})
+                order.customer = customer
+            customer.name, customer.address = name, address
+            customer.save(update_fields=['name', 'address'])
+            order.total_amount = total
+            if order.advance_paid > total:
+                order.advance_paid = total
+            order.save(update_fields=['customer', 'total_amount', 'advance_paid'])
+        messages.success(request, f'অর্ডার #ORD-{order.id} বদলানো হয়েছে।')
         return redirect('order_list')
     return render(request, 'store/order_edit.html', {'order': order})
 
 
 @login_required(login_url='/accounts/login/')
 def order_delete(request, order_id):
+    """শুধু POST-এ মোছে। POS-এর বিক্রি আর অনলাইনে টাকা পাওয়া অর্ডার মোছা যায় না — হিসাব নষ্ট হয়; সেগুলো ফেরত/বাতিল হয়।"""
     shop = request.user.shop
+    if request.method != 'POST':
+        return redirect('order_list')
     order = get_object_or_404(Order, id=order_id, shop=shop)
-    try:
+    if order.source == 'pos':
+        messages.error(request, 'POS-এর বিক্রি মোছা যায় না। POS-এর "আজকের বিক্রি" থেকে ফেরত নিন।')
+        return redirect('order_list')
+    if order.online_payment_status == Order.ONLINE_PAID or order.customer_payments.filter(status='Completed').exists():
+        messages.error(request, 'এই অর্ডারে কাস্টমার অনলাইনে টাকা দিয়েছে, তাই মোছা যায় না। দরকার হলে অর্ডারটা বাতিল করুন।')
+        return redirect('order_list')
+    with transaction.atomic():
+        order = Order.objects.select_for_update().get(pk=order.pk)
         if not order.stock_returned:        # বাতিল/ফেরত হয়ে মাল আগেই স্টকে ফিরে থাকলে আবার না
             for item in order.items.all():
                 variants.give_back(item.product_id, item.variant_id, item.quantity)
         order.delete()
-        messages.success(request, f'Order #ORD-{order_id} deleted & stock restored!')
-    except Exception as e:
-        messages.error(request, f'Delete failed: {str(e)}')
+    messages.success(request, f'অর্ডার #ORD-{order_id} মুছে ফেলা হয়েছে, মাল স্টকে ফিরেছে।')
     return redirect('order_list')
 
 
@@ -554,7 +619,8 @@ def customer_list(request):
     # POS-এর নাম ছাড়া বিলগুলো একটা "Walk-in Customer"-এ জমা হয় — সে আসল কাস্টমার না, তালিকায় দেখানো হয় না
     customers = Customer.objects.filter(shop=shop).exclude(phone=pos.WALK_IN_PHONE).annotate(
         total_orders=Count('orders'),
-        total_spent=Sum('orders__total_amount'),
+        # বাতিল আর ফেরত অর্ডারের টাকা "মোট কেনা"-য় ধরা হয় না
+        total_spent=Sum('orders__total_amount', filter=~Q(orders__status__in=['Returned', 'Cancelled'])),
         returned_orders=Count('orders', filter=Q(orders__status__in=['Returned', 'Cancelled']))
     ).prefetch_related('orders').order_by('-id')
     q = request.GET.get('q', '')
@@ -1026,54 +1092,10 @@ def steadfast_webhook(request):
 # ============================================================
 # PUBLIC STOREFRONT
 # ============================================================
-def public_shop(request, shop_slug):
-    shop = get_object_or_404(Shop, slug=shop_slug)
-
-    if not storefront_is_open(shop):
-        return render(request, 'store/storefront/offline.html', {'shop': shop})
-
-    products = Product.objects.filter(shop=shop, is_active=True, stock_quantity__gt=0)
-    return render(request, 'store/public_shop.html', {'shop': shop, 'products': products})
-
-
 # ============================================================
 # BILLING
 # ============================================================
 # billing_page moved below with full payment request support
-
-
-@login_required(login_url='/accounts/login/')
-def payment_success(request, plan_name):
-    shop = request.user.shop
-
-    # ── Step 1: valid plan name check ──
-    VALID_PLANS = ['Basic', 'Standard', 'Premium']
-    if plan_name not in VALID_PLANS:
-        messages.error(request, "Invalid plan.")
-        return redirect('billing')
-
-    # ── Step 2: PaymentRequest must exist & be Approved by admin ──
-    approved = PaymentRequest.objects.filter(
-        shop=shop,
-        plan_name=plan_name,
-        status='Approved'
-    ).order_by('-created_at').first()
-
-    if not approved:
-        messages.warning(
-            request,
-            "আপনার পেমেন্ট এখনো admin verify করেননি। "
-            "Approve হলে plan automatically upgrade হবে।"
-        )
-        return redirect('billing')
-
-    # ── Step 3: upgrade only if not already on this plan ──
-    if shop.subscription_plan != plan_name:
-        shop.subscription_plan = plan_name
-        shop.save(update_fields=['subscription_plan'])
-
-    messages.success(request, f"আপনার দোকান এখন {plan_name} প্ল্যানে।")
-    return redirect('dashboard')
 
 
 # ============================================================
@@ -1398,7 +1420,11 @@ def storefront_track(request, shop_slug):
     number = request.GET.get('order', '').strip()
     phone = request.GET.get('phone', '').strip()
     error = ''
-    if number or phone:
+    from . import ratelimit
+    ip = ratelimit.client_ip(request)
+    if (number or phone) and ratelimit.blocked('sf-track', ip, TRACK_LIMIT):
+        error = sf_lang.t('অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।', shop)
+    elif number or phone:
         digits = ''.join(ch for ch in number.translate(str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789')) if ch.isdigit())
         clean_phone = _storefront_customer_phone(phone)
         order = (Order.objects.filter(shop=shop, pk=digits, customer__phone=clean_phone).exclude(source='pos').first()
@@ -1406,6 +1432,7 @@ def storefront_track(request, shop_slug):
         if order is not None:
             return redirect(storefront_link(shop, 'storefront_track_order', order_flow.track_code(order),
                                             request=request))
+        ratelimit.hit('sf-track', ip, TRACK_WINDOW)
         error = sf_lang.t('এই অর্ডার নম্বর আর মোবাইল নম্বর মিলিয়ে কোনো অর্ডার পাওয়া যায়নি। নম্বর দুটো আবার দেখে নিন।', shop)
     return render(request, 'store/storefront/track.html', {
         'shop': shop, 'order': None, 'error': error, 'number': number, 'phone': phone,
@@ -1417,9 +1444,13 @@ def storefront_track(request, shop_slug):
 
 def storefront_track_order(request, shop_slug, code):
     """SMS-এর লিংক বা খোঁজার পর: অর্ডারের অবস্থা। কোড না মিললে খোঁজার পেজে।"""
+    from . import ratelimit
     shop = get_object_or_404(Shop, slug=shop_slug)
-    order = order_flow.order_from_code(shop, code)
+    # লিংকের কোড ছোট (SMS-এ জায়গা কম) — তাই আন্দাজ করে অন্যের অর্ডার খোলা ঠেকাতে ভুলের সীমা
+    ip = ratelimit.client_ip(request)
+    order = None if ratelimit.blocked('sf-track', ip, TRACK_LIMIT) else order_flow.order_from_code(shop, code)
     if order is None:
+        ratelimit.hit('sf-track', ip, TRACK_WINDOW)
         return redirect(storefront_link(shop, 'storefront_track', request=request))
     return render(request, 'store/storefront/track.html', _track_context(request, shop, order))
 
@@ -1451,9 +1482,15 @@ def storefront_coupon_check(request, shop_slug):
         return JsonResponse({'ok': False, 'error': sf_lang.t('তথ্য ঠিক নেই।', shop)})
     subtotal, _chosen, _q = _cart_subtotal(shop, data.get('cart'))
     _zone, charge = delivery.charge_for(shop, data.get('zone'), subtotal)
+    from . import ratelimit
+    ip = ratelimit.client_ip(request)
+    if ratelimit.blocked('sf-coupon', ip, COUPON_LIMIT):
+        return JsonResponse({'ok': False, 'error': sf_lang.t('অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।', shop)},
+                            status=429)
     try:
         coupon, discount, delivery_off = offers.find(shop, data.get('code'), subtotal, charge or 0)
     except offers.CouponError as exc:
+        ratelimit.hit('sf-coupon', ip, COUPON_WINDOW)
         return JsonResponse({'ok': False, 'error': str(exc)})
     if coupon is None:
         return JsonResponse({'ok': False, 'error': sf_lang.t('কুপন কোড লিখুন।', shop)})
@@ -1517,6 +1554,13 @@ def _storefront_customer_phone(raw):
     return normalize_bd_mobile(raw)
 
 
+# ওয়েবসাইটের চেষ্টার সীমা (store/ratelimit.py)
+ORDER_IP_LIMIT, ORDER_IP_WINDOW = 12, 10 * 60          # এক IP: ১০ মিনিটে ১২টা অর্ডার
+ORDER_PHONE_LIMIT, ORDER_PHONE_WINDOW = 6, 60 * 60     # এক দোকানে এক নম্বর: ঘণ্টায় ৬টা
+TRACK_LIMIT, TRACK_WINDOW = 20, 10 * 60                # অর্ডার খোঁজায় ভুল: ১০ মিনিটে ২০ বার
+COUPON_LIMIT, COUPON_WINDOW = 30, 10 * 60              # কুপন কোড আন্দাজ: ১০ মিনিটে ৩০ বার ভুল
+
+
 def storefront_place_order(request, shop_slug):
     """
     দোকানের ওয়েবসাইট থেকে অর্ডার (AJAX POST, JSON)।
@@ -1545,6 +1589,14 @@ def storefront_place_order(request, shop_slug):
 
     source = fb_ref.from_session(request, shop)     # Facebook-এর কমেন্ট/Messenger-এর লিংক থেকে এলে
     phone = _storefront_customer_phone(data.get('phone') or '')
+    # ভুয়া অর্ডারের বন্যা ঠেকাতে (স্টক আটকে যায়, সেলারের SMS খরচ হয়): এক IP আর এক নম্বর থেকে অল্প সময়ে সীমিত অর্ডার
+    from . import ratelimit
+    ip = ratelimit.client_ip(request)
+    if ratelimit.too_many('sf-order-ip', ip, ORDER_IP_LIMIT, ORDER_IP_WINDOW) or (
+            phone and ratelimit.too_many('sf-order-phone', f'{shop.pk}:{phone}', ORDER_PHONE_LIMIT, ORDER_PHONE_WINDOW)):
+        return JsonResponse({'success': False, 'error': sf_lang.t(
+            'অল্প সময়ে অনেকগুলো অর্ডার দেওয়া হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন, বা দোকানে সরাসরি যোগাযোগ করুন।', shop)},
+            status=429)
     try:
         placed = storefront_orders.place(
             shop, quantities=quantities, name=data.get('name'), phone=phone, address=data.get('address'),
@@ -1767,7 +1819,7 @@ def barcode_print(request):
             products.append({'id': product.id, 'name': product.name, 'price': product.price,
                              'barcode': product.barcode})
 
-    selected_ids = request.GET.getlist('ids')
+    selected_ids = [i for i in request.GET.getlist('ids') if i.lstrip('-').isdigit()]
     selected_products = []
     if selected_ids:
         selected_products = Product.objects.filter(id__in=selected_ids, shop=shop)
@@ -1791,94 +1843,78 @@ from .models import StaffProfile
 User = get_user_model()
 
 
+STAFF_PERMISSIONS = ('can_use_pos', 'can_manage_products', 'can_manage_orders', 'can_manage_customers',
+                     'can_view_reports', 'can_manage_settings', 'can_send_sms')
+STAFF_PASSWORD_MIN = 6
+
+
+def _owner_only(request):
+    """স্টাফ অ্যাকাউন্ট বানানো/বদলানো শুধু দোকানের মালিকের কাজ — "সেটিংস" অনুমতি পাওয়া স্টাফও নিজের বা অন্যের অনুমতি বা
+    পাসওয়ার্ড বদলাতে পারে না।"""
+    if getattr(request.user, 'is_shop_staff', False):
+        messages.error(request, 'স্টাফ অ্যাকাউন্ট শুধু দোকানের মালিক বদলাতে পারেন।')
+        return redirect('dashboard')
+    return None
+
+
 @login_required(login_url='/accounts/login/')
 def add_edit_staff(request, staff_id=None):
+    denied = _owner_only(request)
+    if denied:
+        return denied
+    from accounts.forms import normalize_bd_mobile
     shop = request.user.shop
-    staff_profile = None
-
-    # যদি এডিট মোড হয়
-    if staff_id:
-        staff_profile = get_object_or_404(StaffProfile, id=staff_id, shop=shop)
-    elif not can_add_staff(shop):
+    staff_profile = get_object_or_404(StaffProfile, id=staff_id, shop=shop) if staff_id else None
+    if staff_profile is None and not can_add_staff(shop):
         # নতুন স্টাফ যোগের সময় প্যাকেজের সীমা দেখা হয় (এডিট সবসময় চলবে)
         messages.error(request, f"আপনার প্যাকেজে সর্বোচ্চ {staff_limit(shop)} জন স্টাফ রাখা যায়। "
                                 "আরও স্টাফ যোগ করতে Billing থেকে প্যাকেজ আপগ্রেড করুন।")
         return redirect('staff_list')
 
     if request.method == 'POST':
-        name = request.POST.get('name')
-        phone = request.POST.get('phone')
-        password = request.POST.get('password')
+        name = (request.POST.get('name') or '').strip()[:100]
+        phone = normalize_bd_mobile(request.POST.get('phone') or '')
+        password = request.POST.get('password') or ''
+        permissions = {field: request.POST.get(field) == 'on' for field in STAFF_PERMISSIONS}
+        error = ''
+        if not name:
+            error = 'স্টাফের নাম দিন।'
+        elif not phone:
+            error = 'সঠিক মোবাইল নম্বর দিন (০১ দিয়ে শুরু, ১১ সংখ্যা)।'
+        elif (password or staff_profile is None) and len(password) < STAFF_PASSWORD_MIN:
+            error = f'পাসওয়ার্ড কমপক্ষে {STAFF_PASSWORD_MIN} অক্ষরের দিন।'
+        elif User.objects.filter(phone_number=phone).exclude(
+                pk=staff_profile.user_id if staff_profile else None).exists():
+            error = 'এই নম্বরে আগে থেকেই একটা অ্যাকাউন্ট আছে। অন্য নম্বর দিন।'
+        if error:
+            messages.error(request, error)
+            return redirect('edit_staff', staff_id=staff_profile.id) if staff_profile else redirect('add_staff')
 
-        # Permissions (চেকবক্স থেকে ডেটা নেওয়া)
-        can_use_pos = request.POST.get('can_use_pos') == 'on'
-        can_manage_products = request.POST.get('can_manage_products') == 'on'
-        can_manage_orders = request.POST.get('can_manage_orders') == 'on'
-        can_manage_customers = request.POST.get('can_manage_customers') == 'on'
-        can_view_reports = request.POST.get('can_view_reports') == 'on'
-        can_manage_settings = request.POST.get('can_manage_settings') == 'on'
-        can_send_sms = request.POST.get('can_send_sms') == 'on'
-
-        try:
+        with transaction.atomic():
             if staff_profile:
-                # --- স্টাফ এডিট & পাসওয়ার্ড রিসেট ---
                 staff_user = staff_profile.user
-                staff_user.name = name
-                staff_user.phone_number = phone
-                # যদি নতুন পাসওয়ার্ড দেয়, তবেই আপডেট হবে
-                if password:
-                    staff_user.password = make_password(password)
+                staff_user.name, staff_user.phone_number = name, phone
+                if password:            # নতুন পাসওয়ার্ড দিলে তবেই বদলায়
+                    staff_user.set_password(password)
                 staff_user.save()
-
-                # পারমিশন আপডেট
-                staff_profile.can_use_pos = can_use_pos
-                staff_profile.can_manage_products = can_manage_products
-                staff_profile.can_manage_orders = can_manage_orders
-                staff_profile.can_manage_customers = can_manage_customers
-                staff_profile.can_view_reports = can_view_reports
-                staff_profile.can_manage_settings = can_manage_settings
-                staff_profile.can_send_sms = can_send_sms
+                for field, value in permissions.items():
+                    setattr(staff_profile, field, value)
                 staff_profile.save()
-
-                messages.success(request, "Staff account updated successfully!")
+                messages.success(request, 'স্টাফের তথ্য বদলানো হয়েছে।')
             else:
-                # --- নতুন স্টাফ ক্রিয়েট ---
-                if User.objects.filter(phone_number=phone).exists():
-                    messages.error(request, "This phone number is already registered!")
-                    return redirect('add_staff')
-
-                # নতুন ইউজার তৈরি
-                new_user = User.objects.create(
-                    phone_number=phone,
-                    name=name,
-                    password=make_password(password),
-                    is_staff=False,
-                    is_active=True
-                )
-
-                # স্টাফ প্রোফাইল তৈরি
-                StaffProfile.objects.create(
-                    user=new_user,
-                    shop=shop,
-                    can_use_pos=can_use_pos,
-                    can_manage_products=can_manage_products,
-                    can_manage_orders=can_manage_orders,
-                    can_manage_customers=can_manage_customers,
-                    can_view_reports=can_view_reports,
-                    can_manage_settings=can_manage_settings,
-                    can_send_sms=can_send_sms,
-                )
-                messages.success(request, "New staff account created!")
-
-            return redirect('dashboard')  # পরে এটাকে 'staff_list' পেজে পাঠাতে পারেন
-
-        except Exception as e:
-            messages.error(request, f"Error: {str(e)}")
+                new_user = User.objects.create_user(phone_number=phone, password=password, name=name)
+                StaffProfile.objects.create(user=new_user, shop=shop, **permissions)
+                messages.success(request, 'নতুন স্টাফ অ্যাকাউন্ট তৈরি হয়েছে।')
+        return redirect('staff_list')
 
     return render(request, 'store/add_staff.html', {'staff': staff_profile})
 
+
 @login_required(login_url='/accounts/login/')
 def staff_list(request):
+    denied = _owner_only(request)
+    if denied:
+        return denied
     shop = request.user.shop
     # শুধু এই শপের স্টাফদের লিস্ট আনবে
     staff_members = StaffProfile.objects.filter(shop=shop).order_by('-created_at')
@@ -1992,32 +2028,6 @@ def reject_payment(request, request_id):
     return redirect('master_billing')
 
 
-@login_required(login_url='/accounts/login/')
-def manual_unlock(request, shop_id):
-    """Admin manually unlocks/extends a shop"""
-    if not request.user.is_superuser:
-        return redirect('dashboard')
-
-    if request.method == 'POST':
-        shop = get_object_or_404(Shop, id=shop_id)
-        advance_days = int(request.POST.get('advance_days', 30))
-        today = timezone.localdate()
-
-        if shop.valid_until and shop.valid_until >= today:
-            shop.valid_until = shop.valid_until + timedelta(days=advance_days)
-        else:
-            shop.valid_until = today + timedelta(days=advance_days)
-
-        shop.is_locked = False
-        shop.save()
-        from . import hq
-        hq.log_action(request, 'extend', shop, f'{advance_days} দিন (পুরনো বাটন) — মেয়াদ {shop.valid_until:%d-%m-%Y}')
-        messages.success(request, f"{shop.name}-এর লক খোলা হয়েছে, মেয়াদ {shop.valid_until:%d-%m-%Y} পর্যন্ত।")
-        return redirect('hq_shop', shop.pk)
-
-    return redirect('master_dashboard')
-
-
 import csv
 from django.http import HttpResponse
 
@@ -2043,80 +2053,6 @@ def download_csv_template(request):
 # ============================================================
 # IMPORT BULK PRODUCTS VIA CSV
 # ============================================================
-@login_required(login_url='/accounts/login/')
-def import_bulk_products(request):
-    if request.method == 'POST' and request.FILES.get('csv_file'):
-        csv_file = request.FILES['csv_file']
-
-        if not csv_file.name.endswith('.csv'):
-            messages.error(request, 'Please upload a valid .csv file!')
-            return redirect('product_list')
-
-        shop = request.user.shop
-        decoded_file = csv_file.read().decode('utf-8').splitlines()
-        reader = csv.DictReader(decoded_file)
-
-        # প্যাকেজের লিমিট
-        product_count = Product.objects.filter(shop=shop).count()
-        limit = product_limit(shop)
-
-        created_count = 0
-        skipped_count = 0
-
-        for row in reader:
-            if limit and (product_count + created_count) >= limit:
-                messages.warning(request,
-                                 f'প্যাকেজের লিমিট ({limit}টা প্রোডাক্ট) পূর্ণ, তাই {created_count}টা যোগ হয়েছে। '
-                                 'বাকিগুলো যোগ করতে প্যাকেজ আপগ্রেড করুন।')
-                break
-
-            name = row.get('Name', '').strip()
-            if not name:
-                skipped_count += 1
-                continue  # Skip empty rows
-
-            # Auto-create category if not exists
-            category_name = row.get('Category', '').strip()
-            category = None
-            if category_name:
-                category, _ = Category.objects.get_or_create(shop=shop, name=category_name)
-
-            # ── BUG FIX: try/except for invalid number values ──
-            try:
-                cost_price = float(row.get('Cost Price', 0) or 0)
-                price      = float(row.get('Selling Price', 0) or 0)
-                stock      = int(float(row.get('Stock Quantity', 0) or 0))
-            except (ValueError, TypeError):
-                skipped_count += 1
-                continue  # Skip rows with invalid number format
-
-            barcode = row.get('Barcode', '').strip() or None
-            if barcode and Product.objects.filter(shop=shop, barcode=barcode).exists():
-                skipped_count += 1
-                continue
-
-            Product.objects.create(
-                shop=shop,
-                name=name,
-                category=category,
-                description=row.get('Description', ''),
-                cost_price=cost_price,
-                price=price,
-                stock_quantity=stock,
-                barcode=barcode,
-            )
-            created_count += 1
-
-        msg = f'{created_count}টা প্রোডাক্ট যোগ হয়েছে।'
-        if skipped_count:
-            msg += f' ({skipped_count} rows skipped due to invalid data)'
-        if created_count > 0:
-            messages.success(request, msg)
-        elif skipped_count:
-            messages.error(request, f'Import failed — {skipped_count} rows had invalid data. Please check your CSV format.')
-
-    return redirect('product_list')
-
 # ============================================================
 # FACEBOOK LOGIN & PAGE SELECTION (নতুন যোগ হয়েছে)
 # ============================================================

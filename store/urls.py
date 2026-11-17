@@ -140,7 +140,6 @@ urlpatterns = [
     re_path(r'^settings/data/export/(?P<platform>shopify|woocommerce)\.csv$', views.export_platform_csv, name='export_platform_csv'),
     path('billing/', views.billing_page, name='billing'),
     path('billing/receipt/<str:invoice>/', views.billing_receipt, name='billing_receipt'),
-    path('payment/success/<str:plan_name>/', views.payment_success, name='payment_success'),
 
     # Storefront Orders (seller dashboard)
     path('online-orders/', views.storefront_orders, name='storefront_orders'),
@@ -230,10 +229,8 @@ urlpatterns = [
     path('payment/submit-request/', views.submit_payment_request, name='submit_payment_request'),
     path('billing/approve/<int:request_id>/', views.approve_payment, name='approve_payment'),
     path('billing/reject/<int:request_id>/', views.reject_payment, name='reject_payment'),
-    path('billing/unlock/<int:shop_id>/', views.manual_unlock, name='manual_unlock'),
 
     path('products/download-template/', views.download_csv_template, name='download_csv_template'),
-    path('products/import-csv/', views.import_bulk_products, name='import_bulk_products'),
     path('products/import/', views_import.product_import, name='product_import'),
     path('products/import/<int:pk>/', views_import.import_job, name='product_import_job'),
     path('products/import/<int:pk>/status/', views_import.import_status, name='import_status'),

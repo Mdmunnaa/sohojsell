@@ -76,6 +76,16 @@ def _take_stock_again(order):
         variants.take(sellable, qty)
 
 
+def _coupon_count(order, change):
+    if not order.coupon_code:
+        return
+    from django.db.models import F
+    from django.db.models.functions import Greatest
+    from .models import Coupon
+    Coupon.objects.filter(shop_id=order.shop_id, code=order.coupon_code).update(
+        used_count=Greatest(F('used_count') + change, 0))
+
+
 def set_status(order, new_status, *, notify=True):
     """
     অর্ডারের অবস্থা বদলায়। কিছু বদলালে True। ভুল অবস্থা বা স্টক না থাকলে FlowError।
@@ -91,9 +101,11 @@ def set_status(order, new_status, *, notify=True):
             if new_status in NOT_COUNTED and not locked.stock_returned:
                 _return_stock(locked)
                 locked.stock_returned = True
+                _coupon_count(locked, -1)       # বাতিল অর্ডার কুপনের সীমায় ধরা হয় না
             elif new_status not in NOT_COUNTED and locked.stock_returned:
                 _take_stock_again(locked)
                 locked.stock_returned = False
+                _coupon_count(locked, +1)
         locked.status = new_status
         locked.save(update_fields=['status', 'stock_returned'])
         StorefrontOrder.objects.filter(order=locked).update(

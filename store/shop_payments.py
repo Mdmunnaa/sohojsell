@@ -344,3 +344,48 @@ def recheck_pending(shop, limit=3):
             apply_successful(payment.invoice_number, timeout=4)
         except Exception:
             logger.exception('recheck failed for %s', payment.invoice_number)
+
+
+UNPAID_CANCEL_HOURS = 24
+
+
+def cancel_unpaid_orders(limit=200):
+    """
+    কাস্টমার "অনলাইনে দেব" বেছে অর্ডার দিয়ে টাকা না দিলে অর্ডার আর স্টক ঝুলে থাকত। দিনে একবার (views_cron): ২৪ ঘণ্টার বেশি
+    পুরনো, এখনো "নতুন" অবস্থায় থাকা এমন অর্ডার বাতিল হয় আর মাল স্টকে ফেরে। বাতিলের আগে গেটওয়েতে আবার যাচাই —
+    টাকা এসে থাকলে বাতিল না। সেলার অর্ডারটা কনফার্ম করে ফেললে (ফোনে কথা বলে COD) সেটায় হাত দেওয়া হয় না।
+    """
+    from datetime import timedelta
+    from . import order_flow
+    from .models import Order
+    cutoff = timezone.now() - timedelta(hours=UNPAID_CANCEL_HOURS)
+    orders = (Order.objects.filter(online_payment_status=Order.ONLINE_PENDING, status='Pending', created_at__lt=cutoff,
+                                   shop__is_demo=False).select_related('shop', 'customer').order_by('id')[:limit])
+    cancelled = 0
+    for order in orders:
+        keep = False
+        for payment in order.customer_payments.filter(status=StorefrontPayment.STATUS_PENDING).order_by('-created_at')[:2]:
+            try:
+                status, _payment, _msg = apply_successful(payment.invoice_number, timeout=6)
+                # "unverified" দুই কারণে হয়: গেটওয়ে উত্তর দেয়নি (তখন বাতিল না), অথবা কাস্টমার টাকাই দেয়নি
+                gateway_down = (status == 'unverified' and payment.environment == paystation.current_environment()
+                                and paystation.verify_transaction(payment.invoice_number, timeout=6) is None)
+            except Exception:    # noqa: BLE001 — নিশ্চিত না হয়ে বাতিল না; কাল আবার দেখা হবে
+                logger.exception('unpaid order recheck failed: %s', payment.invoice_number)
+                keep = True
+                break
+            if status in ('ok', 'already') or gateway_down:
+                keep = True
+                break
+        if keep:
+            continue
+        try:
+            order_flow.set_status(order, 'Cancelled', notify=False)
+        except order_flow.FlowError:
+            continue
+        note = 'অনলাইনে টাকা না দেওয়ায় ২৪ ঘণ্টা পর নিজে থেকে বাতিল'
+        Order.objects.filter(pk=order.pk).update(note=f'{order.note} · {note}'[:500] if order.note else note)
+        order.customer_payments.filter(status=StorefrontPayment.STATUS_PENDING).update(
+            status=StorefrontPayment.STATUS_FAILED)
+        cancelled += 1
+    return cancelled

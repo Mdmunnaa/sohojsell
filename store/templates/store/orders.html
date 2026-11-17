@@ -342,7 +342,12 @@
                     cancelButtonText: 'না'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        window.location.href = url;
+                        // মোছা শুধু POST-এ হয় (লিংক খুললেই মুছে যেত, সেটা বন্ধ)
+                        const form = document.createElement('form');
+                        form.method = 'post'; form.action = url;
+                        const token = document.createElement('input');
+                        token.type = 'hidden'; token.name = 'csrfmiddlewaretoken'; token.value = csrfToken;
+                        form.appendChild(token); document.body.appendChild(form); form.submit();
                     }
                 });
             });

@@ -59,5 +59,31 @@ def cron_daily(request):
     except Exception as exc:    # noqa: BLE001
         logger.exception('daily cron: indexnow failed')
         result['indexnow'] = str(exc)[:200]
+    try:
+        from . import shop_payments
+        result['unpaid_orders_cancelled'] = shop_payments.cancel_unpaid_orders()   # টাকা না দেওয়া অনলাইন অর্ডার, স্টক ফেরত
+    except Exception as exc:    # noqa: BLE001
+        logger.exception('daily cron: unpaid orders failed')
+        result['unpaid_orders_cancelled'] = str(exc)[:200]
+    try:
+        result['cleanup'] = cleanup_old_rows()      # মেয়াদ শেষ সেশন আর পুরনো ভিজিটের সারি — ডাটাবেস যেন না ফোলে
+    except Exception as exc:    # noqa: BLE001
+        logger.exception('daily cron: cleanup failed')
+        result['cleanup'] = str(exc)[:200]
     logger.info('daily cron: %s', result)
     return JsonResponse(result)
+
+
+PAGE_VIEW_KEEP_DAYS = 90
+
+
+def cleanup_old_rows():
+    """মেয়াদ পেরোনো সেশন (ওয়েবসাইটের প্রতিটা ভিজিটর/বটের একটা করে জমে) আর ৯০ দিনের পুরনো ভিজিটের হিসাব মোছা।"""
+    from datetime import timedelta
+    from django.contrib.sessions.models import Session
+    from django.utils import timezone
+    from .models import PageView
+    now = timezone.now()
+    sessions, _ = Session.objects.filter(expire_date__lt=now).delete()
+    views, _ = PageView.objects.filter(created_at__lt=now - timedelta(days=PAGE_VIEW_KEEP_DAYS)).delete()
+    return {'sessions': sessions, 'page_views': views}

@@ -91,6 +91,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'store.middleware.BadInputMiddleware',              # ঠিকানায় NUL অক্ষর (ডাটাবেস নেয় না) → 400
     'store.middleware.SecurityHeadersMiddleware',       # Permissions-Policy আর নিরাপদ CSP
     'whitenoise.middleware.WhiteNoiseMiddleware',     # static ফাইল (admin-এর CSS ইত্যাদি)
     'django.middleware.gzip.GZipMiddleware',          # HTML ছোট করে পাঠানো (static ফাইল whitenoise নিজেই দেয়, তাই এর পরে)
@@ -226,6 +227,13 @@ STORAGES = {
 AUTH_USER_MODEL = 'accounts.User'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# 'ratelimit': লগইন/চেকআউটের চেষ্টার সীমা — সব প্রসেস আর কন্টেইনার মিলিয়ে গোনা লাগে, তাই ডাটাবেসে (store/ratelimit.py)
+CACHES = {
+    'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'},
+    'ratelimit': {'BACKEND': 'django.core.cache.backends.db.DatabaseCache', 'LOCATION': 'sp_ratelimit',
+                  'OPTIONS': {'MAX_ENTRIES': 20000}},
+}
 
 SESSION_COOKIE_AGE = 86400 * 30
 # মেয়াদ বাড়ানো দিনে একবার — store.middleware.SessionRefreshMiddleware (আগে প্রতিটা পাতায় ডাটাবেসে লেখা হতো)

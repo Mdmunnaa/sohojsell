@@ -289,6 +289,9 @@ EN_TEXT = {
 
     # ---------------------------------------------------------------- অর্ডার দেওয়ার সময়ের ভুল
     'এই দোকান এখন অর্ডার নিচ্ছে না।': 'This shop is not taking orders right now.',
+    'অল্প সময়ে অনেকগুলো অর্ডার দেওয়া হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন, বা দোকানে সরাসরি যোগাযোগ করুন।':
+        'Too many orders in a short time. Please try again a little later, or contact the shop directly.',
+    'অনেকবার চেষ্টা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।': 'Too many attempts. Please try again a little later.',
     'পরিমাণ ঠিক নেই।': 'Invalid quantity.',
     'অর্ডারের তথ্য ঠিক নেই, পেইজটা আবার খুলুন।': 'Something is wrong with the order, please reload the page.',
     'কার্ট খালি!': 'Your cart is empty!',

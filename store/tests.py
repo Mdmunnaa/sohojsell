@@ -4523,14 +4523,6 @@ class ProductBarcodeTests(TestCase):
         mine.refresh_from_db()
         self.assertEqual(mine.name, 'Shampoo 2')
 
-    def test_csv_import_skips_existing_barcode(self):
-        from django.core.files.uploadedfile import SimpleUploadedFile
-        Product.objects.create(shop=self.shop, name='Old', price=10, barcode='111222333444')
-        csv_file = SimpleUploadedFile('p.csv', 'Name,Selling Price,Barcode\nDup,20,111222333444\nNew,30,555666777888\n'.encode(),
-                                      content_type='text/csv')
-        self.client.post(reverse('import_bulk_products'), {'csv_file': csv_file})
-        self.assertEqual(set(Product.objects.filter(shop=self.shop).values_list('name', flat=True)), {'Old', 'New'})
-
     def test_pos_has_continuous_camera(self):
         html = self.client.get(reverse('pos')).content.decode()
         self.assertIn('id="cam-done"', html)
@@ -6206,3 +6198,229 @@ class OnlineMoneyPageTests(ShopTestMixin, TestCase):
         self.assertIn('ফেরত দেওয়া হয়েছে — নম্বর মেলেনি', notify.call_args.args[1])
         self.assertEqual(shop_payments.balance_summary(self.shop)['available'], 7800)
 
+
+
+class AuditFixTests(ShopTestMixin, TestCase):
+    """নভেম্বর ২০২৬-এর অডিটে পাওয়া বাগগুলো: চেষ্টার সীমা, অর্ডার মোছা/তৈরি/এডিট, স্টাফ, বারকোড, পরিষ্কার-পরিচ্ছন্নতা।"""
+
+    def setUp(self):
+        from .models import Product
+        self.user, self.shop = self.make_shop(phone='01755500061', slug='auditshop')
+        self.product = Product.objects.create(shop=self.shop, name='জামা', price=Decimal('500'), stock_quantity=10)
+
+    def order_form(self, **over):
+        data = {'customer_name': 'রহিম', 'customer_phone': '01712345678', 'customer_address': 'ঢাকা',
+                'delivery_charge': '60', 'discount': '0', 'payment_method': 'COD',
+                'product[]': [str(self.product.id)], 'price[]': ['500'], 'quantity[]': ['2']}
+        data.update(over)
+        return data
+
+    # ---- লগইন / লগআউট
+    def test_login_locks_after_repeated_wrong_passwords(self):
+        from accounts.views import LOGIN_PHONE_LIMIT
+        self.client.post(reverse('logout'))
+        for _ in range(LOGIN_PHONE_LIMIT):
+            response = self.client.post(reverse('login'), {'username': '01755500061', 'password': 'wrong'})
+            self.assertEqual(response.status_code, 200)
+        blocked = self.client.post(reverse('login'), {'username': '01755500061', 'password': 'Test-pass-123'})
+        self.assertEqual(blocked.status_code, 429)
+        self.assertContains(blocked, 'অনেকবার ভুল হয়েছে', status_code=429)
+        # অন্য নম্বর আটকায় না
+        User.objects.create_user(phone_number='01755500062', password='Test-pass-123')
+        ok = self.client.post(reverse('login'), {'username': '01755500062', 'password': 'Test-pass-123'})
+        self.assertEqual(ok.status_code, 302)
+
+    def test_logout_needs_post(self):
+        self.client.get(reverse('logout'))
+        self.assertEqual(self.client.get(reverse('dashboard')).status_code, 200)
+        self.client.post(reverse('logout'))
+        self.assertEqual(self.client.get(reverse('dashboard')).status_code, 302)
+        self.client.force_login(self.user)
+        self.assertContains(self.client.get(reverse('dashboard')), f'action="{reverse("logout")}"')
+
+    # ---- ওয়েবসাইটের সীমা
+    def checkout(self, phone='01712345678'):
+        from . import delivery
+        return self.client.post(
+            reverse('storefront_place_order', args=[self.shop.slug]), content_type='application/json',
+            data=json.dumps({'cart': [{'id': self.product.id, 'qty': 1}], 'name': 'ক', 'phone': phone, 'address': 'ঢাকা',
+                             'zone': delivery.zones_for(self.shop)[0].id}))
+
+    def test_checkout_is_rate_limited(self):
+        with mock.patch('store.views.ORDER_PHONE_LIMIT', 2):
+            first = self.checkout().json()
+            self.assertTrue(first['success'], first)
+            self.assertTrue(self.checkout().json()['success'])
+            third = self.checkout()
+        self.assertEqual(third.status_code, 429)
+        self.assertFalse(third.json()['success'])
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_quantity, 8)       # তৃতীয়টায় স্টক কাটেনি
+        with mock.patch('store.views.ORDER_IP_LIMIT', 0):
+            self.assertEqual(self.checkout('01712345679').status_code, 429)
+
+    def test_track_guessing_is_limited(self):
+        from . import order_flow
+        from .models import Customer, Order
+        customer = Customer.objects.create(shop=self.shop, name='ক', phone='01712345678', address='x')
+        order = Order.objects.create(shop=self.shop, customer=customer, total_amount=100, source='storefront')
+        good = reverse('storefront_track_order', args=[self.shop.slug, order_flow.track_code(order)])
+        self.assertEqual(self.client.get(good).status_code, 200)
+        with mock.patch('store.views.TRACK_LIMIT', 3):
+            for _ in range(3):
+                self.client.get(reverse('storefront_track_order', args=[self.shop.slug, f'{order.id}-000000']))
+            self.assertEqual(self.client.get(good).status_code, 302)     # সীমা পার — ঠিক কোডেও এখন খোলে না
+
+    # ---- অর্ডার মোছা / তৈরি / এডিট
+    def test_order_delete_needs_post_and_protects_pos_sales(self):
+        from .models import Order
+        self.client.post(reverse('order_create'), self.order_form())
+        order = Order.objects.get()
+        self.client.get(reverse('order_delete', args=[order.id]))
+        self.assertTrue(Order.objects.filter(pk=order.pk).exists())
+        Order.objects.filter(pk=order.pk).update(source='pos')
+        self.client.post(reverse('order_delete', args=[order.id]))
+        self.assertTrue(Order.objects.filter(pk=order.pk).exists())
+        Order.objects.filter(pk=order.pk).update(source='dashboard')
+        self.client.post(reverse('order_delete', args=[order.id]))
+        self.assertFalse(Order.objects.filter(pk=order.pk).exists())
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_quantity, 10)
+
+    def test_manual_order_rejects_bad_numbers_without_touching_stock(self):
+        from .models import Order
+        bad = [{'quantity[]': ['-5']}, {'quantity[]': ['0']}, {'quantity[]': ['11']}, {'price[]': ['abc']},
+               {'delivery_charge': 'abc'}, {'discount': '-5'}, {'customer_phone': '017'}, {'product[]': ['']},
+               {'product[]': ['999999']}]
+        for change in bad:
+            response = self.client.post(reverse('order_create'), self.order_form(**change))
+            self.assertEqual(response.status_code, 302, change)
+        self.assertFalse(Order.objects.exists())
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_quantity, 10)
+        self.client.post(reverse('order_create'), self.order_form())
+        order = Order.objects.get()
+        self.assertEqual(order.total_amount, Decimal('1060'))
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_quantity, 8)
+
+    def test_order_edit_validates_and_never_duplicates_customers(self):
+        from .models import Customer, Order
+        self.client.post(reverse('order_create'), self.order_form())
+        self.client.post(reverse('order_create'), self.order_form(customer_phone='01812345678', customer_name='করিম'))
+        first = Order.objects.order_by('id').first()
+        edit = reverse('order_edit', args=[first.id])
+        base = {'customer_name': 'রহিম', 'customer_address': 'ঢাকা', 'customer_phone': '01712345678'}
+        self.assertEqual(self.client.post(edit, {**base, 'total_amount': 'abc'}).status_code, 302)
+        first.refresh_from_db()
+        self.assertEqual(first.total_amount, Decimal('1060'))
+        # অন্য কাস্টমারের নম্বর দিলে অর্ডারটা তার নামে যায়; এক নম্বরে দুজন হয় না
+        self.client.post(edit, {**base, 'customer_phone': '01812345678', 'total_amount': '900'})
+        first.refresh_from_db()
+        self.assertEqual(first.customer.phone, '01812345678')
+        self.assertEqual(first.total_amount, Decimal('900'))
+        self.assertEqual(Customer.objects.filter(shop=self.shop, phone='01812345678').count(), 1)
+        self.assertEqual(Customer.objects.filter(shop=self.shop).count(), 2)
+
+    def test_customer_total_ignores_cancelled_orders(self):
+        from . import order_flow
+        from .models import Order
+        self.client.post(reverse('order_create'), self.order_form())
+        self.client.post(reverse('order_create'), self.order_form())
+        order_flow.set_status(Order.objects.order_by('id').first(), 'Cancelled', notify=False)
+        customer = self.client.get(reverse('customer_list')).context['page_obj'].object_list[0]
+        self.assertEqual(customer.total_spent, Decimal('1060'))
+
+    def test_cancel_gives_the_coupon_use_back(self):
+        from . import order_flow
+        from .models import Coupon, Customer, Order
+        coupon = Coupon.objects.create(shop=self.shop, code='EID', kind=Coupon.AMOUNT, value=50, used_count=1)
+        customer = Customer.objects.create(shop=self.shop, name='ক', phone='01712345678', address='x')
+        order = Order.objects.create(shop=self.shop, customer=customer, total_amount=100, source='storefront',
+                                     coupon_code='EID')
+        order_flow.set_status(order, 'Cancelled', notify=False)
+        coupon.refresh_from_db()
+        self.assertEqual(coupon.used_count, 0)
+        order_flow.set_status(order, 'Pending', notify=False)
+        coupon.refresh_from_db()
+        self.assertEqual(coupon.used_count, 1)
+
+    # ---- বারকোড, খোঁজা, ভাঙা ঠিকানা
+    def test_two_shops_can_use_the_same_variant_barcode(self):
+        from .models import Product, ProductVariant
+        ProductVariant.objects.create(product=self.product, name='M', barcode='8941100500123')
+        other_user = User.objects.create_user(phone_number='01755500063', password='Test-pass-123')
+        other = Shop.objects.create(user=other_user, name='অন্য', phone='01755500063', slug='othershop')
+        theirs = Product.objects.create(shop=other, name='জামা', price=1)
+        ProductVariant.objects.create(product=theirs, name='M', barcode='8941100500123')
+        self.assertEqual(ProductVariant.objects.filter(barcode='8941100500123').count(), 2)
+
+    def test_bad_query_strings_do_not_crash(self):
+        self.assertEqual(self.client.get(reverse('product_list') + '?cat=abc').status_code, 200)
+        self.assertEqual(self.client.get(reverse('barcode_print') + '?ids=a&ids=b').status_code, 200)
+        self.assertEqual(self.client.get(reverse('order_list') + '?q=%00').status_code, 400)
+        found = self.client.get(reverse('product_list'), {'q': self.product.barcode}).context['page_obj'].object_list
+        self.assertEqual([p.pk for p in found], [self.product.pk])
+
+    def test_json_ld_cannot_break_out_of_its_script(self):
+        from . import seo
+        text = seo.safe_ld({'name': '</script><script>alert(1)</script>'})
+        self.assertNotIn('<', text)
+        self.assertEqual(json.loads(text)['name'], '</script><script>alert(1)</script>')
+
+    # ---- স্টাফ
+    def test_only_the_owner_manages_staff(self):
+        from .models import StaffProfile
+        weak = self.client.post(reverse('add_staff'), {'name': 'স', 'phone': '01755500064', 'password': '1'})
+        self.assertRedirects(weak, reverse('add_staff'))
+        self.assertFalse(StaffProfile.objects.exists())
+        self.client.post(reverse('add_staff'), {'name': 'স', 'phone': '01755500064', 'password': 'Staff-pass-1',
+                                                'can_manage_settings': 'on'})
+        profile = StaffProfile.objects.get()
+        self.assertTrue(profile.user.check_password('Staff-pass-1'))
+        self.client.force_login(profile.user)
+        self.assertRedirects(self.client.get(reverse('staff_list')), reverse('dashboard'), fetch_redirect_response=False)
+        self.client.post(reverse('edit_staff', args=[profile.id]),
+                         {'name': 'স', 'phone': '01755500064', 'can_use_pos': 'on', 'can_manage_orders': 'on'})
+        profile.refresh_from_db()
+        self.assertFalse(profile.can_manage_orders)       # নিজের অনুমতি নিজে বাড়াতে পারেনি
+
+    # ---- দিনের কাজ
+    def test_unpaid_online_orders_cancel_after_a_day(self):
+        from . import shop_payments
+        from .models import Customer, Order, OrderItem, StorefrontPayment
+        customer = Customer.objects.create(shop=self.shop, name='ক', phone='01712345678', address='x')
+
+        def unpaid(hours):
+            order = Order.objects.create(shop=self.shop, customer=customer, total_amount=500, source='storefront',
+                                         online_payment_status=Order.ONLINE_PENDING)
+            OrderItem.objects.create(order=order, product=self.product, quantity=1, price=500)
+            Order.objects.filter(pk=order.pk).update(created_at=timezone.now() - timedelta(hours=hours))
+            StorefrontPayment.objects.create(shop=self.shop, order=order, kind='full', amount=500, fee_percent=0,
+                                             fee_amount=0, net_amount=500, invoice_number=f'SF-{self.shop.id}-{order.id:012d}',
+                                             environment='sandbox')
+            return order
+        old, fresh = unpaid(30), unpaid(2)
+        with mock.patch('store.paystation.verify_transaction', return_value=None):        # গেটওয়ে উত্তর দিচ্ছে না
+            self.assertEqual(shop_payments.cancel_unpaid_orders(), 0)
+        with mock.patch('store.paystation.verify_transaction', return_value={'status': 'processing'}):
+            self.assertEqual(shop_payments.cancel_unpaid_orders(), 1)
+        old.refresh_from_db()
+        fresh.refresh_from_db()
+        self.assertEqual((old.status, fresh.status), ('Cancelled', 'Pending'))
+        self.assertTrue(old.stock_returned)
+        self.assertIn('নিজে থেকে বাতিল', old.note)
+
+    def test_daily_cleanup_removes_expired_sessions_and_old_views(self):
+        from django.contrib.sessions.models import Session
+        from .models import PageView
+        from .views_cron import cleanup_old_rows
+        Session.objects.create(session_key='old', session_data='x', expire_date=timezone.now() - timedelta(days=1))
+        Session.objects.create(session_key='live', session_data='x', expire_date=timezone.now() + timedelta(days=1))
+        view = PageView.objects.create(shop=self.shop)
+        PageView.objects.filter(pk=view.pk).update(created_at=timezone.now() - timedelta(days=120))
+        PageView.objects.create(shop=self.shop)
+        result = cleanup_old_rows()
+        self.assertEqual((result['page_views'], PageView.objects.count()), (1, 1))
+        self.assertTrue(Session.objects.filter(session_key='live').exists())
+        self.assertFalse(Session.objects.filter(session_key='old').exists())

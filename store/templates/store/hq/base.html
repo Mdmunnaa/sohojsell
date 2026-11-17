@@ -298,7 +298,7 @@ dialog.dlg::backdrop { background: rgba(8, 15, 30, .55); }
     <div class="tools">
       <a class="icon-btn wide" href="/" target="_blank" rel="noopener" title="SellPunch ওয়েবসাইট" aria-label="SellPunch ওয়েবসাইট"><i class="bi bi-globe2"></i></a>
       <button type="button" class="icon-btn" id="hqTheme" title="লাইট / ডার্ক" aria-label="লাইট / ডার্ক মোড"><i class="bi bi-moon"></i></button>
-      <a class="icon-btn" href="{% url 'logout' %}" title="লগআউট" aria-label="লগআউট"><i class="bi bi-box-arrow-right"></i></a>
+      <form method="post" action="{% url 'logout' %}" style="display:contents">{% csrf_token %}<button type="submit" class="icon-btn" title="লগআউট" aria-label="লগআউট"><i class="bi bi-box-arrow-right"></i></button></form>
     </div>
   </header>
 

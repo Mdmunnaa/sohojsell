@@ -1,11 +1,11 @@
 from django.contrib import messages
 from django.contrib.auth import authenticate, get_user_model, login, logout
-from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET
 
+from store import ratelimit
 from store.models import Shop
 from store.subdomains import normalize, suggest_available, validate_subdomain
 
@@ -14,20 +14,16 @@ from .forms import ShopSignupForm
 User = get_user_model()
 
 
-def _client_ip(request):
-    # Render নিজে শেষে আসল IP যোগ করে; প্রথমটা ব্রাউজার বানিয়ে পাঠাতে পারে, তাই শেষেরটা নেওয়া হয়
-    forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '')
-    return forwarded.split(',')[-1].strip() if forwarded else request.META.get('REMOTE_ADDR', '')
-
-
 def _rate_limited(key, request, limit, window_seconds):
-    """একই IP থেকে নির্দিষ্ট সময়ে বেশিবার চেষ্টা আটকানো (সাইনআপ স্প্যাম, সাবডোমেইন খোঁজা)।"""
-    cache_key = f'rl:{key}:{_client_ip(request)}'
-    count = cache.get(cache_key, 0)
-    if count >= limit:
-        return True
-    cache.set(cache_key, count + 1, window_seconds)
-    return False
+    """একই IP থেকে নির্দিষ্ট সময়ে বেশিবার চেষ্টা আটকানো (সাইনআপ স্প্যাম, সাবডোমেইন খোঁজা) — store/ratelimit.py।"""
+    return ratelimit.too_many(key, ratelimit.client_ip(request), limit, window_seconds)
+
+
+# লগইন: ভুল পাসওয়ার্ড বারবার দিলে সেই নম্বর আর সেই IP কিছুক্ষণ আটকে থাকে (পাসওয়ার্ড আন্দাজ ঠেকাতে)
+LOGIN_WINDOW = 15 * 60
+LOGIN_PHONE_LIMIT = 8        # এক নম্বরে ১৫ মিনিটে ৮ বার ভুল
+LOGIN_IP_LIMIT = 30          # এক IP থেকে ১৫ মিনিটে ৩০ বার ভুল (এক দোকানের অনেক স্টাফ একই ইন্টারনেটে থাকতে পারে)
+LOGIN_BLOCKED = 'অনেকবার ভুল হয়েছে। ১৫ মিনিট পর আবার চেষ্টা করুন।'
 
 
 def signup(request):
@@ -94,20 +90,31 @@ def user_login(request):
         phone = normalize_bd_mobile(raw) or raw      # +880 বা বাংলা সংখ্যায় লিখলেও চলবে
         p_word = request.POST.get('password')
 
+        ip = ratelimit.client_ip(request)
+        if ratelimit.blocked('login-phone', phone, LOGIN_PHONE_LIMIT) or ratelimit.blocked('login-ip', ip, LOGIN_IP_LIMIT):
+            messages.error(request, LOGIN_BLOCKED)
+            return render(request, 'accounts/login.html', status=429)
+
         user = authenticate(request, phone_number=phone, password=p_word)
 
         if user is not None:
+            ratelimit.clear('login-phone', phone)
             login(request, user)
             messages.success(request, "আবার স্বাগতম!")
             if user.is_superuser:
                 return redirect('master_dashboard')
             return redirect('dashboard')
+        ratelimit.hit('login-phone', phone, LOGIN_WINDOW)
+        ratelimit.hit('login-ip', ip, LOGIN_WINDOW)
         messages.error(request, "মোবাইল নম্বর বা পাসওয়ার্ড ভুল।")
 
     return render(request, 'accounts/login.html')
 
 
 def user_logout(request):
+    """শুধু POST-এ লগআউট — অন্য সাইটের একটা লিংক বা ছবি দিয়ে কাউকে লগআউট করানো যায় না।"""
+    if request.method != 'POST':
+        return redirect('dashboard' if request.user.is_authenticated else 'login')
     logout(request)
     messages.info(request, "লগআউট হয়েছে।")
     return redirect('login')

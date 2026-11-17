@@ -290,7 +290,8 @@ class ProductVariant(models.Model):
     name = models.CharField(max_length=80)
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     stock_quantity = models.PositiveIntegerField(default=0)
-    barcode = models.CharField(max_length=50, unique=True, blank=True)
+    # দোকানের ভেতরে আলাদা হলেই চলে (আগে সব দোকান মিলিয়ে unique ছিল — এক দোকানের বারকোড অন্য দোকান বসাতে পারত না)
+    barcode = models.CharField(max_length=50, blank=True, db_index=True)
     position = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
@@ -323,6 +324,10 @@ class Customer(models.Model):
     due_note = models.CharField(max_length=200, blank=True, default='')
     due_reminded_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # এক দোকানে এক নম্বরে একজনই কাস্টমার — দুজন হলে ওয়েবসাইটের চেকআউট (get_or_create) ক্র্যাশ করত
+        constraints = [models.UniqueConstraint(fields=['shop', 'phone'], name='unique_customer_phone_per_shop')]
 
     def __str__(self):
         return f"{self.name} - {self.phone}"
@@ -644,6 +649,9 @@ class PageView(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     session_key = models.CharField(max_length=40, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['shop', 'created_at'], name='pageview_shop_time')]
 
     def __str__(self):
         return f"{self.shop.name} - {'Product: ' + self.product.name if self.product else 'Storefront'}"
