@@ -456,8 +456,9 @@ FEATURES = [
                  'চেনা কাস্টমারকে বাকিতে দিন — কার কাছে কত বাকি, কবে দেবে বলেছে, সব বাকির খাতায় চলে যায়।'),
                 ('bi-people-fill', 'স্টাফ অ্যাকাউন্ট',
                  'ক্যাশিয়ার শুধু POS দেখবে, রিপোর্ট বা লাভ না — কে কী দেখবে আপনি ঠিক করবেন।'),
-                ('bi-phone', 'মোবাইল বা কম্পিউটার — দুটোতেই',
-                 'আলাদা মেশিন কেনার দরকার নেই। দোকানের কম্পিউটার, ট্যাব বা ফোনের ব্রাউজারেই চলে।'),
+                ('bi-phone', 'যেকোনো ডিভাইসে, নেট ছাড়াও',
+                 'আলাদা মেশিন লাগে না — কম্পিউটার, ট্যাব বা ফোনে চলে, অ্যাপ হিসেবেও বসানো যায়। নেট চলে গেলেও বিক্রি '
+                 'থামে না; নেট এলে নিজে থেকে হিসাবে জমা হয়।'),
             ],
             'faq': [
                 ('POS সফটওয়্যারের দাম কত?',
@@ -465,7 +466,9 @@ FEATURES = [
                 ('কোন বারকোড স্ক্যানার আর প্রিন্টার লাগবে?',
                  'সাধারণ USB বারকোড স্ক্যানার (যেটা কিবোর্ডের মতো লেখে) আর যেকোনো থার্মাল POS প্রিন্টার বা A4 প্রিন্টার চলে।'),
                 ('ইন্টারনেট লাগবে?',
-                 'হ্যাঁ, SellPunch অনলাইনে চলে — তাই দোকান, বাসা বা ফোন, যেখান থেকেই দেখুন একই হিসাব।'),
+                 'প্রথমবার POS খুলতে লাগে। এরপর নেট চলে গেলেও POS-এ বিক্রি চলে — বিক্রি ডিভাইসে জমা থাকে, রসিদও প্রিন্ট হয়, '
+                 'নেট এলে নিজে থেকে হিসাবে চলে যায়। রিপোর্ট, অর্ডার আর ওয়েবসাইটের কাজে নেট লাগে — তাই দোকান, বাসা বা ফোন, '
+                 'যেখান থেকেই দেখুন একই হিসাব।'),
                 ('একাধিক স্টাফ চালাতে পারবে?',
                  'হ্যাঁ। Standard-এ ৩ জন, Premium-এ ১০ জন স্টাফ; প্রত্যেকের আলাদা লগইন আর অনুমতি।'),
             ],
@@ -489,8 +492,9 @@ FEATURES = [
                  'Give regular customers credit — who owes how much and the promised date go straight to the due book.'),
                 ('bi-people-fill', 'Staff accounts',
                  'Cashiers see only the POS, not reports or profit — you decide who sees what.'),
-                ('bi-phone', 'Phone or computer',
-                 'No special machine to buy. Runs in the browser on your shop computer, tablet or phone.'),
+                ('bi-phone', 'Any device, even offline',
+                 'No special machine — runs on a computer, tablet or phone, and installs as an app. If the internet drops, '
+                 'sales keep going and sync by themselves when it returns.'),
             ],
             'faq': [
                 ('What is the price of POS software in Bangladesh?',
@@ -499,7 +503,9 @@ FEATURES = [
                 ('Which barcode scanner and printer work?',
                  'Any ordinary USB barcode scanner (one that types like a keyboard) and any thermal POS printer or A4 printer.'),
                 ('Does it need internet?',
-                 'Yes, SellPunch runs online — so the shop, home and your phone all show the same accounts.'),
+                 'Only to open the POS the first time. After that, if the internet drops the POS keeps selling — sales are '
+                 'saved on the device, receipts still print, and everything syncs by itself when the connection returns. '
+                 'Reports, orders and the website need internet, so the shop, home and your phone all show the same accounts.'),
                 ('Can several staff use it?',
                  'Yes. 3 staff on Standard and 10 on Premium, each with their own login and permissions.'),
             ],
@@ -1177,7 +1183,8 @@ INDUSTRIES = [
                  'হ্যাঁ। প্রোডাক্টে "কেজি" বা "লিটার" বেছে দাম দিন প্রতি কেজির। POS-এ প্রোডাক্টে চাপলে কতটা জিজ্ঞেস করে — '
                  '০.২৫, ১.৫ কেজি যা খুশি — দাম নিজে হিসাব হয়। একই মালের আলাদা কোম্পানির বারকোডও এক প্রোডাক্টে রাখা যায়।'),
                 ('ইন্টারনেট গেলে কী হবে?',
-                 'SellPunch অনলাইনে চলে — তাই দোকানে ইন্টারনেট (মোবাইল ডাটা হলেও) লাগবে।'),
+                 'বিক্রি থামে না। POS নেট ছাড়াও চলে — বিল, বারকোড স্ক্যান, কেজিতে বিক্রি, বাকি আর রসিদ সব হয়; নেট এলে '
+                 'বিক্রিগুলো নিজে থেকে হিসাবে জমা হয়। শুধু প্রথমবার POS খুলতে আর রিপোর্ট দেখতে নেট লাগে।'),
             ],
         },
         'en': {
@@ -1206,7 +1213,9 @@ INDUSTRIES = [
                  'Yes. Choose kg or litre on the product and set the price per kg. At the POS it asks how much — 0.25 or 1.5 kg, '
                  'anything — and works out the price. Barcodes from different brands of the same item can sit on one product.'),
                 ('What if the internet goes down?',
-                 'SellPunch runs online, so the shop needs internet (mobile data works).'),
+                 'Sales keep going. The POS works offline — billing, barcode scanning, selling by weight, dues and receipts; '
+                 'sales sync by themselves when the internet returns. Internet is only needed to open the POS the first time '
+                 'and to see reports.'),
             ],
         },
     },

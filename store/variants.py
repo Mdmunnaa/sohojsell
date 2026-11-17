@@ -77,14 +77,14 @@ def resolve(shop, keys, *, lock=False):
     return found
 
 
-def take(sellable, qty, *, reason='other', order=None, user=None, purchase=None):
+def take(sellable, qty, *, reason='other', order=None, user=None, purchase=None, note=''):
     """বিক্রি হলে স্টক কমায় (ভ্যারিয়েন্ট হলে দুই জায়গাতেই), আর স্টকের খাতায় লেখে (store/stock_log.py)।"""
     from . import stock_log
     if sellable.variant:
         ProductVariant.objects.filter(pk=sellable.variant.pk).update(stock_quantity=F('stock_quantity') - qty)
     Product.objects.filter(pk=sellable.product.pk).update(stock_quantity=F('stock_quantity') - qty)
     stock_log.record(sellable.product.pk, sellable.variant.pk if sellable.variant else None, -qty,
-                     reason=reason, order=order, user=user, purchase=purchase)
+                     reason=reason, order=order, user=user, purchase=purchase, note=note)
 
 
 def give_back(product_id, variant_id, qty, *, reason='other', order=None, user=None, purchase=None):
@@ -128,18 +128,32 @@ def _number(value, label, *, whole=False, blank_ok=False):
     return number
 
 
-def _stock(value, label, unit):
-    """সাইজ/রংয়ের স্টক: পিসে পূর্ণ সংখ্যা, কেজি/লিটারে দশমিক চলে। ফাঁকা = ০।"""
-    if not str(value if value is not None else '').strip():
+def _stock(value, label, unit, current=None):
+    """
+    সাইজ/রংয়ের স্টক: পিসে পূর্ণ সংখ্যা, কেজি/লিটারে দশমিক চলে। ফাঁকা = ০। মাইনাস (অফলাইনে স্টকের চেয়ে বেশি বিক্রি)
+    না বদলে আবার সেভ করলে চলে; নতুন করে মাইনাস লেখা যায় না।
+    """
+    text = str(value if value is not None else '').strip()
+    if not text:
         return 0
     try:
         return units.parse(value, unit, label=label, allow_zero=True)
     except units.QtyError as exc:
+        if current is not None and current < 0:
+            try:
+                if units.parse(text.lstrip('-−'), unit, allow_zero=True) == -current and text[:1] in '-−':
+                    return current
+            except units.QtyError:
+                pass
         raise VariantError(str(exc))
 
 
-def rows_from_post(post, unit=units.PCS):
-    """ফর্মের variant_id[] / variant_name[] / variant_price[] / variant_stock[] → পরিষ্কার সারি।"""
+def rows_from_post(post, unit=units.PCS, current=None):
+    """
+    ফর্মের variant_id[] / variant_name[] / variant_price[] / variant_stock[] → পরিষ্কার সারি।
+    current: {variant_id: এখনকার স্টক} — মাইনাস স্টক না বদলে সেভ করা যায়।
+    """
+    current = current or {}
     ids, names = post.getlist('variant_id[]'), post.getlist('variant_name[]')
     prices, stocks = post.getlist('variant_price[]'), post.getlist('variant_stock[]')
     rows, seen = [], set()
@@ -155,7 +169,8 @@ def rows_from_post(post, unit=units.PCS):
             'id': int(raw_id) if str(raw_id).isdigit() else None,
             'name': name,
             'price': _number(prices[index] if index < len(prices) else '', f'"{name}"-এর দাম', blank_ok=True),
-            'stock': _stock(stocks[index] if index < len(stocks) else '', f'"{name}"-এর স্টক', unit),
+            'stock': _stock(stocks[index] if index < len(stocks) else '', f'"{name}"-এর স্টক', unit,
+                            current.get(int(raw_id)) if str(raw_id).isdigit() else None),
         })
     if len(rows) > MAX_VARIANTS:
         raise VariantError(f'এক প্রোডাক্টে সর্বোচ্চ {MAX_VARIANTS}টা সাইজ/রং রাখা যায়।')

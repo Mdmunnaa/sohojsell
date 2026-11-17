@@ -230,6 +230,9 @@ def capture(spec, ids, port, only, camera):
                     page.evaluate(shot['js_reload'])
                     page.reload(wait_until='networkidle')
                     page.add_style_tag(content=HIDE_CSS + shot.get('css', ''))
+                if shot.get('offline'):       # অফলাইন POS: পাতা নেট থাকতে খুলে তারপর নেট বন্ধ
+                    page.context.set_offline(True)
+                    page.wait_for_timeout(500)
                 if shot.get('js_before'):
                     page.evaluate(shot['js_before'])
                 for selector in ([shot['click']] if isinstance(shot.get('click'), str) else shot.get('click') or []):
@@ -260,6 +263,12 @@ def capture(spec, ids, port, only, camera):
             except Exception as error:   # একটা ছবি না উঠলে বাকিগুলো চলুক
                 print(f'x {shot["id"]}: {str(error).splitlines()[0]}')
                 continue
+            finally:
+                if shot.get('offline'):
+                    # ছবির জন্য করা অফলাইন বিক্রি যেন পরে কোথাও জমা না হয়
+                    page.evaluate("Object.keys(localStorage).filter(k => k.indexOf('sp_pos_queue_') === 0 "
+                                  "|| k.indexOf('sp_pos_cart_') === 0).forEach(k => localStorage.removeItem(k))")
+                    page.context.set_offline(False)
             save(Image.open(io.BytesIO(png)).convert('RGB'), shot['id'], shot['viewport'] == 'mobile', manifest)
         browser.close()
     MANIFEST.write_text(json.dumps(dict(sorted(manifest.items())), ensure_ascii=False, indent=1) + '\n', encoding='utf-8')

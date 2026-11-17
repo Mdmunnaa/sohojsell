@@ -404,6 +404,8 @@ class Order(models.Model):
                                   related_name='pos_sales')
     # একই বিক্রি দুবার জমা হওয়া ঠেকাতে POS স্ক্রিনের দেওয়া আইডি (নেট কেটে আবার পাঠালে)
     pos_ref = models.CharField(max_length=40, blank=True, default='', db_index=True)
+    # নেট ছাড়া (অফলাইন POS) করা বিল হলে ডিভাইসের দেওয়া বিল নম্বর, যেমন "K7-12" — নেট এলে পরে জমা হয় (store/pos.py)
+    offline_bill = models.CharField(max_length=24, blank=True, default='')
     coupon_code = models.CharField(max_length=30, blank=True, default='')
     # কোন ল্যান্ডিং পেজ থেকে অর্ডার এসেছে (store/views_landing.py)
     landing = models.ForeignKey('LandingPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')

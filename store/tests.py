@@ -6919,3 +6919,146 @@ class BanglaPagesAndStaffSafetyTests(ShopTestMixin, TestCase):
         from .plans import can_add_staff
         self.assertTrue(can_add_staff(self.shop))
         self.assertIn('বন্ধ — লগইন করতে পারে না', self.client.get(reverse('staff_list')).content.decode())
+
+
+class OfflinePOSTests(ShopTestMixin, TestCase):
+    """নেট ছাড়া POS: পরে জমা হওয়া বিক্রি, দুবার না হওয়া, মাইনাস স্টক, service worker আর manifest।"""
+
+    def setUp(self):
+        from .models import Product
+        self.user, self.shop = self.make_shop(phone='01755500095', slug='offlineshop')
+        self.tea = Product.objects.create(shop=self.shop, name='চা পাতা', price=Decimal('100'), cost_price=80,
+                                          stock_quantity=2)
+        self.sugar = Product.objects.create(shop=self.shop, name='চিনি', price=Decimal('120'), stock_quantity=10,
+                                            unit='kg')
+
+    def offline_sale(self, ref='off-1', items=None, at=None, cashier=None, number='AB-1', **extra):
+        body = {'ref': ref, 'items': items or [{'id': self.tea.id, 'qty': 3, 'price': 90}],
+                'payments': [{'method': 'cash', 'amount': 0, 'full': True}],
+                'offline': {'at': at or (timezone.now() - timedelta(hours=2)).isoformat(), 'number': number,
+                            'cashier': cashier if cashier is not None else self.user.id}}
+        body.update(extra)
+        return self.client.post(reverse('pos_checkout'), content_type='application/json', data=json.dumps(body))
+
+    def test_offline_sale_keeps_device_price_time_and_allows_minus_stock(self):
+        from .models import Order, SalePayment, StockMovement
+        at = timezone.now() - timedelta(hours=2)
+        data = self.offline_sale(at=at.isoformat()).json()
+        self.assertTrue(data['success'], data)
+        self.assertTrue(data['created'])
+        self.assertIn('synced_at', data['sale'])
+        self.assertEqual(data['sale']['offline_bill'], 'AB-1')
+        order = Order.objects.get(pk=data['sale']['id'])
+        self.assertEqual(order.total_amount, Decimal('270'))           # ডিভাইসের দাম ৯০ × ৩
+        self.assertEqual(order.offline_bill, 'AB-1')
+        self.assertAlmostEqual(order.created_at.timestamp(), at.timestamp(), delta=1)
+        self.assertIn('অফলাইনে বিক্রি (বিল AB-1)', order.note)
+        self.tea.refresh_from_db()
+        self.assertEqual(self.tea.stock_quantity, Decimal('-1'))         # স্টক ২, বিক্রি ৩
+        self.assertEqual(self.tea.stock_label, '−১টা')
+        move = StockMovement.objects.get(order=order)
+        self.assertEqual((move.note, move.created_at.replace(microsecond=0)), ('অফলাইন বিল AB-1', order.created_at.replace(microsecond=0)))
+        self.assertEqual(SalePayment.objects.get(order=order).created_at.replace(microsecond=0),
+                         order.created_at.replace(microsecond=0))
+        # একই বিল আবার পাঠালে আগেরটাই, দুবার না
+        again = self.offline_sale().json()
+        self.assertEqual((again['created'], again['sale']['id']), (False, order.id))
+        self.assertEqual(Order.objects.filter(shop=self.shop, source='pos').count(), 1)
+        # অনলাইনে একই কাজ আটকায় (স্টক নেই)
+        online = self.client.post(reverse('pos_checkout'), content_type='application/json', data=json.dumps(
+            {'ref': 'on-1', 'items': [{'id': self.tea.id, 'qty': 1}], 'payments': [{'method': 'cash', 'amount': 0, 'full': True}]}))
+        self.assertEqual(online.status_code, 400)
+        # খোঁজায় অফলাইনের বিল নম্বর
+        found = self.client.get(reverse('pos_sales'), {'q': 'ab-1'}).json()
+        self.assertEqual([s['id'] for s in found['sales']], [order.id])
+        receipt = self.client.get(reverse('pos_receipt', args=[order.id])).content.decode()
+        self.assertIn('অফলাইন বিল', receipt)
+
+    def test_offline_rules_for_cashier_time_and_closed_products(self):
+        from .models import Order, StaffProfile
+        staff_user = User.objects.create_user(phone_number='01855500095', password='x-pass-12345', name='কাশেম')
+        StaffProfile.objects.create(shop=self.shop, user=staff_user, can_use_pos=True)
+        stranger = User.objects.create_user(phone_number='01955500095', password='x-pass-12345')
+        self.tea.is_active = False
+        self.tea.save()
+        future = (timezone.now() + timedelta(days=3)).isoformat()
+        data = self.offline_sale(ref='off-2', at=future, cashier=staff_user.id).json()
+        self.assertTrue(data['success'], data)                         # পরে বন্ধ করা প্রোডাক্টও নেয়
+        order = Order.objects.get(pk=data['sale']['id'])
+        self.assertEqual(order.served_by, staff_user)
+        self.assertLessEqual(order.created_at, timezone.now())
+        old = (timezone.now() - timedelta(days=400)).isoformat()
+        data = self.offline_sale(ref='off-3', at=old, cashier=stranger.id,
+                                 items=[{'id': self.sugar.id, 'qty': 1.5, 'price': 120}]).json()
+        order = Order.objects.get(pk=data['sale']['id'])
+        self.assertEqual(order.served_by, self.user)                    # অন্য দোকানের লোক না
+        self.assertIn('ডিভাইসের সময় ভুল', order.note)
+        self.assertGreater(order.created_at, timezone.now() - timedelta(minutes=5))
+        self.assertEqual(order.total_amount, Decimal('180'))
+        # দাম বদলেছে — নোটে লেখা থাকে
+        self.sugar.price = Decimal('130')
+        self.sugar.save()
+        data = self.offline_sale(ref='off-4', items=[{'id': self.sugar.id, 'qty': 1, 'price': 120}]).json()
+        # মালিকের দাম বদলানোর অনুমতি আছে, তাই নোট লাগে না; স্টাফ হলে লাগে
+        self.client.force_login(staff_user)
+        data = self.offline_sale(ref='off-5', items=[{'id': self.sugar.id, 'qty': 1, 'price': 120}]).json()
+        self.assertIn('অফলাইনের দাম ৳120, এখন ৳130', Order.objects.get(pk=data['sale']['id']).note)
+        gone = self.offline_sale(ref='off-6', items=[{'id': 99999, 'qty': 1, 'price': 1}])
+        self.assertEqual(gone.status_code, 400)
+        self.assertIn('মুছে ফেলা হয়েছে', gone.json()['error'])
+
+    def test_catalog_ping_sw_manifest_and_page(self):
+        from .models import Customer, Order
+        customer = Customer.objects.create(shop=self.shop, name='বাকিওয়ালা', phone='01712340000')
+        Order.objects.create(shop=self.shop, customer=customer, source='pos', status='Delivered',
+                             total_amount=Decimal('500'), advance_paid=Decimal('200'))
+        catalog = self.client.get(reverse('pos_catalog')).json()
+        self.assertTrue(catalog['success'])
+        self.assertEqual({p['name'] for p in catalog['products']}, {'চা পাতা', 'চিনি'})
+        self.assertEqual(catalog['dueCustomers'], [{'phone': '01712340000', 'name': 'বাকিওয়ালা', 'due': 300}])
+        self.assertEqual(self.client.get(reverse('pos_ping')).json()['shop'], self.shop.id)
+        page = self.client.get(reverse('pos')).content.decode()
+        for needle in ('id="net-pill"', 'id="m-offline"', 'id="btn-install"', reverse('pos_manifest'),
+                       '"dueCustomers"', '"generatedAt"', 'নেট না থাকলে কী চলে, কী চলে না'):
+            self.assertIn(needle, page)
+        self.client.logout()
+        sw = self.client.get(reverse('pos_sw'))
+        self.assertEqual(sw.status_code, 200)
+        self.assertIn('javascript', sw['Content-Type'])
+        self.assertEqual(sw['Service-Worker-Allowed'], '/pos/')
+        body = sw.content.decode()
+        self.assertIn("const POS_URL = '/pos/'", body)
+        self.assertNotIn('{%', body)
+        manifest = json.loads(self.client.get(reverse('pos_manifest')).content)
+        self.assertEqual((manifest['start_url'], manifest['scope'], manifest['display']), ('/pos/', '/pos/', 'standalone'))
+        # মেয়াদ শেষ হলেও service worker নামে (নইলে পুরনোটা আটকে থাকে)
+        self.shop.is_locked = True
+        self.shop.save()
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(reverse('pos_sw')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('pos_checkout')).status_code, 302)
+        self.client.logout()
+        self.assertContains(self.client.get('/accounts/login/'), "caches.delete('sp-pos-pages')")
+
+    def test_minus_stock_shows_and_can_be_saved_unchanged(self):
+        from . import dashboard, pos as pos_module
+        self.offline_sale(at=timezone.now().isoformat())
+        self.tea.refresh_from_db()
+        alerts = dashboard.stock_alerts(self.shop)
+        self.assertEqual(alerts['minus'], 1)
+        listing = self.client.get(reverse('product_list'), {'status': 'minus'}).content.decode()
+        self.assertIn('চা পাতা', listing)
+        self.assertIn('মাইনাস −১টা', listing)
+        self.assertNotIn('চিনি', listing)
+        home = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('স্টক মাইনাসে', home)
+        form = {'name': 'চা পাতা', 'price': '100', 'cost_price': '80', 'unit': 'pcs', 'stock_quantity': '-1',
+                'low_stock_at': '5', 'barcode': self.tea.barcode, 'extra_barcodes': '', 'is_active': 'on'}
+        response = self.client.post(reverse('edit_product', args=[self.tea.id]), {**form, 'price': '105'})
+        self.assertRedirects(response, reverse('product_list'))
+        self.tea.refresh_from_db()
+        self.assertEqual((self.tea.price, self.tea.stock_quantity), (Decimal('105'), Decimal('-1')))
+        bad = self.client.post(reverse('edit_product', args=[self.tea.id]), {**form, 'stock_quantity': '-5'})
+        self.assertContains(bad, 'স্টক মাইনাস লেখা যায় না')
+        summary = pos_module.day_summary(self.shop, timezone.localdate())
+        self.assertEqual(summary['offline_count'], 1)

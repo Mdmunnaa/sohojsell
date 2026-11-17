@@ -236,11 +236,14 @@ def pos_dues(shop):
 def stock_alerts(shop, limit=6):
     from .stock_log import low_stock_q
     low = Product.objects.filter(low_stock_q(), shop=shop, is_active=True)
-    counts = low.aggregate(total=Count('id'), out=Count('id', filter=Q(stock_quantity__lte=0)))
+    counts = low.aggregate(total=Count('id'), out=Count('id', filter=Q(stock_quantity__lte=0)),
+                           minus=Count('id', filter=Q(stock_quantity__lt=0)))
     return {
         'items': list(low.order_by('stock_quantity', 'name')[:limit]),
         'count': counts['total'] or 0,
         'out': counts['out'] or 0,
+        # মাইনাস: অফলাইনে দুই ডিভাইস একসাথে বেচলে বা হাতের হিসাবে ভুল — গুনে ঠিক করতে হবে
+        'minus': counts['minus'] or 0,
     }
 
 
@@ -339,9 +342,14 @@ def todo_items(can, pipeline, dues, stock, messenger_waiting=0, money=None):
         items.append({'icon': 'bi-box-seam-fill', 'tone': 'amber', 'url': f'{orders_url}?status=Confirmed',
                       'title': f"{bn_num(pipeline['confirmed'])}টা অর্ডার কুরিয়ারে পাঠানো বাকি",
                       'sub': 'প্যাক করে পার্সেল বুক করুন'})
-    if stock['out'] and can['products']:
+    if stock.get('minus') and can['products']:
+        items.append({'icon': 'bi-dash-circle-fill', 'tone': 'red', 'url': f"{reverse('product_list')}?status=minus",
+                      'title': f"{bn_num(stock['minus'])}টা প্রোডাক্টের স্টক মাইনাসে",
+                      'sub': 'স্টকের চেয়ে বেশি বিক্রি হয়েছে (যেমন অফলাইনে দুই ডিভাইসে) — গুনে আসল স্টক বসান'})
+    out_only = stock['out'] - stock.get('minus', 0)
+    if out_only > 0 and can['products']:
         items.append({'icon': 'bi-x-octagon-fill', 'tone': 'red', 'url': f"{reverse('product_list')}?status=low",
-                      'title': f"{bn_num(stock['out'])}টা প্রোডাক্ট স্টকে নেই",
+                      'title': f"{bn_num(out_only)}টা প্রোডাক্ট স্টকে নেই",
                       'sub': 'ওয়েবসাইটে "স্টক শেষ" দেখাচ্ছে, নতুন মাল তুলুন'})
     low_only = stock['count'] - stock['out']
     if low_only > 0 and can['products']:

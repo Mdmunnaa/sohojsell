@@ -7,11 +7,21 @@ POS (দোকানে বিক্রি)-র হিসাব আর ডাট
 - পুরো বিক্রি একসাথে হয় বা একদম হয় না (transaction); স্টক লক করে কমানো হয়।
 - নগদে কাস্টমার বেশি দিলে ফেরত হিসাব হয়; পুরো টাকা না পেলে "বাকি" — তখন কাস্টমারের নাম-মোবাইল লাগে।
 - প্রতিটা টাকার লেনদেন SalePayment-এ থাকে, তাই দিনশেষের ক্যাশ হিসাব মেলে।
+
+অফলাইন POS (নেট না থাকলে ডিভাইসে জমা, নেট এলে পাঠানো — templates/store/pos.html, pos_sw.js):
+- বিক্রিটা আগেই হয়ে গেছে, মাল কাস্টমারের হাতে — তাই স্টক কম থাকলেও নেওয়া হয় (স্টক মাইনাসে যেতে পারে, ড্যাশবোর্ড জানায়)।
+- দাম: ডিভাইসে বিক্রির সময় যে দাম ছিল সেটাই (এর মধ্যে দাম বদলালেও কাস্টমার যা দিয়েছে তা-ই হিসাব)। এখনকার দামের সাথে
+  না মিললে অর্ডারের নোটে লেখা থাকে।
+- সময়: ডিভাইসে বিক্রির সময় (দিনশেষের হিসাব ঠিক দিনে পড়ে); বিক্রেতা: যে বিক্রি করেছিল (এই দোকানের হলে)।
+- একই বিল দুবার পাঠালে একবারই হিসাব হয় (pos_ref)।
 """
+from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Q, Sum
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from . import units, variants
 from .models import Customer, Order, OrderItem, Product, SalePayment, Shop
@@ -24,6 +34,7 @@ POS_ADDRESS = 'POS / In-store'
 MAX_LINES = 300
 MAX_QTY = 100000
 NOT_COUNTED = ('Returned', 'Cancelled')
+OFFLINE_MAX_DAYS = 60          # এর চেয়ে পুরোনো সময় এলে ডিভাইসের ঘড়ি ভুল ধরে এখনকার সময় বসে
 
 METHOD_TO_ORDER_LABEL = {
     SalePayment.CASH: 'Paid', SalePayment.BKASH: 'bKash', SalePayment.NAGAD: 'Nagad',
@@ -202,28 +213,65 @@ def create_sale(shop, user, payload, *, can_override_price=False):
         raise
 
 
+def _offline_info(shop, user, raw):
+    """অফলাইনে করা বিক্রির তথ্য: কখন, ডিভাইসের বিল নম্বর, কে বিক্রি করেছিল। অফলাইন না হলে None।"""
+    if not isinstance(raw, dict):
+        return None
+    from django.contrib.auth import get_user_model
+    from .models import StaffProfile
+    now = timezone.now()
+    notes = []
+    at = parse_datetime(str(raw.get('at') or '')[:40])
+    if at is None:
+        at = now
+    elif timezone.is_naive(at):
+        at = timezone.make_aware(at)
+    if at > now:
+        at = now                                  # ডিভাইসের ঘড়ি এগিয়ে
+    elif at < now - timedelta(days=OFFLINE_MAX_DAYS):
+        at = now
+        notes.append('ডিভাইসের সময় ভুল ছিল, জমার সময় ধরা হয়েছে')
+    number = ''.join(ch for ch in str(raw.get('number') or '') if ch.isalnum() or ch == '-')[:24]
+    cashier = user if getattr(user, 'is_authenticated', False) else None
+    try:
+        cashier_id = int(raw.get('cashier') or 0)
+    except (TypeError, ValueError):
+        cashier_id = 0
+    if cashier_id and cashier_id != getattr(cashier, 'pk', None):
+        # যে বিক্রি করেছিল সে এই দোকানের মালিক বা স্টাফ হলে তার নামেই; নাহলে যে পাঠাল তার নামে
+        if cashier_id == shop.user_id or StaffProfile.objects.filter(shop=shop, user_id=cashier_id).exists():
+            cashier = get_user_model().objects.filter(pk=cashier_id).first() or cashier
+    return {'at': at, 'number': number, 'cashier': cashier, 'notes': notes}
+
+
 def _create_sale(shop, user, payload, ref, can_override_price):
+    offline = _offline_info(shop, user, payload.get('offline'))
     lines = _clean_lines(payload.get('items'))
     sellables = variants.resolve(shop, lines.keys(), lock=True)
     if len(sellables) != len(lines):
-        raise POSError('কিছু প্রোডাক্ট আর পাওয়া যাচ্ছে না, পেইজটা রিফ্রেশ করুন।')
+        raise POSError('এই বিলের কোনো প্রোডাক্ট বা সাইজ/রং দোকান থেকে মুছে ফেলা হয়েছে — বিলটা জমা করা যাচ্ছে না। '
+                       'টাকা নেওয়া হয়ে থাকলে প্রোডাক্টটা আবার যোগ করে নতুন বিক্রি করুন, তারপর এটা বাদ দিন।'
+                       if offline else 'কিছু প্রোডাক্ট আর পাওয়া যাচ্ছে না, পেইজটা রিফ্রেশ করুন।')
 
-    priced = []
+    priced, notes = [], list(offline['notes']) if offline else []
     for key, line in lines.items():
         item = sellables[key]
-        if not item.product.is_active:
+        # অফলাইনের বিক্রি আগেই হয়ে গেছে: পরে প্রোডাক্ট বন্ধ করলেও বা স্টক কম থাকলেও নেওয়া হয়
+        if not item.product.is_active and not offline:
             raise POSError(f'"{item.name}" এখন বিক্রি বন্ধ।')
         if item.needs_choice:
             raise POSError(f'"{item.name}"-এর কোন সাইজ/রং সেটা বেছে নিন।')
         if not item.product.is_loose and line['qty'] != line['qty'].to_integral_value():
             raise POSError(f'"{item.name}" পিসে বিক্রি হয় — পূর্ণ সংখ্যা দিন।')
-        if item.stock < line['qty']:
+        if item.stock < line['qty'] and not offline:
             raise POSError(f'"{item.name}" স্টকে আছে মাত্র {units.show(item.stock, item.product.unit)}।')
         price = item.price
-        if can_override_price and line['price'] is not None:
+        if (can_override_price or offline) and line['price'] is not None:
             price = money(line['price'])
             if price < 0:
                 raise POSError('দাম ঋণাত্মক হতে পারে না।')
+            if offline and not can_override_price and price != item.price:
+                notes.append(f'{item.name}: অফলাইনের দাম ৳{price.normalize():f}, এখন ৳{item.price.normalize():f}')
         priced.append((item, line['qty'], price))
 
     discount_info = payload.get('discount') or {}
@@ -237,12 +285,16 @@ def _create_sale(shop, user, payload, ref, can_override_price):
     customer_info = payload.get('customer') or {}
     customer = _customer_for(shop, customer_info.get('name'), customer_info.get('phone'),
                              need_real_customer=due > 0)
-    cashier = user if getattr(user, 'is_authenticated', False) else None
+    cashier = offline['cashier'] if offline else (user if getattr(user, 'is_authenticated', False) else None)
+    note = str(payload.get('note') or '').strip()
+    if offline:
+        note = ' · '.join(filter(None, [note, f"অফলাইনে বিক্রি (বিল {offline['number'] or '—'})"] + notes))
     order = Order.objects.create(
         shop=shop, customer=customer, source='pos', status='Delivered', delivery_charge=0,
         discount=discount, vat_amount=vat, total_amount=total, advance_paid=paid,
         payment_method=order_payment_label(applied, due), cash_received=cash_given, change_given=change,
-        served_by=cashier, pos_ref=ref, note=str(payload.get('note') or '').strip()[:500] or None,
+        served_by=cashier, pos_ref=ref, note=note[:500] or None,
+        offline_bill=(offline['number'] or '—') if offline else '',
     )
     OrderItem.objects.bulk_create([
         OrderItem(order=order, product=item.product, variant=item.variant, variant_name=item.variant_name,
@@ -250,12 +302,20 @@ def _create_sale(shop, user, payload, ref, can_override_price):
         for item, qty, price in priced
     ])
     for item, qty, _price in priced:
-        variants.take(item, qty, reason='pos_sale', order=order, user=cashier)
+        variants.take(item, qty, reason='pos_sale', order=order, user=cashier,
+                      note=f"অফলাইন বিল {offline['number']}" if offline else '')
     SalePayment.objects.bulk_create([
         SalePayment(shop=shop, order=order, method=method, amount=amount, reference=reference,
                     kind=SalePayment.SALE, received_by=cashier)
         for method, amount, reference in applied
     ])
+    if offline:
+        # বিক্রির আসল সময়ে বসানো — দিনশেষের হিসাব, রিপোর্ট আর স্টকের খাতা যেন ঠিক দিনে পড়ে
+        from .models import StockMovement
+        Order.objects.filter(pk=order.pk).update(created_at=offline['at'])
+        SalePayment.objects.filter(order=order).update(created_at=offline['at'])
+        StockMovement.objects.filter(order=order).update(created_at=offline['at'])
+        order.created_at = offline['at']
     return order
 
 
@@ -507,6 +567,7 @@ def day_summary(shop, day):
     return {
         'day': day,
         'count': totals['count'] or 0,
+        'offline_count': kept.exclude(offline_bill='').count(),     # নেট ছাড়া করা, পরে জমা হওয়া বিল
         'items_sold': qty,
         'gross': gross,
         'discount': totals['discount'] or ZERO,

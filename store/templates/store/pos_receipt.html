@@ -51,6 +51,7 @@
   </div>
   <hr class="hr">
   <div class="row"><span>রসিদ</span><b>#ORD-{{ order.id }}</b></div>
+  {% if order.offline_bill %}<div class="row"><span>অফলাইন বিল</span><span>{{ order.offline_bill }}</span></div>{% endif %}
   <div class="row"><span>তারিখ</span><span>{{ order.created_at|date:"d M Y, h:i A" }}</span></div>
   {% if order.served_by %}<div class="row"><span>বিক্রেতা</span><span>{{ order.served_by.name|default:order.served_by.phone_number }}</span></div>{% endif %}
   {% if not walk_in %}<div class="row"><span>কাস্টমার</span><span>{{ order.customer.name }}</span></div>

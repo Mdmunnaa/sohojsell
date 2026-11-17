@@ -68,6 +68,7 @@ def _sale_json(order):
         'payment': order.payment_method,
         'cashier': (order.served_by.name or order.served_by.phone_number) if order.served_by_id else '',
         'receipt_url': reverse('pos_receipt', args=[order.id]),
+        'offline_bill': order.offline_bill,
     }
 
 
@@ -88,23 +89,58 @@ def _product_json(p):
     return data
 
 
+def _catalog(shop):
+    """POS-এর প্রোডাক্ট (দাম, স্টক, বারকোড) — পাতায় বসানো থাকে, আর অফলাইনের পর নেট এলে /pos/catalog/ থেকে নতুন করে।"""
+    products = (Product.objects.filter(shop=shop, is_active=True).prefetch_related('variants', 'extra_barcodes')
+                .order_by('name'))
+    return [_product_json(p) for p in products]
+
+
+DUE_CUSTOMERS_MAX = 3000
+
+
+def _due_customers(shop):
+    """বাকি থাকা কাস্টমার (মোবাইল, নাম, কত বাকি) — নেট না থাকলেও POS-এ "আগের বাকি" দেখাতে।"""
+    from django.db.models import F, Max
+    rows = (Order.objects.filter(shop=shop, source='pos', advance_paid__lt=F('total_amount'))
+            .exclude(status__in=pos.NOT_COUNTED).values('customer__phone').annotate(due=Sum(F('total_amount') - F('advance_paid')),
+                                                name=Max('customer__name'))
+            .order_by('-due')[:DUE_CUSTOMERS_MAX])
+    return [{'phone': r['customer__phone'], 'name': r['name'] or '', 'due': _num(r['due'] or 0)}
+            for r in rows if r['customer__phone'] and r['customer__phone'] != pos.WALK_IN_PHONE]
+
+
+def _now_ms():
+    return int(timezone.now().timestamp() * 1000)
+
+
 # POS-এর বিক্রি JS থেকে যায়, csrftoken কুকি লাগে — কুকি মুছে গেলে বা অন্যভাবে লগইন হলেও যেন থাকে
 @ensure_csrf_cookie
 @login_required(login_url=LOGIN)
 def pos_screen(request):
+    from django.templatetags.static import static
     shop = request.user.shop
-    products = (Product.objects.filter(shop=shop, is_active=True).prefetch_related('variants', 'extra_barcodes')
-                .order_by('name'))
-    product_data = [_product_json(p) for p in products]
+    product_data = _catalog(shop)
     used_categories = {p['cat'] for p in product_data}
     categories = [c for c in Category.objects.filter(shop=shop).order_by('name') if c.id in used_categories]
     today = pos.sales_on(shop, timezone.localdate()).exclude(status__in=pos.NOT_COUNTED)
     stats = today.aggregate(count=Count('id'), total=Sum('total_amount'))
+    user = request.user
     return render(request, 'store/pos.html', {
         'shop': shop,
         'categories': categories,
+        'pos_manifest': True,
         'pos_config': {
             'products': product_data,
+            # অফলাইন POS: কখনকার তথ্য, কে বিক্রি করছে, রসিদে কী ছাপা হবে, আর বাকি থাকা কাস্টমার
+            'generatedAt': _now_ms(),
+            'user': {'id': user.pk, 'name': user.name or user.phone_number},
+            'dueCustomers': _due_customers(shop),
+            'receipt': {'name': shop.name, 'address': shop.address or '', 'phone': shop.phone or '',
+                        'bin': getattr(shop, 'pos_bin', '') or '', 'note': getattr(shop, 'pos_receipt_note', '') or '',
+                        'logo': shop.logo.url if shop.logo else '', 'width': shop.pos_receipt_width},
+            'precache': [static('vendor/html5-qrcode/html5-qrcode.min.js'),
+                         static('vendor/jsbarcode/JsBarcode.all.min.js')],
             'vatPercent': _num(shop.pos_vat_percent),
             'vatMode': shop.pos_vat_mode,
             'canEditPrice': _is_owner(request),
@@ -122,6 +158,10 @@ def pos_screen(request):
                 'saleBase': reverse('pos_sale_detail', args=[0]).replace('/0/', '/{id}/'),
                 'barcode': reverse('barcode_lookup'),
                 'dayClose': reverse('pos_day_close'),
+                'catalog': reverse('pos_catalog'),
+                'ping': reverse('pos_ping'),
+                'sw': reverse('pos_sw'),
+                'pos': reverse('pos'),
             },
         },
     })
@@ -163,8 +203,73 @@ def pos_checkout(request):
         order, created = pos.create_sale(shop, request.user, payload, can_override_price=_is_owner(request))
     except pos.POSError as exc:
         return _error(str(exc))
-    return JsonResponse({'success': True, 'created': created, 'sale': _sale_json(order),
+    # synced_at: সার্ভারের সময় — নেট ছাড়া খোলা পুরনো পাতার স্টক থেকে কোন বিক্রি বাদ দিতে হবে বোঝা যায়
+    return JsonResponse({'success': True, 'created': created, 'sale': {**_sale_json(order), 'synced_at': _now_ms()},
                          'auto_print': shop.pos_auto_print})
+
+
+@login_required(login_url=LOGIN)
+def pos_catalog(request):
+    """অফলাইনের বিক্রি পাঠানোর পর POS-এর স্টক-দাম নতুন করে (পাতা রিফ্রেশ না করেই)।"""
+    shop = request.user.shop
+    return JsonResponse({'success': True, 'products': _catalog(shop), 'generatedAt': _now_ms(),
+                         'dueCustomers': _due_customers(shop)})
+
+
+@login_required(login_url=LOGIN)
+def pos_ping(request):
+    """নেট আর লগইন ঠিক আছে কিনা (অফলাইন থেকে ফেরার সময় POS ছোট করে জিজ্ঞেস করে)।"""
+    return JsonResponse({'success': True, 'shop': request.user.shop.id})
+
+
+POS_SW_VERSION = '1'      # pos_sw.js-এর নিয়ম বদলালে বাড়ান
+
+
+def pos_sw(request):
+    """
+    অফলাইন POS-এর service worker (/pos/sw.js — তাই শুধু /pos/ পাতাগুলো এর আওতায়)। লগইন লাগে না, ভেতরে কারো তথ্য নেই।
+    আগে থেকে রাখা ফাইলের তালিকা static() থেকে, তাই নতুন deploy-এ ফাইলের নাম বদলালে নতুন সংস্করণ নিজে নামে।
+    """
+    import hashlib
+    from django.http import HttpResponse
+    from django.template.loader import render_to_string
+    from django.templatetags.static import static
+    files = ['vendor/bootstrap/bootstrap-app.min.css', 'vendor/bootstrap/bootstrap.bundle.min.js',
+             'vendor/sweetalert2/sweetalert2.all.min.js', 'vendor/html5-qrcode/html5-qrcode.min.js',
+             'vendor/jsbarcode/JsBarcode.all.min.js', 'brand/sellpunch-logo.svg', 'brand/sellpunch-mark.svg',
+             'brand/icon-192.png']
+    precache = []
+    for name in files:
+        try:
+            precache.append(static(name))
+        except ValueError:          # manifest-এ নেই (টেস্ট/লোকাল) — বাদ
+            continue
+    version = hashlib.sha1((POS_SW_VERSION + '|' + '|'.join(precache)).encode()).hexdigest()[:12]
+    from django.conf import settings
+    body = render_to_string('store/pos_sw.js', {'version': version, 'precache': json.dumps(precache),
+                                                 'pos_url': reverse('pos'), 'network_first': settings.DEBUG})
+    response = HttpResponse(body, content_type='application/javascript; charset=utf-8')
+    response['Cache-Control'] = 'no-cache'
+    response['Service-Worker-Allowed'] = reverse('pos')
+    return response
+
+
+def pos_manifest(request):
+    """POS-কে আলাদা অ্যাপ হিসেবে বসানোর manifest (হোম স্ক্রিন/ডেস্কটপে "SellPunch POS")।"""
+    from django.conf import settings
+    from django.templatetags.static import static
+    site = getattr(settings, 'SITE_NAME', 'SellPunch')
+    data = {
+        'name': f'{site} POS', 'short_name': 'POS', 'id': reverse('pos'), 'start_url': reverse('pos'),
+        'scope': reverse('pos'), 'display': 'standalone', 'background_color': '#F8FAFC', 'theme_color': '#059669',
+        'lang': 'bn', 'description': 'দোকানে বিক্রি — নেট না থাকলেও চলে, নেট এলে নিজে থেকে জমা হয়।',
+        'icons': [{'src': static('brand/icon-192.png'), 'sizes': '192x192', 'type': 'image/png'},
+                  {'src': static('brand/icon-512.png'), 'sizes': '512x512', 'type': 'image/png',
+                   'purpose': 'any maskable'}],
+    }
+    response = JsonResponse(data, json_dumps_params={'ensure_ascii': False})
+    response['Content-Type'] = 'application/manifest+json; charset=utf-8'
+    return response
 
 
 @login_required(login_url=LOGIN)
@@ -201,7 +306,9 @@ def pos_sales(request):
     if query:
         digits = ''.join(ch for ch in query if ch.isdigit())
         orders = Order.objects.filter(shop=shop, source='pos').select_related('customer', 'served_by')
-        if query.upper().startswith('ORD') and 0 < len(digits) <= 9:
+        if orders.filter(offline_bill__iexact=query).exists():
+            orders = orders.filter(offline_bill__iexact=query)          # অফলাইনের বিল নম্বর (যেমন K7-12)
+        elif query.upper().startswith('ORD') and 0 < len(digits) <= 9:
             orders = orders.filter(pk=int(digits))
         elif len(digits) >= 6:
             orders = orders.filter(customer__phone__endswith=digits[-10:])

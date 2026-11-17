@@ -90,6 +90,7 @@
     <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>বিক্রিতে চালু</option>
     <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>বন্ধ রাখা</option>
     <option value="low" {% if request.GET.status == 'low' %}selected{% endif %}>স্টক কম / শেষ</option>
+    <option value="minus" {% if request.GET.status == 'minus' %}selected{% endif %}>স্টক মাইনাসে</option>
   </select>
   <button type="submit" class="btn btn-dark btn-sm rounded-pill px-3">খুঁজুন</button>
   {% if filtered %}<a href="{% url 'product_list' %}" class="btn btn-light btn-sm rounded-pill border">সব দেখুন</a>{% endif %}
@@ -130,7 +131,8 @@
           <td class="text-end hide-sm" style="color:#64748B;font-weight:700;">৳{{ product.cost_price|floatformat:"-2g" }}</td>
           <td class="text-end c-price" style="font-weight:800;font-size:15px;white-space:nowrap">৳{{ product.price|floatformat:"-2g" }}{% if product.is_loose %}<small style="color:#64748B;font-weight:600">/{{ product.get_unit_display }}</small>{% endif %}</td>
           <td class="text-center c-stock">
-            {% if product.stock_quantity <= 0 %}<span class="pl-stock out">শেষ</span>
+            {% if product.stock_quantity < 0 %}<span class="pl-stock out" title="স্টকের চেয়ে বেশি বিক্রি হয়েছে — গুনে আসল স্টক বসান">মাইনাস {{ product.stock_label }}</span>
+            {% elif product.stock_quantity <= 0 %}<span class="pl-stock out">শেষ</span>
             {% elif product.is_low_stock %}<span class="pl-stock low"><i class="bi bi-exclamation-triangle-fill"></i> {{ product.stock_label }}</span>
             {% else %}<span class="pl-stock ok">{{ product.stock_label }}</span>{% endif %}
           </td>

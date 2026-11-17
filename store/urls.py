@@ -133,6 +133,10 @@ urlpatterns = [
     path('pos/sales/<int:order_id>/', views_pos.pos_sale_detail, name='pos_sale_detail'),
     path('pos/sales/<int:order_id>/return/', views_pos.pos_return, name='pos_return'),
     path('pos/day-close/', views_pos.pos_day_close, name='pos_day_close'),
+    path('pos/catalog/', views_pos.pos_catalog, name='pos_catalog'),
+    path('pos/ping/', views_pos.pos_ping, name='pos_ping'),
+    path('pos/sw.js', views_pos.pos_sw, name='pos_sw'),
+    path('pos/manifest.webmanifest', views_pos.pos_manifest, name='pos_manifest'),
 
     # Customers & Reports
     path('customers/', views.customer_list, name='customer_list'),

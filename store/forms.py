@@ -118,9 +118,14 @@ class ProductForm(forms.ModelForm):
         value = self.cleaned_data.get(name)
         if value is None:
             return 0
+        # মাইনাস স্টক (অফলাইনে স্টকের চেয়ে বেশি বিক্রি) না বদলে আবার সেভ করা যায়; নতুন করে মাইনাস লেখা যায় না
+        if name == 'stock_quantity' and value < 0 and self.instance.pk and value == self.instance.stock_quantity:
+            return value
         try:
             return units.parse(value, unit, label=label, allow_zero=True)
         except units.QtyError as exc:
+            if value < 0:
+                exc = units.QtyError('স্টক মাইনাস লেখা যায় না — গুনে দেখে আসল সংখ্যাটা দিন।')
             self.add_error(name, str(exc))
             return value
 

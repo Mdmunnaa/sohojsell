@@ -86,7 +86,9 @@ def money(value):
 
 def show(qty, unit=PCS, *, bangla=True):
     """"৩টা", "১.৫ কেজি"; bangla=False হলে ইংরেজিতে: "3", "1.5 kg"।"""
-    text = f'{clean(qty or 0):f}'
+    text = f'{abs(clean(qty or 0)):f}'
+    if clean(qty or 0) < 0:
+        text = '−' + text                  # মাইনাস স্টক (অফলাইনে স্টকের চেয়ে বেশি বিক্রি)
     if not bangla:
         return f'{text}{SUFFIX_EN.get(unit or PCS, "")}'
     return f'{text.translate(_EN)}{SUFFIX.get(unit or PCS, "টা")}'

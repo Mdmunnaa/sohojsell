@@ -51,6 +51,7 @@
 
   <h2>বিক্রি</h2>
   <div class="row"><span>বিল</span><span>{{ summary.count }}টা</span></div>
+  {% if summary.offline_count %}<div class="row"><span>এর মধ্যে নেট ছাড়া করা</span><span>{{ summary.offline_count }}টা</span></div>{% endif %}
   <div class="row"><span>প্রোডাক্ট বিক্রি</span><span>{{ summary.items_sold }}টা</span></div>
   <div class="row"><span>প্রোডাক্টের দাম</span><span>৳{{ summary.gross|floatformat:"-2g" }}</span></div>
   <div class="row"><span>ছাড়</span><span>−৳{{ summary.discount|floatformat:"-2g" }}</span></div>

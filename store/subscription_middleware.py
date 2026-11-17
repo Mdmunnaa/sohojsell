@@ -18,6 +18,8 @@ ALLOWED_URLS = [
     '/saas-master/',
     '/admin/',
     '/static/',
+    '/pos/sw.js',                 # অফলাইন POS-এর service worker আর manifest — কারো তথ্য নেই
+    '/pos/manifest.webmanifest',
     '/media/',
     '/shop/',
     '/api/',

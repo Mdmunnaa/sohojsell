@@ -281,6 +281,8 @@ def product_list(request):
         products = products.filter(is_active=False)
     elif status == 'low':
         products = products.filter(stock_log.low_stock_q())
+    elif status == 'minus':
+        products = products.filter(stock_quantity__lt=0)
     # Pagination
     paginator = Paginator(products, 20)
     page = request.GET.get('page', 1)
@@ -357,7 +359,8 @@ def edit_product(request, pk):
         stock_before, had_variants = product.stock_quantity, product.has_variants
         form = ProductForm(request.POST, request.FILES, instance=product)
         try:
-            rows = variants.rows_from_post(request.POST, unit=_posted_unit(request.POST))
+            rows = variants.rows_from_post(request.POST, unit=_posted_unit(request.POST),
+                                           current=dict(product.variants.values_list('id', 'stock_quantity')))
         except variants.VariantError as exc:
             rows = None
             messages.error(request, str(exc))
@@ -2231,7 +2234,7 @@ def approve_payment(request, request_id):
 def reject_payment(request, request_id):
     """Admin rejects a payment request"""
     if not request.user.is_superuser:
-        messages.error(request, "Access Denied!")
+        messages.error(request, "এটা শুধু SellPunch-এর অ্যাডমিন করতে পারেন।")
         return redirect('dashboard')
 
     if request.method != 'POST':

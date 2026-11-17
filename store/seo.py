@@ -176,6 +176,8 @@ def assistant_help_lines(base):
         'with the dashboard\'s "AI সাহায্য" button already includes the page name, that page\'s guide link and any error '
         'message shown on the page.',
         '- A red or yellow message on screen: find its exact text in the troubleshooting guide and give that fix.',
+        '- No internet at the shop: the POS keeps selling offline and syncs later (POS guide, section "নেট না থাকলেও '
+        'বিক্রি"); other pages need internet. Never tell a seller to stop selling because the internet is down.',
         '- "What next?" for a new shop: the dashboard card "দোকান পুরোপুরি চালু করুন" shows the next step ("এরপর: …"). '
         'The order is: add the first product, shop logo, phone number and address, a website banner, connect a courier, '
         'connect the Facebook page (Standard, Premium and the free trial), then the first sale.',
@@ -225,7 +227,8 @@ def main_llms_txt(request):
         '- 30-day free trial with every feature; no card needed.',
         '- Payments: cash on delivery, or bKash / Nagad / card advance through the PayStation gateway (optional per store).',
         '- Couriers: Steadfast, Pathao and RedX — tested on live merchant accounts.',
-        '- Works in the phone browser; no app to install.',
+        '- Works in the phone, tablet or computer browser; nothing to install. The POS can also be installed as an app '
+        '(PWA) and keeps selling without internet — sales sync automatically when the connection returns.',
         '',
     ]
     try:
@@ -274,6 +277,30 @@ def main_llms_txt(request):
     lines += [
         '- Not included below Premium: own domain. Not included in Basic: Facebook comment and Messenger auto reply.',
         '- 30-day free trial with Standard features; SMS billed separately per message.',
+        '',
+        '## Offline POS (selling without internet)',
+        f"Guide (Bangla): {base}{reverse('guide_detail', args=['pos'])} — section \"নেট না থাকলেও বিক্রি (অফলাইন POS)\".",
+        '- Built in, nothing to switch on. The POS must be opened once with internet on that device/browser; after that it '
+        'opens without internet (in the browser or as the installed app) using the products, prices, stock and the list of '
+        'customers with dues saved at the last online visit.',
+        '- Offline a cashier can: search and scan barcodes (hand scanner or camera), sell by weight, sizes/colours, '
+        'discount, VAT, cash/bKash/Nagad/card and split payments, sell on due to a customer (name + mobile), hold bills and '
+        'print the receipt (marked as an offline bill).',
+        '- Needs internet: finding and returning earlier sales, collecting dues, the day-close report, reprinting an older '
+        'receipt, barcodes of products added after the last online visit, and every page other than the POS.',
+        '- Each offline sale is saved on the device with an offline bill number like K7-12 (device code + count). When the '
+        'internet returns the sales are sent one by one automatically; each becomes a normal order (#ORD-…) dated at the '
+        'real sale time, credited to the cashier who made it, and is never counted twice.',
+        '- Rules: the price at the time of sale is kept; the sale is accepted even if stock is now short (stock can go '
+        'below zero, shown in red on the dashboard as "…টা প্রোডাক্টের স্টক মাইনাসে" — count and correct it). One device '
+        'cannot bill more than the stock it knows of.',
+        '- Cautions: do not clear browser data or use a private/incognito window while unsent sales exist; on iPhone/iPad '
+        'sales send while the POS is open, so open it once when back online; if the login expired the POS shows '
+        '"আবার লগইন করুন" and sends after logging in to the same shop; on an expired plan they send after paying.',
+        '- A sale that the server rejects (usually a product deleted after the offline sale) shows in red as "জমা হয়নি" '
+        'with the reason; fix and press "আবার চেষ্টা", or the shop owner can discard it ("বাদ দিন").',
+        '- Install as an app: the POS top bar button "অ্যাপ বসান" (Android/computer Chrome or Edge), or Safari Share → '
+        'Add to Home Screen on iPhone/iPad.',
         '',
         '## Moving to SellPunch from another platform',
         f"Details: {base}{reverse('mk_feature_en', args=['move-to-sellpunch'])}; step-by-step guide (Bangla): "
