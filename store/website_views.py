@@ -279,6 +279,8 @@ def online_money(request):
         'page': page,
         'payouts': ShopPayout.objects.filter(shop=shop).select_related('request')[:20],
         'settlement_requests': shop.settlement_requests.select_related('payout')[:20],
+        'refunds': shop.customer_refunds.all()[:20],
+        'refunds_waiting': shop_payments.refunds_waiting(shop),
     })
 
 
@@ -321,6 +323,17 @@ def master_settlements(request):
     from .models import Shop
 
     action = request.POST.get('action', '') if request.method == 'POST' else ''
+    if action in ('refund_done', 'refund_reject'):
+        try:
+            if action == 'refund_done':
+                refund = shop_payments.finish_refund(request.POST.get('refund_id'), request.POST.get('reference'),
+                                                     user=request.user)
+                messages.success(request, f'{refund.shop.name}-এর কাস্টমারকে ৳{refund.amount:.0f} ফেরত লেখা হয়েছে, SMS গেছে।')
+            elif shop_payments.reject_refund(request.POST.get('refund_id'), request.POST.get('reason')):
+                messages.success(request, 'ফেরতটা ফেরত দেওয়া হয়েছে, টাকা সেলারের জমায় ফিরেছে।')
+        except shop_payments.SettlementError as exc:
+            messages.error(request, str(exc))
+        return redirect('master_settlements')
     if action in ('request_paid', 'request_reject'):
         try:
             if action == 'request_paid':
@@ -362,7 +375,10 @@ def master_settlements(request):
     from .models import SettlementRequest
     open_requests = list(SettlementRequest.objects.filter(status=SettlementRequest.PENDING).select_related('shop')
                          .order_by('created_at'))
+    from .models import CustomerRefund
     return render(request, 'store/master_settlements.html', {
+        'open_refunds': list(CustomerRefund.objects.filter(way=CustomerRefund.PLATFORM, status=CustomerRefund.PENDING)
+                             .select_related('shop').order_by('created_at')),
         'open_requests': open_requests,
         'rows': rows,
         'total_due': sum((r['due'] for r in rows), Decimal('0')),

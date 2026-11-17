@@ -1,52 +1,263 @@
 {% extends 'store/base.html' %}
+{% load bangla %}
 {% block page_title %}অর্ডার এডিট{% endblock %}
-{% block title %}Edit Order #ORD-{{ order.id }}{% endblock %}
+{% block title %}অর্ডার #ORD-{{ order.id }} এডিট{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center mt-4">
-    <div class="col-md-8">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="fw-bold"><i class="bi bi-pencil-square text-warning me-2"></i>Edit Order #ORD-{{ order.id }}</h3>
-            <a href="{% url 'order_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Cancel</a>
-        </div>
+{% comment %}
+  অর্ডার এডিট (views.order_edit → order_flow.edit_items): কাস্টমারের তথ্য, আর পাঠানোর আগে প্রোডাক্ট যোগ-বাদ, পরিমাণ,
+  দাম, ডেলিভারি চার্জ, ছাড়। মোট এখানে দেখানো হয় শুধু হিসাবের জন্য — সার্ভার নিজে আবার হিসাব করে, স্টক ঠিক রেখে।
+{% endcomment %}
+<style>
+  .oe { max-width: 860px; margin: 0 auto; }
+  .oe-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .oe-head h1 { font-size: 21px; font-weight: 800; margin: 0; }
+  .oe-head .meta { color: #64748B; font-size: 13px; }
+  .oe-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 18px; padding: 18px; margin-bottom: 14px; }
+  .oe-card h2 { font-size: 16px; font-weight: 800; margin: 0 0 12px; }
+  .oe-card label { font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 4px; }
+  .oe-card .form-control { border-radius: 10px; }
+  .oe-note { display: flex; gap: 10px; padding: 12px 14px; border-radius: 12px; background: #FFFBEB; border: 1px solid #FDE68A; color: #78350F; font-size: 13.5px; margin-bottom: 12px; }
+  .oe-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px 132px 92px 36px; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid #F1F5F9; }
+  .oe-row:first-child { border-top: 0; }
+  .oe-row .nm b { display: block; font-size: 14.5px; }
+  .oe-row .nm small { color: #64748B; font-size: 12px; }
+  .oe-row .lt { text-align: right; font-weight: 800; white-space: nowrap; }
+  .oe-row.gone { opacity: .45; } .oe-row.gone .nm b { text-decoration: line-through; }
+  .oe-row.new { background: #F0FDF4; border-radius: 10px; padding: 10px 8px; }
+  .oe-qty { display: flex; align-items: center; border: 1px solid #CBD5E1; border-radius: 10px; overflow: hidden; }
+  .oe-qty button { border: 0; background: #F8FAFC; width: 34px; height: 38px; font-size: 18px; font-weight: 700; color: #334155; }
+  .oe-qty input { border: 0; width: 100%; text-align: center; font-weight: 800; height: 38px; min-width: 0; }
+  .oe-price { position: relative; } .oe-price span { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #64748B; font-weight: 700; }
+  .oe-price input { padding-left: 24px; }
+  .oe-del { border: 0; background: #FEF2F2; color: #B91C1C; width: 36px; height: 36px; border-radius: 10px; }
+  .oe-del.undo { background: #F1F5F9; color: #334155; }
+  .oe-add { display: grid; grid-template-columns: minmax(0, 1fr) 110px auto; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #CBD5E1; }
+  .oe-add .find { grid-column: 1 / -1; }
+  .oe-sum { display: grid; gap: 6px; font-size: 14px; }
+  .oe-sum div { display: flex; justify-content: space-between; }
+  .oe-sum .total { font-size: 19px; font-weight: 800; border-top: 1px solid #E2E8F0; padding-top: 8px; margin-top: 4px; }
+  .oe-sum .muted { color: #64748B; font-size: 13px; }
+  .oe-save { position: sticky; bottom: 0; background: linear-gradient(to top, #F8FAFC 70%, transparent); padding: 12px 0 4px; display: flex; gap: 10px; }
+  .oe-save .btn { border-radius: 12px; font-weight: 800; padding: 12px 22px; }
+  @media (max-width: 640px) {
+    .oe-row { grid-template-columns: minmax(0, 1fr) 36px; grid-template-areas: "nm del" "qty qty" "price lt"; gap: 8px; }
+    .oe-row .nm { grid-area: nm; } .oe-row .oe-del { grid-area: del; } .oe-row .oe-qty { grid-area: qty; max-width: 160px; }
+    .oe-row .oe-price { grid-area: price; max-width: 150px; } .oe-row .lt { grid-area: lt; align-self: center; }
+    .oe-add { grid-template-columns: minmax(0, 1fr) 90px; } .oe-add button { grid-column: 1 / -1; }
+  }
+</style>
 
-        <div class="card shadow-sm border-0 border-top border-warning border-4">
-            <div class="card-body p-4">
-                <form method="POST" action="">
-                    {% csrf_token %}
-
-                    <h5 class="fw-bold text-primary mb-3">Update Customer Info</h5>
-                    <div class="row mb-4">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Customer Name</label>
-                            <input type="text" name="customer_name" class="form-control" value="{{ order.customer.name }}" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Phone Number</label>
-                            <input type="text" name="customer_phone" class="form-control" value="{{ order.customer.phone }}" required>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label fw-bold">Delivery Address</label>
-                            <textarea name="customer_address" class="form-control" rows="2" required>{{ order.customer.address }}</textarea>
-                        </div>
-                    </div>
-
-                    <h5 class="fw-bold text-success mb-3">Update Order Total</h5>
-                    <div class="row mb-4">
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label fw-bold">Total Amount (৳)</label>
-                            <input type="number" step="0.01" name="total_amount" class="form-control form-control-lg text-success fw-bold" value="{{ order.total_amount }}" required>
-                        </div>
-                    </div>
-
-                    <div class="d-grid mt-4">
-                        <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-sm text-dark">
-                            <i class="bi bi-save me-2"></i> Update Order
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+<div class="oe">
+  <div class="oe-head">
+    <div>
+      <h1>অর্ডার #ORD-{{ order.id }} এডিট</h1>
+      <div class="meta">{{ order.created_at|date:"j M Y, g:i A" }} · অবস্থা: {{ status_bn }}</div>
     </div>
+    <a href="{% url 'order_list' %}" class="btn btn-light rounded-pill fw-bold"><i class="bi bi-arrow-left me-1"></i> অর্ডারে ফিরুন</a>
+  </div>
+
+  <form method="post" id="oeForm">
+    {% csrf_token %}
+    <section class="oe-card">
+      <h2><i class="bi bi-person me-1 text-primary"></i> কাস্টমার</h2>
+      <div class="row g-3">
+        <div class="col-md-6"><label for="oe-name">নাম</label><input id="oe-name" type="text" name="customer_name" class="form-control" value="{{ order.customer.name }}" required></div>
+        <div class="col-md-6"><label for="oe-phone">মোবাইল নম্বর</label><input id="oe-phone" type="tel" name="customer_phone" class="form-control" value="{{ order.customer.phone }}" inputmode="numeric" required></div>
+        <div class="col-12"><label for="oe-addr">ঠিকানা</label><textarea id="oe-addr" name="customer_address" class="form-control" rows="2" required>{{ order.customer.address }}</textarea></div>
+      </div>
+    </section>
+
+    <section class="oe-card">
+      <h2><i class="bi bi-box-seam me-1 text-success"></i> প্রোডাক্ট</h2>
+      {% if locked_reason %}<div class="oe-note"><i class="bi bi-lock"></i><div>{{ locked_reason }}</div></div>{% endif %}
+      <div id="oeRows">
+        {% for item in items %}
+        <div class="oe-row" data-row>
+          <div class="nm"><b>{{ item.display_name }}</b><small>৳{{ item.price|floatformat:"-2g"|bn }} × {{ item.quantity|bn }}</small></div>
+          {% if locked_reason %}
+          <div></div><div></div>
+          <div class="lt">৳{{ item.get_total|floatformat:"-2g"|bn }}</div><div></div>
+          {% else %}
+          <div class="oe-qty"><button type="button" data-step="-1" aria-label="কমান">−</button><input type="number" name="item_qty_{{ item.id }}" value="{{ item.quantity }}" min="0" max="9999" inputmode="numeric" data-qty aria-label="পরিমাণ"><button type="button" data-step="1" aria-label="বাড়ান">+</button></div>
+          <label class="oe-price mb-0"><span>৳</span><input type="number" step="0.01" min="0" name="item_price_{{ item.id }}" value="{{ item.price|floatformat:'-2' }}" class="form-control" data-price aria-label="দাম"></label>
+          <div class="lt" data-line></div>
+          <button type="button" class="oe-del" data-remove aria-label="বাদ দিন" title="বাদ দিন"><i class="bi bi-trash"></i></button>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      {% if not locked_reason %}
+      <div class="oe-add">
+        {% if products|length > 12 %}<input type="search" class="form-control find" id="oeFind" placeholder="প্রোডাক্ট খুঁজুন…" aria-label="প্রোডাক্ট খুঁজুন">{% endif %}
+        <select class="form-select" id="oeProduct" aria-label="প্রোডাক্ট বেছে নিন">
+          <option value="">+ প্রোডাক্ট যোগ করুন</option>
+          {% for p in products %}<option value="{{ p.id }}" data-price="{{ p.price|floatformat:'-2' }}" data-stock="{{ p.stock }}" data-name="{{ p.name }}">{{ p.name }} — ৳{{ p.price|floatformat:"-2g" }} (স্টক {{ p.stock }})</option>{% endfor %}
+        </select>
+        <input type="number" class="form-control" id="oeAddQty" value="1" min="1" inputmode="numeric" aria-label="কয়টা">
+        <button type="button" class="btn btn-success fw-bold" id="oeAdd"><i class="bi bi-plus-lg"></i> যোগ</button>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="oe-card">
+      <h2><i class="bi bi-calculator me-1 text-warning"></i> হিসাব</h2>
+      {% if not locked_reason %}
+      <div class="row g-3 mb-3">
+        <div class="col-6"><label for="oe-dc">ডেলিভারি চার্জ (৳)</label><input id="oe-dc" type="number" step="0.01" min="0" name="delivery_charge" class="form-control" value="{{ order.delivery_charge|floatformat:'-2' }}" data-sum></div>
+        <div class="col-6"><label for="oe-ds">ছাড় (৳)</label><input id="oe-ds" type="number" step="0.01" min="0" name="discount" class="form-control" value="{{ order.discount|floatformat:'-2' }}" data-sum></div>
+      </div>
+      {% endif %}
+      <div class="oe-sum">
+        <div><span>প্রোডাক্ট</span><b id="oeSub">৳{{ subtotal|floatformat:"-2g"|bn }}</b></div>
+        <div><span>ডেলিভারি চার্জ</span><span id="oeDc">৳{{ order.delivery_charge|floatformat:"-2g"|bn }}</span></div>
+        <div><span>ছাড়</span><span id="oeDs">− ৳{{ order.discount|floatformat:"-2g"|bn }}</span></div>
+        <div class="total"><span>মোট</span><span id="oeTotal">৳{{ order.total_amount|floatformat:"-2g"|bn }}</span></div>
+        {% if order.advance_paid %}
+        <div class="muted"><span>আগে পেয়েছেন{% if order.online_payment_status == 'paid' %} (অনলাইনে){% endif %}</span><span>৳{{ order.advance_paid|floatformat:"-2g"|bn }}</span></div>
+        <div class="muted"><span>ডেলিভারিতে নিতে হবে</span><span id="oeDue">৳{{ order.due_amount|floatformat:"-2g"|bn }}</span></div>
+        {% endif %}
+      </div>
+    </section>
+
+    <div class="oe-save">
+      <button type="submit" class="btn btn-primary flex-grow-1"><i class="bi bi-check2-circle me-1"></i> সেভ করুন</button>
+      <a href="{% url 'order_list' %}" class="btn btn-light">বাতিল</a>
+    </div>
+  </form>
+
+  {% if refund_box %}
+  <section class="oe-card" id="refund">
+    <h2><i class="bi bi-arrow-counterclockwise me-1 text-danger"></i> কাস্টমারকে টাকা ফেরত</h2>
+    <p class="small text-muted mb-2">কাস্টমার অনলাইনে টাকা দিয়েছিল। অর্ডার বাতিল বা ফেরত হলে এখান থেকে টাকা ফেরতের হিসাব রাখুন। গেটওয়ের ফি ফেরত আসে না, তাই পুরো টাকা ফেরত দিলে ফি-টা আপনার খরচ।</p>
+    {% for r in refunds %}
+    <div class="oe-row" style="grid-template-columns:minmax(0,1fr) auto">
+      <div class="nm"><b>৳{{ r.amount|floatformat:"-2g"|bn }} — {{ r.get_status_display }}</b>
+        <small>{{ r.created_at|date:"j M Y" }} · {{ r.get_way_display }}{% if r.method %} · {{ r.method }}{% endif %}{% if r.account %} {{ r.account }}{% endif %}{% if r.reference %} · TrxID {{ r.reference }}{% endif %}{% if r.status == 'rejected' and r.note %} · কারণ: {{ r.note }}{% endif %}</small></div>
+      <span class="badge rounded-pill {% if r.status == 'done' %}text-bg-success{% elif r.status == 'pending' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ r.get_status_display }}</span>
+    </div>
+    {% endfor %}
+    {% if refund_left and can_refund %}
+    <form method="post" action="{% url 'order_refund' order.id %}" class="mt-3" id="refundForm">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-4"><label for="rf-amount">কত টাকা ফেরত</label>
+          <input id="rf-amount" type="number" step="0.01" min="1" max="{{ refund_left|floatformat:'2' }}" name="amount" value="{{ refund_left|floatformat:'-2' }}" class="form-control" required>
+          <small class="text-muted">সর্বোচ্চ ৳{{ refund_left|floatformat:"-2g"|bn }}</small></div>
+        <div class="col-md-8"><label>কীভাবে</label>
+          <div class="d-grid gap-2">
+            <label class="border rounded-3 p-2 d-flex gap-2 align-items-start mb-0"><input type="radio" name="way" value="platform" checked class="mt-1"><span><b>{{ site.name }} থেকে কাস্টমারকে পাঠান</b><br><small class="text-muted">আপনার জমা টাকা থেকে কাটবে; পাঠানো হলে কাস্টমার আর আপনি SMS পাবেন।</small></span></label>
+            <label class="border rounded-3 p-2 d-flex gap-2 align-items-start mb-0"><input type="radio" name="way" value="seller" class="mt-1"><span><b>আমি নিজে ফেরত দিয়েছি</b><br><small class="text-muted">নগদ বা নিজের bKash থেকে দিয়ে থাকলে — শুধু হিসাবে লেখা থাকবে।</small></span></label>
+          </div></div>
+        <div class="col-md-4" data-way="platform"><label for="rf-method">কাস্টমার কোথায় পাবে</label>
+          <select id="rf-method" name="method" class="form-select">{% for m in refund_methods %}<option value="{{ m }}">{{ m }}</option>{% endfor %}</select></div>
+        <div class="col-md-8" data-way="platform"><label for="rf-account">কাস্টমারের নম্বর</label>
+          <input id="rf-account" type="tel" name="account" value="{{ order.customer.phone }}" class="form-control" inputmode="numeric"></div>
+        <div class="col-md-12" data-way="seller" hidden><label for="rf-ref">কীভাবে দিয়েছেন / TrxID (ইচ্ছা হলে)</label>
+          <input id="rf-ref" type="text" name="reference" class="form-control" placeholder="যেমন: নগদে, বা bKash TrxID"></div>
+      </div>
+      <button type="submit" class="btn btn-danger fw-bold mt-3 rounded-pill px-4" onclick="return confirm('৳' + document.getElementById('rf-amount').value + ' ফেরত দেবেন?')"><i class="bi bi-arrow-counterclockwise me-1"></i> টাকা ফেরত দিন</button>
+    </form>
+    <script>
+    (function () {
+      var form = document.getElementById('refundForm');
+      function sync() {
+        var way = form.querySelector('input[name=way]:checked').value;
+        form.querySelectorAll('[data-way]').forEach(function (el) { el.hidden = el.dataset.way !== way; });
+      }
+      form.addEventListener('change', sync); sync();
+    })();
+    </script>
+    {% elif refund_left %}
+    <p class="small text-muted mt-2 mb-0">টাকা ফেরত দিতে পারেন দোকানের মালিক বা সেটিংসের অনুমতিওয়ালা স্টাফ।</p>
+    {% elif not refunds %}
+    <p class="small text-muted mt-2 mb-0">ফেরত দেওয়ার মতো টাকা নেই।</p>
+    {% endif %}
+  </section>
+  {% endif %}
 </div>
+
+{% if not locked_reason %}
+<script>
+(function () {
+  var rows = document.getElementById('oeRows'), advance = {{ order.advance_paid|floatformat:'2' }};
+  function bn(n) { return String(n).replace(/[0-9]/g, function (d) { return '০১২৩৪৫৬৭৮৯'[d]; }); }
+  function money(n) { return '৳' + bn(Math.round(n * 100) / 100 === Math.round(n) ? Math.round(n).toLocaleString('en-IN') : (Math.round(n * 100) / 100).toLocaleString('en-IN')); }
+  function num(el) { var v = parseFloat(el && el.value); return isNaN(v) ? 0 : v; }
+  function refresh() {
+    var sub = 0;
+    rows.querySelectorAll('[data-row]').forEach(function (row) {
+      var q = row.querySelector('[data-qty]'), p = row.querySelector('[data-price]'), line = row.querySelector('[data-line]');
+      if (!q) return;
+      var total = Math.max(num(q), 0) * Math.max(num(p), 0);
+      row.classList.toggle('gone', num(q) <= 0);
+      var del = row.querySelector('[data-remove]');
+      if (del && !row.classList.contains('new')) { del.classList.toggle('undo', num(q) <= 0); del.innerHTML = num(q) <= 0 ? '<i class="bi bi-arrow-counterclockwise"></i>' : '<i class="bi bi-trash"></i>'; }
+      if (line) line.textContent = money(total);
+      sub += total;
+    });
+    var dc = num(document.getElementById('oe-dc')), ds = num(document.getElementById('oe-ds'));
+    var total = Math.max(sub + dc - ds, 0);
+    document.getElementById('oeSub').textContent = money(sub);
+    document.getElementById('oeDc').textContent = money(dc);
+    document.getElementById('oeDs').textContent = '− ' + money(ds);
+    document.getElementById('oeTotal').textContent = money(total);
+    var due = document.getElementById('oeDue');
+    if (due) due.textContent = money(Math.max(total - advance, 0));
+  }
+  rows.addEventListener('click', function (e) {
+    var step = e.target.closest('[data-step]'), del = e.target.closest('[data-remove]');
+    if (step) {
+      var q = step.parentNode.querySelector('[data-qty]');
+      q.value = Math.max(parseInt(q.min || '0', 10), Math.min(9999, (parseInt(q.value, 10) || 0) + parseInt(step.dataset.step, 10)));
+      refresh();
+    } else if (del) {
+      var row = del.closest('[data-row]');
+      if (row.classList.contains('new')) { row.remove(); }
+      else {
+        var input = row.querySelector('[data-qty]');
+        if (num(input) > 0) { input.dataset.was = input.value; input.value = 0; } else { input.value = input.dataset.was || 1; }
+      }
+      refresh();
+    }
+  });
+  rows.addEventListener('input', refresh);
+  document.querySelectorAll('[data-sum]').forEach(function (el) { el.addEventListener('input', refresh); });
+
+  var select = document.getElementById('oeProduct'), addQty = document.getElementById('oeAddQty'), find = document.getElementById('oeFind');
+  if (find) find.addEventListener('input', function () {
+    var term = find.value.trim().toLowerCase(), first = null;
+    Array.prototype.forEach.call(select.options, function (o, i) {
+      if (!i) return;
+      var show = !term || o.text.toLowerCase().indexOf(term) >= 0;
+      o.hidden = !show; if (show && !first) first = o;
+    });
+    if (first) select.value = first.value;
+  });
+  document.getElementById('oeAdd').addEventListener('click', function () {
+    var opt = select.options[select.selectedIndex];
+    if (!opt || !opt.value) { select.focus(); return; }
+    var qty = Math.max(1, parseInt(addQty.value, 10) || 1), stock = parseInt(opt.dataset.stock, 10);
+    if (qty > stock) { alert('স্টকে আছে মাত্র ' + bn(stock) + 'টা।'); return; }
+    var row = document.createElement('div');
+    row.className = 'oe-row new'; row.setAttribute('data-row', '');
+    row.innerHTML = '<div class="nm"><b></b><small>নতুন যোগ</small></div>' +
+      '<div class="oe-qty"><button type="button" data-step="-1" aria-label="কমান">−</button><input type="number" name="new_qty[]" min="1" max="' + stock + '" inputmode="numeric" data-qty aria-label="পরিমাণ"><button type="button" data-step="1" aria-label="বাড়ান">+</button></div>' +
+      '<label class="oe-price mb-0"><span>৳</span><input type="number" step="0.01" min="0" name="new_price[]" class="form-control" data-price aria-label="দাম"></label>' +
+      '<div class="lt" data-line></div>' +
+      '<button type="button" class="oe-del" data-remove aria-label="বাদ দিন"><i class="bi bi-x-lg"></i></button>' +
+      '<input type="hidden" name="new_product[]">';
+    row.querySelector('b').textContent = opt.dataset.name;
+    row.querySelector('[data-qty]').value = qty;
+    row.querySelector('[data-price]').value = opt.dataset.price;
+    row.querySelector('input[type=hidden]').value = opt.value;
+    rows.appendChild(row);
+    select.value = ''; addQty.value = 1; if (find) { find.value = ''; find.dispatchEvent(new Event('input')); select.value = ''; }
+    refresh();
+  });
+  refresh();
+})();
+</script>
+{% endif %}
 {% endblock %}

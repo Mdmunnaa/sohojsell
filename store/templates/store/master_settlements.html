@@ -18,6 +18,38 @@
   <div class="actions"><div class="kpi" style="border: 1px solid var(--line); border-radius: 12px; background: var(--panel)"><div class="label">মোট পাওনা</div><div class="value">{{ total_due|hq_taka }}</div></div></div>
 </div>
 
+{% if open_refunds %}
+<section class="panel" style="border-color: color-mix(in srgb, var(--red, #dc2626) 50%, var(--line))">
+  <div class="panel-head"><h2>কাস্টমারকে টাকা ফেরত ({{ open_refunds|length }})</h2><span class="hint">সেলারের জমা থেকে কাটা হয়ে আছে। কাস্টমারকে পাঠিয়ে TrxID দিন — কাস্টমার আর সেলার SMS পাবে।</span></div>
+  <div class="panel-body">
+    {% for r in open_refunds %}
+    <div class="req">
+      <div class="req-top">
+        <div>
+          <a class="strong" href="{% url 'hq_shop' r.shop_id %}">{{ r.shop.name }}</a> <span class="meta">· অর্ডার #ORD-{{ r.order_ref }} · {{ r.created_at|date:"d M, h:i A" }}</span>
+          <div style="margin-top: 4px">পাঠাবেন: <b>{{ r.method }}</b> <code>{{ r.account }}</code>
+            <button type="button" class="btn btn-xs" data-copy="{{ r.account }}">কপি</button></div>
+        </div>
+        <div class="amount">৳{{ r.amount|floatformat:0 }}</div>
+      </div>
+      <div class="btn-row" style="margin-top: 10px">
+        <form method="post" class="row-form" data-confirm="৳{{ r.amount|floatformat:0 }} কাস্টমারকে পাঠানো হয়েছে?">{% csrf_token %}
+          <input type="hidden" name="action" value="refund_done"><input type="hidden" name="refund_id" value="{{ r.pk }}">
+          <input class="input" type="text" name="reference" placeholder="TrxID" required aria-label="লেনদেন নম্বর">
+          <button class="btn btn-sm btn-primary" type="submit">পাঠিয়েছি</button>
+        </form>
+        <form method="post" class="row-form">{% csrf_token %}
+          <input type="hidden" name="action" value="refund_reject"><input type="hidden" name="refund_id" value="{{ r.pk }}">
+          <input class="input wide" type="text" name="reason" placeholder="কেন পাঠানো যায়নি" aria-label="কারণ">
+          <button class="btn btn-sm btn-ghost-danger" type="submit">ফেরত দিন</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 {% if open_requests %}
 <section class="panel" style="border-color: color-mix(in srgb, var(--amber) 60%, var(--line))">
   <div class="panel-head"><h2>টাকা তোলার অনুরোধ ({{ open_requests|length }})</h2><span class="hint">পাঠিয়ে লেনদেন নম্বর দিন — সেলার SMS পাবে। ভুল নম্বর হলে কারণ লিখে ফেরত দিন।</span></div>

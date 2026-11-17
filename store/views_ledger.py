@@ -96,7 +96,7 @@ def purchase_detail(request, purchase_id):
 def purchase_delete(request, purchase_id):
     purchase = get_object_or_404(Purchase, pk=purchase_id, shop=request.user.shop)
     try:
-        ledger.delete_purchase(request.user.shop, purchase)
+        ledger.delete_purchase(request.user.shop, purchase, user=request.user)
     except ledger.LedgerError as exc:
         messages.error(request, str(exc))
         return redirect('purchase_detail', purchase_id)

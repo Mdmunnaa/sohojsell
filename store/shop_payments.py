@@ -223,8 +223,10 @@ def balance_summary(shop, now=None):
     open_request = SettlementRequest.objects.filter(shop=shop, status=SettlementRequest.PENDING).first()
     requested = open_request.amount if open_request else ZERO
     net = received['net'] or ZERO
-    available = max(released - paid_out - requested, ZERO)
-    holding = max(net - max(released, paid_out), ZERO)
+    refunds = platform_refunds(shop)            # কাস্টমারকে ফেরত (SellPunch থেকে) — আগে তোলা যাবে থেকে, না কুলালে অপেক্ষার থেকে
+    free = released - paid_out - requested
+    available = max(free - refunds, ZERO)
+    holding = max(max(net - max(released, paid_out), ZERO) - max(refunds - max(free, ZERO), ZERO), ZERO)
     upcoming = completed.exclude(_released_filter(cutoff)).order_by('completed_at').first()
     next_release = (timezone.localtime(upcoming.completed_at or upcoming.created_at)
                     + timedelta(days=SETTLEMENT_HOLD_DAYS)).date() if upcoming else None
@@ -233,7 +235,8 @@ def balance_summary(shop, now=None):
         'fee': received['fee'] or ZERO,
         'net': net,
         'paid_out': paid_out,
-        'due': net - paid_out,
+        'refunds': refunds,
+        'due': net - paid_out - refunds,
         'available': available,
         'holding': holding,
         'requested': requested,
@@ -389,3 +392,128 @@ def cancel_unpaid_orders(limit=200):
             status=StorefrontPayment.STATUS_FAILED)
         cancelled += 1
     return cancelled
+
+
+# ---------------------------------------------------------------- কাস্টমারকে টাকা ফেরত
+REFUND_METHODS = ('bKash', 'Nagad', 'Rocket')
+
+
+def platform_refunds(shop):
+    """SellPunch থেকে কাস্টমারকে পাঠানো (বা পাঠানো বাকি) ফেরত — সেলারের জমা থেকে কাটা।"""
+    from .models import CustomerRefund
+    return CustomerRefund.objects.filter(shop=shop, way=CustomerRefund.PLATFORM).exclude(
+        status=CustomerRefund.REJECTED).aggregate(total=Sum('amount'))['total'] or ZERO
+
+
+def refundable(order):
+    """এই অর্ডারে কাস্টমার অনলাইনে যা দিয়েছে তার মধ্যে এখনো কত ফেরত দেওয়া যায়।"""
+    from .models import CustomerRefund
+    paid = order.customer_payments.filter(status=StorefrontPayment.STATUS_COMPLETED).aggregate(
+        total=Sum('amount'))['total'] or ZERO
+    given = CustomerRefund.objects.filter(order=order).exclude(status=CustomerRefund.REJECTED).aggregate(
+        total=Sum('amount'))['total'] or ZERO
+    return max(paid - given, ZERO)
+
+
+def create_refund(order, amount, way, *, method='', account='', reference='', note='', user=None):
+    """
+    সেলার "টাকা ফেরত" দিলে। way=seller: নিজে দিয়েছেন (সাথে সাথে "ফেরত দেওয়া হয়েছে")। way=platform: SellPunch পাঠাবে —
+    সেলারের জমায় (তোলা হয়নি এমন টাকা) যথেষ্ট থাকতে হবে। অর্ডারে কাস্টমারের দেওয়া টাকা সেই পরিমাণ কমে।
+    """
+    from accounts.forms import normalize_bd_mobile
+    from .models import CustomerRefund
+    with transaction.atomic():
+        shop = Shop.objects.select_for_update().get(pk=order.shop_id)
+        order = Order.objects.select_for_update().get(pk=order.pk)
+        try:
+            amount = Decimal(str(amount).replace(',', '').strip()).quantize(Decimal('0.01'))
+        except (ArithmeticError, ValueError):
+            raise SettlementError('কত টাকা ফেরত দেবেন লিখুন।')
+        left = refundable(order)
+        if amount <= 0 or amount > left:
+            raise SettlementError(f'৳১ থেকে ৳{left:,.0f}-এর মধ্যে লিখুন — কাস্টমার অনলাইনে এর বেশি দেয়নি।'
+                                  if left else 'এই অর্ডারে ফেরত দেওয়ার মতো অনলাইনের টাকা নেই।')
+        if way == CustomerRefund.PLATFORM:
+            phone = normalize_bd_mobile(account)
+            if method not in REFUND_METHODS or not phone:
+                raise SettlementError('কাস্টমারের bKash, Nagad বা Rocket নম্বর ঠিকমতো দিন।')
+            summary = balance_summary(shop)
+            room = summary['available'] + summary['holding']
+            if amount > room:
+                raise SettlementError(f'আপনার জমায় আছে ৳{room:,.0f}, তাই {settings.SITE_NAME} থেকে ৳{amount:,.0f} '
+                                      'পাঠানো যাচ্ছে না। নিজে ফেরত দিয়ে "আমি নিজে ফেরত দিয়েছি" বেছে নিন।')
+            account, status = phone, CustomerRefund.PENDING
+        elif way == CustomerRefund.SELLER:
+            status = CustomerRefund.DONE
+        else:
+            raise SettlementError('কীভাবে ফেরত দেবেন বেছে নিন।')
+        actor = user if getattr(user, 'is_authenticated', False) else None
+        refund = CustomerRefund.objects.create(
+            shop=shop, order=order, order_ref=order.pk, amount=amount, way=way, status=status,
+            method=method if way == CustomerRefund.PLATFORM else str(method or '')[:20],
+            account=str(account or '')[:40], reference=str(reference or '').strip()[:100],
+            note=str(note or '').strip()[:200], created_by=actor,
+            decided_at=timezone.now() if status == CustomerRefund.DONE else None)
+        order.advance_paid = max(order.advance_paid - amount, ZERO)
+        fields = ['advance_paid']
+        if order.advance_paid == 0 and order.online_payment_status == Order.ONLINE_PAID:
+            order.online_payment_status = Order.ONLINE_NONE
+            fields.append('online_payment_status')
+        order.save(update_fields=fields)
+    return refund
+
+
+def finish_refund(refund_id, reference, user=None):
+    """HQ: কাস্টমারকে পাঠিয়ে TrxID দিলে — কাস্টমার আর সেলার SMS পায়।"""
+    from .models import CustomerRefund
+    reference = str(reference or '').strip()[:100]
+    if not reference:
+        raise SettlementError('লেনদেন নম্বর (TrxID) দিন।')
+    with transaction.atomic():
+        refund = CustomerRefund.objects.select_for_update().select_related('shop').filter(
+            pk=refund_id, way=CustomerRefund.PLATFORM, status=CustomerRefund.PENDING).first()
+        if refund is None:
+            raise SettlementError('এই ফেরতটা আর বাকি নেই।')
+        refund.status, refund.reference, refund.decided_at = CustomerRefund.DONE, reference, timezone.now()
+        refund.save(update_fields=['status', 'reference', 'decided_at'])
+    amount = _bn(f'{refund.amount:,.0f}')
+    from . import sms
+    sms.notify(refund.account, f'{refund.shop.name}: অর্ডার #{_bn(str(refund.order_ref))}-এর ৳{amount} আপনার '
+                               f'{refund.method}-এ ফেরত পাঠানো হয়েছে। TrxID {reference}')
+    _notify_seller(refund.shop, f'{settings.SITE_NAME}: অর্ডার #{_bn(str(refund.order_ref))}-এর ৳{amount} কাস্টমারকে '
+                                f'ফেরত পাঠানো হয়েছে (TrxID {reference})।')
+    return refund
+
+
+def reject_refund(refund_id, reason):
+    """HQ: পাঠানো যায়নি (ভুল নম্বর ইত্যাদি) — টাকা সেলারের জমায় আর অর্ডারে ফেরে, সেলার SMS পায়।"""
+    from .models import CustomerRefund
+    reason = (reason or '').strip()[:200] or 'কাস্টমারের নম্বর মেলেনি'
+    with transaction.atomic():
+        refund = CustomerRefund.objects.select_for_update(of=('self',)).select_related('shop').filter(
+            pk=refund_id, way=CustomerRefund.PLATFORM, status=CustomerRefund.PENDING).first()
+        if refund is None:
+            return 0
+        refund.status, refund.note, refund.decided_at = CustomerRefund.REJECTED, reason, timezone.now()
+        refund.save(update_fields=['status', 'note', 'decided_at'])
+        if refund.order_id:
+            from django.db.models import F
+            Order.objects.filter(pk=refund.order_id).update(advance_paid=F('advance_paid') + refund.amount)
+    _notify_seller(refund.shop, f'{settings.SITE_NAME}: অর্ডার #{_bn(str(refund.order_ref))}-এর ৳{_bn(f"{refund.amount:,.0f}")} '
+                                f'ফেরত পাঠানো যায়নি — {reason}। নম্বর ঠিক করে আবার দিন।')
+    return 1
+
+
+def refunds_waiting(shop):
+    """বাতিল/ফেরত হওয়া অর্ডার, যেখানে কাস্টমার অনলাইনে টাকা দিয়েছিল আর এখনো পুরো ফেরত দেওয়া হয়নি।"""
+    from .models import CustomerRefund
+    orders = (Order.objects.filter(shop=shop, status__in=('Cancelled', 'Returned'),
+                                   customer_payments__status=StorefrontPayment.STATUS_COMPLETED)
+              .distinct().select_related('customer').order_by('-id')[:50])
+    out = []
+    for order in orders:
+        left = refundable(order)
+        if left > 0:
+            order.refund_left = left
+            out.append(order)
+    return out

@@ -199,11 +199,12 @@ def attention():
 def nav_counts():
     """বাঁ পাশের মেনুর হলুদ সংখ্যা — যেখানে কাজ জমে আছে।"""
     from . import domains
-    from .models import PaymentRequest, SettlementRequest
+    from .models import CustomerRefund, PaymentRequest, SettlementRequest
     from . import retention
     return {
         'unpaid': retention.eligible_count(),
-        'settle': SettlementRequest.objects.filter(status=SettlementRequest.PENDING).count(),
+        'settle': SettlementRequest.objects.filter(status=SettlementRequest.PENDING).count()
+        + CustomerRefund.objects.filter(way=CustomerRefund.PLATFORM, status=CustomerRefund.PENDING).count(),
         'domains': domains.pending_for_master().count(),
         'legacy': PaymentRequest.objects.filter(status='Pending').count(),
     }

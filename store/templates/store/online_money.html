@@ -104,7 +104,7 @@
     </div>
     <div class="st-box"><span>{{ balance.hold_days|bn }} দিনের অপেক্ষায়</span><b>৳{{ balance.holding|floatformat:"0g"|bn }}</b>{% if balance.next_release %}<small>পরেরটা খুলবে {{ balance.next_release_label }}</small>{% endif %}</div>
     <div class="st-box"><span>আপনাকে পাঠানো হয়েছে</span><b>৳{{ balance.paid_out|floatformat:"0g"|bn }}</b></div>
-    <div class="st-box"><span>কাস্টমার দিয়েছে</span><b>৳{{ balance.gross|floatformat:"0g"|bn }}</b><small>ফি ৳{{ balance.fee|floatformat:"0g"|bn }}</small></div>
+    <div class="st-box"><span>কাস্টমার দিয়েছে</span><b>৳{{ balance.gross|floatformat:"0g"|bn }}</b><small>ফি ৳{{ balance.fee|floatformat:"0g"|bn }}{% if balance.refunds %} · কাস্টমারকে ফেরত ৳{{ balance.refunds|floatformat:"0g"|bn }}{% endif %}</small></div>
   </div>
 
   {% if balance.open_request %}
@@ -132,6 +132,22 @@
     {% else %}<span>টাকা কোথায় পাঠাব, এখনো দেওয়া হয়নি।</span> <a href="{% url 'website_settings' %}?tab=payment">এখন দিন</a>{% endif %}
   </div>
 </section>
+
+{% if refunds_waiting %}
+<section class="om-card" aria-labelledby="om-waiting" style="border-color:#FECACA">
+  <h2 id="om-waiting"><i class="bi bi-arrow-counterclockwise me-1 text-danger"></i> টাকা ফেরত বাকি</h2>
+  <span class="sub">এই অর্ডারগুলো বাতিল বা ফেরত হয়েছে, অথচ কাস্টমার অনলাইনে টাকা দিয়েছিল — ফেরত দিয়ে হিসাব রাখুন</span>
+  <div class="mt-2">
+    {% for o in refunds_waiting %}
+    <div class="st-row">
+      <span class="ic" style="background:#FEF2F2;color:#B91C1C"><i class="bi bi-person"></i></span>
+      <div class="m"><b>#ORD-{{ o.id }} · {{ o.customer.name }}</b><small>ফেরত দেওয়া বাকি ৳{{ o.refund_left|floatformat:"-2g"|bn }}</small></div>
+      <a class="om-link" href="{% url 'order_edit' o.id %}#refund">ফেরত দিন</a>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
 
 <section class="om-card" aria-labelledby="om-payments">
   <h2 id="om-payments"><i class="bi bi-receipt me-1 text-primary"></i> কাস্টমারের পেমেন্ট</h2>
@@ -167,7 +183,7 @@
   {% endif %}
 </section>
 
-{% if settlement_requests or payouts %}
+{% if settlement_requests or payouts or refunds %}
 <section class="om-card" aria-labelledby="om-history">
   <h2 id="om-history"><i class="bi bi-clock-history me-1 text-success"></i> টাকা তোলার ইতিহাস</h2>
   <span class="sub">আপনার অনুরোধ আর {{ site.name }} থেকে পাঠানো টাকা, লেনদেন নম্বর (TrxID)-সহ</span>
@@ -177,6 +193,13 @@
       <span class="ic"><i class="bi bi-arrow-down-circle"></i></span>
       <div class="m"><b>৳{{ r.amount|floatformat:"0g"|bn }} তোলার অনুরোধ</b><small>{{ r.created_at|date:"j M Y" }} · {{ r.method }} {{ r.account }}{% if r.payout %} · TrxID {{ r.payout.reference }}{% endif %}{% if r.status == 'rejected' and r.note %} · কারণ: {{ r.note }}{% endif %}</small></div>
       <span class="st-chip {{ r.status }}">{{ r.get_status_display }}</span>
+    </div>
+    {% endfor %}
+    {% for r in refunds %}
+    <div class="st-row">
+      <span class="ic" style="background:#FEF2F2;color:#B91C1C"><i class="bi bi-arrow-counterclockwise"></i></span>
+      <div class="m"><b>৳{{ r.amount|floatformat:"-2g"|bn }} কাস্টমারকে ফেরত{% if r.order_ref %} · #ORD-{{ r.order_ref }}{% endif %}</b><small>{{ r.created_at|date:"j M Y" }} · {{ r.get_way_display }}{% if r.method %} · {{ r.method }} {{ r.account }}{% endif %}{% if r.reference %} · TrxID {{ r.reference }}{% endif %}{% if r.status == 'rejected' and r.note %} · কারণ: {{ r.note }}{% endif %}</small></div>
+      <span class="st-chip {% if r.status == 'done' %}paid{% elif r.status == 'pending' %}pending{% else %}rejected{% endif %}">{{ r.get_status_display }}</span>
     </div>
     {% endfor %}
     {% for p in payouts %}{% if not p.request %}

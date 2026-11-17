@@ -317,6 +317,11 @@ def todo_items(can, pipeline, dues, stock, messenger_waiting=0, money=None):
     money: shop_payments.balance_summary — অনলাইনের টাকা তোলা যাবে কিনা (শুধু মালিক/সেটিংসের অনুমতিওয়ালা)।"""
     orders_url = reverse('order_list')
     items = []
+    if can.get('settings') and money and money.get('refunds_waiting'):
+        count = len(money['refunds_waiting'])
+        items.append({'icon': 'bi-arrow-counterclockwise', 'tone': 'red', 'url': reverse('online_money'),
+                      'title': f'{bn_num(count)}টা বাতিল অর্ডারে কাস্টমারের টাকা ফেরত বাকি',
+                      'sub': 'কাস্টমার অনলাইনে দিয়েছিল — অনলাইনের টাকা পাতা থেকে ফেরত দিন'})
     if can.get('settings') and money and money['can_request']:
         available = bn_num(f"{money['available']:,.0f}")
         items.append({'icon': 'bi-wallet2', 'tone': 'green', 'url': reverse('online_money'),

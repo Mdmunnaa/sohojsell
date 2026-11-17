@@ -1307,3 +1307,71 @@ class ErrorEvent(models.Model):
 
     def __str__(self):
         return f'{self.kind} @ {self.path}'
+
+
+class StockMovement(models.Model):
+    """
+    স্টক বদলের ইতিহাস (store/stock_log.py): কী কারণে, কত বাড়ল/কমল, পরে কত থাকল, কোন অর্ডার/কেনা, কে করল।
+    প্রোডাক্টের পাতায় আর "স্টকের ইতিহাস"-এ দেখা যায় — "স্টক কোথায় গেল" প্রশ্নের উত্তর।
+    """
+    REASONS = (
+        ('new', 'নতুন প্রোডাক্ট'), ('import', 'ফাইল থেকে আনা'), ('manual', 'হাতে বদল'),
+        ('pos_sale', 'POS-এ বিক্রি'), ('pos_return', 'POS-এ ফেরত'),
+        ('order', 'অর্ডার'), ('order_edit', 'অর্ডার এডিট'), ('order_cancel', 'অর্ডার বাতিল/ফেরত'),
+        ('order_restore', 'অর্ডার আবার চালু'), ('order_delete', 'অর্ডার মোছা'),
+        ('purchase', 'মাল কেনা'), ('purchase_delete', 'কেনা মোছা'), ('other', 'অন্যান্য'),
+    )
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='stock_movements')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='stock_movements')
+    variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    variant_name = models.CharField(max_length=80, blank=True, default='')
+    change = models.DecimalField(max_digits=12, decimal_places=3)
+    stock_after = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    reason = models.CharField(max_length=20, choices=REASONS, default='other')
+    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    order_ref = models.PositiveIntegerField(null=True, blank=True)      # অর্ডার মুছে গেলেও নম্বরটা থাকে
+    purchase = models.ForeignKey('Purchase', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    note = models.CharField(max_length=200, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+        indexes = [models.Index(fields=['shop', 'product', '-created_at'], name='stockmove_product_time')]
+
+    def __str__(self):
+        return f'{self.product_id} {self.change:+} ({self.reason})'
+
+
+class CustomerRefund(models.Model):
+    """
+    অনলাইনে টাকা দেওয়া অর্ডার বাতিল/ফেরত হলে কাস্টমারকে টাকা ফেরতের হিসাব (store/shop_payments.py)।
+      seller   — সেলার নিজে (নগদ/bKash) ফেরত দিয়েছেন; শুধু লেখা থাকে, সেলারের জমায় হাত পড়ে না।
+      platform — SellPunch-এর কাছে জমা টাকা থেকে কাস্টমারকে পাঠানো হবে; সাথে সাথে সেলারের জমা থেকে কাটে,
+                 HQ পাঠিয়ে TrxID দিলে কাস্টমার SMS পায়; HQ ফেরত দিলে (ভুল নম্বর) টাকা আবার সেলারের জমায় ফেরে।
+    গেটওয়ের ফি ফেরত আসে না, তাই কাস্টমারের পুরো টাকা ফেরত দিলে ফি-টা সেলারের খরচ।
+    """
+    SELLER, PLATFORM = 'seller', 'platform'
+    WAYS = ((SELLER, 'দোকান নিজে ফেরত দিয়েছে'), (PLATFORM, f'{getattr(settings, "SITE_NAME", "SellPunch")} থেকে পাঠানো'))
+    PENDING, DONE, REJECTED = 'pending', 'done', 'rejected'
+    STATUSES = ((PENDING, 'পাঠানো বাকি'), (DONE, 'ফেরত দেওয়া হয়েছে'), (REJECTED, 'ফেরত দেওয়া যায়নি'))
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='customer_refunds')
+    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True, related_name='refunds')
+    order_ref = models.PositiveIntegerField(null=True, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    way = models.CharField(max_length=10, choices=WAYS)
+    status = models.CharField(max_length=10, choices=STATUSES, default=PENDING, db_index=True)
+    method = models.CharField(max_length=20, blank=True, default='')        # কাস্টমার কোথায় পাবে: bKash/Nagad/Rocket
+    account = models.CharField(max_length=40, blank=True, default='')
+    reference = models.CharField(max_length=100, blank=True, default='')    # TrxID
+    note = models.CharField(max_length=200, blank=True, default='')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Refund ৳{self.amount} #{self.order_ref} ({self.way}/{self.status})'

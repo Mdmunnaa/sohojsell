@@ -105,5 +105,5 @@ def place(shop, *, quantities, name, phone, address, note='', zone_id=None, coup
             OrderItem.objects.create(order=main_order, product=item.product, variant=item.variant,
                                      variant_name=item.variant_name, price=item.price, quantity=qty,
                                      cost_price=item.cost_price)
-            variants.take(item, qty)
+            variants.take(item, qty, reason='order', order=main_order)
     return Placed(order=main_order, sf_order=sf_order, pay_now=pay_now, choice=choice)

@@ -13,6 +13,8 @@ from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from decimal import Decimal
 
 from django.db import transaction
+
+from . import stock_log
 from django.db.models import Count, F, Sum, Q
 from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -203,7 +205,9 @@ def seller_dashboard(request):
         'todo': dash.todo_items(can, pipeline, dues, stock,
                                 messenger_waiting=MessengerContact.objects.filter(
                                     shop=shop, waiting_since__isnull=False).count() if limits_for(shop)['facebook'] else 0,
-                                money=shop_payments.balance_summary(shop) if can['settings'] else None),
+                                money=({**shop_payments.balance_summary(shop),
+                                        'refunds_waiting': shop_payments.refunds_waiting(shop)}
+                                       if can['settings'] else None)),
         'recent_orders': dash.recent_orders(shop) if can['orders'] or can['money'] else [],
         'chart': dash.sales_chart(shop, today, chart_days) if can['money'] else None,
         'top_sellers': dash.top_sellers(shop, today) if can['money'] else [],
@@ -319,7 +323,9 @@ def add_product(request):
             product = form.save(commit=False)
             product.shop = shop
             product.save()
-            variants.save_rows(product, rows)
+            variants.save_rows(product, rows, stock_user=request.user, stock_reason='new')
+            if not product.has_variants:
+                stock_log.record(product.pk, None, product.stock_quantity, reason='new', user=request.user)
             messages.success(request, "প্রোডাক্ট যোগ হয়েছে।")
             return redirect('product_list')
     else:
@@ -331,6 +337,7 @@ def add_product(request):
 def edit_product(request, pk):
     product = get_object_or_404(Product, pk=pk, shop=request.user.shop)
     if request.method == 'POST':
+        stock_before, had_variants = product.stock_quantity, product.has_variants
         form = ProductForm(request.POST, request.FILES, instance=product)
         try:
             rows = variants.rows_from_post(request.POST)
@@ -339,7 +346,10 @@ def edit_product(request, pk):
             messages.error(request, str(exc))
         if rows is not None and form.is_valid():
             form.save()
-            variants.save_rows(product, rows)
+            variants.save_rows(product, rows, stock_user=request.user)
+            if not product.has_variants and not had_variants:
+                stock_log.record(product.pk, None, product.stock_quantity - stock_before, reason='manual',
+                                 user=request.user)
             messages.success(request, "প্রোডাক্ট আপডেট হয়েছে।")
             return redirect('product_list')
     else:
@@ -376,7 +386,7 @@ def _money_field(raw, label):
     return value
 
 
-def _create_manual_order(shop, post):
+def _create_manual_order(shop, post, user=None):
     """
     ফোন/ইনবক্সের অর্ডার হাতে তোলা। সব একসাথে (atomic): ভুল হলে কিছুই তৈরি হয় না।
     পরিমাণ ১-এর কম বা স্টকের বেশি হলে আটকায় — আগে ঋণাত্মক পরিমাণে স্টক বেড়ে যেত, আর স্টকের বেশি লিখে
@@ -448,7 +458,7 @@ def _create_manual_order(shop, post):
             OrderItem.objects.create(order=order, product=item.product, variant=item.variant,
                                      variant_name=item.variant_name, price=line['price'], quantity=line['qty'],
                                      cost_price=item.cost_price)
-            variants.take(item, line['qty'])
+            variants.take(item, line['qty'], reason='order', order=order, user=user)
     return order
 
 
@@ -458,23 +468,14 @@ def order_create(request):
 
     if request.method == 'POST':
         try:
-            order = _create_manual_order(shop, request.POST)
+            order = _create_manual_order(shop, request.POST, request.user)
         except order_flow.FlowError as exc:
             messages.error(request, str(exc))
             return redirect('order_create')
         messages.success(request, f'অর্ডার #ORD-{order.id} তৈরি হয়েছে।')
         return redirect('order_list')
 
-    options = []
-    for product in (Product.objects.filter(shop=shop, is_active=True, stock_quantity__gt=0)
-                    .prefetch_related('variants').order_by('name')):
-        if product.has_variants:
-            options += [{'id': -v.id, 'name': f'{product.name} ({v.name})', 'price': v.sell_price,
-                         'stock': v.stock_quantity} for v in product.variants.all() if v.stock_quantity > 0]
-        else:
-            options.append({'id': product.id, 'name': product.name, 'price': product.price,
-                            'stock': product.stock_quantity})
-    return render(request, 'store/order_create.html', {'products': options})
+    return render(request, 'store/order_create.html', {'products': _order_product_options(shop)})
 
 
 @login_required(login_url='/accounts/login/')
@@ -515,8 +516,10 @@ def order_list(request):
 
 @login_required(login_url='/accounts/login/')
 def order_edit(request, order_id):
+    """অর্ডার এডিট: কাস্টমারের তথ্য, আর (পাঠানোর আগে) প্রোডাক্ট যোগ-বাদ, পরিমাণ, দাম, ডেলিভারি চার্জ, ছাড় — স্টক ঠিক রেখে।"""
     shop = request.user.shop
     order = get_object_or_404(Order.objects.select_related('customer'), id=order_id, shop=shop)
+    locked_reason = order_flow.items_locked_reason(order)
     if request.method == 'POST':
         name = (request.POST.get('customer_name') or '').strip()[:150]
         address = (request.POST.get('customer_address') or '').strip()[:500]
@@ -528,27 +531,117 @@ def order_edit(request, order_id):
                 raise order_flow.FlowError('কাস্টমারের নাম আর ঠিকানা দিন।')
             if not phone:
                 raise order_flow.FlowError('সঠিক মোবাইল নম্বর দিন (০১ দিয়ে শুরু, ১১ সংখ্যা)।')
-            total = _money_field(request.POST.get('total_amount'), 'মোট টাকা')
+            changes, additions = {}, []
+            if not locked_reason:
+                for item in order.items.all():
+                    qty = _qty_field(request.POST.get(f'item_qty_{item.id}', item.quantity), 'পরিমাণ', allow_zero=True)
+                    price = _money_field(request.POST.get(f'item_price_{item.id}', item.price), 'দাম')
+                    changes[item.id] = (qty, price)
+                keys, qtys, prices = (request.POST.getlist('new_product[]'), request.POST.getlist('new_qty[]'),
+                                      request.POST.getlist('new_price[]'))
+                for index, raw_key in enumerate(keys):
+                    if not raw_key.lstrip('-').isdigit():
+                        continue
+                    qty = _qty_field(qtys[index] if index < len(qtys) else '1', 'পরিমাণ')
+                    price = _money_field(prices[index] if index < len(prices) else '', 'দাম')
+                    additions.append((int(raw_key), qty, price))
+                delivery_charge = _money_field(request.POST.get('delivery_charge'), 'ডেলিভারি চার্জ')
+                discount = _money_field(request.POST.get('discount'), 'ছাড়')
+            with transaction.atomic():
+                customer = order.customer
+                if phone != customer.phone:
+                    # নম্বর বদলালে: সেই নম্বরের কাস্টমার আগে থেকে থাকলে অর্ডারটা তার নামে যায় (এক নম্বরে দুজন কাস্টমার
+                    # হয় না); না থাকলে নতুন কাস্টমার — পুরনো কাস্টমারের অন্য অর্ডারের নম্বর বদলায় না
+                    customer, _created = Customer.objects.get_or_create(shop=shop, phone=phone,
+                                                                        defaults={'name': name, 'address': address})
+                    Order.objects.filter(pk=order.pk).update(customer=customer)
+                customer.name, customer.address = name, address
+                customer.save(update_fields=['name', 'address'])
+                if not locked_reason:
+                    order_flow.edit_items(order, changes, additions, delivery_charge=delivery_charge,
+                                          discount=discount, user=request.user)
         except order_flow.FlowError as exc:
             messages.error(request, str(exc))
             return redirect('order_edit', order_id=order.id)
-        with transaction.atomic():
-            customer = order.customer
-            if phone != customer.phone:
-                # নম্বর বদলালে: সেই নম্বরের কাস্টমার আগে থেকে থাকলে অর্ডারটা তার নামে যায় (এক নম্বরে দুজন কাস্টমার হয় না);
-                # না থাকলে নতুন কাস্টমার — পুরনো কাস্টমারের অন্য অর্ডারের নম্বর বদলায় না
-                customer, _created = Customer.objects.get_or_create(shop=shop, phone=phone,
-                                                                    defaults={'name': name, 'address': address})
-                order.customer = customer
-            customer.name, customer.address = name, address
-            customer.save(update_fields=['name', 'address'])
-            order.total_amount = total
-            if order.advance_paid > total:
-                order.advance_paid = total
-            order.save(update_fields=['customer', 'total_amount', 'advance_paid'])
         messages.success(request, f'অর্ডার #ORD-{order.id} বদলানো হয়েছে।')
         return redirect('order_list')
-    return render(request, 'store/order_edit.html', {'order': order})
+    items = list(order.items.select_related('product'))
+    return render(request, 'store/order_edit.html', {
+        'order': order, 'items': items, 'locked_reason': locked_reason,
+        'status_bn': order_flow.STATUS_BN.get(order.status, order.status),
+        **_refund_context(request, order),
+        'subtotal': sum((i.price * i.quantity for i in items), 0),
+        'products': [] if locked_reason else _order_product_options(shop),
+    })
+
+
+def _refund_context(request, order):
+    """অর্ডার এডিট পাতার "টাকা ফেরত" অংশ — কাস্টমার অনলাইনে দিয়ে থাকলে তবেই।"""
+    from . import shop_payments
+    paid_online = order.customer_payments.filter(status='Completed').exists()
+    if not paid_online:
+        return {'refund_box': False}
+    return {'refund_box': True, 'refund_left': shop_payments.refundable(order),
+            'refunds': list(order.refunds.all()), 'refund_methods': shop_payments.REFUND_METHODS,
+            'can_refund': _can_handle_money(request.user)}
+
+
+def _qty_field(raw, label, *, allow_zero=False):
+    """ফর্মের পরিমাণের ঘর → পূর্ণ সংখ্যা (১–৯৯৯৯; allow_zero হলে ০ মানে বাদ)।"""
+    text = str(raw if raw is not None else '').strip().translate(BN_TO_EN_DIGITS)
+    try:
+        qty = int(text)
+    except ValueError:
+        raise order_flow.FlowError(f'{label} পূর্ণ সংখ্যায় লিখুন।')
+    if qty < (0 if allow_zero else 1) or qty > 9999:
+        raise order_flow.FlowError(f'{label} ঠিক নেই।')
+    return qty
+
+
+def _order_product_options(shop):
+    """অর্ডার ফর্মের প্রোডাক্টের তালিকা: স্টকে থাকা প্রোডাক্ট, সাইজ/রং থাকলে প্রতিটা আলাদা (id ঋণাত্মক)।"""
+    options = []
+    for product in (Product.objects.filter(shop=shop, is_active=True, stock_quantity__gt=0)
+                    .prefetch_related('variants').order_by('name')):
+        if product.has_variants:
+            options += [{'id': -v.id, 'name': f'{product.name} ({v.name})', 'price': v.sell_price,
+                         'stock': v.stock_quantity} for v in product.variants.all() if v.stock_quantity > 0]
+        else:
+            options.append({'id': product.id, 'name': product.name, 'price': product.price,
+                            'stock': product.stock_quantity})
+    return options
+
+
+def _can_handle_money(user):
+    return not getattr(user, 'is_shop_staff', False) or user.staff_profile.can_manage_settings
+
+
+@login_required(login_url='/accounts/login/')
+def order_refund(request, order_id):
+    """অনলাইনে টাকা দেওয়া অর্ডারে কাস্টমারকে টাকা ফেরত (shop_payments.create_refund)। মালিক বা সেটিংসের অনুমতিওয়ালা স্টাফ।"""
+    from . import shop_payments
+    shop = request.user.shop
+    order = get_object_or_404(Order, id=order_id, shop=shop)
+    if request.method != 'POST':
+        return redirect('order_edit', order_id=order.id)
+    if not _can_handle_money(request.user):
+        messages.error(request, 'টাকা ফেরত শুধু দোকানের মালিক বা সেটিংসের অনুমতিওয়ালা স্টাফ দিতে পারেন।')
+        return redirect('order_edit', order_id=order.id)
+    way = request.POST.get('way', '')
+    try:
+        refund = shop_payments.create_refund(
+            order, request.POST.get('amount'), way, method=request.POST.get('method', ''),
+            account=request.POST.get('account', ''), reference=request.POST.get('reference', ''),
+            note=request.POST.get('note', ''), user=request.user)
+    except shop_payments.SettlementError as exc:
+        messages.error(request, str(exc))
+        return redirect(reverse('order_edit', args=[order.id]) + '#refund')
+    if refund.way == refund.PLATFORM:
+        messages.success(request, f'৳{refund.amount:,.0f} ফেরতের অনুরোধ গেছে — {django_settings.SITE_NAME} কাস্টমারের '
+                                  f'{refund.method}-এ পাঠালে কাস্টমার আর আপনি SMS পাবেন।')
+    else:
+        messages.success(request, f'৳{refund.amount:,.0f} ফেরত দেওয়া লেখা হয়েছে।')
+    return redirect(reverse('order_edit', args=[order.id]) + '#refund')
 
 
 @login_required(login_url='/accounts/login/')
@@ -568,7 +661,8 @@ def order_delete(request, order_id):
         order = Order.objects.select_for_update().get(pk=order.pk)
         if not order.stock_returned:        # বাতিল/ফেরত হয়ে মাল আগেই স্টকে ফিরে থাকলে আবার না
             for item in order.items.all():
-                variants.give_back(item.product_id, item.variant_id, item.quantity)
+                variants.give_back(item.product_id, item.variant_id, item.quantity, reason='order_delete',
+                                   order=order, user=request.user)
         order.delete()
     messages.success(request, f'অর্ডার #ORD-{order_id} মুছে ফেলা হয়েছে, মাল স্টকে ফিরেছে।')
     return redirect('order_list')
@@ -603,7 +697,7 @@ def update_order_status(request):
             data = json.loads(request.body)
             shop = request.user.shop
             order = Order.objects.select_related('shop', 'customer').get(id=data.get('order_id'), shop=shop)
-            order_flow.set_status(order, data.get('status'))
+            order_flow.set_status(order, data.get('status'), user=request.user)
             return JsonResponse({'success': True,
                                  'message': f'অর্ডার #{order.id} এখন "{order_flow.STATUS_BN[order.status]}"'})
         except order_flow.FlowError as exc:
@@ -1023,7 +1117,7 @@ def send_to_courier(request):
     order.steadfast_tracking_code = str(result['tracking_code'])[:100]
     order.courier_partner = courier
     order.save(update_fields=['steadfast_tracking_code', 'courier_partner'])
-    order_flow.set_status(order, 'Shipped')         # চালু থাকলে কাস্টমারকে ট্র্যাকিং লিংকসহ SMS
+    order_flow.set_status(order, 'Shipped', user=request.user)         # চালু থাকলে কাস্টমারকে ট্র্যাকিং লিংকসহ SMS
     cod = couriers.cod_amount(order)
     messages.success(request, f'{courier}-এ পাঠানো হয়েছে। ট্র্যাকিং: {result["tracking_code"]} · '
                               + (f'কাস্টমারের কাছ থেকে তুলবে ৳{cod}' if cod else 'আগে পরিশোধ, কিছু তুলবে না'))
@@ -1103,7 +1197,7 @@ def steadfast_webhook(request):
         new_status = {'delivered': 'Delivered', 'partial_delivered': 'Delivered', 'cancelled': 'Returned'}.get(status)
         if new_status and order.status != new_status:
             try:
-                order_flow.set_status(order, new_status)
+                order_flow.set_status(order, new_status, user=request.user)
             except order_flow.FlowError:
                 pass
     return JsonResponse({'message': 'OK'}, status=200)
@@ -1792,7 +1886,7 @@ def storefront_order_update_status(request, order_id):
             try:
                 if sf_order.order_id:
                     # মূল অর্ডারের সাথে একসাথে বদলায় (স্টক ফেরত, কাস্টমারকে SMS)
-                    order_flow.set_status(sf_order.order, new_status)
+                    order_flow.set_status(sf_order.order, new_status, user=request.user)
                 else:
                     sf_order.status = new_status
                     sf_order.save(update_fields=['status'])

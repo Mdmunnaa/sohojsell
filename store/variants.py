@@ -76,22 +76,29 @@ def resolve(shop, keys, *, lock=False):
     return found
 
 
-def take(sellable, qty):
-    """বিক্রি হলে স্টক কমায় (ভ্যারিয়েন্ট হলে দুই জায়গাতেই)।"""
+def take(sellable, qty, *, reason='other', order=None, user=None, purchase=None):
+    """বিক্রি হলে স্টক কমায় (ভ্যারিয়েন্ট হলে দুই জায়গাতেই), আর স্টকের খাতায় লেখে (store/stock_log.py)।"""
+    from . import stock_log
     if sellable.variant:
         ProductVariant.objects.filter(pk=sellable.variant.pk).update(stock_quantity=F('stock_quantity') - qty)
     Product.objects.filter(pk=sellable.product.pk).update(stock_quantity=F('stock_quantity') - qty)
+    stock_log.record(sellable.product.pk, sellable.variant.pk if sellable.variant else None, -qty,
+                     reason=reason, order=order, user=user, purchase=purchase)
 
 
-def give_back(product_id, variant_id, qty):
+def give_back(product_id, variant_id, qty, *, reason='other', order=None, user=None, purchase=None):
     """ফেরত বা অর্ডার মুছলে স্টক ফেরত। ভ্যারিয়েন্টটা মুছে গিয়ে থাকলে প্রোডাক্টের মোট স্টক আবার মেলানো হয়।"""
+    from . import stock_log
     if variant_id and ProductVariant.objects.filter(pk=variant_id, product_id=product_id).update(
             stock_quantity=F('stock_quantity') + qty):
         Product.objects.filter(pk=product_id).update(stock_quantity=F('stock_quantity') + qty)
     elif Product.objects.filter(pk=product_id, has_variants=True).exists():
         sync_stock(product_id)
+        variant_id = None
     else:
         Product.objects.filter(pk=product_id).update(stock_quantity=F('stock_quantity') + qty)
+        variant_id = None
+    stock_log.record(product_id, variant_id, qty, reason=reason, order=order, user=user, purchase=purchase)
 
 
 def sync_stock(product_id):
@@ -145,7 +152,7 @@ def rows_from_post(post):
 
 
 @transaction.atomic
-def save_rows(product, rows):
+def save_rows(product, rows, *, stock_user=None, stock_reason='manual'):
     """ফর্মের সারি অনুযায়ী ভ্যারিয়েন্ট বানায়/বদলায়/মোছে, তারপর প্রোডাক্টের মোট স্টক মেলায়।"""
     existing = {v.id: v for v in product.variants.select_for_update()}
     keep = {row['id'] for row in rows if row['id'] in existing}
@@ -154,10 +161,17 @@ def save_rows(product, rows):
     for row in rows:
         if row['id'] in keep and existing[row['id']].name != row['name']:
             ProductVariant.objects.filter(pk=row['id']).update(name=f'~{row["id"]}')
+    changes = []
     for position, row in enumerate(rows):
         variant = existing[row['id']] if row['id'] in keep else ProductVariant(product=product)
+        before = variant.stock_quantity if variant.pk else 0
         variant.name, variant.price = row['name'], row['price']
         variant.stock_quantity, variant.position = row['stock'], position
         variant.save()
+        if row['stock'] != before:
+            changes.append((variant.pk, row['stock'] - before))
     sync_stock(product.pk)
+    from . import stock_log
+    for variant_id, change in changes:
+        stock_log.record(product.pk, variant_id, change, reason=stock_reason, user=stock_user)
     product.refresh_from_db(fields=['has_variants', 'stock_quantity'])

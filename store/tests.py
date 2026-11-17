@@ -6309,13 +6309,15 @@ class AuditFixTests(ShopTestMixin, TestCase):
         self.client.post(reverse('order_create'), self.order_form())
         self.client.post(reverse('order_create'), self.order_form(customer_phone='01812345678', customer_name='করিম'))
         first = Order.objects.order_by('id').first()
+        item = first.items.get()
         edit = reverse('order_edit', args=[first.id])
-        base = {'customer_name': 'রহিম', 'customer_address': 'ঢাকা', 'customer_phone': '01712345678'}
-        self.assertEqual(self.client.post(edit, {**base, 'total_amount': 'abc'}).status_code, 302)
+        base = {'customer_name': 'রহিম', 'customer_address': 'ঢাকা', 'customer_phone': '01712345678',
+                f'item_qty_{item.id}': '2', f'item_price_{item.id}': '500', 'delivery_charge': '60', 'discount': '0'}
+        self.assertEqual(self.client.post(edit, {**base, 'delivery_charge': 'abc'}).status_code, 302)
         first.refresh_from_db()
         self.assertEqual(first.total_amount, Decimal('1060'))
         # অন্য কাস্টমারের নম্বর দিলে অর্ডারটা তার নামে যায়; এক নম্বরে দুজন হয় না
-        self.client.post(edit, {**base, 'customer_phone': '01812345678', 'total_amount': '900'})
+        self.client.post(edit, {**base, 'customer_phone': '01812345678', 'discount': '160'})
         first.refresh_from_db()
         self.assertEqual(first.customer.phone, '01812345678')
         self.assertEqual(first.total_amount, Decimal('900'))
@@ -6538,3 +6540,143 @@ class OrderPulseAndErrorReportTests(ShopTestMixin, TestCase):
         self.assertContains(page, 'ValueError')
         client.post(reverse('hq_errors'), {'event_id': event.pk, 'action': 'resolve'})
         self.assertNotContains(client.get(reverse('hq_errors')), 'ValueError')
+
+
+class OrderEditItemsTests(ShopTestMixin, TestCase):
+    """অর্ডার এডিটে প্রোডাক্ট যোগ-বাদ আর পরিমাণ বদল — স্টক ঠিক থাকে, স্টকের খাতায় লেখা হয়।"""
+
+    def setUp(self):
+        from .models import Customer, Order, OrderItem, Product, ProductVariant
+        self.user, self.shop = self.make_shop(phone='01755500091', slug='editshop')
+        self.shirt = Product.objects.create(shop=self.shop, name='শার্ট', price=Decimal('500'), stock_quantity=8)
+        self.pant = Product.objects.create(shop=self.shop, name='প্যান্ট', price=Decimal('900'), stock_quantity=0,
+                                           has_variants=True)
+        self.size = ProductVariant.objects.create(product=self.pant, name='32', stock_quantity=3)
+        self.pant.stock_quantity = 3
+        self.pant.save()
+        customer = Customer.objects.create(shop=self.shop, name='ক', phone='01712345678', address='ঢাকা')
+        self.order = Order.objects.create(shop=self.shop, customer=customer, total_amount=Decimal('1060'),
+                                          delivery_charge=60, source='storefront')
+        self.item = OrderItem.objects.create(order=self.order, product=self.shirt, quantity=2, price=Decimal('500'))
+        self.url = reverse('order_edit', args=[self.order.id])
+
+    def post(self, **extra):
+        data = {'customer_name': 'ক', 'customer_phone': '01712345678', 'customer_address': 'ঢাকা',
+                f'item_qty_{self.item.id}': '2', f'item_price_{self.item.id}': '500',
+                'delivery_charge': '60', 'discount': '0'}
+        data.update(extra)
+        return self.client.post(self.url, data)
+
+    def test_change_qty_add_variant_and_remove(self):
+        from .models import StockMovement
+        page = self.client.get(self.url).content.decode()
+        self.assertIn('প্যান্ট (32)', page)
+        self.post(**{f'item_qty_{self.item.id}': '3', 'new_product[]': [str(-self.size.id)], 'new_qty[]': ['2'],
+                     'new_price[]': ['850']})
+        self.order.refresh_from_db()
+        self.shirt.refresh_from_db()
+        self.size.refresh_from_db()
+        self.assertEqual(self.order.total_amount, Decimal('3260'))       # 3×500 + 2×850 + 60
+        self.assertEqual((self.shirt.stock_quantity, self.size.stock_quantity), (7, 1))
+        self.assertEqual(StockMovement.objects.filter(order=self.order, reason='order_edit').count(), 2)
+        self.post(**{f'item_qty_{self.item.id}': '0',
+                     f'item_qty_{self.order.items.get(variant=self.size).id}': '2',
+                     f'item_price_{self.order.items.get(variant=self.size).id}': '850'})
+        self.order.refresh_from_db()
+        self.shirt.refresh_from_db()
+        self.assertEqual(self.order.items.count(), 1)
+        self.assertEqual(self.shirt.stock_quantity, 10)
+        self.assertEqual(self.order.total_amount, Decimal('1760'))
+
+    def test_cannot_take_more_than_stock_or_empty_the_order(self):
+        self.post(**{f'item_qty_{self.item.id}': '11'})
+        self.shirt.refresh_from_db()
+        self.assertEqual(self.shirt.stock_quantity, 8)
+        self.post(**{f'item_qty_{self.item.id}': '0'})
+        self.assertEqual(self.order.items.count(), 1)
+        self.post(**{f'item_qty_{self.item.id}': '-1'})
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.quantity, 2)
+
+    def test_locked_after_courier_or_for_pos(self):
+        from .models import Order
+        Order.objects.filter(pk=self.order.pk).update(steadfast_tracking_code='SF1')
+        self.assertContains(self.client.get(self.url), 'কুরিয়ারে বুক হয়ে গেছে')
+        self.post(**{f'item_qty_{self.item.id}': '5'})
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.quantity, 2)
+
+    def test_online_paid_total_cannot_drop_below_paid(self):
+        from .models import Order
+        Order.objects.filter(pk=self.order.pk).update(online_payment_status=Order.ONLINE_PAID,
+                                                     advance_paid=Decimal('1060'))
+        self.post(**{f'item_qty_{self.item.id}': '1'})
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.quantity, 2)
+
+
+class CustomerRefundTests(ShopTestMixin, TestCase):
+    """অনলাইনে টাকা দেওয়া অর্ডার বাতিল হলে কাস্টমারকে টাকা ফেরত: নিজে দেওয়া, বা SellPunch থেকে পাঠানো।"""
+
+    def setUp(self):
+        from .models import Customer, Order, Shop, StorefrontPayment
+        self.user, self.shop = self.make_shop(phone='01755500101', slug='refundshop')
+        Shop.objects.filter(pk=self.shop.pk).update(payout_method='bKash', payout_account='01755500101')
+        customer = Customer.objects.create(shop=self.shop, name='ক', phone='01712345678', address='x')
+        self.order = Order.objects.create(shop=self.shop, customer=customer, total_amount=Decimal('1000'),
+                                          source='storefront', status='Cancelled', advance_paid=Decimal('1000'),
+                                          online_payment_status=Order.ONLINE_PAID, stock_returned=True)
+        StorefrontPayment.objects.create(
+            shop=self.shop, order=self.order, kind='full', amount=Decimal('1000'), fee_percent=Decimal('2.5'),
+            fee_amount=Decimal('25'), net_amount=Decimal('975'), invoice_number='SF-R-1', status='Completed',
+            completed_at=timezone.now() - timedelta(days=10))
+        self.url = reverse('order_refund', args=[self.order.id])
+
+    def test_platform_refund_takes_from_balance_and_hq_finishes_it(self):
+        from . import shop_payments
+        from .models import CustomerRefund
+        self.assertEqual(len(shop_payments.refunds_waiting(self.shop)), 1)
+        self.assertIn('টাকা ফেরত বাকি', self.client.get(reverse('online_money')).content.decode())
+        self.assertIn('কাস্টমারকে টাকা ফেরত', self.client.get(reverse('order_edit', args=[self.order.id])).content.decode())
+        # জমায় আছে ৳৯৭৫ — ৳১০০০ পাঠানো যায় না
+        self.client.post(self.url, {'amount': '1000', 'way': 'platform', 'method': 'bKash', 'account': '01712345678'})
+        self.assertFalse(CustomerRefund.objects.exists())
+        self.client.post(self.url, {'amount': '975', 'way': 'platform', 'method': 'bKash', 'account': '01712345678'})
+        refund = CustomerRefund.objects.get()
+        self.assertEqual((refund.status, refund.account), ('pending', '01712345678'))
+        summary = shop_payments.balance_summary(self.shop)
+        self.assertEqual((summary['available'], summary['due']), (0, 0))
+        admin = User.objects.create_superuser(phone_number='01755500102', password='Admin-pass-1')
+        self.client.force_login(admin)
+        self.assertContains(self.client.get(reverse('master_settlements')), 'কাস্টমারকে টাকা ফেরত (১)'.replace('১', '1'))
+        with mock.patch('store.sms.notify') as notify:
+            self.client.post(reverse('master_settlements'), {'action': 'refund_done', 'refund_id': refund.pk,
+                                                             'reference': 'TRX9'})
+        refund.refresh_from_db()
+        self.assertEqual((refund.status, refund.reference), ('done', 'TRX9'))
+        self.assertEqual(notify.call_args_list[0].args[0], '01712345678')
+        # ৳২৫ বাকি — সেটা দোকান নিজে দিল
+        self.client.force_login(self.user)
+        self.client.post(self.url, {'amount': '25', 'way': 'seller', 'reference': 'নগদে'})
+        self.assertEqual(shop_payments.refundable(self.order), 0)
+        self.assertEqual(shop_payments.refunds_waiting(self.shop), [])
+
+    def test_rejected_platform_refund_returns_money(self):
+        from . import shop_payments
+        from .models import CustomerRefund
+        self.client.post(self.url, {'amount': '500', 'way': 'platform', 'method': 'Nagad', 'account': '01712345678'})
+        refund = CustomerRefund.objects.get()
+        with mock.patch('store.sms.notify'):
+            self.assertEqual(shop_payments.reject_refund(refund.pk, 'নম্বর ভুল'), 1)
+        self.assertEqual(shop_payments.balance_summary(self.shop)['available'], Decimal('975'))
+        self.assertEqual(shop_payments.refundable(self.order), Decimal('1000'))
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.advance_paid, Decimal('1000'))
+
+    def test_staff_without_settings_cannot_refund(self):
+        from .models import CustomerRefund, StaffProfile
+        staff = User.objects.create_user(phone_number='01755500103', password='Staff-pass-1')
+        StaffProfile.objects.create(user=staff, shop=self.shop, can_manage_orders=True)
+        self.client.force_login(staff)
+        self.client.post(self.url, {'amount': '100', 'way': 'seller'})
+        self.assertFalse(CustomerRefund.objects.exists())

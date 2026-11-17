@@ -212,7 +212,8 @@ def create_purchase(shop, user, *, lines, supplier=None, purchased_on=None, invo
         new_cost = _average_cost(product.stock_quantity, product.cost_price, bucket['qty'], bucket['value'])
         Product.objects.filter(pk=product.pk).update(cost_price=new_cost)
     for item, qty, _cost in rows:
-        variants.give_back(item.product.id, item.variant.id if item.variant else None, qty)
+        variants.give_back(item.product.id, item.variant.id if item.variant else None, qty, reason='purchase',
+                           purchase=purchase, user=creator)
 
     if supplier is not None and paid > 0:
         SupplierPayment.objects.create(shop=shop, supplier=supplier, purchase=purchase, amount=paid,
@@ -221,7 +222,7 @@ def create_purchase(shop, user, *, lines, supplier=None, purchased_on=None, invo
 
 
 @transaction.atomic
-def delete_purchase(shop, purchase):
+def delete_purchase(shop, purchase, user=None):
     """ভুল এন্ট্রি মুছে ফেলা: স্টক কমে যায়, গড় কেনা দাম আগের জায়গায় ফেরে। মাল বিক্রি হয়ে গেলে মোছা যায় না।"""
     purchase = Purchase.objects.select_for_update().get(pk=purchase.pk, shop=shop)
     items = list(purchase.items.all())
@@ -246,13 +247,17 @@ def delete_purchase(shop, purchase):
         bucket['qty'] += item.quantity
         bucket['value'] += item.unit_cost * item.quantity
 
+    from . import stock_log
     for (kind, holder_id), qty in needed.items():
         if kind == 'v':
             ProductVariant.objects.filter(pk=holder_id).update(stock_quantity=F('stock_quantity') - qty)
             Product.objects.filter(pk=variant_rows[holder_id].product_id).update(
                 stock_quantity=F('stock_quantity') - qty)
+            stock_log.record(variant_rows[holder_id].product_id, holder_id, -qty, reason='purchase_delete', user=user,
+                             note=f'কেনা #{purchase.pk} মোছা')
         else:
             Product.objects.filter(pk=holder_id).update(stock_quantity=F('stock_quantity') - qty)
+            stock_log.record(holder_id, None, -qty, reason='purchase_delete', user=user, note=f'কেনা #{purchase.pk} মোছা')
     for bucket in per_product.values():
         product = bucket['product']
         left = product.stock_quantity - bucket['qty']

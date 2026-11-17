@@ -191,6 +191,15 @@ def _create_products(job, shop):
         if item['image']:
             queue.append([product.pk, item['image']])
     ProductVariant.objects.bulk_create(variants, batch_size=1000)
+    from . import stock_log
+    by_product = {}
+    for variant in variants:
+        by_product.setdefault(variant.product_id, []).append(variant)
+    rows = []
+    for product in products:
+        rows += ([(product, v, v.stock_quantity) for v in by_product[product.pk]] if product.pk in by_product
+                 else [(product, None, product.stock_quantity)])
+    stock_log.record_bulk(shop, rows, reason='import')
     job.result = {'created': len(products), 'variants': len(variants), 'over_limit': over_limit,
                   'skipped_count': len(skipped), 'skipped': skipped[:100]}
     job.image_queue, job.images_total = queue, len(queue)
@@ -203,9 +212,13 @@ def _create_products(job, shop):
 def _create_customers(job, shop):
     items, skipped = _parse(job)
     existing = set(Customer.objects.filter(shop=shop).values_list('phone', flat=True))
-    fresh = [c for c in items if c['phone'] not in existing]
+    fresh, seen = [], set(existing)
+    for c in items:                     # ফাইলে একই নম্বর দুবার থাকলে প্রথমটা (এক দোকানে এক নম্বরে একজন কাস্টমার)
+        if c['phone'] not in seen:
+            seen.add(c['phone'])
+            fresh.append(c)
     Customer.objects.bulk_create([Customer(shop=shop, name=c['name'], phone=c['phone'], address=c['address'])
-                                  for c in fresh])
+                                  for c in fresh], ignore_conflicts=True)
     job.result = {'created': len(fresh), 'exists': len(items) - len(fresh), 'skipped_count': len(skipped),
                   'skipped': [list(s) for s in skipped[:100]]}
     job.status, job.finished_at, job.rows = ImportJob.DONE, timezone.now(), []

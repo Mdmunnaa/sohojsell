@@ -246,7 +246,7 @@ def _create_sale(shop, user, payload, ref, can_override_price):
         for item, qty, price in priced
     ])
     for item, qty, _price in priced:
-        variants.take(item, qty)
+        variants.take(item, qty, reason='pos_sale', order=order, user=cashier)
     SalePayment.objects.bulk_create([
         SalePayment(shop=shop, order=order, method=method, amount=amount, reference=reference,
                     kind=SalePayment.SALE, received_by=cashier)
@@ -398,7 +398,8 @@ def return_items(shop, user, order_id, items=None, method=None, reason=''):
                 OrderItem.objects.filter(pk=item_id).update(quantity=F('quantity') - qty)
 
         for item_id, qty in wanted.items():
-            variants.give_back(order_items[item_id].product_id, order_items[item_id].variant_id, qty)
+            variants.give_back(order_items[item_id].product_id, order_items[item_id].variant_id, qty,
+                               reason='pos_return', order=order, user=user)
 
         cashier = user if getattr(user, 'is_authenticated', False) else None
         sale_return = SaleReturn.objects.create(
