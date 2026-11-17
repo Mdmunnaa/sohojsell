@@ -229,13 +229,14 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
       <i class="bi bi-{% if payment_pending %}hourglass-split{% elif main_order.online_payment_status == 'paid' %}patch-check-fill{% else %}cash-coin{% endif %}"></i>
       <span>{% t "পেমেন্ট:" %} {{ payment_label }}</span>
     </div>
-    {% if payment_pending and last_payment %}
+    {% if pay %}
     <form method="post" action="{% shop_url 'storefront_payment_retry' shop order.id %}" style="margin-top:12px;">
       {% csrf_token %}
       <button type="submit" class="btn-main" style="width:100%;border:none;cursor:pointer;justify-content:center;">
-        <i class="bi bi-credit-card-2-front-fill"></i> ৳{{ last_payment.amount|floatformat:0 }} {% t "পেমেন্ট করুন" %}
+        <i class="bi bi-credit-card-2-front-fill"></i> ৳{{ pay.amount|floatformat:0 }} {% t "পেমেন্ট করুন" %}
       </button>
     </form>
+    {% if pay.cancel_at %}<p style="margin:8px 0 0;font-size:12.5px;color:#9A3412;line-height:1.5;">{% t "অর্ডার দেওয়ার ২৪ ঘণ্টার মধ্যে পেমেন্ট না হলে অর্ডারটা নিজে থেকে বাতিল হয়ে যায়।" %}</p>{% endif %}
     {% endif %}
     <div class="rtotal">
       <span class="rtotal-lbl">{% t "মোট পরিমাণ" %}</span>

@@ -225,6 +225,7 @@ urlpatterns = [
     path('shop/<slug:shop_slug>/robots.txt', views.storefront_robots, name='storefront_robots'),
     path('shop/<slug:shop_slug>/track/', views.storefront_track, name='storefront_track'),
     path('shop/<slug:shop_slug>/t/<str:code>/', views.storefront_track_order, name='storefront_track_order'),
+    path('shop/<slug:shop_slug>/t/<str:code>/pay/', views.storefront_track_pay, name='storefront_track_pay'),
     path('shop/<slug:shop_slug>/order/<int:order_id>/success/', views.storefront_order_success, name='storefront_order_success'),
     path('shop/<slug:shop_slug>/order/<int:order_id>/pay/', views.storefront_payment_retry, name='storefront_payment_retry'),
     path('shop/<slug:shop_slug>/payment/return/', views.storefront_payment_return, name='storefront_payment_return'),

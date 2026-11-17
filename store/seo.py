@@ -342,6 +342,13 @@ def main_llms_txt(request):
         f'least BDT {int(shop_payments.SETTLEMENT_MIN):,} is available, to bKash, Nagad, Rocket or a bank account. The '
         'dashboard page "অনলাইনের টাকা" lists every online payment (fee, the seller\'s share, when it can be withdrawn) '
         'and the payout history with transaction IDs.',
+        '- If a customer chooses online payment but leaves the payment page (or the payment fails), the order shows '
+        '"অনলাইন পেমেন্ট বাকি" and can still be paid later: on the same phone a bar at the top of every store page says '
+        'the payment is pending with a "পেমেন্ট করুন" button; from any phone the store\'s order-tracking page (order number '
+        '+ mobile) shows a "পেমেন্ট করুন" button; the seller can copy a payment link (or send it on WhatsApp) from the '
+        'order page. The amount follows the order\'s current total, a payment already taken is detected so nobody pays '
+        f'twice, and an unpaid order still in "নতুন" status is cancelled automatically {shop_payments.UNPAID_CANCEL_HOURS} '
+        'hours after it was placed (stock returns); confirming the order (e.g. agreeing cash on delivery) stops that.',
         '- Custom domain (www.yourshop.com): Premium only; the seller buys the domain from any registrar and adds one CNAME '
         'record. Every plan gets a free yourshop subdomain.',
         '- Data export: the owner can download all data (products, variants, customers, orders, payments, returns, '

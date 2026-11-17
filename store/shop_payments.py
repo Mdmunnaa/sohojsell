@@ -352,6 +352,27 @@ def recheck_pending(shop, limit=3):
 UNPAID_CANCEL_HOURS = 24
 
 
+def pending_payment(order):
+    """
+    কাস্টমার অনলাইনে দেবেন বলে অর্ডার দিয়েছেন কিন্তু এখনো দেননি (পেমেন্টের পাতা থেকে অন্য পাতায় চলে গেছেন, বা ব্যর্থ):
+    {'last': শেষ চেষ্টা, 'choice', 'amount': এখন কত দিতে হবে, 'cancel_at': কখন নিজে থেকে বাতিল (কনফার্ম হলে None)},
+    নাহলে None। সেলার অর্ডার বদলে থাকলে টাকার অঙ্কও নতুন হিসাবে (পুরো টাকা = মোট; অগ্রিম = ডেলিভারি চার্জ)।
+    দেখানো হয় অর্ডার পাতা, ট্র্যাক পাতা, দোকানের ওয়েবসাইটের উপরের বার আর সেলারের অর্ডার পাতায়।
+    """
+    if order is None or order.online_payment_status != Order.ONLINE_PENDING or order.status not in ('Pending', 'Confirmed'):
+        return None
+    last = order.customer_payments.order_by('-created_at').first()
+    if last is None:
+        return None
+    choice = CHOICE_FULL if last.kind == StorefrontPayment.KIND_FULL else CHOICE_ADVANCE
+    amount = _money(min(amount_now(choice, order.total_amount, order.delivery_charge),
+                        order.total_amount - order.advance_paid))
+    if amount <= 0:
+        return None
+    cancel_at = order.created_at + timedelta(hours=UNPAID_CANCEL_HOURS) if order.status == 'Pending' else None
+    return {'last': last, 'choice': choice, 'amount': amount, 'cancel_at': cancel_at}
+
+
 def cancel_unpaid_orders(limit=200):
     """
     কাস্টমার "অনলাইনে দেব" বেছে অর্ডার দিয়ে টাকা না দিলে অর্ডার আর স্টক ঝুলে থাকত। দিনে একবার (views_cron): ২৪ ঘণ্টার বেশি

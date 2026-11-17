@@ -57,6 +57,25 @@
     <a href="{% url 'order_list' %}" class="btn btn-light rounded-pill fw-bold"><i class="bi bi-arrow-left me-1"></i> অর্ডারে ফিরুন</a>
   </div>
 
+  {% if pay %}
+  <section class="oe-card" id="pay-link" style="border-color:#FED7AA;background:#FFFBF5">
+    <h2><i class="bi bi-hourglass-split me-1" style="color:#C2410C"></i> অনলাইন পেমেন্ট বাকি — ৳{{ pay.amount|floatformat:"-2g"|bn }}</h2>
+    <p class="small mb-2" style="color:#475569">কাস্টমার অনলাইনে দেবেন বলে অর্ডার দিয়েছেন, কিন্তু এখনো টাকা আসেনি (পেমেন্টের পাতা থেকে চলে গেছেন বা পেমেন্ট হয়নি)। নিচের লিংকটা কাস্টমারকে পাঠান — যেকোনো ফোন থেকে খুলে <b>পেমেন্ট করুন</b> চাপলেই হবে। টাকা এলে অর্ডার নিজে থেকে কনফার্ম হয়।</p>
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+      <input type="text" class="form-control" value="{{ pay.link }}" readonly aria-label="পেমেন্টের লিংক" style="flex:1 1 260px;font-size:13.5px" onclick="this.select()">
+      <button type="button" class="btn btn-dark fw-bold rounded-pill" id="payCopy" data-text="{{ pay.text }}"><i class="bi bi-clipboard me-1"></i> লিংক কপি</button>
+      {% if pay.whatsapp %}<a class="btn btn-success fw-bold rounded-pill" href="{{ pay.whatsapp }}" target="_blank" rel="noopener"><i class="bi bi-whatsapp me-1"></i> WhatsApp-এ পাঠান</a>{% endif %}
+    </div>
+    {% if pay.cancel_at %}<p class="small mb-0 mt-2" style="color:#9A3412">অর্ডার দেওয়ার ২৪ ঘণ্টা পরও টাকা না এলে অর্ডারটা নিজে থেকে বাতিল হয়, মাল স্টকে ফেরে। কাস্টমার ক্যাশ অন ডেলিভারিতে নিতে চাইলে কথা বলে অর্ডারটা <b>কনফার্ম</b> করে দিন — তখন আর বাতিল হয় না।</p>{% endif %}
+  </section>
+  <script>
+  document.getElementById('payCopy').addEventListener('click', function () {
+    var btn = this, done = function () { btn.innerHTML = '<i class="bi bi-check2 me-1"></i> কপি হয়েছে'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(btn.dataset.text).then(done, function () {});
+  });
+  </script>
+  {% endif %}
+
   <form method="post" id="oeForm">
     {% csrf_token %}
     <section class="oe-card">

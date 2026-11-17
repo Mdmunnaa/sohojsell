@@ -52,6 +52,11 @@ body { margin: 0; background: var(--bg); color: var(--ink2); min-height: 100vh; 
 .tk-total b { font-size: 20px; color: var(--orange); }
 .tk-courier { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .tk-code { font-family: ui-monospace, monospace; font-weight: 700; color: var(--ink); background: #F1F5F9; border-radius: 8px; padding: 4px 10px; }
+.tk-pay { border-color: #FED7AA; background: #FFFBF5; }
+.tk-pay h2 i { color: #C2410C; }
+.tk-pay p { margin: 0 0 6px; font-size: 14.5px; color: var(--ink2); line-height: 1.6; }
+.tk-pay small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+.tk-ok { background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; border-radius: 12px; padding: 11px 13px; font-size: 13.5px; font-weight: 600; margin-bottom: 14px; }
 .tk-foot { text-align: center; font-size: 12.5px; color: #5B6578; margin-top: 18px; }
 </style>
 {% include 'store/storefront/_theme.html' %}
@@ -84,6 +89,19 @@ body { margin: 0; background: var(--bg); color: var(--ink2); min-height: 100vh; 
     {% endif %}
   </section>
 
+  {% if payment_msg %}<div class="{% if payment_msg.status == 'ok' or payment_msg.status == 'already' %}tk-ok{% else %}tk-err{% endif %}" role="status">{{ payment_msg.message }}</div>{% endif %}
+  {% if pay %}
+  {% sf_taka pay.amount as pay_amount %}
+  <section class="tk-card tk-pay" id="pay">
+    <h2><i class="bi bi-credit-card-2-front"></i> {% t "অনলাইন পেমেন্ট বাকি" %}</h2>
+    <p>{% t "এই অর্ডারের {amount} অনলাইনে দেওয়ার কথা, এখনো দেওয়া হয়নি।" amount=pay_amount %}</p>
+    <form method="post" action="{% shop_url 'storefront_track_pay' shop code %}">{% csrf_token %}
+      <button class="tk-btn" type="submit"><i class="bi bi-credit-card-2-front-fill"></i> {% t "{amount} পেমেন্ট করুন" amount=pay_amount %}</button>
+    </form>
+    {% if pay.cancel_at %}<small>{% t "অর্ডার দেওয়ার ২৪ ঘণ্টার মধ্যে পেমেন্ট না হলে অর্ডারটা নিজে থেকে বাতিল হয়ে যায়।" %}</small>{% endif %}
+  </section>
+  {% endif %}
+
   {% if tracking_code and not cancelled %}
   <section class="tk-card">
     <h2><i class="bi bi-truck"></i> {% t "কুরিয়ার" %}</h2>
@@ -103,7 +121,8 @@ body { margin: 0; background: var(--bg); color: var(--ink2); min-height: 100vh; 
     {% if order.discount %}<div class="tk-row"><span>{% t "ছাড়" %}</span><b>− {% sf_taka order.discount %}</b></div>{% endif %}
     <div class="tk-row tk-total"><span>{% t "মোট" %}</span><b>{% sf_taka order.total_amount %}</b></div>
     {% if order.advance_paid %}<div class="tk-row"><span>{% t "আগে দেওয়া হয়েছে" %}</span><b>{% sf_taka order.advance_paid %}</b></div>{% endif %}
-    {% if not cancelled and order.status != 'Delivered' %}<div class="tk-row"><span>{% t "পণ্য হাতে পেয়ে দিতে হবে" %}</span><b>{% sf_taka order.due_amount %}</b></div>{% endif %}
+    {% if pay %}<div class="tk-row"><span>{% t "অনলাইনে দিতে হবে" %}</span><b>{% sf_taka pay.amount %}</b></div>{% endif %}
+    {% if not cancelled and order.status != 'Delivered' %}<div class="tk-row"><span>{% t "পণ্য হাতে পেয়ে দিতে হবে" %}</span><b>{% if pay %}{% sf_taka pay.on_delivery %}{% else %}{% sf_taka order.due_amount %}{% endif %}</b></div>{% endif %}
   </section>
 
   {% if shop.phone or shop.whatsapp_number %}

@@ -1,0 +1,21 @@
+{% load store_links sf_text %}{% comment %}
+  দোকানের ওয়েবসাইটের সবার উপরে: অনলাইনে দেবেন বলে অর্ডার দিয়ে টাকা না দিয়ে অন্য পাতায় চলে এলে (sf_text.pay_pending_bar)।
+{% endcomment %}{% if item %}
+<style>
+  .sf-paybar { background: #FFF7ED; border-bottom: 1px solid #FED7AA; color: #7C2D12; font-size: 14px; }
+  .sf-paybar-in { max-width: 1200px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
+  .sf-paybar-in > i { font-size: 18px; color: #C2410C; }
+  .sf-paybar-in > span { flex: 1 1 220px; font-weight: 600; line-height: 1.45; }
+  .sf-paybar-in form { margin: 0; }
+  .sf-paybar-in button { border: 0; border-radius: 999px; padding: 8px 18px; background: #C2410C; color: #fff; font: inherit; font-weight: 800; cursor: pointer; white-space: nowrap; }
+  .sf-paybar-in a { color: #9A3412; font-weight: 700; white-space: nowrap; }
+</style>
+<div class="sf-paybar" role="status">
+  <div class="sf-paybar-in">
+    <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+    <span>{% t "অর্ডার #{n}-এর {amount} অনলাইন পেমেন্ট এখনো হয়নি।" n=item.number amount=item.amount %}</span>
+    <form method="post" action="{% shop_url 'storefront_payment_retry' shop item.sf_id %}">{% csrf_token %}<button type="submit">{% t "পেমেন্ট করুন" %}</button></form>
+    <a href="{% shop_url 'storefront_order_success' shop item.sf_id %}">{% t "অর্ডার দেখুন" %}</a>
+  </div>
+</div>
+{% endif %}

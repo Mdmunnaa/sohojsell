@@ -92,7 +92,7 @@
                                     <small class="d-block text-success fw-semibold" style="font-size:11px;"><i class="bi bi-patch-check-fill"></i> অনলাইনে পরিশোধিত</small>
                                     {% endif %}
                                 {% elif order.online_payment_status == 'pending' %}
-                                    <small class="d-block text-warning fw-semibold" style="font-size:11px;"><i class="bi bi-hourglass-split"></i> অনলাইন পেমেন্ট বাকি</small>
+                                    <a href="{% url 'order_edit' order.id %}#pay-link" class="d-block fw-semibold text-decoration-none" style="font-size:11px;color:#B45309;" title="কাস্টমারকে পেমেন্টের লিংক পাঠান"><i class="bi bi-hourglass-split"></i> অনলাইন পেমেন্ট বাকি <i class="bi bi-link-45deg"></i></a>
                                 {% endif %}
                                 {% if order.source == 'storefront' %}<small class="d-block text-muted" style="font-size:10px;"><i class="bi bi-globe2"></i> ওয়েবসাইট</small>{% elif order.source == 'pos' %}<small class="d-block text-muted" style="font-size:10px;"><i class="bi bi-shop"></i> দোকানে (POS)</small>{% endif %}
                             </td>

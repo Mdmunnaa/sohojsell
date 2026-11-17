@@ -81,3 +81,29 @@ def bd_phone(value):
     """দেখানোর জন্য: 01712-345678।"""
     local = _bd_digits(value)
     return f'{local[:5]}-{local[5:]}' if local else value
+
+
+@register.inclusion_tag('store/storefront/_pay_pending.html', takes_context=True)
+def pay_pending_bar(context):
+    """
+    দোকানের ওয়েবসাইটের উপরে "অর্ডার #… — অনলাইন পেমেন্ট এখনো হয়নি, পেমেন্ট করুন": কাস্টমার অনলাইনে দেবেন বলে অর্ডার দিয়ে
+    পেমেন্টের পাতা থেকে অন্য পাতায় চলে গেলে ফেরার রাস্তা। শুধু যে ব্রাউজার থেকে অর্ডার হয়েছে (session-এর sf_orders)।
+    """
+    request, shop = context.get('request'), context.get('shop')
+    item = None
+    ids = request.session.get('sf_orders') if request is not None and shop is not None else None
+    if ids:
+        from store import shop_payments
+        from store.models import Order, StorefrontOrder
+        recent = (StorefrontOrder.objects.filter(shop=shop, id__in=ids[-5:], order__online_payment_status=Order.ONLINE_PENDING,
+                                                 order__status__in=('Pending', 'Confirmed'))
+                  .select_related('order').order_by('-id'))
+        for sf_order in recent[:3]:
+            pending = shop_payments.pending_payment(sf_order.order)
+            if pending:
+                # দোকানের পাতার দামের মতো (sf_lang.money)
+                # অর্ডার নম্বর আর টাকা দুটোই ইংরেজি অঙ্কে — পাশের দামগুলোর মতো (str দিলে {% t %} অঙ্ক বদলায় না)
+                item = {'sf_id': sf_order.id, 'number': str(sf_order.order.id), 'amount': sf_lang.money(pending['amount'])}
+                break
+    return {'item': item, 'shop': shop, 'request': request, 'csrf_token': context.get('csrf_token'),
+            'sf_lang': context.get('sf_lang')}

@@ -95,6 +95,7 @@ textarea.lp-input { min-height: 72px; resize: vertical; }
 <script type="application/ld+json">{{ product_ld|safe }}</script>
 </head>
 <body>
+{% pay_pending_bar %}
 <header class="lp-top">
   <div class="lp-top-in">
     <a class="lp-logo" href="{% shop_url 'storefront_home' shop %}" aria-label="{{ shop.name }} — {% t "হোম" %}">{% if shop.logo %}<img src="{{ shop.logo.url }}" alt="">{% else %}{{ shop.name|slice:":1"|upper }}{% endif %}</a>

@@ -619,12 +619,33 @@ def order_edit(request, order_id):
         return redirect('order_list')
     items = list(order.items.select_related('product'))
     return render(request, 'store/order_edit.html', {
-        'order': order, 'items': items, 'locked_reason': locked_reason,
+        'order': order, 'items': items, 'locked_reason': locked_reason, 'pay': _pay_link_context(shop, order),
         'status_bn': order_flow.STATUS_BN.get(order.status, order.status),
         **_refund_context(request, order),
         'subtotal': sum((i.price * i.quantity for i in items), 0),
         'products': [] if locked_reason else _order_product_options(shop),
     })
+
+
+def _pay_link_context(shop, order):
+    """
+    কাস্টমার অনলাইনে দেবেন বলে অর্ডার দিয়ে টাকা দেননি: সেলার যেন লিংকটা WhatsApp/Messenger-এ পাঠাতে পারেন।
+    লিংক = অর্ডার ট্র্যাক পাতা, সেখানে "পেমেন্ট করুন" বাটন (যেকোনো ফোন থেকে চলে)।
+    """
+    from urllib.parse import quote
+    from . import shop_payments
+    from .templatetags.bangla import taka
+    from .templatetags.sf_text import wa_number
+    pay = shop_payments.pending_payment(order)
+    if pay is None:
+        return None
+    link = order_flow.track_link(shop, order)
+    amount = sf_lang.num(taka(pay['amount']), shop)
+    text = sf_lang.t('আপনার অর্ডার #{n}-এর {amount} পেমেন্ট এই লিংক থেকে করুন: {link}', shop,
+                     n=order.id, amount=amount, link=link)
+    phone = wa_number(order.customer.phone)
+    return {**pay, 'link': link, 'text': text,
+            'whatsapp': f'https://wa.me/{phone}?text={quote(text)}' if phone else ''}
 
 
 def _refund_context(request, order):
@@ -1609,7 +1630,22 @@ def _track_context(request, shop, order):
     courier = (order.courier_partner or '').strip()
     template = COURIER_TRACK_URLS.get(courier.lower())
     phone = order.customer.phone or ''
+    from . import shop_payments
+    pay = shop_payments.pending_payment(order)
+    if pay and pay['last'].status == StorefrontPayment.STATUS_PENDING:
+        # অন্য জানালায় টাকা দিয়ে এসে থাকলে এখানেই ধরা পড়ুক
+        shop_payments.apply_successful(pay['last'].invoice_number, timeout=4)
+        order.refresh_from_db()
+        pay = shop_payments.pending_payment(order)
+    if pay:
+        pay['on_delivery'] = max(order.due_amount - pay['amount'], 0)
+    payment_msg = request.session.get('sf_payment_msg')
+    if payment_msg and payment_msg.get('track') == order.id:
+        request.session.pop('sf_payment_msg', None)
+    else:
+        payment_msg = None
     return {
+        'pay': pay, 'payment_msg': payment_msg, 'code': order_flow.track_code(order),
         'shop': shop, 'order': order, 'steps': steps, 'cancelled': order.status in order_flow.NOT_COUNTED,
         'status_label': sf_lang.status_label(order.status, shop),
         'items': list(order.items.select_related('product')),
@@ -1868,33 +1904,77 @@ def storefront_payment_return(request, shop_slug):
         trx_id = valid_trx_id(request.GET.get('trx_id') or request.POST.get('trx_id'))
         status, _payment, msg = shop_payments.apply_successful(
             invoice, trx_id=trx_id, attempts=2, timeout=shop_payments.CALLBACK_VERIFY_TIMEOUT)
-    request.session['sf_payment_msg'] = {'order': payment.sf_order_id, 'status': status, 'message': sf_lang.t(msg, shop)}
+    message = sf_lang.t(msg, shop)
+    if payment.sf_order_id not in request.session.get('sf_orders', []) and payment.order_id:
+        # ট্র্যাক পাতা থেকে দেওয়া (অন্য ফোন/ব্রাউজার): সেখানেই ফেরা — অর্ডার পাতায় নাম-ঠিকানা থাকে, সেটা শুধু
+        # যে ব্রাউজার থেকে অর্ডার হয়েছিল সেখানে খোলে
+        request.session['sf_payment_msg'] = {'track': payment.order_id, 'status': status, 'message': message}
+        return redirect(storefront_link(shop, 'storefront_track_order', order_flow.track_code(payment.order),
+                                        request=request))
+    request.session['sf_payment_msg'] = {'order': payment.sf_order_id, 'status': status, 'message': message}
     return redirect(storefront_link(shop, 'storefront_order_success', payment.sf_order_id, request=request))
 
 
-def storefront_payment_retry(request, shop_slug, order_id):
-    """অর্ডার পেইজ থেকে "আবার পেমেন্ট করুন"।"""
+def _pay_again(request, shop, sf_order):
+    """
+    "পেমেন্ট করুন" (অর্ডার পাতা, ট্র্যাক পাতা, ওয়েবসাইটের উপরের বার থেকে): আগের চেষ্টায় টাকা কেটে থাকলে আগে সেটা ধরা
+    (দুবার কাটা না হয়), নাহলে এখনকার হিসাবে নতুন করে PayStation-এ।
+    রিটার্ন: (PayStation-এর লিংক বা None, কাস্টমারকে দেখানোর ভুলের বার্তা বা None)। দুটোই None = টাকা আগেই দেওয়া/অর্ডার বাতিল।
+    """
     from . import shop_payments
+    order = sf_order.order
+    pending = shop_payments.pending_payment(order)
+    if pending is None:
+        return None, None
+    last = pending['last']
+    if last.status == StorefrontPayment.STATUS_PENDING:
+        status, _p, _m = shop_payments.apply_successful(last.invoice_number, timeout=6)
+        if status in ('ok', 'already'):
+            return None, None
+    result = _start_customer_payment(request, shop, order, sf_order, pending['choice'], pending['amount'])
+    if result.get('ok'):
+        return result['payment_url'], None
+    return None, sf_lang.t(result.get('error') or '', shop)
+
+
+def storefront_payment_retry(request, shop_slug, order_id):
+    """অর্ডার পাতা (বা ওয়েবসাইটের উপরের "পেমেন্ট বাকি" বার) থেকে "পেমেন্ট করুন" — যে ব্রাউজার থেকে অর্ডার হয়েছিল।"""
     shop = get_object_or_404(Shop, slug=shop_slug)
     if request.method != 'POST' or order_id not in request.session.get('sf_orders', []):
         return redirect(storefront_link(shop, request=request))
     sf_order = get_object_or_404(StorefrontOrder.objects.select_related('order'), id=order_id, shop=shop)
-    order = sf_order.order
-    last = sf_order.payments.order_by('-created_at').first()
-    if order is None or last is None or order.online_payment_status == Order.ONLINE_PAID \
-            or order.status in ('Cancelled', 'Returned'):
-        return redirect(storefront_link(shop, 'storefront_order_success', order_id, request=request))
-    if last.status == StorefrontPayment.STATUS_PENDING:
-        # আগের চেষ্টায় টাকা কেটে থাকলে আবার কাটার আগে সেটা ধরা পড়ুক
-        status, _p, _m = shop_payments.apply_successful(last.invoice_number, timeout=6)
-        if status in ('ok', 'already'):
-            return redirect(storefront_link(shop, 'storefront_order_success', order_id, request=request))
-    choice = shop_payments.CHOICE_FULL if last.kind == StorefrontPayment.KIND_FULL else shop_payments.CHOICE_ADVANCE
-    result = _start_customer_payment(request, shop, order, sf_order, choice, last.amount)
-    if result.get('ok'):
-        return redirect(result['payment_url'])
-    request.session['sf_payment_msg'] = {'order': order_id, 'status': 'failed', 'message': sf_lang.t(result.get('error') or '', shop)}
+    url, error = _pay_again(request, shop, sf_order)
+    if url:
+        return redirect(url)
+    if error:
+        request.session['sf_payment_msg'] = {'order': order_id, 'status': 'failed', 'message': error}
     return redirect(storefront_link(shop, 'storefront_order_success', order_id, request=request))
+
+
+def storefront_track_pay(request, shop_slug, code):
+    """
+    ট্র্যাক পাতা থেকে "পেমেন্ট করুন" — অন্য ফোন বা ব্রাউজার থেকেও (অর্ডার নম্বর আর মোবাইল মিলিয়ে, SMS-এর লিংকে, বা
+    সেলারের পাঠানো লিংকে ট্র্যাক পাতা খোলে)। টাকা দেওয়ার পর ট্র্যাক পাতাতেই ফেরে।
+    """
+    from . import ratelimit
+    shop = get_object_or_404(Shop, slug=shop_slug)
+    track = storefront_link(shop, 'storefront_track_order', code, request=request)
+    if request.method != 'POST':
+        return redirect(track)
+    ip = ratelimit.client_ip(request)
+    order = None if ratelimit.blocked('sf-track', ip, TRACK_LIMIT) else order_flow.order_from_code(shop, code)
+    if order is None:
+        ratelimit.hit('sf-track', ip, TRACK_WINDOW)
+        return redirect(storefront_link(shop, 'storefront_track', request=request))
+    sf_order = StorefrontOrder.objects.filter(shop=shop, order=order).select_related('order').first()
+    if sf_order is None:
+        return redirect(track)
+    url, error = _pay_again(request, shop, sf_order)
+    if url:
+        return redirect(url)
+    if error:
+        request.session['sf_payment_msg'] = {'track': order.id, 'status': 'failed', 'message': error}
+    return redirect(track)
 
 
 @ensure_csrf_cookie
@@ -1916,6 +1996,8 @@ def storefront_order_success(request, shop_slug, order_id):
         last_payment.refresh_from_db()
         order.order.refresh_from_db() if order.order_id else None
     main = order.order
+    from . import shop_payments
+    pay = shop_payments.pending_payment(main)
     payment_pending = bool(main and main.online_payment_status == Order.ONLINE_PENDING
                            and main.status not in ('Cancelled', 'Returned'))
     if main and main.online_payment_status == Order.ONLINE_PAID:
@@ -1928,7 +2010,7 @@ def storefront_order_success(request, shop_slug, order_id):
         payment_label = sf_lang.t('ক্যাশ অন ডেলিভারি', shop)
     return render(request, 'store/storefront/order_success.html', {
         'shop': shop, 'order': order, 'main_order': main, 'last_payment': last_payment,
-        'payment_msg': payment_msg, 'payment_pending': payment_pending, 'payment_label': payment_label,
+        'payment_msg': payment_msg, 'payment_pending': payment_pending, 'payment_label': payment_label, 'pay': pay,
         'order_no': f'ORD-{main.id}' if main else f'SF-{order.id}',
         'track_url': storefront_link(shop, 'storefront_track_order', order_flow.track_code(main), request=request)
                      if main else '',

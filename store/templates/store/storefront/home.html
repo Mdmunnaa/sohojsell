@@ -234,6 +234,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', 'Hind Siliguri',
 {% if shop_ld %}<script type="application/ld+json">{{ shop_ld|safe }}</script>{% endif %}
 </head>
 <body>
+{% pay_pending_bar %}
 
 {% if shop.announcement_text %}<div class="announce-bar">{{ shop.announcement_text }}</div>{% endif %}
 

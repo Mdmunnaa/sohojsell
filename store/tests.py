@@ -1496,6 +1496,76 @@ class StorefrontOnlinePaymentTests(ShopTestMixin, TestCase):
         self.assertEqual(retry['Location'], 'https://sandbox.paystation.com.bd/pay/again')
         self.assertEqual(StorefrontPayment.objects.count(), 2)
 
+    def test_customer_who_left_the_payment_page_can_pay_later(self):
+        """অনলাইনে দেবেন বলে অর্ডার দিয়ে অন্য পাতায় চলে গেলে: ওয়েবসাইটের উপরের বার, অন্য ফোন থেকে ট্র্যাক পাতা, সেলারের লিংক।"""
+        from . import order_flow
+        from .models import StorefrontPayment
+        self._place('full')
+        first = StorefrontPayment.objects.get()
+        order = first.order
+        # একই ব্রাউজারে দোকানের যেকোনো পাতায় উপরে "পেমেন্ট বাকি"
+        for url in ('/shop/payshop/', f'/shop/payshop/product/{self.product.id}/'):
+            html = self.client.get(url, HTTP_HOST='localhost').content.decode()
+            self.assertIn(f'অর্ডার #{order.id}-এর ৳1,060 অনলাইন পেমেন্ট এখনো হয়নি।', html)
+            self.assertIn(f'/shop/payshop/order/{first.sf_order_id}/pay/', html)
+        # অন্য ফোন: অর্ডার নম্বর আর মোবাইল দিয়ে ট্র্যাক পাতা → পেমেন্ট করুন
+        other = Client()
+        found = other.get('/shop/payshop/track/', {'order': order.id, 'phone': '01811111111'}, HTTP_HOST='localhost')
+        track_url = found['Location']
+        with self._verify('0', status='failed'):
+            page = other.get(track_url, HTTP_HOST='localhost').content.decode()
+        for needle in ('অনলাইন পেমেন্ট বাকি', '৳১,০৬০ পেমেন্ট করুন', 'অর্ডার দেওয়ার ২৪ ঘণ্টার মধ্যে পেমেন্ট না হলে',
+                       f'/t/{order_flow.track_code(order)}/pay/'):
+            self.assertIn(needle, page)
+        self.assertNotIn(f'/order/{first.sf_order_id}/', page)      # অর্ডার পাতা (নাম-ঠিকানা) এই ব্রাউজারে না
+        with mock.patch('store.paystation.initiate_payment',
+                        return_value={'ok': True, 'payment_url': 'https://sandbox.paystation.com.bd/pay/later'}) as init:
+            go = other.post(track_url + 'pay/', HTTP_HOST='localhost')
+        self.assertEqual(go['Location'], 'https://sandbox.paystation.com.bd/pay/later')
+        second = StorefrontPayment.objects.latest('created_at')
+        self.assertEqual((second.amount, second.kind, init.call_args.kwargs['amount']),
+                         (Decimal('1060.00'), 'full', Decimal('1060.00')))
+        # টাকা দিয়ে ফেরা: অন্য ফোনে অর্ডার পাতা না, ট্র্যাক পাতায়
+        with self._verify('1060'):
+            back = other.get(f'/shop/payshop/payment/return/?inv={second.invoice_number}&status=Successful',
+                             HTTP_HOST='localhost')
+        self.assertTrue(back['Location'].endswith(f'/t/{order_flow.track_code(order)}/'))
+        done = other.get(back['Location'], HTTP_HOST='localhost').content.decode()
+        self.assertIn('পেমেন্ট সফল হয়েছে, ধন্যবাদ!', done)
+        self.assertNotIn('অনলাইন পেমেন্ট বাকি', done)
+        order.refresh_from_db()
+        self.assertEqual((order.online_payment_status, order.status, order.advance_paid), ('paid', 'Confirmed', Decimal('1060.00')))
+        self.assertNotIn('অনলাইন পেমেন্ট এখনো হয়নি', self.client.get('/shop/payshop/', HTTP_HOST='localhost').content.decode())
+        # ভুল কোডে পেমেন্ট শুরু হয় না
+        self.assertTrue(other.post(f'/shop/payshop/t/{order.id}-bad/pay/', HTTP_HOST='localhost')['Location']
+                        .endswith('/track/'))
+
+    def test_seller_sends_payment_link_and_amount_follows_edits(self):
+        from . import order_flow, shop_payments
+        from .models import StorefrontPayment
+        self._place('advance')
+        order = StorefrontPayment.objects.get().order
+        self.client.force_login(self.user)
+        page = self.client.get(reverse('order_edit', args=[order.id])).content.decode()
+        self.assertIn('অনলাইন পেমেন্ট বাকি — ৳৬০', page)
+        self.assertIn(order_flow.track_link(self.shop, order), page)
+        self.assertIn('https://wa.me/8801811111111?text=', page)
+        self.assertIn(f"{reverse('order_edit', args=[order.id])}#pay-link", self.client.get(reverse('order_list')).content.decode())
+        # সেলার ডেলিভারি চার্জ বদলালে অগ্রিমও নতুন হিসাবে
+        order.delivery_charge, order.total_amount = Decimal('120'), Decimal('1120')
+        order.save(update_fields=['delivery_charge', 'total_amount'])
+        pending = shop_payments.pending_payment(order)
+        self.assertEqual((pending['amount'], pending['choice']), (Decimal('120.00'), 'advance'))
+        self.assertIsNotNone(pending['cancel_at'])
+        # কনফার্ম করলে আর নিজে থেকে বাতিল হয় না, তবু টাকা দেওয়া যায়
+        order.status = 'Confirmed'
+        order.save(update_fields=['status'])
+        self.assertIsNone(shop_payments.pending_payment(order)['cancel_at'])
+        order.status = 'Cancelled'
+        order.save(update_fields=['status'])
+        self.assertIsNone(shop_payments.pending_payment(order))
+        self.assertNotIn('id="pay-link"', self.client.get(reverse('order_edit', args=[order.id])).content.decode())
+
     def test_gateway_off_means_cash_on_delivery_only(self):
         with override_settings(PAYSTATION_TEST_SHOPS=[]):
             html = self.client.get('/shop/payshop/', HTTP_HOST='localhost').content.decode()
