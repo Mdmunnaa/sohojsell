@@ -17,6 +17,7 @@ UNITS = (
 LABELS = dict(UNITS)
 # পরিমাণের পরে কী লেখা হবে: "৩টা", "১.৫ কেজি"
 SUFFIX = {PCS: 'টা', 'kg': ' কেজি', 'litre': ' লিটার', 'metre': ' মিটার', 'gauge': ' গজ'}
+SUFFIX_EN = {PCS: '', 'kg': ' kg', 'litre': ' L', 'metre': ' m', 'gauge': ' yd'}      # ইংরেজি ওয়েবসাইট/ইনভয়েস
 MAX_QTY = Decimal('99999')
 STEP = Decimal('0.001')
 _BN = str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789')
@@ -84,8 +85,8 @@ def money(value):
 
 
 def show(qty, unit=PCS, *, bangla=True):
-    """"৩টা", "১.৫ কেজি"।"""
+    """"৩টা", "১.৫ কেজি"; bangla=False হলে ইংরেজিতে: "3", "1.5 kg"।"""
     text = f'{clean(qty or 0):f}'
-    if bangla:
-        text = text.translate(_EN)
-    return f'{text}{SUFFIX.get(unit or PCS, "টা")}'
+    if not bangla:
+        return f'{text}{SUFFIX_EN.get(unit or PCS, "")}'
+    return f'{text.translate(_EN)}{SUFFIX.get(unit or PCS, "টা")}'

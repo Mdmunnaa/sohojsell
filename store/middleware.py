@@ -131,25 +131,25 @@ class StaffAccessMiddleware:
 
                 # কোন লিংকে কোন পারমিশন লাগবে তার লিস্ট
                 restrictions = [
-                    (('/pos/', '/dues/'), staff.can_use_pos, "POS System"),
+                    (('/pos/', '/dues/'), staff.can_use_pos, "POS আর বাকির খাতা"),
                     # আসল ঠিকানাগুলো: /barcodes/ (আগে '/barcode/' লেখা ছিল, মিলত না), /online-orders/,
                     # /order/create|edit|delete/, /invoice/ — আগে এগুলো পারমিশন ছাড়াই খোলা যেত
                     (('/products/', '/categories/', '/barcodes/', '/purchases/', '/suppliers/'),
-                     staff.can_manage_products, "Product Management"),
+                     staff.can_manage_products, "প্রোডাক্ট আর স্টক"),
                     (('/orders/', '/order/', '/online-orders/', '/invoice/', '/courier/', '/offers/', '/reviews/',
                       '/landing/', '/messenger/'),
-                     staff.can_manage_orders, "Order Management"),
-                    (('/customers/',), staff.can_manage_customers, "Customer Database"),
-                    (('/sms/',), staff.can_send_sms, "SMS Panel"),
-                    (('/reports/', '/expenses/'), staff.can_view_reports, "Business Reports"),
+                     staff.can_manage_orders, "অর্ডার"),
+                    (('/customers/',), staff.can_manage_customers, "কাস্টমার"),
+                    (('/sms/',), staff.can_send_sms, "SMS"),
+                    (('/reports/', '/expenses/'), staff.can_view_reports, "রিপোর্ট আর খরচ"),
                     (('/settings/', '/staff/', '/banners/', '/billing/', '/website/', '/facebook/', '/settlement/'),
-                     staff.can_manage_settings, "Shop Settings"),
+                     staff.can_manage_settings, "দোকানের সেটিংস"),
                 ]
 
                 # যদি লিংকে ঢোকার পারমিশন না থাকে, তবে ড্যাশবোর্ডে পাঠিয়ে দাও
                 for paths, has_permission, feature_name in restrictions:
                     if any(path.startswith(p) for p in paths) and not has_permission:
-                        messages.error(request, f"Access Denied: You do not have permission for {feature_name}!")
+                        messages.error(request, f'"{feature_name}" খোলার অনুমতি আপনার নেই। দরকার হলে দোকানের মালিককে বলুন।')
                         return redirect('dashboard')
             else:
                 request.user.is_shop_staff = False

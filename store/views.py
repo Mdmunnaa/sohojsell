@@ -764,15 +764,56 @@ def update_order_status(request):
 # ============================================================
 # INVOICE
 # ============================================================
+INVOICE_TEXT = {
+    'bn': {'invoice': 'ইনভয়েস', 'date': 'তারিখ', 'to': 'যাকে', 'item': 'প্রোডাক্ট', 'qty': 'পরিমাণ', 'rate': 'দাম',
+           'total': 'মোট', 'subtotal': 'প্রোডাক্টের দাম', 'discount': 'ছাড়', 'vat': 'VAT', 'delivery': 'ডেলিভারি চার্জ',
+           'grand': 'সর্বমোট', 'paid': 'পরিশোধ করা হয়েছে', 'due': 'ডেলিভারির সময় দিতে হবে', 'all_paid': 'পুরো টাকা পরিশোধিত',
+           'payment': 'পেমেন্ট', 'tracking': 'কুরিয়ার ট্র্যাকিং', 'thanks': 'আমাদের থেকে কেনার জন্য ধন্যবাদ!',
+           'note': 'কম্পিউটারে তৈরি ইনভয়েস — সই লাগে না।', 'back': 'ফিরুন', 'print': 'প্রিন্ট', 'pdf': 'PDF নামান',
+           'deleted': '[মুছে ফেলা প্রোডাক্ট]', 'none': 'এই অর্ডারে কোনো প্রোডাক্ট নেই।', 'no_address': 'ঠিকানা দেওয়া নেই'},
+    'en': {'invoice': 'Invoice', 'date': 'Date', 'to': 'Billed to', 'item': 'Item', 'qty': 'Qty', 'rate': 'Price',
+           'total': 'Total', 'subtotal': 'Subtotal', 'discount': 'Discount', 'vat': 'VAT', 'delivery': 'Delivery charge',
+           'grand': 'Grand total', 'paid': 'Paid', 'due': 'To pay on delivery', 'all_paid': 'Fully paid',
+           'payment': 'Payment', 'tracking': 'Courier tracking', 'thanks': 'Thank you for shopping with us!',
+           'note': 'Computer-generated invoice — no signature needed.', 'back': 'Back', 'print': 'Print',
+           'pdf': 'Download PDF', 'deleted': '[deleted product]', 'none': 'No items in this order.',
+           'no_address': 'No address given'},
+}
+
+
 @login_required(login_url='/accounts/login/')
 def invoice_view(request, order_id):
+    """
+    কাস্টমারের ইনভয়েস। ওয়েবসাইট যে ভাষায়, ইনভয়েসও সেই ভাষায়। আগে "Cash on Delivery" সবসময় লেখা থাকত (আগে টাকা
+    দেওয়া অর্ডারেও), আর ছাড় দুবার বাদ যেত — এখন দাম, ছাড়, পরিশোধ আর বাকি সার্ভারেই হিসাব হয়।
+    """
     shop = request.user.shop
-    order = get_object_or_404(Order, id=order_id, shop=shop)
-    order_items = order.items.all()
-    subtotal = order.total_amount - order.delivery_charge
+    order = get_object_or_404(Order.objects.select_related('customer'), id=order_id, shop=shop)
+    lang = 'en' if getattr(shop, 'storefront_language', 'bn') == 'en' else 'bn'
+    lines = []
+    for item in order.items.select_related('product'):
+        unit = item.product.unit if item.product_id else units.PCS
+        lines.append({'name': item.display_name or INVOICE_TEXT[lang]['deleted'], 'price': item.price,
+                      'qty': units.show(item.quantity, unit, bangla=lang == 'bn'),
+                      'total': units.money(item.price * item.quantity)})
+    from .templatetags.bangla import taka
+
+    def money(value):
+        text = taka(value)
+        return text if lang == 'bn' else text.translate(str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789'))
+    for line in lines:
+        line['price_text'], line['total_text'] = money(line['price']), money(line['total'])
+    subtotal = sum((line['total'] for line in lines), Decimal('0'))
+    due = Decimal(couriers.cod_amount(order)) if order.source != 'pos' else order.due_amount
+    paid = max(order.total_amount - due, Decimal('0'))
+    when = timezone.localtime(order.created_at)
     return render(request, 'store/invoice.html', {
-        'shop': shop, 'order': order,
-        'order_items': order_items, 'subtotal': subtotal
+        'shop': shop, 'order': order, 'lines': lines, 'T': INVOICE_TEXT[lang], 'lang': lang,
+        'when': when.strftime('%d %b %Y, %I:%M %p') if lang == 'en' else None,
+        'm': {'subtotal': money(subtotal), 'discount': money(order.discount or 0), 'vat': money(order.vat_amount or 0),
+              'delivery': money(order.delivery_charge or 0), 'total': money(order.total_amount), 'paid': money(paid),
+              'due': money(due)},
+        'paid': paid, 'due': due,
     })
 
 
@@ -788,10 +829,10 @@ def customer_list(request):
         # বাতিল আর ফেরত অর্ডারের টাকা "মোট কেনা"-য় ধরা হয় না
         total_spent=Sum('orders__total_amount', filter=~Q(orders__status__in=['Returned', 'Cancelled'])),
         returned_orders=Count('orders', filter=Q(orders__status__in=['Returned', 'Cancelled']))
-    ).prefetch_related('orders').order_by('-id')
-    q = request.GET.get('q', '')
+    ).order_by('-id')
+    q = request.GET.get('q', '').strip()
     if q:
-        customers = customers.filter(Q(name__icontains=q) | Q(phone__icontains=q))
+        customers = customers.filter(Q(name__icontains=q) | Q(phone__icontains=q.translate(BN_TO_EN_DIGITS)))
     paginator = Paginator(customers, 25)
     page = request.GET.get('page', 1)
     try:
@@ -2041,7 +2082,9 @@ def add_edit_staff(request, staff_id=None):
         name = (request.POST.get('name') or '').strip()[:100]
         phone = normalize_bd_mobile(request.POST.get('phone') or '')
         password = request.POST.get('password') or ''
-        permissions = {field: request.POST.get(field) == 'on' for field in STAFF_PERMISSIONS}
+        # "সেটিংস" (ওয়েবসাইট, বিল, অনলাইনের টাকা) মালিকের — ফর্মে নেই, বাইরে থেকে পাঠালেও নেওয়া হয় না
+        permissions = {field: request.POST.get(field) == 'on' for field in STAFF_PERMISSIONS
+                       if field != 'can_manage_settings'}
         error = ''
         if not name:
             error = 'স্টাফের নাম দিন।'
@@ -2062,6 +2105,13 @@ def add_edit_staff(request, staff_id=None):
                 staff_user.name, staff_user.phone_number = name, phone
                 if password:            # নতুন পাসওয়ার্ড দিলে তবেই বদলায়
                     staff_user.set_password(password)
+                # বন্ধ করলে আর লগইন করতে পারে না (খোলা থাকা লগইনও কাজ করে না); আবার চালু করতে প্যাকেজে জায়গা লাগে
+                active = request.POST.get('active') == 'on'
+                if active and not staff_user.is_active and not can_add_staff(shop):
+                    messages.error(request, f'প্যাকেজে সর্বোচ্চ {staff_limit(shop)} জন চালু স্টাফ রাখা যায় — '
+                                            'আগে অন্য কাউকে বন্ধ করুন বা প্যাকেজ বাড়ান।')
+                    return redirect('edit_staff', staff_id=staff_profile.id)
+                staff_user.is_active = active
                 staff_user.save()
                 for field, value in permissions.items():
                     setattr(staff_profile, field, value)
@@ -2083,8 +2133,10 @@ def staff_list(request):
         return denied
     shop = request.user.shop
     # শুধু এই শপের স্টাফদের লিস্ট আনবে
-    staff_members = StaffProfile.objects.filter(shop=shop).order_by('-created_at')
-    return render(request, 'store/staff_list.html', {'staff_members': staff_members})
+    staff_members = StaffProfile.objects.filter(shop=shop).select_related('user').order_by('-user__is_active', '-created_at')
+    return render(request, 'store/staff_list.html', {
+        'staff_members': staff_members, 'can_add': can_add_staff(shop),
+        'active_count': sum(1 for s in staff_members if s.user.is_active)})
 
 
 from .models import PaymentRequest

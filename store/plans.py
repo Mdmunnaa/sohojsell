@@ -79,7 +79,8 @@ def staff_limit(shop):
 
 
 def can_add_staff(shop):
-    return shop.staff_members.count() < staff_limit(shop)
+    # বন্ধ করা স্টাফ (চাকরি ছেড়ে গেছে) সীমায় ধরা হয় না — তার জায়গায় নতুন কাউকে রাখা যায়
+    return shop.staff_members.filter(user__is_active=True).count() < staff_limit(shop)
 
 
 def has_facebook(shop):

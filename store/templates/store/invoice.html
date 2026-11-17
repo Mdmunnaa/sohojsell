@@ -1,9 +1,9 @@
-{% load static %}<!DOCTYPE html>
-<html lang="en">
+{% load static bangla %}<!DOCTYPE html>
+<html lang="{{ lang }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice - #ORD-{{ order.id }}</title>
+    <title>{{ T.invoice }} #ORD-{{ order.id }} — {{ shop.name }}</title>
     <link href="{% static 'vendor/bootstrap/bootstrap-app.min.css' %}" rel="stylesheet">
     {% include 'store/partials/icons_app.html' %}
     {% include 'store/partials/fonts.html' with jakarta=1 %}
@@ -37,8 +37,7 @@
             font-size: 2.5rem;
             font-weight: 800;
             color: #212529;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
         }
         .table > :not(caption) > * > * {
             padding: 1rem 1rem;
@@ -95,34 +94,34 @@
 
 <div class="container">
     <div class="text-end mt-4 mb-2 no-print" style="max-width: 850px; margin: 0 auto;">
-        <a href="javascript:history.back()" class="btn btn-light shadow-sm me-2"><i class="bi bi-arrow-left"></i> Back</a>
-        <button onclick="window.print()" class="btn btn-primary shadow-sm px-4 fw-bold"><i class="bi bi-printer-fill me-2"></i> Print Invoice</button>
+        <a href="javascript:history.back()" class="btn btn-light shadow-sm me-2"><i class="bi bi-arrow-left"></i> {{ T.back }}</a>
+        <a href="?download=pdf" class="btn btn-light shadow-sm me-2"><i class="bi bi-file-earmark-arrow-down"></i> {{ T.pdf }}</a>
+        <button onclick="window.print()" class="btn btn-primary shadow-sm px-4 fw-bold"><i class="bi bi-printer-fill me-2"></i> {{ T.print }}</button>
     </div>
 
     <div class="invoice-container">
 
-        <div class="invoice-header d-flex justify-content-between align-items-center">
+        <div class="invoice-header d-flex justify-content-between align-items-center gap-3 flex-wrap">
             <div>
-                <div class="brand-name"><i class="bi bi-shop me-2"></i>{{ shop.name }}</div>
-                <div class="text-muted mt-1"><i class="bi bi-telephone-fill me-1"></i> {{ shop.phone|default:"N/A" }}</div>
-                <div class="text-muted mt-1"><i class="bi bi-geo-alt-fill me-1"></i> {{ shop.address|default:"Address not added yet" }}</div>
+                <div class="brand-name">{% if shop.logo %}<img src="{{ shop.logo.url }}" alt="" style="height:42px;width:auto;margin-right:10px;vertical-align:middle">{% else %}<i class="bi bi-shop me-2"></i>{% endif %}{{ shop.name }}</div>
+                {% if shop.phone %}<div class="text-muted mt-1"><i class="bi bi-telephone-fill me-1"></i> {{ shop.phone }}</div>{% endif %}
+                {% if shop.address %}<div class="text-muted mt-1"><i class="bi bi-geo-alt-fill me-1"></i> {{ shop.address }}</div>{% endif %}
             </div>
             <div class="text-end">
-                <div class="invoice-title">INVOICE</div>
-                <div class="text-muted fw-medium mt-1">Date: {{ order.created_at|date:"d M Y, h:i A" }}</div>
-
+                <div class="invoice-title">{{ T.invoice }}</div>
+                <div class="text-muted fw-medium mt-1">{{ T.date }}: {% if lang == 'en' %}{{ when }}{% else %}{{ order.created_at|bn_when }}{% endif %}</div>
             </div>
         </div>
 
         <div class="row mb-4">
             <div class="col-sm-8">
-                <h6 class="text-muted text-uppercase fw-bold mb-3" style="font-size: 0.8rem; letter-spacing: 1px;">Billed To:</h6>
+                <h6 class="text-muted fw-bold mb-3" style="font-size: 0.85rem; letter-spacing: .5px;">{{ T.to }}</h6>
                 <h4 class="fw-bold text-dark mb-1">{{ order.customer.name }}</h4>
                 <p class="mb-0 text-muted"><i class="bi bi-telephone text-primary me-2"></i>{{ order.customer.phone }}</p>
-                <p class="mb-0 text-muted"><i class="bi bi-geo-alt text-primary me-2"></i>{{ order.customer.address|default:"Address not provided" }}</p>
+                <p class="mb-0 text-muted"><i class="bi bi-geo-alt text-primary me-2"></i>{{ order.customer.address|default:T.no_address }}</p>
             </div>
             <div class="col-sm-4 barcode-container">
-                <img id="barcode" class="img-fluid">
+                <img id="barcode" class="img-fluid" alt="ORD-{{ order.id }}">
                 <p class="text-muted fw-bold mt-1 mb-0" style="letter-spacing: 2px;">#ORD-{{ order.id }}</p>
             </div>
         </div>
@@ -131,26 +130,22 @@
             <table class="table table-borderless align-middle">
                 <thead class="bg-light rounded-3">
                     <tr>
-                        <th class="rounded-start-3">Description</th>
-                        <th class="text-center">Qty</th>
-                        <th class="text-end">Unit Price</th>
-                        <th class="text-end rounded-end-3">Total</th>
+                        <th class="rounded-start-3">{{ T.item }}</th>
+                        <th class="text-center">{{ T.qty }}</th>
+                        <th class="text-end">{{ T.rate }}</th>
+                        <th class="text-end rounded-end-3">{{ T.total }}</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in order.items.all %}
+                    {% for line in lines %}
                     <tr class="item-row">
-                        <td>
-                            <span class="fw-bold text-dark">{{ item.display_name|default:"[Product Deleted]" }}</span>
-                        </td>
-                        <td class="text-center fw-medium">{{ item.quantity }}</td>
-                        <td class="text-end text-muted text-nowrap">Tk. {{ item.price }}</td>
-                        <td class="text-end fw-bold text-dark text-nowrap">Tk. {% widthratio item.price 1 item.quantity %}</td>
+                        <td><span class="fw-bold text-dark">{{ line.name }}</span></td>
+                        <td class="text-center fw-medium text-nowrap">{{ line.qty }}</td>
+                        <td class="text-end text-muted text-nowrap">{{ line.price_text }}</td>
+                        <td class="text-end fw-bold text-dark text-nowrap">{{ line.total_text }}</td>
                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="4" class="text-center text-muted py-4">No items found in this order.</td>
-                    </tr>
+                    <tr><td colspan="4" class="text-center text-muted py-4">{{ T.none }}</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -159,42 +154,53 @@
         <div class="row mt-5">
             <div class="col-sm-6">
                 <div class="bg-light p-4 rounded-4 mt-1">
-                    <h6 class="text-uppercase fw-bold text-muted mb-3" style="font-size: 0.8rem;">Payment Info</h6>
-                    <p class="mb-1 fw-medium"><i class="bi bi-credit-card-2-front me-2 text-primary"></i>Cash on Delivery (COD)</p>
+                    <h6 class="fw-bold text-muted mb-3" style="font-size: 0.85rem;">{{ T.payment }}</h6>
+                    {% if due > 0 %}
+                    {% if paid > 0 %}<p class="mb-1 fw-medium"><i class="bi bi-check-circle me-2 text-success"></i>{{ T.paid }}: <b>{{ m.paid }}</b></p>{% endif %}
+                    <p class="mb-1 fw-bold"><i class="bi bi-cash-coin me-2 text-primary"></i>{{ T.due }}: {{ m.due }}</p>
+                    {% else %}
+                    <p class="mb-1 fw-bold text-success"><i class="bi bi-check-circle-fill me-2"></i>{{ T.all_paid }}</p>
+                    {% endif %}
                     {% if order.steadfast_tracking_code %}
-                    <p class="mb-0 fw-medium mt-2"><i class="bi bi-truck me-2 text-success"></i>Tracking: <span class="text-success">{{ order.steadfast_tracking_code }}</span></p>
+                    <p class="mb-0 fw-medium mt-2"><i class="bi bi-truck me-2 text-success"></i>{{ T.tracking }}: <span class="text-success">{{ order.steadfast_tracking_code }}</span></p>
                     {% endif %}
                 </div>
             </div>
             <div class="col-sm-6">
-                <table class="table table-borderless table-sm text-end ms-auto" style="max-width: 300px;">
+                <table class="table table-borderless table-sm text-end ms-auto" style="max-width: 320px;">
                     <tr>
-                        <td class="text-muted fw-medium pb-2 align-middle">Subtotal:</td>
-                        <td class="fw-bold pb-2 text-nowrap align-middle">Tk. {{ subtotal|default:order.total_amount }}</td>
+                        <td class="text-muted fw-medium pb-2 align-middle">{{ T.subtotal }}</td>
+                        <td class="fw-bold pb-2 text-nowrap align-middle">{{ m.subtotal }}</td>
                     </tr>
-
                     {% if order.discount and order.discount > 0 %}
                     <tr>
-                        <td class="text-muted fw-medium pb-2 text-success align-middle">Discount:</td>
-                        <td class="fw-bold pb-2 text-success text-nowrap align-middle">- Tk. {{ order.discount }}</td>
+                        <td class="text-muted fw-medium pb-2 text-success align-middle">{{ T.discount }}</td>
+                        <td class="fw-bold pb-2 text-success text-nowrap align-middle">− {{ m.discount }}</td>
                     </tr>
                     {% endif %}
-
+                    {% if order.vat_amount and order.vat_amount > 0 %}
                     <tr>
-                        <td class="text-muted fw-medium pb-3 border-bottom align-middle">Delivery Charge:</td>
-                        <td class="fw-bold pb-3 border-bottom text-nowrap align-middle">Tk. {{ order.delivery_charge|default:"0.00" }}</td>
+                        <td class="text-muted fw-medium pb-2 align-middle">{{ T.vat }}</td>
+                        <td class="fw-bold pb-2 text-nowrap align-middle">{{ m.vat }}</td>
                     </tr>
+                    {% endif %}
+                    {% if order.delivery_charge and order.delivery_charge > 0 %}
+                    <tr>
+                        <td class="text-muted fw-medium pb-3 border-bottom align-middle">{{ T.delivery }}</td>
+                        <td class="fw-bold pb-3 border-bottom text-nowrap align-middle">{{ m.delivery }}</td>
+                    </tr>
+                    {% endif %}
                     <tr class="total-row">
-                        <td class="pt-3 rounded-start-3 align-middle">Grand Total:</td>
-                        <td class="pt-3 rounded-end-3 fs-4 text-nowrap align-middle">Tk. {{ order.total_amount }}</td>
+                        <td class="pt-3 rounded-start-3 align-middle">{{ T.grand }}</td>
+                        <td class="pt-3 rounded-end-3 fs-4 text-nowrap align-middle">{{ m.total }}</td>
                     </tr>
                 </table>
             </div>
         </div>
 
         <div class="text-center mt-5 pt-4 border-top">
-            <h5 class="fw-bold text-dark mb-1">Thank you for your business!</h5>
-            <p class="text-muted small">This is a system generated invoice.</p>
+            <h5 class="fw-bold text-dark mb-1">{{ T.thanks }}</h5>
+            <p class="text-muted small">{{ T.note }}</p>
         </div>
     </div>
 </div>

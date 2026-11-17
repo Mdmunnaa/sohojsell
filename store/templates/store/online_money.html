@@ -110,10 +110,14 @@
   {% if balance.open_request %}
   <div class="st-action wait">
     <div class="txt"><i class="bi bi-hourglass-split me-1"></i> <b>৳{{ balance.open_request.amount|floatformat:"0g"|bn }}</b> তোলার অনুরোধ যাচাই হচ্ছে — {{ balance.open_request.method }} {{ balance.open_request.account }}-এ পাঠানো হবে। পাঠানো হলে SMS পাবেন।</div>
+    {% if not request.user.is_shop_staff %}
     <form method="post" action="{% url 'settlement_cancel' balance.open_request.pk %}">{% csrf_token %}
       <button type="submit" class="st-btn light" onclick="return confirm('অনুরোধটা বাতিল করবেন?')">বাতিল করুন</button>
     </form>
+    {% endif %}
   </div>
+  {% elif request.user.is_shop_staff %}
+  <div class="st-action wait"><div class="txt"><i class="bi bi-shield-lock me-1"></i> টাকা তোলা আর টাকা কোথায় যাবে বদলানো শুধু দোকানের মালিক করতে পারেন।</div></div>
   {% elif balance.can_request %}
   <div class="st-action">
     <div class="txt"><b>কত টাকা তুলবেন?</b> ৳{{ balance.min|floatformat:"0g"|bn }} থেকে ৳{{ balance.available|floatformat:"0g"|bn }} পর্যন্ত তোলা যায়।</div>
@@ -128,7 +132,7 @@
 
   <div class="st-account">
     <i class="bi bi-bank"></i>
-    {% if shop.payout_account %}<span>টাকা যায়: <b>{{ shop.get_payout_method_display }} {{ shop.payout_account }}</b>{% if shop.payout_account_name %} ({{ shop.payout_account_name }}){% endif %}</span> <a href="{% url 'website_settings' %}?tab=payment">বদলান</a>
+    {% if shop.payout_account %}<span>টাকা যায়: <b>{{ shop.get_payout_method_display }} {{ shop.payout_account }}</b>{% if shop.payout_account_name %} ({{ shop.payout_account_name }}){% endif %}</span>{% if not request.user.is_shop_staff %} <a href="{% url 'website_settings' %}?tab=payment">বদলান</a>{% endif %}
     {% else %}<span>টাকা কোথায় পাঠাব, এখনো দেওয়া হয়নি।</span> <a href="{% url 'website_settings' %}?tab=payment">এখন দিন</a>{% endif %}
   </div>
 </section>

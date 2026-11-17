@@ -483,11 +483,15 @@
         <div class="ws-card mt-3">
           <div class="fw-bold mb-1">অনলাইনে নেওয়া টাকা কোথায় পাঠাব</div>
           <div class="ws-help mb-3">কাস্টমারের টাকা আগে {{ site.name }}-এর PayStation অ্যাকাউন্টে আসে। {{ fee_percent|bn }}% ফি কেটে বাকিটা এখানে পাঠানো হয় — প্রতিটা পেমেন্টের {{ balance.hold_days|bn }} দিন পর, কমপক্ষে ৳{{ balance.min|floatformat:"0g"|bn }} জমলে।</div>
+          {% if request.user.is_shop_staff %}
+          <div class="ws-note"><i class="bi bi-shield-lock me-1"></i> {% if shop.payout_account %}এখন যায়: <b>{{ shop.get_payout_method_display }} {{ shop.payout_account }}</b>। {% endif %}টাকা কোথায় যাবে, সেটা শুধু দোকানের মালিক বদলাতে পারেন।</div>
+          {% else %}
           <div class="row g-3">
             <div class="col-md-4"><label class="form-label" for="{{ payment_form.payout_method.id_for_label }}">মাধ্যম</label>{{ payment_form.payout_method }}</div>
             <div class="col-md-8"><label class="form-label" for="{{ payment_form.payout_account.id_for_label }}">নম্বর / অ্যাকাউন্ট</label>{{ payment_form.payout_account }}{% for e in payment_form.payout_account.errors %}<div class="ws-err">{{ e }}</div>{% endfor %}</div>
             <div class="col-12"><label class="form-label" for="{{ payment_form.payout_account_name.id_for_label }}">অ্যাকাউন্টের নাম</label>{{ payment_form.payout_account_name }}</div>
           </div>
+          {% endif %}
         </div>
       </div>
       <div class="qp-off" id="qpOff" {% if payment_form.online_enabled.value %}hidden{% endif %}><i class="bi bi-cash-coin fs-5"></i> এখন কাস্টমার শুধু ক্যাশ অন ডেলিভারিতে অর্ডার দেবে — পণ্য হাতে পেয়ে কুরিয়ারকে টাকা দেবে।</div>

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Dashboard{% endblock %} — {{ site.name }}</title>
+    <title>{% block title %}ড্যাশবোর্ড{% endblock %} — {{ site.name }}</title>
     {% include 'store/partials/brand_head.html' %}
     <link href="{% static 'vendor/bootstrap/bootstrap-app.min.css' %}" rel="stylesheet">
     {% include 'store/partials/icons_app.html' %}
@@ -563,12 +563,12 @@
 
     <div class="topbar">
       <!-- Desktop Toggle Button -->
-      <button class="desktop-toggle" onclick="toggleDesktopSidebar()" aria-label="Toggle Sidebar" title="Minimize Sidebar">
+      <button class="desktop-toggle" onclick="toggleDesktopSidebar()" aria-label="মেনু ছোট-বড় করুন" title="মেনু ছোট-বড় করুন">
         <i class="bi bi-layout-sidebar-inset"></i>
       </button>
 
       <!-- Mobile Hamburger Button -->
-      <button class="topbar-burger" onclick="sbOpen()" aria-label="Menu">
+      <button class="topbar-burger" onclick="sbOpen()" aria-label="মেনু">
         <i class="bi bi-list"></i>
       </button>
 

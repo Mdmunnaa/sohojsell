@@ -68,7 +68,7 @@ class PublicPagesTests(TestCase):
             response = self.client.get(reverse(name))
             self.assertEqual(response.status_code, 200, name)
             html = response.content.decode()
-            self.assertIn('Get Started Free', html, name)                      # উপরের বার
+            self.assertIn('ফ্রি শুরু করুন', html, name)                      # উপরের বার
             self.assertIn(reverse('privacy_policy'), html, name)               # footer-এর Legal লিংক
             self.assertIn(reverse('data_deletion'), html, name)
 
@@ -6847,3 +6847,75 @@ class WeightBarcodeStockTests(ShopTestMixin, TestCase):
             'item_key[]': [str(self.soap.id)], 'item_qty[]': ['1.5'], 'item_cost[]': ['40'],
             'supplier': '', 'purchased_on': ''})
         self.assertContains(bad, 'পূর্ণ সংখ্যায়')
+
+
+class BanglaPagesAndStaffSafetyTests(ShopTestMixin, TestCase):
+    """স্টাফ, কাস্টমার, বিল, বারকোড প্রিন্ট আর ইনভয়েস বাংলায়; স্টাফ টাকা কোথায় যাবে বদলাতে বা টাকা তুলতে পারে না।"""
+
+    def setUp(self):
+        from .models import Customer, Order, OrderItem, Product
+        self.user, self.shop = self.make_shop(phone='01755500094', slug='banglashop')
+        self.rice = Product.objects.create(shop=self.shop, name='চাল', price=Decimal('70'), stock_quantity=50, unit='kg')
+        customer = Customer.objects.create(shop=self.shop, name='রহিম', phone='01712345679', address='মিরপুর')
+        self.order = Order.objects.create(shop=self.shop, customer=customer, total_amount=Decimal('235'),
+                                          delivery_charge=Decimal('60'), discount=Decimal('0'), advance_paid=Decimal('60'),
+                                          source='storefront')
+        OrderItem.objects.create(order=self.order, product=self.rice, quantity=Decimal('2.5'), price=Decimal('70'))
+
+    def test_pages_are_in_bangla(self):
+        for name, words in (('staff_list', ['এখনো কোনো স্টাফ নেই', 'নতুন স্টাফ']),
+                            ('add_staff', ['কী কী করতে পারবে', 'শুধু আপনি (মালিক)', 'স্টাফ অ্যাকাউন্ট তৈরি করুন']),
+                            ('customer_list', ['নাম বা মোবাইল নম্বর দিয়ে খুঁজুন', 'মোট কেনা']),
+                            ('barcode_print', ['বারকোড স্টিকার প্রিন্ট', 'সব বাছুন'])):
+            html = self.client.get(reverse(name)).content.decode()
+            for word in words:
+                self.assertIn(word, html, name)
+        for english in ('Staff Management', 'Customer Database', 'Barcode Sticker Print', 'Add New Staff'):
+            self.assertNotIn(english, self.client.get(reverse('staff_list')).content.decode())
+        found = self.client.get(reverse('customer_list'), {'q': '০১৭১২৩৪৫৬৭৯'}).content.decode()
+        self.assertIn('রহিম', found)
+
+    def test_invoice_math_and_language(self):
+        html = self.client.get(reverse('invoice', args=[self.order.id])).content.decode()
+        self.assertIn('ইনভয়েস', html)
+        self.assertIn('২.৫ কেজি', html)
+        self.assertIn('৳১৭৫', html)                          # ২.৫ × ৭০
+        self.assertIn('পরিশোধ করা হয়েছে', html)
+        self.assertIn('ডেলিভারির সময় দিতে হবে: ৳১৭৫', html)
+        self.assertNotIn('Cash on Delivery', html)
+        self.shop.storefront_language = 'en'
+        self.shop.save()
+        html = self.client.get(reverse('invoice', args=[self.order.id])).content.decode()
+        self.assertIn('To pay on delivery: ৳175', html)
+        self.assertIn('2.5 kg', html)
+
+    def test_staff_cannot_touch_payout_or_withdraw_and_can_be_switched_off(self):
+        from .models import StaffProfile
+        self.shop.payout_method, self.shop.payout_account = 'bkash', '01711111111'
+        self.shop.save()
+        response = self.client.post(reverse('add_staff'), {'name': 'করিম', 'phone': '01812345678', 'password': 'secret12',
+                                                           'can_manage_settings': 'on'})
+        self.assertRedirects(response, reverse('staff_list'))
+        staff = StaffProfile.objects.get(shop=self.shop)
+        self.assertFalse(staff.can_manage_settings)              # ফর্মে নেই — সেটিংস শুধু মালিকের
+        # পুরোনো কোনো স্টাফের সেটিংসের অনুমতি থেকে গেলেও টাকা কোথায় যাবে বা টাকা তোলা — পারে না
+        staff.can_manage_settings = True
+        staff.save()
+        self.client.force_login(staff.user)
+        self.client.post(reverse('website_settings'), {'section': 'payment', 'payment_rule': self.shop.payment_rule,
+                                                       'payout_method': 'nagad', 'payout_account': '01999999999',
+                                                       'payout_account_name': 'চোর'})
+        self.shop.refresh_from_db()
+        self.assertEqual((self.shop.payout_method, self.shop.payout_account), ('bkash', '01711111111'))
+        response = self.client.post(reverse('settlement_request'), {'amount': '1000'}, follow=True)
+        self.assertContains(response, 'শুধু দোকানের মালিক')
+        page = self.client.get(reverse('order_list'), follow=True).content.decode()
+        self.assertIn('খোলার অনুমতি আপনার নেই', page)
+        # মালিক বন্ধ করলে আর ঢুকতে পারে না, আর সীমায় ধরা হয় না
+        self.client.force_login(self.user)
+        self.client.post(reverse('edit_staff', args=[staff.id]), {'name': 'করিম', 'phone': '01812345678', 'password': ''})
+        staff.user.refresh_from_db()
+        self.assertFalse(staff.user.is_active)
+        from .plans import can_add_staff
+        self.assertTrue(can_add_staff(self.shop))
+        self.assertIn('বন্ধ — লগইন করতে পারে না', self.client.get(reverse('staff_list')).content.decode())

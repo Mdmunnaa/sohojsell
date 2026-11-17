@@ -1,7 +1,7 @@
 {% extends 'store/base.html' %}
 {% load static %}
 {% block page_title %}বারকোড প্রিন্ট{% endblock %}
-{% block title %}Print Barcodes{% endblock %}
+{% block title %}বারকোড প্রিন্ট - {{ shop.name }}{% endblock %}
 {% block content %}
 
 {% include 'store/partials/fonts.html' with jakarta=1 %}
@@ -273,14 +273,14 @@
         <i class="bi bi-upc-scan"></i>
       </div>
       <div>
-        <div class="bp-title">Barcode Sticker Print</div>
-        <div class="bp-subtitle">Product select করে print দিন — product-এর গায়ে লাগান</div>
+        <div class="bp-title">বারকোড স্টিকার প্রিন্ট</div>
+        <div class="bp-subtitle">প্রোডাক্ট বেছে কয়টা লাগবে লিখুন, প্রিন্ট করে প্রোডাক্টের গায়ে লাগান</div>
       </div>
     </div>
     <div class="bp-actions">
       <a href="{% url 'pos' %}" class="btn-back"><i class="bi bi-arrow-left"></i> POS</a>
       <button class="btn-print" onclick="generateAndPrint()">
-        <i class="bi bi-printer-fill"></i> Print Stickers
+        <i class="bi bi-printer-fill"></i> স্টিকার প্রিন্ট
       </button>
     </div>
   </div>
@@ -291,12 +291,12 @@
     <!-- LEFT: Product Selection -->
     <div class="bp-panel">
       <div class="bp-panel-header">
-        <span class="bp-panel-title">Products Select করুন</span>
+        <span class="bp-panel-title">প্রোডাক্ট বাছুন</span>
       </div>
       <div class="bp-panel-body">
         <div class="bp-search-wrap">
           <i class="bi bi-search"></i>
-          <input type="text" id="prod-search" class="bp-search" placeholder="Search product...">
+          <input type="text" id="prod-search" class="bp-search" placeholder="নাম বা বারকোড দিয়ে খুঁজুন" aria-label="প্রোডাক্ট খুঁজুন">
         </div>
         <div class="bp-product-list" id="product-list">
           {% for product in products %}
@@ -313,7 +313,7 @@
                   <span>·</span>
                   <span class="psi-barcode">{{ product.barcode }}</span>
                 {% else %}
-                  <span class="psi-nobc"><i class="bi bi-exclamation-triangle"></i> No barcode</span>
+                  <span class="psi-nobc"><i class="bi bi-exclamation-triangle"></i> বারকোড নেই</span>
                 {% endif %}
               </div>
             </div>
@@ -321,13 +321,13 @@
                    value="1" min="1" max="100" onclick="event.stopPropagation()">
           </div>
           {% empty %}
-          <p style="text-align:center; color:var(--ink3); padding: 24px 0; font-size:13px;">No products found.</p>
+          <p style="text-align:center; color:var(--ink3); padding: 24px 0; font-size:13px;">কোনো চালু প্রোডাক্ট নেই।</p>
           {% endfor %}
         </div>
         <div class="bp-bulk">
-          <button class="btn-bulk" onclick="selectAll()">Select All</button>
-          <button class="btn-bulk" onclick="clearAll()">Clear</button>
-          <div class="bp-count" id="sel-count">0 selected</div>
+          <button class="btn-bulk" onclick="selectAll()">সব বাছুন</button>
+          <button class="btn-bulk" onclick="clearAll()">সব বাদ</button>
+          <div class="bp-count" id="sel-count">০টা বাছা</div>
         </div>
       </div>
     </div>
@@ -335,9 +335,9 @@
     <!-- RIGHT: Preview -->
     <div class="bp-panel" style="overflow:hidden;">
       <div class="bp-preview-top">
-        <span class="bp-panel-title">Preview</span>
+        <span class="bp-panel-title">কেমন ছাপা হবে</span>
         <div class="bp-col-row">
-          <label>Columns:</label>
+          <label>এক সারিতে:</label>
           <button class="col-btn" onclick="setCol(2)" id="col-2">2</button>
           <button class="col-btn active" onclick="setCol(4)" id="col-4">4</button>
           <button class="col-btn" onclick="setCol(5)" id="col-5">5</button>
@@ -347,7 +347,7 @@
         <div id="sticker-grid" class="sticker-grid">
           <div class="bp-empty">
             <div class="bp-empty-icon"><i class="bi bi-upc"></i></div>
-            <div class="bp-empty-text">Left side থেকে product select করুন</div>
+            <div class="bp-empty-text">বাঁ পাশ থেকে প্রোডাক্ট বাছুন (ফোনে উপরে)</div>
           </div>
         </div>
       </div>
@@ -371,7 +371,7 @@ function setCol(n) {
 
 function updateCount() {
   const total = Object.keys(selected).length;
-  document.getElementById('sel-count').textContent = total + ' selected';
+  document.getElementById('sel-count').textContent = String(total).replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d]) + 'টা বাছা';
 }
 
 function toggleProduct(id, name, price, barcode) {
@@ -430,7 +430,7 @@ function updatePreview() {
     grid.style.gridTemplateColumns = '';
     grid.innerHTML = `<div class="bp-empty">
       <div class="bp-empty-icon"><i class="bi bi-upc"></i></div>
-      <div class="bp-empty-text">Left side থেকে product select করুন</div>
+      <div class="bp-empty-text">বাঁ পাশ থেকে প্রোডাক্ট বাছুন (ফোনে উপরে)</div>
     </div>`;
     return;
   }
@@ -470,17 +470,18 @@ function updatePreview() {
 
 function generateAndPrint() {
   if (!Object.keys(selected).length) {
-    alert('কোনো product select করা হয়নি!');
+    alert('আগে বাঁ পাশ থেকে প্রোডাক্ট বাছুন।');
     return;
   }
   window.print();
 }
 
 document.getElementById('prod-search').addEventListener('input', function() {
-  const q = this.value.toLowerCase();
+  const q = this.value.trim().toLowerCase().replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
   document.querySelectorAll('.psi').forEach(item => {
     const name = item.querySelector('.psi-name')?.textContent.toLowerCase() || '';
-    item.style.display = name.includes(q) ? '' : 'none';
+    const code = item.querySelector('.psi-barcode')?.textContent || '';
+    item.style.display = name.includes(q) || code.includes(q) ? '' : 'none';
   });
 });
 

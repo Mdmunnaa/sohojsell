@@ -1,12 +1,26 @@
 {% extends 'store/base.html' %}
-{% block title %}Customers{% endblock %}
+{% block title %}কাস্টমার - {{ request.user.shop.name }}{% endblock %}
 {% block page_title %}কাস্টমার{% endblock %}
 {% block content %}
+{% load bangla %}
 {% include 'store/partials/risk_styles.html' %}
+<style>
+  @media (max-width: 720px) {
+    /* ফোনে টেবিলের বদলে কার্ডের মতো সারি */
+    .cu-table thead { display: none; }
+    .cu-table, .cu-table tbody { display: block; width: 100%; }
+    .cu-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "cust spent" "phone orders" "addr risk"; gap: 6px 10px; padding: 12px 14px; border-bottom: 1px solid #F1F5F9; align-items: center; }
+    .cu-table td { padding: 0 !important; border: 0; }
+    .cu-table .c-cust { grid-area: cust; } .cu-table .c-phone { grid-area: phone; } .cu-table .c-addr { grid-area: addr; max-width: none !important; }
+    .cu-table .c-orders { grid-area: orders; text-align: right !important; } .cu-table .c-spent { grid-area: spent; }
+    .cu-table .c-risk { grid-area: risk; text-align: right !important; }
+    .cu-table td.cu-empty { grid-column: 1 / -1; display: block; }
+  }
+</style>
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <div>
-    <h4 class="fw-bold mb-1">Customer Database</h4>
-    <p class="text-muted mb-0" style="font-size:13px;">{{ page_obj.paginator.count }} total customers</p>
+    <h4 class="fw-bold mb-1">কাস্টমার</h4>
+    <p class="text-muted mb-0" style="font-size:13px;">মোট {{ page_obj.paginator.count|bn }} জন{% if request.GET.q %} (খোঁজা অনুযায়ী){% endif %} · অর্ডার বা POS-এ নম্বর দিলেই নিজে থেকে যোগ হয়</p>
   </div>
   <div class="d-flex gap-2 flex-wrap">
     <a href="{% url 'customer_import' %}" class="btn btn-outline-dark rounded-pill px-3 fw-semibold"><i class="bi bi-box-arrow-in-down me-1"></i> তালিকা আনুন</a>
@@ -20,30 +34,30 @@
 <div class="card border-0 shadow-sm rounded-3 mb-3">
   <div class="card-body py-2 px-3">
     <form method="GET" class="d-flex gap-2 align-items-center">
-      <input type="text" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm rounded-pill" style="max-width:280px;" placeholder="Search by name or phone...">
-      <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">Search</button>
-      {% if request.GET.q %}<a href="{% url 'customer_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill">Clear</a>{% endif %}
+      <input type="text" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm rounded-pill" style="max-width:280px;" placeholder="নাম বা মোবাইল নম্বর দিয়ে খুঁজুন" aria-label="কাস্টমার খুঁজুন">
+      <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">খুঁজুন</button>
+      {% if request.GET.q %}<a href="{% url 'customer_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill">সব দেখুন</a>{% endif %}
     </form>
   </div>
 </div>
 
 <div class="card border-0 shadow-sm rounded-4">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0 cu-table">
       <thead style="background:#f8fafc;">
         <tr style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">
-          <th class="px-4 py-3">Customer</th>
-          <th class="py-3">Phone</th>
-          <th class="py-3">Address</th>
-          <th class="py-3 text-center">Orders</th>
-          <th class="py-3 text-end">Total Spent</th>
+          <th class="px-4 py-3">কাস্টমার</th>
+          <th class="py-3">মোবাইল</th>
+          <th class="py-3">ঠিকানা</th>
+          <th class="py-3 text-center">অর্ডার</th>
+          <th class="py-3 text-end">মোট কেনা</th>
           <th class="py-3 text-center">ডেলিভারির হিসাব</th>
         </tr>
       </thead>
       <tbody>
         {% for customer in page_obj %}
         <tr>
-          <td class="px-4 py-3">
+          <td class="px-4 py-3 c-cust">
             <div class="d-flex align-items-center gap-3">
               <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;flex-shrink:0;">
                 {{ customer.name|slice:":1"|upper }}
@@ -51,18 +65,18 @@
               <div class="fw-semibold" style="font-size:14px;">{{ customer.name }}</div>
             </div>
           </td>
-          <td class="text-nowrap">
+          <td class="text-nowrap c-phone">
             <a href="tel:{{ customer.phone }}" class="text-decoration-none fw-semibold" style="color:#3b82f6;">{{ customer.phone }}</a>
             {% if not request.user.is_shop_staff or request.user.staff_profile.can_send_sms %}
             <a href="{% url 'sms_panel' %}?to={{ customer.phone|urlencode }}#compose" class="btn btn-sm btn-light rounded-pill ms-1 py-0 px-2" title="SMS পাঠান" aria-label="{{ customer.name }}-কে SMS পাঠান"><i class="bi bi-chat-dots"></i></a>
             {% endif %}
           </td>
-          <td style="font-size:13px;color:#64748b;max-width:180px;">{{ customer.address|default:"—"|truncatechars:40 }}</td>
-          <td class="text-center">
-            <span class="badge rounded-pill" style="background:#e8f0fe;color:#1a73e8;font-weight:700;">{{ customer.total_orders|default:0 }}</span>
+          <td class="c-addr" style="font-size:13px;color:#64748b;max-width:180px;">{{ customer.address|default:"—"|truncatechars:40 }}</td>
+          <td class="text-center c-orders">
+            <a href="{% url 'order_list' %}?q={{ customer.phone|urlencode }}" class="badge rounded-pill text-decoration-none" style="background:#e8f0fe;color:#1a73e8;font-weight:700;" title="এই কাস্টমারের সব অর্ডার">{{ customer.total_orders|default:0|bn }}টা</a>
           </td>
-          <td class="text-end fw-bold" style="color:#0f172a;">৳{{ customer.total_spent|default:0|floatformat:0 }}</td>
-          <td class="text-center">
+          <td class="text-end fw-bold c-spent" style="color:#0f172a;">৳{{ customer.total_spent|default:0|floatformat:"0g"|bn }}</td>
+          <td class="text-center c-risk">
             {% include 'store/partials/risk_chip.html' with r=customer.risk %}
             {% if customer.risk and not request.user.is_shop_staff %}
             <form method="post" action="{% url 'customer_block' customer.id %}" class="d-inline ms-1"{% if not customer.is_blocked %} onsubmit="return confirm('{{ customer.phone }} নম্বরটা ব্লক করবেন? ব্লক করলে এই নম্বর থেকে ওয়েবসাইটে আর অর্ডার নেওয়া হবে না।');"{% endif %}>
@@ -74,11 +88,11 @@
           </td>
         </tr>
         {% empty %}
-        <tr>
-          <td colspan="6" class="text-center py-5">
+        <tr style="display:block">
+          <td colspan="6" class="text-center py-5 cu-empty">
             <i class="bi bi-people" style="font-size:48px;color:#e2e8f0;display:block;margin-bottom:12px;"></i>
-            <div class="fw-bold text-muted">No customers yet</div>
-            <div style="font-size:13px;color:#94a3b8;">Customers appear automatically when orders are created</div>
+            <div class="fw-bold text-muted">{% if request.GET.q %}এই নাম বা নম্বরে কেউ নেই{% else %}এখনো কোনো কাস্টমার নেই{% endif %}</div>
+            <div style="font-size:13px;color:#94a3b8;">অর্ডার বা POS-এ কাস্টমারের নম্বর দিলে নিজে থেকেই এখানে চলে আসে। পুরোনো তালিকা থাকলে "তালিকা আনুন"।</div>
           </td>
         </tr>
         {% endfor %}
@@ -87,14 +101,14 @@
   </div>
   {% if page_obj.has_other_pages %}
   <div class="px-4 py-3 border-top d-flex justify-content-between align-items-center" style="background:#fafafa;">
-    <span style="font-size:13px;color:#64748b;">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</span>
+    <span style="font-size:13px;color:#64748b;">{{ page_obj.start_index|bn }}–{{ page_obj.end_index|bn }}, মোট {{ page_obj.paginator.count|bn }} জনের মধ্যে</span>
     <nav><ul class="pagination pagination-sm mb-0 gap-1">
-      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link rounded-pill px-3" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">←</a></li>{% endif %}
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link rounded-pill px-3" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}">←</a></li>{% endif %}
       {% for num in page_obj.paginator.page_range %}
         {% if page_obj.number == num %}<li class="page-item active"><span class="page-link rounded-pill px-3">{{ num }}</span></li>
-        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}<li class="page-item"><a class="page-link rounded-pill px-3" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">{{ num }}</a></li>{% endif %}
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}<li class="page-item"><a class="page-link rounded-pill px-3" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}">{{ num }}</a></li>{% endif %}
       {% endfor %}
-      {% if page_obj.has_next %}<li class="page-item"><a class="page-link rounded-pill px-3" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">→</a></li>{% endif %}
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link rounded-pill px-3" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}">→</a></li>{% endif %}
     </ul></nav>
   </div>
   {% endif %}

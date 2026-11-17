@@ -79,16 +79,16 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
       <img src="{% static 'brand/sellpunch-logo.svg' %}" alt="{{ site.name }}" height="34" style="height:34px;width:auto;display:block;">
     </a>
     <nav class="ss-links" aria-label="মূল মেনু">
-      <a href="{% url 'landing_page' %}#features">Features</a>
-      <a href="{% url 'landing_page' %}#how">How it works</a>
-      <a href="{% url 'landing_page' %}#pricing">Pricing</a>
+      <a href="{% url 'landing_page' %}#features">যা যা আছে</a>
+      <a href="{% url 'landing_page' %}#how">কীভাবে শুরু</a>
+      <a href="{% url 'landing_page' %}#pricing">দাম</a>
     </nav>
     <div class="ss-cta">
       {% if user.is_authenticated %}
         <a href="{% url 'landing_page' %}" class="ss-btn-brand"><i class="bi bi-speedometer2"></i> ড্যাশবোর্ড</a>
       {% else %}
-        <a href="{% url 'login' %}" class="ss-btn-ghost">Login</a>
-        <a href="{% url 'signup' %}" class="ss-btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> Get Started Free</a>
+        <a href="{% url 'login' %}" class="ss-btn-ghost">লগইন</a>
+        <a href="{% url 'signup' %}" class="ss-btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> ফ্রি শুরু করুন</a>
       {% endif %}
     </div>
     <button class="ss-ham" type="button" aria-label="মেনু" aria-expanded="false" aria-controls="ss-mob" onclick="ssToggleMenu(this)">
@@ -96,14 +96,14 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
     </button>
   </div>
   <div class="ss-mob" id="ss-mob">
-    <a href="{% url 'landing_page' %}#features">Features</a>
-    <a href="{% url 'landing_page' %}#how">How it works</a>
-    <a href="{% url 'landing_page' %}#pricing">Pricing</a>
+    <a href="{% url 'landing_page' %}#features">যা যা আছে</a>
+    <a href="{% url 'landing_page' %}#how">কীভাবে শুরু</a>
+    <a href="{% url 'landing_page' %}#pricing">দাম</a>
     {% if user.is_authenticated %}
       <a href="{% url 'landing_page' %}" style="color:var(--brand);font-weight:700;">ড্যাশবোর্ড</a>
     {% else %}
-      <a href="{% url 'login' %}" style="color:var(--brand);font-weight:700;">Login</a>
-      <a href="{% url 'signup' %}" class="ss-btn-brand justify-content-center mt-1">Get Started Free</a>
+      <a href="{% url 'login' %}" style="color:var(--brand);font-weight:700;">লগইন</a>
+      <a href="{% url 'signup' %}" class="ss-btn-brand justify-content-center mt-1">ফ্রি শুরু করুন</a>
     {% endif %}
   </div>
 </header>
@@ -141,14 +141,14 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
         </div>
       </div>
       <div>
-        <div class="ss-footer-title">Product</div>
+        <div class="ss-footer-title">প্রোডাক্ট</div>
         <div class="ss-footer-links">
-          <a href="{% url 'landing_page' %}#features">Features</a>
-          <a href="{% url 'landing_page' %}#pricing">Pricing</a>
+          <a href="{% url 'landing_page' %}#features">যা যা আছে</a>
+          <a href="{% url 'landing_page' %}#pricing">দাম</a>
         </div>
       </div>
       <div>
-        <div class="ss-footer-title">Support</div>
+        <div class="ss-footer-title">সাহায্য</div>
         <div class="ss-footer-links">
           <a href="{% url 'contact' %}">যোগাযোগ</a>
           <a href="{% url 'about' %}">আমাদের সম্পর্কে</a>
@@ -157,7 +157,7 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
         </div>
       </div>
       <div>
-        <div class="ss-footer-title">Legal</div>
+        <div class="ss-footer-title">নিয়ম ও নীতি</div>
         <div class="ss-footer-links">
           <a href="{% url 'privacy_policy' %}">Privacy Policy</a>
           <a href="{% url 'terms' %}">Terms of Service</a>

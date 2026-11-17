@@ -91,7 +91,14 @@ def website_settings(request):
             return _back('domain')
         if section in form_map:
             key, form_class, ok_message = form_map[section]
-            form = form_class(request.POST, request.FILES, instance=shop)
+            data = request.POST
+            if section == 'payment' and getattr(request.user, 'is_shop_staff', False):
+                # টাকা কোথায় যাবে (bKash/ব্যাংক নম্বর) শুধু মালিক বদলাতে পারেন — নইলে "সেটিংস" অনুমতি পাওয়া স্টাফ
+                # নিজের নম্বর বসিয়ে টাকা তুলে নিতে পারত। স্টাফ শুধু অনলাইন পেমেন্টের নিয়ম বদলাতে পারে।
+                data = request.POST.copy()
+                for field in ('payout_method', 'payout_account', 'payout_account_name'):
+                    data[field] = getattr(shop, field)
+            form = form_class(data, request.FILES, instance=shop)
             if form.is_valid():
                 form.save()
                 if section == 'design' and 'storefront_language' in form.changed_data:
@@ -288,6 +295,9 @@ def online_money(request):
 @require_POST
 def settlement_request(request):
     shop = request.user.shop
+    if getattr(request.user, 'is_shop_staff', False):
+        messages.error(request, 'টাকা তোলার অনুরোধ শুধু দোকানের মালিক করতে পারেন।')
+        return redirect('online_money')
     try:
         req = shop_payments.request_settlement(shop, request.POST.get('amount') or '0', user=request.user)
     except shop_payments.SettlementError as exc:
@@ -307,6 +317,9 @@ def settlement_request(request):
 @login_required(login_url='/accounts/login/')
 @require_POST
 def settlement_cancel(request, pk):
+    if getattr(request.user, 'is_shop_staff', False):
+        messages.error(request, 'টাকা তোলার অনুরোধ শুধু দোকানের মালিক বদলাতে পারেন।')
+        return redirect('online_money')
     if shop_payments.cancel_settlement(request.user.shop, pk):
         messages.info(request, 'টাকা তোলার অনুরোধ বাতিল করা হয়েছে।')
     return redirect('online_money')

@@ -33,7 +33,11 @@ def bn_day(day):
     """{{ purchase.purchased_on|bn_day }} → ১০ নভেম্বর ২০২৬"""
     if not day:
         return ''
+    from datetime import datetime
+    from django.utils import timezone
     from store.dashboard import BN_MONTHS
+    if isinstance(day, datetime) and timezone.is_aware(day):
+        day = timezone.localtime(day)           # রাত ১২টার কাছের সময়ে তারিখ যেন এক দিন পিছিয়ে না যায়
     return f'{day.day} {BN_MONTHS[day.month - 1]} {day.year}'.translate(BN_DIGITS)
 
 

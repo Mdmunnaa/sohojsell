@@ -1,127 +1,89 @@
 {% extends 'store/base.html' %}
 {% block page_title %}স্টাফ{% endblock %}
-{% block title %}{% if staff %}Edit{% else %}Add{% endif %} Staff - {{ request.user.shop.name }}{% endblock %}
+{% block title %}{% if staff %}{{ staff.user.name }} — স্টাফ{% else %}নতুন স্টাফ{% endif %} - {{ request.user.shop.name }}{% endblock %}
 
 {% block content %}
 <style>
-    .staff-wrapper { max-width: 650px; margin: 0 auto; font-family: 'Plus Jakarta Sans', sans-serif; padding-bottom: 40px;}
-    .page-title { font-size: 24px; font-weight: 900; color: #0F172A; letter-spacing: -0.5px; margin-bottom: 5px; }
-    
-    /* Card Styles */
-    .premium-card { background: #fff; border-radius: 20px; border: 1px solid #E2E8F0; box-shadow: 0 10px 30px rgba(0,0,0,0.03); margin-bottom: 24px; overflow: hidden; }
-    .card-header-soft { padding: 18px 24px; border-bottom: 1px solid #F1F5F9; background: #F8FAFC; font-weight: 800; color: #334155; display: flex; align-items: center; gap: 8px; }
-    .card-body-soft { padding: 24px; }
-
-    /* Inputs */
-    .form-label { font-weight: 800; color: #64748B; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-    .premium-input { width: 100%; padding: 14px 16px; border: 1.5px solid #E2E8F0; border-radius: 12px; font-size: 15px; font-weight: 600; color: #0F172A; background: #fff; transition: 0.2s; outline: none; }
-    .premium-input:focus { border-color: #3B82F6; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); }
-
-    /* iOS Toggle Switch */
-    .perm-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px dashed #E2E8F0; }
-    .perm-row:last-child { border-bottom: none; padding-bottom: 0; }
-    .perm-info h6 { margin: 0; font-size: 15px; font-weight: 800; color: #0F172A; }
-    .perm-info p { margin: 2px 0 0 0; font-size: 12px; font-weight: 600; color: #64748B; }
-    
-    .form-switch { padding-left: 0; margin: 0; }
-    .form-switch .form-check-input { width: 46px; height: 24px; cursor: pointer; border: none; background-color: #CBD5E1; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e"); transition: background-color 0.2s, transform 0.2s; float: right; margin-left: 0; }
-    .form-switch .form-check-input:checked { background-color: #10B981; }
-
-    /* Button */
-    .btn-save { background: linear-gradient(135deg, #0F172A, #334155); color: #fff; border: none; padding: 16px; border-radius: 14px; font-weight: 900; font-size: 16px; width: 100%; transition: 0.2s; box-shadow: 0 8px 20px rgba(15,23,42,0.2); }
-    .btn-save:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(15,23,42,0.3); }
+  .sf { max-width: 640px; margin: 0 auto; padding-bottom: 30px; }
+  .sf-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .sf-head h1 { font-size: 21px; font-weight: 800; margin: 0; }
+  .sf-head .meta { color: #64748B; font-size: 13px; }
+  .sf-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 18px; padding: 18px; margin-bottom: 14px; }
+  .sf-card h2 { font-size: 16px; font-weight: 800; margin: 0 0 4px; }
+  .sf-card .sub { color: #64748B; font-size: 13px; margin: 0 0 12px; }
+  .sf label.lb { display: block; font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 5px; }
+  .sf input[type=text], .sf input[type=tel] { width: 100%; border: 1.5px solid #E2E8F0; border-radius: 12px; background: #F8FAFC; padding: 11px 13px; font-size: 15px; font-weight: 600; color: #0F172A; outline: none; }
+  .sf input:focus { background: #fff; border-color: #3B82F6; box-shadow: 0 0 0 4px rgba(59,130,246,.1); }
+  .sf input[readonly] { color: #94A3B8; }
+  .sf .help { color: #64748B; font-size: 12.5px; margin-top: 5px; }
+  .perm { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px dashed #E2E8F0; }
+  .perm:first-of-type { border-top: 0; }
+  .perm b { display: block; font-size: 14.5px; color: #0F172A; }
+  .perm small { color: #64748B; font-size: 12.5px; }
+  .perm.form-switch { padding-left: 0; cursor: pointer; }
+  .perm .form-check-input { width: 2.8rem; height: 1.5rem; cursor: pointer; margin: 0; flex-shrink: 0; float: none; }
+  .perm .form-check-input:checked { background-color: #059669; border-color: #059669; }
+  .perm.warn small { color: #B45309; }
+  .sf-save { width: 100%; border: 0; border-radius: 14px; background: #059669; color: #fff; font-weight: 800; font-size: 16px; padding: 14px; box-shadow: 0 8px 18px rgba(5,150,105,.22); }
+  .sf-save:hover { background: #047857; }
 </style>
 
-<div class="staff-wrapper">
-    <div class="mb-4">
-        <h2 class="page-title">{% if staff %}Edit Staff Account{% else %}Add New Staff{% endif %}</h2>
-        <p class="text-muted fw-semibold mb-0">Set up credentials and control what they can access.</p>
+<div class="sf">
+  <div class="sf-head">
+    <div>
+      <h1>{% if staff %}{{ staff.user.name }}{% else %}নতুন স্টাফ{% endif %}</h1>
+      <div class="meta">লগইনের তথ্য দিন, তারপর কী কী করতে পারবে সেটা চালু করুন।</div>
+    </div>
+    <a href="{% url 'staff_list' %}" class="btn btn-light rounded-pill fw-bold"><i class="bi bi-arrow-left me-1"></i> স্টাফে ফিরুন</a>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="sf-card">
+      <h2>লগইন</h2>
+      <p class="sub">স্টাফ এই মোবাইল নম্বর আর পাসওয়ার্ড দিয়ে SellPunch-এ ঢুকবে।</p>
+      <div class="mb-3">
+        <label class="lb" for="sf-name">নাম</label>
+        <input type="text" id="sf-name" name="name" value="{{ staff.user.name|default:'' }}" placeholder="যেমন: রহিম উদ্দিন" required>
+      </div>
+      <div class="mb-3">
+        <label class="lb" for="sf-phone">মোবাইল নম্বর</label>
+        <input type="tel" id="sf-phone" name="phone" inputmode="tel" value="{{ staff.user.phone_number|default:'' }}" placeholder="০১৭XXXXXXXX" required{% if staff %} readonly{% endif %}>
+        {% if staff %}<div class="help">নম্বর বদলানো যায় না। অন্য নম্বর লাগলে নতুন স্টাফ বানান আর এটা বন্ধ করে দিন।</div>{% endif %}
+      </div>
+      <div>
+        <label class="lb" for="sf-pass">{% if staff %}নতুন পাসওয়ার্ড{% else %}পাসওয়ার্ড{% endif %}</label>
+        <input type="text" id="sf-pass" name="password" autocomplete="new-password" placeholder="{% if staff %}না বদলাতে চাইলে ফাঁকা রাখুন{% else %}কমপক্ষে ৬ অক্ষর{% endif %}"{% if not staff %} required{% endif %}>
+        <div class="help">{% if staff %}পাসওয়ার্ড ভুলে গেলে এখানে নতুন একটা দিয়ে স্টাফকে জানিয়ে দিন।{% else %}পাসওয়ার্ডটা স্টাফকে জানিয়ে দিন — সে পরে নিজে বদলে নিতে পারবে।{% endif %}</div>
+      </div>
     </div>
 
-    <form method="POST">
-        {% csrf_token %}
-        
-        <!-- STEP 1: Credentials -->
-        <div class="premium-card">
-            <div class="card-header-soft"><i class="bi bi-person-badge text-primary fs-5"></i> Account Details</div>
-            <div class="card-body-soft">
-                <div class="mb-3">
-                    <label class="form-label">Staff Name <span class="text-danger">*</span></label>
-                    <input type="text" name="name" class="premium-input" value="{{ staff.user.name|default:'' }}" placeholder="e.g. Rahim Uddin" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Phone Number (Login ID) <span class="text-danger">*</span></label>
-                    <input type="tel" name="phone" class="premium-input" value="{{ staff.user.phone_number|default:'' }}" placeholder="e.g. 017XXXXXXXX" required {% if staff %}readonly style="background:#F1F5F9; color:#94A3B8;"{% endif %}>
-                    {% if staff %}<div class="form-text mt-1 fw-bold text-warning"><i class="bi bi-info-circle"></i> Phone number cannot be changed once created.</div>{% endif %}
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Password {% if not staff %}<span class="text-danger">*</span>{% endif %}</label>
-                    <input type="text" name="password" class="premium-input" placeholder="{% if staff %}Enter new password to reset...{% else %}Set a strong password...{% endif %}" {% if not staff %}required{% endif %}>
-                    {% if staff %}<div class="form-text mt-1 fw-bold text-success"><i class="bi bi-shield-lock"></i> Leave this blank if you don't want to change the password.</div>{% endif %}
-                </div>
-            </div>
-        </div>
+    <div class="sf-card">
+      <h2>কী কী করতে পারবে</h2>
+      <p class="sub">যেটা চালু নেই সেই পাতা স্টাফের মেনুতে দেখাবে না, খুলতেও পারবে না।</p>
+      <label class="perm form-switch"><span><b><i class="bi bi-display me-1"></i> POS-এ বিক্রি</b><small>দোকানে বিল করা, বাকির খাতা আর বাকি আদায়</small></span>
+        <input class="form-check-input" type="checkbox" role="switch" name="can_use_pos" {% if staff.can_use_pos or not staff %}checked{% endif %}></label>
+      <label class="perm form-switch"><span><b><i class="bi bi-box-seam me-1"></i> প্রোডাক্ট আর স্টক</b><small>প্রোডাক্ট যোগ-এডিট, স্টক, বারকোড, মাল কেনা</small></span>
+        <input class="form-check-input" type="checkbox" role="switch" name="can_manage_products" {% if staff.can_manage_products %}checked{% endif %}></label>
+      <label class="perm form-switch"><span><b><i class="bi bi-cart-check me-1"></i> অর্ডার</b><small>অর্ডার দেখা-বদলানো, কুরিয়ারে পাঠানো, ইনভয়েস, রিভিউ, Facebook বট</small></span>
+        <input class="form-check-input" type="checkbox" role="switch" name="can_manage_orders" {% if staff.can_manage_orders %}checked{% endif %}></label>
+      <label class="perm form-switch"><span><b><i class="bi bi-people me-1"></i> কাস্টমার</b><small>কাস্টমারের তালিকা আর তাদের কেনার হিসাব</small></span>
+        <input class="form-check-input" type="checkbox" role="switch" name="can_manage_customers" {% if staff.can_manage_customers %}checked{% endif %}></label>
+      <label class="perm form-switch"><span><b><i class="bi bi-chat-dots me-1"></i> SMS পাঠানো</b><small>কাস্টমারকে SMS — দোকানের SMS ব্যালেন্স থেকে কাটে</small></span>
+        <input class="form-check-input" type="checkbox" role="switch" name="can_send_sms" {% if staff.can_send_sms %}checked{% endif %}></label>
+      <label class="perm form-switch"><span><b><i class="bi bi-graph-up me-1"></i> রিপোর্ট, লাভ আর খরচ</b><small>মোট বিক্রি, লাভ-ক্ষতি আর খরচের খাতা দেখতে পারবে</small></span>
+        <input class="form-check-input" type="checkbox" role="switch" name="can_view_reports" {% if staff.can_view_reports %}checked{% endif %}></label>
+      <div class="help mt-2"><i class="bi bi-shield-lock me-1"></i> ওয়েবসাইট, সেটিংস, স্টাফ, প্যাকেজ-বিল আর অনলাইনের টাকা শুধু আপনি (মালিক) দেখতে ও বদলাতে পারেন।</div>
+    </div>
 
-        <!-- STEP 2: Permissions -->
-        <div class="premium-card">
-            <div class="card-header-soft"><i class="bi bi-shield-check text-success fs-5"></i> Access Permissions</div>
-            <div class="card-body-soft">
-                
-                <div class="perm-row">
-                    <div class="perm-info">
-                        <h6><i class="bi bi-display text-primary me-2"></i>POS System</h6>
-                        <p>Allow staff to create orders from the POS interface.</p>
-                    </div>
-                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="can_use_pos" {% if staff.can_use_pos or not staff %}checked{% endif %}></div>
-                </div>
+    {% if staff %}
+    <div class="sf-card">
+      <label class="perm form-switch" style="padding:0"><span><b><i class="bi bi-person-check me-1"></i> অ্যাকাউন্ট চালু</b><small>বন্ধ করলে সাথে সাথে লগইন বন্ধ হয় (চাকরি ছেড়ে দিলে)। আগের বিক্রির নাম থেকে যায়।</small></span>
+        <input class="form-check-input" type="checkbox" role="switch" name="active" {% if staff.user.is_active %}checked{% endif %}></label>
+    </div>
+    {% endif %}
 
-                <div class="perm-row">
-                    <div class="perm-info">
-                        <h6><i class="bi bi-box-seam text-warning me-2"></i>Manage Products</h6>
-                        <p>Allow staff to add, edit, or delete inventory.</p>
-                    </div>
-                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="can_manage_products" {% if staff.can_manage_products %}checked{% endif %}></div>
-                </div>
-
-                <div class="perm-row">
-                    <div class="perm-info">
-                        <h6><i class="bi bi-cart-check text-success me-2"></i>Manage Orders</h6>
-                        <p>Allow staff to change order status or process couriers.</p>
-                    </div>
-                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="can_manage_orders" {% if staff.can_manage_orders %}checked{% endif %}></div>
-                </div>
-
-                <div class="perm-row">
-                    <div class="perm-info">
-                        <h6><i class="bi bi-people text-info me-2"></i>Manage Customers</h6>
-                        <p>Allow staff to view customer database and history.</p>
-                    </div>
-                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="can_manage_customers" {% if staff.can_manage_customers %}checked{% endif %}></div>
-                </div>
-
-                <div class="perm-row">
-                    <div class="perm-info">
-                        <h6><i class="bi bi-chat-dots text-primary me-2"></i>Send SMS</h6>
-                        <p>কাস্টমারদের SMS পাঠাতে পারবে (দোকানের SMS ব্যালেন্স থেকে কাটবে)।</p>
-                    </div>
-                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="can_send_sms" {% if staff.can_send_sms %}checked{% endif %}></div>
-                </div>
-
-                <div class="perm-row">
-                    <div class="perm-info">
-                        <h6><i class="bi bi-graph-up text-danger me-2"></i>View Reports</h6>
-                        <p>Allow staff to see total revenue and net profit data.</p>
-                    </div>
-                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="can_view_reports" {% if staff.can_view_reports %}checked{% endif %}></div>
-                </div>
-
-            </div>
-        </div>
-
-        <button type="submit" class="btn-save">
-            <i class="bi bi-check-circle-fill me-2"></i> {% if staff %}Update Staff Account{% else %}Create Staff Account{% endif %}
-        </button>
-
-    </form>
+    <button type="submit" class="sf-save"><i class="bi bi-check2-circle me-1"></i> {% if staff %}সেভ করুন{% else %}স্টাফ অ্যাকাউন্ট তৈরি করুন{% endif %}</button>
+  </form>
 </div>
 {% endblock %}
