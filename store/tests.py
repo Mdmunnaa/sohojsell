@@ -12,7 +12,7 @@ from decimal import Decimal
 from unittest import mock
 
 from django.contrib.auth import get_user_model
-from django.test import RequestFactory, TestCase, override_settings
+from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -6424,3 +6424,117 @@ class AuditFixTests(ShopTestMixin, TestCase):
         self.assertEqual((result['page_views'], PageView.objects.count()), (1, 1))
         self.assertTrue(Session.objects.filter(session_key='live').exists())
         self.assertFalse(Session.objects.filter(session_key='old').exists())
+
+
+class PasswordSelfServiceTests(ShopTestMixin, TestCase):
+    """নিজে পাসওয়ার্ড বদলানো, আর ভুলে গেলে SMS কোড দিয়ে রিসেট।"""
+
+    def setUp(self):
+        self.user, self.shop = self.make_shop(phone='01755500071', slug='pwshop')
+
+    def request_code(self, phone='01755500071'):
+        with mock.patch('store.sms.notify') as notify:
+            response = self.client.post(reverse('password_forgot'), {'phone': phone})
+        code = re.search(r'কোড (\d{6})', notify.call_args.args[1]).group(1) if notify.called else None
+        return response, code, notify
+
+    def test_forgot_password_with_sms_code(self):
+        self.client.post(reverse('logout'))
+        self.assertContains(self.client.get(reverse('login')), reverse('password_forgot'))
+        response, code, notify = self.request_code()
+        self.assertRedirects(response, reverse('password_reset_code'))
+        self.assertEqual(notify.call_args.args[0], '01755500071')
+        wrong = '000000' if code != '000000' else '111111'
+        bad = self.client.post(reverse('password_reset_code'), {'code': wrong, 'password': 'New-pass-1', 'password2': 'New-pass-1'})
+        self.assertEqual(bad.status_code, 400)
+        short = self.client.post(reverse('password_reset_code'), {'code': code, 'password': '123', 'password2': '123'})
+        self.assertEqual(short.status_code, 400)
+        done = self.client.post(reverse('password_reset_code'), {'code': code, 'password': 'New-pass-1', 'password2': 'New-pass-1'})
+        self.assertRedirects(done, reverse('login'))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('New-pass-1'))
+        # কোড একবারই চলে
+        self.client.post(reverse('password_forgot'), {'phone': '01755500071'})
+
+    def test_unknown_number_gets_the_same_answer_and_no_sms(self):
+        self.client.post(reverse('logout'))
+        response, code, notify = self.request_code('01755500079')
+        self.assertRedirects(response, reverse('password_reset_code'))
+        notify.assert_not_called()
+        admin = User.objects.create_superuser(phone_number='01755500078', password='Admin-pass-1')
+        _r, _c, notify = self.request_code(admin.phone_number)
+        notify.assert_not_called()
+
+    def test_code_dies_after_wrong_tries_and_requests_are_limited(self):
+        from accounts.views import RESET_CODE_TRIES, RESET_PER_PHONE
+        self.client.post(reverse('logout'))
+        _r, code, _n = self.request_code()
+        wrong = '000000' if code != '000000' else '111111'
+        for _ in range(RESET_CODE_TRIES):
+            self.client.post(reverse('password_reset_code'), {'code': wrong, 'password': 'New-pass-1', 'password2': 'New-pass-1'})
+        self.client.post(reverse('password_reset_code'), {'code': code, 'password': 'New-pass-1', 'password2': 'New-pass-1'})
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.check_password('New-pass-1'))
+        for _ in range(RESET_PER_PHONE - 1):
+            self.request_code()
+        response, _c, notify = self.request_code()
+        self.assertEqual(response.status_code, 429)
+        notify.assert_not_called()
+
+    def test_change_own_password(self):
+        page = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn(reverse('password_change'), page)
+        bad = self.client.post(reverse('password_change'), {'current': 'nope', 'password': 'New-pass-1', 'password2': 'New-pass-1'})
+        self.assertContains(bad, 'এখনকার পাসওয়ার্ডটা মেলেনি')
+        self.client.post(reverse('password_change'), {'current': 'Test-pass-123', 'password': 'New-pass-1', 'password2': 'New-pass-1'})
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('New-pass-1'))
+        self.assertEqual(self.client.get(reverse('dashboard')).status_code, 200)     # এই ব্রাউজারে লগইন থাকে
+
+    def test_demo_password_cannot_change(self):
+        from . import demo
+        self.assertIn('/accounts/my-password/', demo.BLOCKED_PREFIXES)
+
+
+class OrderPulseAndErrorReportTests(ShopTestMixin, TestCase):
+    """ড্যাশবোর্ডে নতুন অর্ডারের নোটিফিকেশন, আর পাতা ক্র্যাশ করলে HQ-তে লেখা + মালিককে SMS।"""
+
+    def setUp(self):
+        self.user, self.shop = self.make_shop(phone='01755500081', slug='pulseshop')
+
+    def test_pulse_reports_only_new_customer_orders(self):
+        from .models import Customer, Order
+        customer = Customer.objects.create(shop=self.shop, name='রহিম', phone='01712345678', address='x')
+        first = Order.objects.create(shop=self.shop, customer=customer, total_amount=500, source='storefront')
+        data = self.client.get(reverse('order_pulse')).json()
+        self.assertEqual((data['latest'], data['new']), (first.id, []))            # প্রথমবার: শুধু এখন কোথায় আছি
+        Order.objects.create(shop=self.shop, customer=customer, total_amount=100, source='pos')     # নিজের বিক্রি — খবর না
+        second = Order.objects.create(shop=self.shop, customer=customer, total_amount=1220, source='storefront')
+        data = self.client.get(reverse('order_pulse'), {'after': first.id}).json()
+        self.assertEqual([o['id'] for o in data['new']], [second.id])
+        self.assertEqual(data['new'][0]['total'], '১,২২০')
+        self.assertEqual(data['pending'], 2)
+        self.assertEqual(self.client.get(reverse('order_pulse'), {'after': second.id}).json()['new'], [])
+        self.assertIn('id="opBox"', self.client.get(reverse('dashboard')).content.decode())
+
+    def test_crash_is_recorded_once_and_owner_is_texted(self):
+        from .models import ErrorEvent
+        admin = User.objects.create_superuser(phone_number='01755500082', password='Admin-pass-1')
+        client = Client(raise_request_exception=False)
+        client.force_login(self.user)
+        with mock.patch('store.views.Product.objects.filter', side_effect=ValueError('ভাঙা')), \
+                mock.patch('store.sms.notify') as notify:
+            self.assertEqual(client.get(reverse('product_list')).status_code, 500)
+            self.assertEqual(client.get(reverse('product_list')).status_code, 500)
+        event = ErrorEvent.objects.get()
+        self.assertEqual((event.kind, event.count, event.path), ('ValueError', 2, reverse('product_list')))
+        self.assertIn('views.py', event.where)
+        self.assertEqual(notify.call_count, 1)                                    # দুবার ভাঙলেও একটাই SMS
+        self.assertEqual(notify.call_args.args[0], admin.phone_number)
+        self.assertEqual(client.get('/no-such-page/').status_code, 404)           # 404 ত্রুটি না
+        self.assertEqual(ErrorEvent.objects.count(), 1)
+        client.force_login(admin)
+        page = client.get(reverse('hq_errors'))
+        self.assertContains(page, 'ValueError')
+        client.post(reverse('hq_errors'), {'event_id': event.pk, 'action': 'resolve'})
+        self.assertNotContains(client.get(reverse('hq_errors')), 'ValueError')

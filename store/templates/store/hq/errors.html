@@ -1,0 +1,40 @@
+{% extends 'store/hq/base.html' %}
+{% block title %}ত্রুটি{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>ত্রুটি</h1>
+    <p class="sub">কোনো পাতা ক্র্যাশ করলে এখানে লেখা থাকে। নতুন ত্রুটি হলে আপনার ফোনে SMS যায় (ঘণ্টায় সর্বোচ্চ একটা)। একই ত্রুটি বারবার হলে একটাই সারি, গোনা বাড়ে।</p>
+  </div>
+  <a class="btn btn-sm" href="{% if show_all %}{% url 'hq_errors' %}{% else %}?all=1{% endif %}">{% if show_all %}শুধু খোলাগুলো{% else %}ঠিক হওয়াগুলোসহ সব{% endif %}</a>
+</div>
+<section class="panel flush">
+  <div class="tbl-wrap"><table class="tbl stack">
+    <thead><tr><th>শেষ কখন</th><th>ত্রুটি</th><th>পাতা</th><th>কতবার</th><th></th></tr></thead>
+    <tbody>
+    {% for e in page_obj %}
+      <tr>
+        <td class="nowrap meta">{{ e.last_seen|date:"d M Y, h:i A" }}<div class="faint">প্রথম {{ e.first_seen|date:"d M" }}</div></td>
+        <td>
+          <div class="strong">{{ e.kind }}{% if e.resolved %} <span class="faint">(ঠিক হয়েছে)</span>{% endif %}</div>
+          <div class="meta">{{ e.message }}</div>
+          <div class="faint">{{ e.where }}</div>
+          <details><summary class="faint" style="cursor:pointer">বিস্তারিত (Claude-কে দেখানোর জন্য)</summary><pre style="white-space:pre-wrap;font-size:12px;max-height:320px;overflow:auto">{{ e.traceback }}</pre></details>
+        </td>
+        <td data-label="পাতা:">{{ e.method }} {{ e.path }}{% if e.shop_label %}<div class="faint">{{ e.shop_label }}</div>{% endif %}</td>
+        <td data-label="কতবার:" class="strong">{{ e.count }}</td>
+        <td class="nowrap">
+          <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="event_id" value="{{ e.pk }}">
+            {% if not e.resolved %}<button class="btn btn-sm" type="submit" name="action" value="resolve"><i class="bi bi-check2"></i>ঠিক হয়েছে</button>{% endif %}
+            <button class="btn btn-sm" type="submit" name="action" value="delete" aria-label="মুছুন"><i class="bi bi-trash"></i></button>
+          </form>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5"><div class="empty"><b>কোনো ত্রুটি নেই</b>কোনো পাতা ক্র্যাশ করলে এখানে দেখাবে।</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% include 'store/hq/_pager.html' %}
+</section>
+{% endblock %}

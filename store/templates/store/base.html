@@ -201,6 +201,9 @@
     }
     .sb-u-name { font-size: 13px; font-weight: 600; color: #0f172a; line-height: 1.3; }
     .sb-u-role { font-size: 11px; color: #64748b; }
+    .sb-key { margin-left: auto; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: #64748b; text-decoration: none; flex-shrink: 0; }
+    .sb-key:hover { background: #eef2ff; color: #1d4ed8; }
+    .sidebar.collapsed .sb-key { display: none; }
     button.sb-logout { width: 100%; font-family: inherit; cursor: pointer; }
     .sb-logout {
       display: flex; align-items: center; gap: 8px;
@@ -542,6 +545,7 @@
             {% else %}দোকানের মালিক{% endif %}
           </div>
         </div>
+        {% if not request.user.is_superuser %}<a href="{% url 'password_change' %}" class="sb-key" title="পাসওয়ার্ড বদলান" aria-label="পাসওয়ার্ড বদলান"><i class="bi bi-key"></i></a>{% endif %}
       </div>
       <form method="post" action="{% url 'logout' %}" class="m-0">{% csrf_token %}
         <button type="submit" class="sb-logout">
@@ -619,6 +623,7 @@
 <script src="{% static 'vendor/sweetalert2/sweetalert2.all.min.js' %}"></script>
 {% include 'store/partials/shrink_uploads.html' %}
 {% if ai_help %}{% include 'store/partials/ai_help.html' %}{% endif %}
+{% if ai_help %}{% include 'store/partials/order_pulse.html' %}{% endif %}
 <script>
 /* Bootstrap পপআপ খোলার আগে body-তে সরানো — কোনো কার্ড/অংশে transform থাকলেও পপআপ যেন ধূসর পর্দার উপরে আর পর্দার মাঝখানে আসে */
 document.addEventListener('show.bs.modal', function (e) { if (e.target.parentElement !== document.body) document.body.appendChild(e.target); });

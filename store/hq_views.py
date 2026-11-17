@@ -771,6 +771,25 @@ def activity(request):
 
 
 @superuser_required
+def errors(request):
+    """পাতা ক্র্যাশের তালিকা (store/errors.py)। "ঠিক হয়েছে" চাপলে সরে যায়; আবার হলে ফিরে আসে আর SMS যায়।"""
+    from .models import ErrorEvent
+    if request.method == 'POST':
+        event = get_object_or_404(ErrorEvent, pk=request.POST.get('event_id'))
+        if request.POST.get('action') == 'delete':
+            event.delete()
+        else:
+            ErrorEvent.objects.filter(pk=event.pk).update(resolved=True)
+        return redirect('hq_errors')
+    show_all = request.GET.get('all') == '1'
+    qs = ErrorEvent.objects.all() if show_all else ErrorEvent.objects.filter(resolved=False)
+    return render(request, 'store/hq/errors.html', {
+        'active': 'errors', 'page_obj': _page(request, qs, 30), 'show_all': show_all,
+        'open_count': ErrorEvent.objects.filter(resolved=False).count(), 'query': _query_without_page(request),
+    })
+
+
+@superuser_required
 def search(request):
     q = request.GET.get('q', '').strip()
     shops_found, users_found, payments_found = [], [], []

@@ -40,7 +40,7 @@ LAST_ERROR = ''          # শেষবার ডেমো বানাতে �
 
 # ডেমোতে POST করা যাবে না এমন জায়গা (যা বদলালে ডেমো ভেঙে যায় বা বাইরে টাকা/SMS যায়)
 BLOCKED_PREFIXES = ('/settings/', '/billing/', '/payment/', '/staff/', '/sms/buy/', '/facebook/', '/setup-shop/',
-                    '/orders/send-courier/', '/courier/', '/accounts/signup/', '/website/settlement/',
+                    '/orders/send-courier/', '/courier/', '/accounts/signup/', '/accounts/my-password/', '/website/settlement/',
                     '/products/import/', '/customers/import/')
 BLOCKED_WEBSITE_SECTIONS = ('store', 'domain', 'payment')
 

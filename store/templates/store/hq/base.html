@@ -278,6 +278,7 @@ dialog.dlg::backdrop { background: rgba(8, 15, 30, .55); }
     <div class="grp">প্ল্যাটফর্ম</div>
     <a href="{% url 'hq_notices' %}" class="{% if active == 'notices' %}on{% endif %}"><i class="bi bi-megaphone"></i>সেলারদের নোটিশ</a>
     <a href="{% url 'hq_activity' %}" class="{% if active == 'activity' %}on{% endif %}"><i class="bi bi-clock-history"></i>Master HQ খাতা</a>
+    <a href="{% url 'hq_errors' %}" class="{% if active == 'errors' %}on{% endif %}"><i class="bi bi-bug"></i>ত্রুটি</a>
     <a href="{% url 'master_settings' %}" class="{% if active == 'settings' %}on{% endif %}"><i class="bi bi-sliders"></i>সিস্টেম সেটিংস</a>
     <a href="{% url 'demo_check' %}" target="_blank" rel="noopener"><i class="bi bi-clipboard-check"></i>ডেমো দোকান যাচাই</a>
     <a href="/admin/" target="_blank" rel="noopener"><i class="bi bi-database"></i>Django Admin</a>

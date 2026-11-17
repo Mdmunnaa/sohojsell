@@ -1,0 +1,73 @@
+{% comment %}
+  নতুন অর্ডারের নোটিফিকেশন: ড্যাশবোর্ড খোলা থাকলে প্রতি ৪৫ সেকেন্ডে views.order_pulse-কে জিজ্ঞেস করে। ওয়েবসাইট বা
+  Messenger থেকে নতুন অর্ডার এলে কোণায় একটা কার্ড, ছোট একটা শব্দ, আর ট্যাবের নামে "(১) নতুন অর্ডার"। SMS লাগে না।
+  শেষ দেখা অর্ডার ব্রাউজারে (localStorage) মনে থাকে — প্রথমবার খুললে পুরনো অর্ডারের জন্য বাজে না।
+  যে স্টাফের অর্ডারের অনুমতি নেই তার বেলায় সার্ভার JSON দেয় না, তখন চুপচাপ থেমে যায়।
+{% endcomment %}
+<style>
+  .op-box { position: fixed; right: 16px; bottom: 16px; z-index: 1080; display: grid; gap: 8px; width: min(340px, calc(100vw - 32px)); }
+  .op-card { display: flex; gap: 12px; align-items: center; background: #fff; border: 1px solid #A7F3D0; border-left: 5px solid #10B981; border-radius: 14px; padding: 12px 14px; box-shadow: 0 12px 30px rgba(15,23,42,.16); text-decoration: none; color: #0F172A; }
+  .op-card:hover { color: #0F172A; border-color: #34D399; }
+  .op-card .ic { width: 38px; height: 38px; border-radius: 11px; background: #ECFDF5; color: #047857; display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
+  .op-card b { display: block; font-size: 14.5px; }
+  .op-card small { color: #64748B; font-size: 12.5px; }
+  .op-card .x { margin-left: auto; border: 0; background: none; color: #94A3B8; font-size: 18px; line-height: 1; padding: 4px; cursor: pointer; }
+</style>
+<div class="op-box" id="opBox" aria-live="polite"></div>
+<script>
+(function () {
+  var URL_PULSE = '{% url "order_pulse" %}', URL_ORDERS = '{% url "storefront_orders" %}';
+  var KEY = 'sp-last-order-{{ shop.pk }}', box = document.getElementById('opBox'), title = document.title, unseen = 0, stopped = false;
+  function bn(n) { return String(n).replace(/[0-9]/g, function (d) { return '০১২৩৪৫৬৭৮৯'[d]; }); }
+  function read() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+  function write(v) { try { localStorage.setItem(KEY, String(v)); } catch (e) {} }
+  function beep() {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return;
+      var ctx = new Ctx(), o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = 880; g.gain.value = 0.08;
+      o.connect(g); g.connect(ctx.destination); o.start();
+      o.frequency.setValueAtTime(1175, ctx.currentTime + 0.12);
+      o.stop(ctx.currentTime + 0.28); o.onended = function () { ctx.close(); };
+    } catch (e) {}
+  }
+  function show(order) {
+    var a = document.createElement('a');
+    a.className = 'op-card'; a.href = URL_ORDERS;
+    var ic = document.createElement('span'); ic.className = 'ic'; ic.innerHTML = '<i class="bi bi-bag-check"></i>';
+    var m = document.createElement('span');
+    var b = document.createElement('b'); b.textContent = 'নতুন অর্ডার #ORD-' + order.id;
+    var s = document.createElement('small'); s.textContent = order.name + ' · ৳' + order.total + ' — দেখতে চাপুন';
+    m.appendChild(b); m.appendChild(s);
+    var x = document.createElement('button'); x.type = 'button'; x.className = 'x'; x.setAttribute('aria-label', 'বন্ধ করুন'); x.textContent = '×';
+    x.addEventListener('click', function (e) { e.preventDefault(); a.remove(); });
+    a.appendChild(ic); a.appendChild(m); a.appendChild(x);
+    box.prepend(a);
+    while (box.children.length > 3) box.lastChild.remove();
+  }
+  function check() {
+    if (stopped) return;
+    var last = read();
+    fetch(URL_PULSE + (last ? '?after=' + encodeURIComponent(last) : ''), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(function (r) {
+        if (!r.ok || (r.headers.get('content-type') || '').indexOf('json') < 0) { stopped = true; return null; }
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data) return;
+        if (last !== null && data.new && data.new.length) {
+          data.new.slice().reverse().forEach(show);
+          unseen += data.new.length; document.title = '(' + bn(unseen) + ') নতুন অর্ডার — ' + title;
+          beep();
+        }
+        write(data.latest);
+      })
+      .catch(function () {});
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { unseen = 0; document.title = title; check(); }
+  });
+  check();
+  setInterval(check, 45000);
+})();
+</script>

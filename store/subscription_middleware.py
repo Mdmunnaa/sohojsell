@@ -9,6 +9,8 @@ from datetime import timedelta
 ALLOWED_URLS = [
     '/accounts/login/',
     '/accounts/logout/',
+    '/accounts/my-password/',
+    '/accounts/forgot/',
     '/accounts/signup/',
     '/billing/',
     '/settings/data/export/',     # মেয়াদ শেষ হলেও নিজের সব ডাটা নামাতে পারবেন

@@ -1282,3 +1282,28 @@ class ImportJob(models.Model):
     @property
     def images_left(self):
         return max(0, self.images_total - self.images_done - self.images_failed)
+
+
+class ErrorEvent(models.Model):
+    """
+    কোনো পাতা ক্র্যাশ করলে (500) এখানে লেখা থাকে — store/errors.py। একই ভুল বারবার হলে একটাই সারি, গোনা বাড়ে।
+    Master HQ → "ত্রুটি"-তে দেখা যায়; নতুন ভুল হলে মালিকের (superuser) ফোনে SMS যায়, ঘণ্টায় সর্বোচ্চ একটা।
+    """
+    fingerprint = models.CharField(max_length=40, unique=True)
+    kind = models.CharField(max_length=120)                 # যেমন ValueError
+    message = models.CharField(max_length=500, blank=True, default='')
+    path = models.CharField(max_length=300, blank=True, default='')
+    method = models.CharField(max_length=8, blank=True, default='')
+    where = models.CharField(max_length=300, blank=True, default='')    # ফাইল:লাইন (ফাংশন)
+    traceback = models.TextField(blank=True, default='')
+    shop_label = models.CharField(max_length=200, blank=True, default='')
+    count = models.PositiveIntegerField(default=1)
+    first_seen = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(auto_now_add=True, db_index=True)
+    resolved = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['resolved', '-last_seen']
+
+    def __str__(self):
+        return f'{self.kind} @ {self.path}'

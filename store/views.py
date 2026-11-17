@@ -33,6 +33,7 @@ from .themes import THEMES
 from django.urls import reverse
 
 BN_TO_EN_DIGITS = str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789')
+EN_TO_BN_DIGITS = str.maketrans('0123456789', '০১২৩৪৫৬৭৮৯')
 
 
 # ============================================================
@@ -571,6 +572,25 @@ def order_delete(request, order_id):
         order.delete()
     messages.success(request, f'অর্ডার #ORD-{order_id} মুছে ফেলা হয়েছে, মাল স্টকে ফিরেছে।')
     return redirect('order_list')
+
+
+@login_required(login_url='/accounts/login/')
+def order_pulse(request):
+    """
+    ড্যাশবোর্ডের "নতুন অর্ডার" নোটিফিকেশন (base.html প্রতি ৪৫ সেকেন্ডে জিজ্ঞেস করে; SMS-এর খরচ নেই)।
+    after=<শেষ দেখা অর্ডারের id> দিলে তার পরে কাস্টমারের দেওয়া (ওয়েবসাইট/Messenger) অর্ডারগুলো; না দিলে শুধু এখনকার শেষ id।
+    """
+    shop = request.user.shop
+    orders = Order.objects.filter(shop=shop, source='storefront')
+    latest = orders.order_by('-id').values_list('id', flat=True).first() or 0
+    after = request.GET.get('after', '')
+    fresh = []
+    if after.isdigit() and int(after) < latest:
+        fresh = [{'id': o.id, 'name': o.customer.name, 'total': f'{o.total_amount:,.0f}'.translate(EN_TO_BN_DIGITS)}
+                 for o in orders.filter(id__gt=int(after)).exclude(status__in=('Cancelled', 'Returned'))
+                 .select_related('customer').order_by('-id')[:5]]
+    return JsonResponse({'latest': latest, 'new': fresh,
+                         'pending': orders.filter(status='Pending').count()})
 
 
 # ============================================================

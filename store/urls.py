@@ -77,6 +77,7 @@ urlpatterns = [
     path('order/create/', views.order_create, name='order_create'),
     path('order/edit/<int:order_id>/', views.order_edit, name='order_edit'),
     path('order/delete/<int:order_id>/', views.order_delete, name='order_delete'),
+    path('orders/pulse/', views.order_pulse, name='order_pulse'),
     path('order/update-status/', views.update_order_status, name='update_order_status'),
 
     # Invoice
@@ -164,6 +165,7 @@ urlpatterns = [
     path('saas-master/notices/', hq_views.notices, name='hq_notices'),
     path('saas-master/notices/<int:notice_id>/', hq_views.notice_action, name='hq_notice_action'),
     path('saas-master/activity/', hq_views.activity, name='hq_activity'),
+    path('saas-master/errors/', hq_views.errors, name='hq_errors'),
     path('saas-master/search/', hq_views.search, name='hq_search'),
     path('saas-master/settings/', hq_views.system_settings, name='master_settings'),
     path('saas-master/recharge-sms/', hq_views.recharge_sms, name='recharge_sms'),

@@ -108,6 +108,7 @@ MIDDLEWARE = [
     'store.subscription_middleware.SubscriptionMiddleware',
     'store.middleware.StaffAccessMiddleware',
     'store.demo.DemoGuardMiddleware',                     # ডেমো দোকানে সেটিংস/বিল/মুছে ফেলা বন্ধ
+    'store.errors.ErrorReportMiddleware',                 # পাতা ক্র্যাশ করলে HQ-তে লেখা + মালিককে SMS
 ]
 
 ROOT_URLCONF = 'sohojsell.urls'
