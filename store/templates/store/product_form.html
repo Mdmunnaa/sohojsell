@@ -1,0 +1,340 @@
+{% extends 'store/base.html' %}
+{% block page_title %}{% if product %}প্রোডাক্ট এডিট{% else %}নতুন প্রোডাক্ট{% endif %}{% endblock %}
+{% block title %}{% if product %}{{ product.name }} এডিট{% else %}নতুন প্রোডাক্ট{% endif %} - {{ request.user.shop.name }}{% endblock %}
+
+{% block content %}
+{% comment %}
+  প্রোডাক্ট যোগ আর এডিট — একই পাতা (views.add_product / views.edit_product, forms.ProductForm)।
+  ভাগ: কী প্রোডাক্ট → কীভাবে বিক্রি হয় (পিস/কেজি…) আর দাম → স্টক → বারকোড → ছবি → সাইজ/রং।
+{% endcomment %}
+{% include 'store/partials/cam_scanner.html' %}
+<style>
+  .pf { max-width: 780px; margin: 0 auto; padding-bottom: 30px; }
+  .pf-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .pf-head h1 { font-size: 21px; font-weight: 800; margin: 0; }
+  .pf-head .meta { color: #64748B; font-size: 13px; margin-top: 2px; }
+  .pf-import { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 12px 14px; border-radius: 14px; background: #EEF2FF; color: #3730A3; font-weight: 700; font-size: 13.5px; text-decoration: none; }
+  .pf-import:hover { color: #312E81; background: #E0E7FF; }
+  .pf-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 18px; padding: 18px; margin-bottom: 14px; }
+  .pf-card h2 { font-size: 16px; font-weight: 800; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .pf-card h2 .n { width: 24px; height: 24px; border-radius: 50%; background: #0F172A; color: #fff; font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .pf-card .sub { color: #64748B; font-size: 13px; margin: 0 0 14px; }
+  .pf label.lb { display: block; font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 5px; }
+  .pf label.lb .opt { font-weight: 500; color: #94A3B8; }
+  .pf input[type=text], .pf input[type=number], .pf select, .pf textarea {
+    width: 100%; border: 1.5px solid #E2E8F0; border-radius: 12px; background: #F8FAFC; padding: 11px 13px;
+    font-size: 15px; font-weight: 600; color: #0F172A; outline: none; }
+  .pf input:focus, .pf select:focus, .pf textarea:focus { background: #fff; border-color: #3B82F6; box-shadow: 0 0 0 4px rgba(59,130,246,.1); }
+  .pf textarea { resize: vertical; min-height: 84px; }
+  .pf input::placeholder, .pf textarea::placeholder { font-weight: 400; color: #94A3B8; }
+  .pf .err { color: #DC2626; font-size: 12.5px; font-weight: 700; margin-top: 4px; }
+  .pf .help { color: #64748B; font-size: 12.5px; margin-top: 5px; }
+  .pf-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .pf-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pf-money { position: relative; }
+  .pf-money span { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #64748B; font-weight: 800; pointer-events: none; }
+  .pf-money input { padding-left: 28px !important; }
+  .pf-qty { display: flex; align-items: stretch; }
+  .pf-qty input { border-radius: 12px 0 0 12px !important; }
+  .pf-qty span { display: flex; align-items: center; padding: 0 12px; border: 1.5px solid #E2E8F0; border-left: 0; border-radius: 0 12px 12px 0; background: #F1F5F9; font-weight: 700; color: #475569; font-size: 13.5px; white-space: nowrap; }
+  /* কীভাবে বিক্রি হয় */
+  .pf-units { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-bottom: 4px; }
+  .pf-units label { margin: 0; cursor: pointer; }
+  .pf-units input { position: absolute; opacity: 0; pointer-events: none; }
+  .pf-units .u { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 2px solid #E2E8F0; border-radius: 14px; padding: 10px 6px; text-align: center; background: #fff; }
+  .pf-units .u b { font-size: 15px; color: #0F172A; }
+  .pf-units .u small { font-size: 11.5px; color: #64748B; }
+  .pf-units input:checked + .u { border-color: #0F172A; background: #F8FAFC; box-shadow: inset 0 0 0 1px #0F172A; }
+  .pf-units input:focus-visible + .u { outline: 3px solid rgba(59,130,246,.35); }
+  .pf-profit { margin-top: 10px; font-size: 13px; font-weight: 700; color: #047857; min-height: 18px; }
+  .pf-profit.bad { color: #B91C1C; }
+  /* বারকোড */
+  .pf-code { display: flex; gap: 8px; }
+  .pf-code input { flex: 1; }
+  .pf-scan { border: 1.5px solid #CBD5E1; background: #fff; color: #0F172A; border-radius: 12px; padding: 0 14px; font-weight: 700; font-size: 13.5px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .pf-scan:hover { background: #F8FAFC; }
+  #reader-container { display: none; border-radius: 16px; overflow: hidden; border: 1px solid #E2E8F0; margin-top: 12px; background: #F8FAFC; }
+  #reader { width: 100%; border: none; }
+  .pf-hit { border-color: #10B981 !important; background: #ECFDF5 !important; }
+  /* ছবি */
+  .pf-img { display: flex; gap: 14px; align-items: center; }
+  .pf-img .pv { width: 88px; height: 88px; border-radius: 14px; border: 2px dashed #CBD5E1; background: #F8FAFC center/cover no-repeat; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #94A3B8; font-size: 26px; }
+  .pf-img .pv.has { border-style: solid; border-color: #E2E8F0; }
+  .pf-img .pv.has i { display: none; }
+  .pf-img .side { flex: 1; min-width: 0; }
+  .pf-img input[type=file] { width: 100%; font-size: 13.5px; }
+  .pf-img input[type=file]::file-selector-button { background: #0F172A; color: #fff; border: 0; padding: 8px 14px; border-radius: 10px; font-weight: 700; margin-right: 10px; cursor: pointer; }
+  .pf-img .clear { font-size: 12.5px; color: #64748B; margin-top: 6px; }
+  .pf-img .clear input { margin-right: 4px; }
+  /* চালু/বন্ধ */
+  .pf-live { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .pf-live b { display: block; font-size: 15px; }
+  .pf-live small { color: #64748B; font-size: 12.5px; }
+  .pf-live .form-check-input { width: 3rem; height: 1.6rem; cursor: pointer; margin: 0; }
+  .pf-live .form-check-input:checked { background-color: #059669; border-color: #059669; }
+  /* সেভ */
+  .pf-save { position: sticky; bottom: 0; z-index: 5; background: linear-gradient(to top, #F8FAFC 75%, transparent); padding: 14px 0 4px; display: flex; gap: 10px; }
+  .pf-save button { border-radius: 14px; font-weight: 800; padding: 14px 18px; font-size: 15.5px; border: 0; }
+  .pf-save .go { flex: 1; background: #059669; color: #fff; box-shadow: 0 8px 18px rgba(5,150,105,.22); }
+  .pf-save .go:hover { background: #047857; }
+  .pf-save .more { background: #fff; color: #0F172A; border: 1.5px solid #CBD5E1; }
+  .pf-hist { font-size: 13px; font-weight: 700; text-decoration: none; }
+  @media (max-width: 640px) {
+    .pf-grid, .pf-grid.two { grid-template-columns: 1fr; }
+    .pf-units { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .pf-save { flex-direction: column-reverse; }
+    .pf-code { flex-wrap: wrap; } .pf-code input { flex-basis: 100%; } .pf-scan { height: 42px; flex: 1; justify-content: center; }
+  }
+</style>
+
+<div class="pf">
+  <div class="pf-head">
+    <div>
+      <h1>{% if product %}{{ product.name }}{% else %}নতুন প্রোডাক্ট{% endif %}</h1>
+      <div class="meta">{% if product %}যা বদলাতে চান বদলে নিচে সেভ চাপুন।{% else %}শুধু নাম, দাম আর স্টক দিলেই চলবে — বাকিগুলো ঐচ্ছিক।{% endif %}</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      {% if product %}<a class="pf-hist" href="{% url 'stock_history' %}?product={{ product.pk }}"><i class="bi bi-clock-history me-1"></i>স্টকের হিসাব</a>{% endif %}
+      <a href="{% url 'product_list' %}" class="btn btn-light rounded-pill fw-bold"><i class="bi bi-arrow-left me-1"></i> প্রোডাক্টে ফিরুন</a>
+    </div>
+  </div>
+
+  {% if not product %}
+  <a href="{% url 'product_import' %}" class="pf-import">
+    <i class="bi bi-box-arrow-in-down" style="font-size:18px"></i>
+    <span>অনেক প্রোডাক্ট? Shopify, WooCommerce বা Excel থেকে ছবিসহ একসাথে সব আনুন</span>
+    <i class="bi bi-arrow-right ms-auto"></i>
+  </a>
+  {% endif %}
+
+  {% if form.non_field_errors %}<div class="alert alert-danger rounded-4">{{ form.non_field_errors.0 }}</div>{% endif %}
+
+  <form method="post" enctype="multipart/form-data" id="pfForm" novalidate>
+    {% csrf_token %}
+
+    <div class="pf-card">
+      <h2><span class="n">১</span> কী প্রোডাক্ট</h2>
+      <p class="sub">কাস্টমার আর রসিদে এই নামই দেখাবে।</p>
+      <div class="mb-3">
+        <label class="lb" for="{{ form.name.id_for_label }}">নাম</label>
+        {{ form.name }}
+        {% if form.name.errors %}<div class="err">{{ form.name.errors.0 }}</div>{% endif %}
+      </div>
+      <div class="pf-grid two">
+        <div>
+          <label class="lb" for="{{ form.category.id_for_label }}">ক্যাটাগরি <span class="opt">(ঐচ্ছিক)</span></label>
+          {{ form.category }}
+          <div class="help"><a href="{% url 'category_list' %}" target="_blank" rel="noopener">নতুন ক্যাটাগরি বানান</a></div>
+        </div>
+        <div>
+          <label class="lb" for="{{ form.description.id_for_label }}">বিবরণ <span class="opt">(ঐচ্ছিক)</span></label>
+          {{ form.description }}
+        </div>
+      </div>
+    </div>
+
+    <div class="pf-card">
+      <h2><span class="n">২</span> কীভাবে বিক্রি হয়, কত দামে</h2>
+      <p class="sub">চাল-ডাল, তেল, কাপড়ের মতো জিনিস ওজন বা মাপে বিক্রি হলে কেজি/লিটার/মিটার বেছে নিন — দাম হবে প্রতি একক, POS-এ ১.৫ কেজিও বিক্রি করা যাবে।</p>
+      <div class="pf-units" role="radiogroup" aria-label="কীভাবে বিক্রি হয়">
+        {% for radio in form.unit %}
+        <label>{{ radio.tag }}<span class="u"><b>{{ radio.choice_label }}</b><small>{% if radio.data.value == 'pcs' %}গুনে{% else %}মেপে{% endif %}</small></span></label>
+        {% endfor %}
+      </div>
+      {% if form.unit.errors %}<div class="err">{{ form.unit.errors.0 }}</div>{% endif %}
+
+      <div class="pf-grid mt-3">
+        <div>
+          <label class="lb" for="{{ form.price.id_for_label }}">বিক্রির দাম <span class="per opt"></span></label>
+          <div class="pf-money"><span>৳</span>{{ form.price }}</div>
+          {% if form.price.errors %}<div class="err">{{ form.price.errors.0 }}</div>{% endif %}
+        </div>
+        <div>
+          <label class="lb" for="{{ form.cost_price.id_for_label }}">কেনা দাম <span class="per opt"></span></label>
+          <div class="pf-money"><span>৳</span>{{ form.cost_price }}</div>
+          {% if form.cost_price.errors %}<div class="err">{{ form.cost_price.errors.0 }}</div>{% endif %}
+        </div>
+        <div>
+          <label class="lb" for="{{ form.compare_price.id_for_label }}">আগের দাম <span class="opt">(ছাড় দেখাতে)</span></label>
+          <div class="pf-money"><span>৳</span>{{ form.compare_price }}</div>
+          {% if form.compare_price.errors %}<div class="err">{{ form.compare_price.errors.0 }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="pf-profit" id="pfProfit" aria-live="polite"></div>
+      <div class="help">কেনা দাম শুধু আপনি দেখবেন — লাভের হিসাবের জন্য। আগের দাম দিলে ওয়েবসাইটে কেটে দেওয়া দাম আর % ছাড় দেখায়।</div>
+    </div>
+
+    <div class="pf-card">
+      <h2><span class="n">৩</span> স্টক</h2>
+      <p class="sub">বিক্রি হলে নিজে থেকে কমে, ফেরত বা বাতিল হলে বাড়ে। কম পড়লে ড্যাশবোর্ডে জানাবে।</p>
+      <div class="pf-grid two">
+        <div>
+          <label class="lb" for="{{ form.stock_quantity.id_for_label }}">এখন কত আছে</label>
+          <div class="pf-qty">{{ form.stock_quantity }}<span class="unit-name">টা</span></div>
+          {% if form.stock_quantity.errors %}<div class="err">{{ form.stock_quantity.errors.0 }}</div>{% endif %}
+          <div class="help" id="pfStockHelp" style="display:none">সাইজ/রং দেওয়া আছে — স্টক নিচে প্রতিটা আলাদা করে লিখুন, এখানে যোগফল আসবে।</div>
+        </div>
+        <div>
+          <label class="lb" for="{{ form.low_stock_at.id_for_label }}">কত থাকলে সতর্ক করবে</label>
+          <div class="pf-qty">{{ form.low_stock_at }}<span class="unit-name">টা</span></div>
+          {% if form.low_stock_at.errors %}<div class="err">{{ form.low_stock_at.errors.0 }}</div>{% endif %}
+          <div class="help">এর সমান বা কম হলে "স্টক শেষের পথে" দেখাবে। ০ দিলে সতর্ক করবে না।</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pf-card">
+      <h2><span class="n">৪</span> বারকোড <span class="opt" style="font-weight:500;color:#94A3B8;font-size:13px">(ঐচ্ছিক)</span></h2>
+      <p class="sub">প্যাকেটের বারকোড স্ক্যান করে দিন — POS-এ স্ক্যান করলেই প্রোডাক্ট বিলে উঠবে। ফাঁকা রাখলে আমরা একটা বানিয়ে দেব (লেবেল প্রিন্ট করা যাবে)।</p>
+      <label class="lb" for="{{ form.barcode.id_for_label }}">মূল বারকোড</label>
+      <div class="pf-code">
+        {{ form.barcode }}
+        <button type="button" class="pf-scan" data-scan="id_barcode"><i class="bi bi-camera"></i> ক্যামেরায় স্ক্যান</button>
+      </div>
+      {% if form.barcode.errors %}<div class="err">{{ form.barcode.errors.0 }}</div>{% endif %}
+
+      <div class="mt-3">
+        <label class="lb" for="{{ form.extra_barcodes.id_for_label }}">আরও বারকোড <span class="opt">(একই জিনিস আলাদা কোম্পানি/চালানে আলাদা বারকোডে এলে)</span></label>
+        {{ form.extra_barcodes }}
+        {% if form.extra_barcodes.errors %}<div class="err">{{ form.extra_barcodes.errors.0 }}</div>{% endif %}
+        <div class="d-flex justify-content-between align-items-center gap-2 mt-2 flex-wrap">
+          <div class="help m-0">প্রতি লাইনে একটা। এর যেকোনোটা স্ক্যান করলেই এই প্রোডাক্ট।</div>
+          <button type="button" class="pf-scan" data-scan="id_extra_barcodes" style="height:36px"><i class="bi bi-plus-lg"></i> স্ক্যান করে যোগ</button>
+        </div>
+      </div>
+
+      <div id="reader-container">
+        <div id="reader"></div>
+        <div class="sp-scan-bar px-2 pb-2">
+          <span class="sp-scan-status" id="scan-status">ক্যামেরা চালু হচ্ছে...</span>
+          <span class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill fw-bold" id="scan-torch" style="display:none"><i class="bi bi-lightbulb"></i> টর্চ</button>
+            <button type="button" class="btn btn-sm btn-danger rounded-pill fw-bold" id="scan-stop"><i class="bi bi-x-lg"></i> বন্ধ</button>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pf-card">
+      <h2><span class="n">৫</span> ছবি <span class="opt" style="font-weight:500;color:#94A3B8;font-size:13px">(ঐচ্ছিক)</span></h2>
+      <p class="sub">ওয়েবসাইট আর POS-এ দেখাবে। মোবাইলে তোলা ছবি দিলেই হবে — আমরা ছোট করে নিই।</p>
+      <div class="pf-img">
+        <div class="pv{% if product.image %} has{% endif %}" id="pfPreview"{% if product.image %} style="background-image:url('{% if product.thumbnail %}{{ product.thumbnail.url }}{% else %}{{ product.image.url }}{% endif %}')"{% endif %}><i class="bi bi-image"></i></div>
+        <div class="side">
+          <input type="file" name="image" accept="image/*" id="id_image" class="visually-hidden">
+          <label for="id_image" class="pf-scan" style="height:42px;cursor:pointer"><i class="bi bi-image"></i> <span id="pfImgLabel">{% if product.image %}নতুন ছবি দিন{% else %}ছবি বাছুন{% endif %}</span></label>
+          {% if product.image %}
+          <div class="clear"><label><input type="checkbox" name="image-clear" id="image-clear_id">ছবি সরিয়ে দিন</label></div>
+          {% endif %}
+          {% if form.image.errors %}<div class="err">{{ form.image.errors.0 }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% include 'store/partials/variant_editor.html' %}
+
+    <div class="pf-card">
+      <div class="pf-live">
+        <div><b>বিক্রির জন্য চালু</b><small>বন্ধ করলে ওয়েবসাইট আর POS-এ দেখাবে না, কিন্তু মুছে যাবে না।</small></div>
+        <div class="form-check form-switch m-0">{{ form.is_active }}</div>
+      </div>
+    </div>
+
+    <div class="pf-save">
+      {% if not product %}<button type="submit" class="more" name="next" value="another"><i class="bi bi-plus-lg me-1"></i> সেভ করে আরেকটা</button>{% endif %}
+      <button type="submit" class="go"><i class="bi bi-check2-circle me-1"></i> {% if product %}সেভ করুন{% else %}প্রোডাক্ট যোগ করুন{% endif %}</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const toEn = s => String(s ?? '').replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+  const toBn = s => String(s).replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+  const NAMES = { pcs: 'টা', kg: 'কেজি', litre: 'লিটার', metre: 'মিটার', gauge: 'গজ' };
+  const PER = { pcs: '(প্রতিটা)', kg: '(প্রতি কেজি)', litre: '(প্রতি লিটার)', metre: '(প্রতি মিটার)', gauge: '(প্রতি গজ)' };
+  const unitNow = () => (document.querySelector('input[name="unit"]:checked') || {}).value || 'pcs';
+
+  function applyUnit() {
+    const u = unitNow();
+    document.querySelectorAll('.unit-name').forEach(s => s.textContent = NAMES[u]);
+    document.querySelectorAll('.pf .per').forEach(s => s.textContent = PER[u]);
+    ['id_stock_quantity', 'id_low_stock_at'].forEach(id => { const el = $(id); if (el) el.step = u === 'pcs' ? '1' : 'any'; });
+  }
+  document.querySelectorAll('input[name="unit"]').forEach(r => r.addEventListener('change', applyUnit));
+  applyUnit();
+
+  // লাভ কত হবে — সেলার নিজে হিসাব না করে দেখে নিতে পারেন
+  function profit() {
+    const price = parseFloat(toEn($('id_price').value)), cost = parseFloat(toEn($('id_cost_price').value));
+    const box = $('pfProfit');
+    if (!(price > 0) || !(cost > 0)) { box.textContent = ''; return; }
+    const gain = Math.round((price - cost) * 100) / 100, pct = Math.round(gain / price * 100);
+    box.className = 'pf-profit' + (gain < 0 ? ' bad' : '');
+    box.textContent = gain < 0 ? `কেনা দামের চেয়ে ৳${toBn(Math.abs(gain))} কমে বিক্রি হচ্ছে`
+      : `প্রতি ${unitNow() === 'pcs' ? 'পিসে' : NAMES[unitNow()] + '-এ'} লাভ ৳${toBn(gain)} (${toBn(pct)}%)`;
+  }
+  ['id_price', 'id_cost_price'].forEach(id => $(id).addEventListener('input', profit));
+  document.querySelectorAll('input[name="unit"]').forEach(r => r.addEventListener('change', profit));
+  profit();
+
+  // সাইজ/রং দিলে স্টকের ঘর যোগফল দেখায় (partials/variant_editor.html নিজে readOnly করে)
+  const stock = $('id_stock_quantity');
+  new MutationObserver(() => { $('pfStockHelp').style.display = stock.readOnly ? '' : 'none'; })
+    .observe(stock, { attributes: true, attributeFilter: ['readonly'] });
+  $('pfStockHelp').style.display = stock.readOnly ? '' : 'none';
+
+  // ছবির প্রিভিউ
+  $('id_image').addEventListener('change', e => {
+    const file = e.target.files[0], pv = $('pfPreview');
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => { pv.style.backgroundImage = `url('${ev.target.result}')`; pv.classList.add('has'); };
+    $('pfImgLabel').textContent = file.name.length > 28 ? file.name.slice(0, 25) + '…' : file.name;
+    reader.readAsDataURL(file);
+  });
+
+  // হাতের বারকোড স্ক্যানার কোডের শেষে Enter চাপে — তাতে ফর্ম আধা-ভরা অবস্থায় জমা হয়ে যেত
+  $('id_barcode').addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+
+  // ক্যামেরায় স্ক্যান (partials/cam_scanner.html): মূল বারকোডে বসায়, অথবা "আরও বারকোড"-এ নতুন লাইনে যোগ করে
+  let scanner = null, starting = false, torchOn = false, target = 'id_barcode';
+  async function start(id, button) {
+    target = id;
+    const status = $('scan-status'), box = $('reader-container');
+    // ক্যামেরা যে বোতাম চেপেছেন তার ঠিক নিচে খোলে
+    if (!scanner && !starting && button) (id === 'id_barcode' ? button.closest('.pf-code') : button.parentElement).after(box);
+    box.style.display = 'block';
+    status.className = 'sp-scan-status';
+    status.textContent = id === 'id_barcode' ? 'বারকোড ফ্রেমের মধ্যে ধরুন' : 'একটা একটা করে বারকোড ধরুন — শেষ হলে "বন্ধ"';
+    if (scanner || starting) return;
+    starting = true;
+    try {
+      scanner = await SPScan.start('reader', onScan);
+      $('scan-torch').style.display = scanner.hasTorch() ? '' : 'none';
+    } catch (err) {
+      scanner = null; status.className = 'sp-scan-status bad'; status.textContent = SPScan.message(err);
+    } finally { starting = false; }
+  }
+  function flash(el) { el.classList.add('pf-hit'); setTimeout(() => el.classList.remove('pf-hit'), 1200); }
+  function onScan(text) {
+    text = toEn(String(text || '').trim());
+    if (!text) return;
+    const el = $(target);
+    if (target === 'id_barcode') { el.value = text; flash(el); SPScan.feedback(true); stop(); return; }
+    const have = el.value.split(/[\s,;]+/).filter(Boolean);
+    if (have.includes(text) || $('id_barcode').value.trim() === text) { SPScan.feedback(false); $('scan-status').textContent = `${text} আগেই আছে`; return; }
+    el.value = have.concat(text).join('\n'); flash(el); SPScan.feedback(true);
+    $('scan-status').textContent = `যোগ হলো: ${text} — পরেরটা ধরুন`;
+  }
+  function stop() {
+    if (scanner) { scanner.stop(); scanner = null; }
+    torchOn = false; $('reader-container').style.display = 'none';
+  }
+  document.querySelectorAll('[data-scan]').forEach(b => b.addEventListener('click', () => start(b.dataset.scan, b)));
+  $('scan-stop').addEventListener('click', stop);
+  $('scan-torch').addEventListener('click', async () => { if (!scanner) return; torchOn = !torchOn; if (!(await scanner.torch(torchOn))) torchOn = false; });
+})();
+</script>
+{% endblock %}

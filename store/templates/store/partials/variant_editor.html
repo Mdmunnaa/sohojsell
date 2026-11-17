@@ -1,6 +1,6 @@
 {# প্রোডাক্ট ফর্মের "সাইজ / রং" অংশ। variant_rows = [{'id','name','price','stock'}] #}
 <style>
-  .vr-box { border: 1px solid #E2E8F0; border-radius: 16px; padding: 16px; margin-bottom: 20px; background: #F8FAFC; }
+  .vr-box { border: 1px solid #E2E8F0; border-radius: 18px; padding: 18px; margin-bottom: 14px; background: #fff; }
   .vr-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
   .vr-head b { font-size: 15px; color: #0F172A; }
   .vr-head small { display: block; color: #64748B; font-size: 12.5px; font-weight: 500; }
@@ -46,15 +46,17 @@
     div.innerHTML = `<input type="hidden" name="variant_id[]" value="${esc(v.id ?? '')}">
       <input type="text" name="variant_name[]" maxlength="80" placeholder="লাল / XL" value="${esc(v.name ?? '')}">
       <input type="text" inputmode="decimal" name="variant_price[]" placeholder="মূল দাম" value="${esc(v.price ?? '')}">
-      <input type="text" inputmode="numeric" name="variant_stock[]" placeholder="0" value="${esc(v.stock ?? '')}">
+      <input type="text" inputmode="decimal" name="variant_stock[]" placeholder="0" value="${esc(v.stock ?? '')}">
       <button type="button" class="vr-del" aria-label="মুছুন"><i class="bi bi-trash3"></i></button>`;
     rows.appendChild(div);
   }
   function refresh() {
     const list = [...rows.querySelectorAll('.vr-row')].filter(r => r.querySelector('[name="variant_name[]"]').value.trim());
     labels.style.display = rows.children.length ? 'grid' : 'none';
-    const total = list.reduce((s, r) => s + (parseInt(toEn(r.querySelector('[name="variant_stock[]"]').value), 10) || 0), 0);
-    document.getElementById('vr-total').textContent = list.length ? `মোট স্টক: ${total}টা (${list.length}টা সাইজ/রং মিলিয়ে)` : '';
+    const total = Math.round(list.reduce((s, r) => s + (parseFloat(toEn(r.querySelector('[name="variant_stock[]"]').value)) || 0), 0) * 1000) / 1000;
+    const unit = (document.querySelector('input[name="unit"]:checked') || {}).value || 'pcs';
+    const name = { pcs: 'টা', kg: ' কেজি', litre: ' লিটার', metre: ' মিটার', gauge: ' গজ' }[unit] || 'টা';
+    document.getElementById('vr-total').textContent = list.length ? `মোট স্টক: ${total}${name} (${list.length}টা সাইজ/রং মিলিয়ে)` : '';
     if (stockInput) {
       stockInput.readOnly = list.length > 0;
       stockInput.style.background = list.length ? '#F1F5F9' : '';
@@ -73,6 +75,7 @@
   });
   rows.addEventListener('click', e => { const b = e.target.closest('.vr-del'); if (b) { b.closest('.vr-row').remove(); refresh(); } });
   rows.addEventListener('input', refresh);
+  document.querySelectorAll('input[name="unit"]').forEach(r => r.addEventListener('change', refresh));
   refresh();
 })();
 </script>

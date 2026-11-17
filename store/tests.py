@@ -1015,7 +1015,7 @@ class POSTests(ShopTestMixin, TestCase):
     def test_out_of_stock_rolls_back_everything(self):
         response = self.sell(items=[{'id': self.shirt.id, 'qty': 1}, {'id': self.cap.id, 'qty': 3}])
         self.assertEqual(response.status_code, 400)
-        self.assertIn('স্টকে আছে মাত্র 2টা', response.json()['error'])
+        self.assertIn('স্টকে আছে মাত্র ২টা', response.json()['error'])
         self.shirt.refresh_from_db()
         self.assertEqual(self.shirt.stock_quantity, 10)           # আগের প্রোডাক্টের স্টকও আগের মতো
         self.assertFalse(Order.objects.filter(source='pos').exists())
@@ -1131,7 +1131,7 @@ class POSTests(ShopTestMixin, TestCase):
         self.shirt.refresh_from_db()
         self.assertEqual(self.shirt.stock_quantity, 9)
         too_many = self.give_back(sale['id'], [{'item_id': shirt_line['item_id'], 'qty': 2}])
-        self.assertIn('সর্বোচ্চ 1টা', too_many.json()['error'])
+        self.assertIn('সর্বোচ্চ ১টা', too_many.json()['error'])
         summary = day_summary(self.shop, timezone.localdate())
         self.assertEqual((summary['net'], summary['refunded'], summary['returned_count']),
                          (Decimal('584.55'), Decimal('405'), 1))
@@ -2249,7 +2249,7 @@ class VariantTests(ShopTestMixin, TestCase):
         self.xl.refresh_from_db(); self.shirt.refresh_from_db()
         self.assertEqual((self.xl.stock_quantity, self.shirt.stock_quantity), (0, 3))
         self.assertIn('শার্ট (লাল / XL)', self.client.get(reverse('pos_receipt', args=[data['sale']['id']])).content.decode())
-        self.assertIn('স্টকে আছে মাত্র 0টা', self.sell(items=[{'id': -self.xl.id, 'qty': 1}]).json()['error'])
+        self.assertIn('স্টকে আছে মাত্র ০টা', self.sell(items=[{'id': -self.xl.id, 'qty': 1}]).json()['error'])
         self.assertIn('সাইজ/রং', self.sell(items=[{'id': self.shirt.id, 'qty': 1}]).json()['error'])   # কোনটা বলা হয়নি
         back = self.client.post(reverse('pos_return', args=[data['sale']['id']]), data='{}',
                                 content_type='application/json').json()
@@ -6294,7 +6294,9 @@ class AuditFixTests(ShopTestMixin, TestCase):
                {'product[]': ['999999']}]
         for change in bad:
             response = self.client.post(reverse('order_create'), self.order_form(**change))
-            self.assertEqual(response.status_code, 302, change)
+            # ভুল হলে পাতা লেখা রেখেই ফেরে (আগে সব মুছে নতুন পাতায় পাঠাত), সাথে ভুলের বার্তা
+            self.assertEqual(response.status_code, 200, change)
+            self.assertTrue(list(response.context['messages']), change)
         self.assertFalse(Order.objects.exists())
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock_quantity, 10)
@@ -6680,3 +6682,168 @@ class CustomerRefundTests(ShopTestMixin, TestCase):
         self.client.force_login(staff)
         self.client.post(self.url, {'amount': '100', 'way': 'seller'})
         self.assertFalse(CustomerRefund.objects.exists())
+
+
+class WeightBarcodeStockTests(ShopTestMixin, TestCase):
+    """ওজনে বিক্রি (কেজি/লিটার), এক প্রোডাক্টে অনেক বারকোড, কম স্টকের সীমা আর স্টকের হিসাবের পাতা।"""
+
+    def setUp(self):
+        from .models import Product
+        self.user, self.shop = self.make_shop(phone='01755500093', slug='weightshop')
+        self.sugar = Product.objects.create(shop=self.shop, name='চিনি', price=Decimal('120'), cost_price=100,
+                                            stock_quantity=10, unit='kg', barcode='5550001')
+        self.soap = Product.objects.create(shop=self.shop, name='সাবান', price=Decimal('50'), stock_quantity=20)
+
+    def sell(self, items):
+        return self.client.post(reverse('pos_checkout'), content_type='application/json', data=json.dumps(
+            {'items': items, 'payments': [{'method': 'cash', 'amount': 0, 'full': True}]}))
+
+    def product_post(self, **extra):
+        data = {'name': 'চাল', 'price': '70', 'cost_price': '60', 'unit': 'kg', 'stock_quantity': '25.5',
+                'low_stock_at': '5', 'barcode': '', 'extra_barcodes': '', 'is_active': 'on'}
+        data.update(extra)
+        return data
+
+    def test_units_helpers(self):
+        from . import units
+        self.assertEqual(units.parse('১.৫', 'kg'), Decimal('1.5'))
+        self.assertEqual(units.parse('2', 'pcs'), Decimal('2'))
+        with self.assertRaises(units.QtyError):
+            units.parse('1.5', 'pcs')
+        with self.assertRaises(units.QtyError):
+            units.parse('0', 'kg')
+        self.assertEqual(units.show(Decimal('1.500'), 'kg'), '১.৫ কেজি')
+        self.assertEqual(units.show(3, 'pcs'), '৩টা')
+        self.assertEqual(units.num(Decimal('2.000')), 2)
+        self.assertTrue(units.fits(Decimal('1.25'), 'litre'))
+        self.assertFalse(units.fits(Decimal('1.25'), 'pcs'))
+        self.assertEqual(units.money(Decimal('120') * Decimal('0.333')), Decimal('39.96'))
+
+    def test_pos_sells_by_weight_and_pcs_rejects_fraction(self):
+        from .models import OrderItem, StockMovement
+        data = self.sell([{'id': self.sugar.id, 'qty': 1.5}, {'id': self.soap.id, 'qty': 2}]).json()
+        self.assertTrue(data['success'], data)
+        self.assertEqual(data['sale']['total'], 280)                       # ১.৫ × ১২০ + ২ × ৫০
+        self.sugar.refresh_from_db()
+        self.assertEqual(self.sugar.stock_quantity, Decimal('8.5'))
+        self.assertEqual(self.sugar.stock_label, '৮.৫ কেজি')
+        self.assertEqual(OrderItem.objects.get(product=self.sugar).quantity, Decimal('1.5'))
+        move = StockMovement.objects.get(product=self.sugar, reason='pos_sale')
+        self.assertEqual((move.change, move.stock_after), (Decimal('-1.5'), Decimal('8.5')))
+        bad = self.sell([{'id': self.soap.id, 'qty': 1.5}])
+        self.assertEqual(bad.status_code, 400)
+        self.assertIn('পূর্ণ সংখ্যা', bad.json()['error'])
+        too_much = self.sell([{'id': self.sugar.id, 'qty': 9}])
+        self.assertIn('৮.৫ কেজি', too_much.json()['error'])
+        screen = self.client.get(reverse('pos')).content.decode()
+        self.assertIn('id="m-weight"', screen)
+
+    def test_extra_barcodes_from_form_and_pos_lookup(self):
+        from .models import Product, ProductBarcode
+        response = self.client.post(reverse('add_product'), self.product_post(
+            extra_barcodes='৮৯০১১১\n890222, 890222'))
+        self.assertRedirects(response, reverse('product_list'))
+        rice = Product.objects.get(name='চাল')
+        self.assertEqual((rice.unit, rice.stock_quantity, rice.low_stock_at), ('kg', Decimal('25.5'), 5))
+        self.assertEqual(sorted(rice.extra_barcodes.values_list('code', flat=True)), ['890111', '890222'])
+        hit = self.client.post(reverse('barcode_lookup'), content_type='application/json',
+                               data=json.dumps({'barcode': '890222'})).json()
+        self.assertEqual((hit['hit'], hit['product']['unit']), (rice.id, 'kg'))
+        self.assertIn('890111', hit['product']['codes'])
+        # অন্য প্রোডাক্টের বাড়তি বারকোড বা মূল বারকোড আবার দেওয়া যায় না
+        clash = self.client.post(reverse('add_product'), self.product_post(name='আটা', extra_barcodes='890111'))
+        self.assertEqual(clash.status_code, 200)
+        self.assertContains(clash, 'আগে থেকেই')
+        clash = self.client.post(reverse('add_product'), self.product_post(name='আটা', barcode='890111'))
+        self.assertContains(clash, 'আগে থেকেই')
+        # এডিটে একটা সরালে মুছে যায়
+        self.client.post(reverse('edit_product', args=[rice.id]), self.product_post(extra_barcodes='890222'))
+        self.assertEqual(list(ProductBarcode.objects.filter(product=rice).values_list('code', flat=True)), ['890222'])
+        found = self.client.get(reverse('product_list'), {'q': '890222'}).content.decode()
+        self.assertIn('চাল', found)
+
+    def test_product_form_page_and_whole_number_rule(self):
+        page = self.client.get(reverse('add_product')).content.decode()
+        for text in ('কীভাবে বিক্রি হয়', 'কেজি', 'কত থাকলে সতর্ক করবে', 'আরও বারকোড', 'সেভ করে আরেকটা'):
+            self.assertIn(text, page)
+        bad = self.client.post(reverse('add_product'), self.product_post(unit='pcs', stock_quantity='2.5'))
+        self.assertContains(bad, 'পূর্ণ সংখ্যায়')
+        again = self.client.post(reverse('add_product'), self.product_post(name='ডাল', next='another'))
+        self.assertRedirects(again, reverse('add_product'))
+        edit = self.client.get(reverse('edit_product', args=[self.sugar.id])).content.decode()
+        self.assertIn('স্টকের হিসাব', edit)
+        self.assertRegex(edit, r'value="kg"[^>]*checked')
+
+    def test_low_stock_threshold(self):
+        from . import dashboard
+        from .models import Product
+        self.sugar.stock_quantity, self.sugar.low_stock_at = Decimal('2.5'), 3
+        self.sugar.save()
+        quiet = Product.objects.create(shop=self.shop, name='চুপ', price=1, stock_quantity=1, low_stock_at=0)
+        gone = Product.objects.create(shop=self.shop, name='শেষ', price=1, stock_quantity=0, low_stock_at=0)
+        alerts = dashboard.stock_alerts(self.shop)
+        names = {p.name for p in alerts['items']}
+        self.assertEqual(names, {'চিনি', 'শেষ'})
+        self.assertEqual((alerts['count'], alerts['out']), (2, 1))
+        self.assertTrue(self.sugar.is_low_stock and gone.is_low_stock)
+        self.assertFalse(quiet.is_low_stock or self.soap.is_low_stock)
+        page = self.client.get(reverse('product_list'), {'status': 'low'}).content.decode()
+        self.assertIn('চিনি', page)
+        self.assertNotIn('সাবান', page)
+        self.assertIn('২.৫ কেজি', page)
+
+    def test_stock_history_page(self):
+        from .models import StockMovement
+        self.sell([{'id': self.sugar.id, 'qty': 2}])
+        self.sell([{'id': self.soap.id, 'qty': 3}])
+        page = self.client.get(reverse('stock_history')).content.decode()
+        self.assertIn('POS-এ বিক্রি', page)
+        self.assertIn('−২ কেজি', page)
+        self.assertIn('−৩টা', page)
+        only = self.client.get(reverse('stock_history'), {'product': self.soap.id}).content.decode()
+        self.assertIn('সাবান', only)
+        self.assertNotIn('−২ কেজি', only)
+        self.assertEqual(StockMovement.objects.filter(shop=self.shop).count(), 2)
+        nothing = self.client.get(reverse('stock_history'), {'reason': 'purchase'}).content.decode()
+        self.assertIn('এই বাছাইয়ে কোনো বদল নেই', nothing)
+
+    def test_delete_keeps_sold_product_and_manual_order_by_weight(self):
+        from .models import Order, Product
+        response = self.client.post(reverse('order_create'), {
+            'customer_name': 'রহিম', 'customer_phone': '01712345670', 'customer_address': 'মিরপুর, ঢাকা',
+            'product[]': [str(self.sugar.id)], 'price[]': ['120'], 'quantity[]': ['2.5'],
+            'delivery_charge': '60', 'discount': '0', 'payment_method': 'COD'})
+        self.assertRedirects(response, reverse('order_list'))
+        order = Order.objects.latest('id')
+        self.assertEqual(order.total_amount, Decimal('360'))
+        self.sugar.refresh_from_db()
+        self.assertEqual(self.sugar.stock_quantity, Decimal('7.5'))
+        bad = self.client.post(reverse('order_create'), {
+            'customer_name': 'করিম', 'customer_phone': '01712345671', 'customer_address': 'ঢাকা',
+            'product[]': [str(self.soap.id)], 'price[]': ['50'], 'quantity[]': ['1.5'],
+            'delivery_charge': '0', 'discount': '0', 'payment_method': 'COD'})
+        self.assertEqual(bad.status_code, 200)
+        self.assertContains(bad, 'পূর্ণ সংখ্যায়')
+        self.assertContains(bad, 'value="করিম"')                          # লেখা হারায় না
+        # বিক্রি হওয়া প্রোডাক্ট "মুছলে" শুধু বন্ধ হয়
+        self.client.post(reverse('delete_product', args=[self.sugar.id]))
+        self.sugar.refresh_from_db()
+        self.assertFalse(self.sugar.is_active)
+        self.assertEqual(order.items.count(), 1)
+        self.client.post(reverse('delete_product', args=[self.soap.id]))
+        self.assertFalse(Product.objects.filter(pk=self.soap.id).exists())
+
+    def test_purchase_by_weight(self):
+        from .models import Purchase
+        response = self.client.post(reverse('purchase_new'), {
+            'item_key[]': [str(self.sugar.id)], 'item_qty[]': ['২.৫'], 'item_cost[]': ['110'],
+            'supplier': '', 'purchased_on': ''})
+        purchase = Purchase.objects.get()
+        self.assertRedirects(response, reverse('purchase_detail', args=[purchase.id]))
+        self.assertEqual(purchase.total_amount, Decimal('275'))
+        self.sugar.refresh_from_db()
+        self.assertEqual(self.sugar.stock_quantity, Decimal('12.5'))
+        bad = self.client.post(reverse('purchase_new'), {
+            'item_key[]': [str(self.soap.id)], 'item_qty[]': ['1.5'], 'item_cost[]': ['40'],
+            'supplier': '', 'purchased_on': ''})
+        self.assertContains(bad, 'পূর্ণ সংখ্যায়')

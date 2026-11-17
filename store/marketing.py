@@ -680,6 +680,12 @@ FEATURES = [
                  'হ্যাঁ, CSV ফাইল থেকে অনেক প্রোডাক্ট একসাথে তোলা যায়; একটা একটা তুলতেও প্রতিটায় এক মিনিটের মতো।'),
                 ('সাপ্লায়ারের বাকি রাখা যায়?',
                  'হ্যাঁ, মাল কেনার সময় কত দিলেন লিখলে বাকিটা সাপ্লায়ারের খাতায় থাকে; পরে টাকা দিলে কমে।'),
+                ('স্টক কোথায় গেল, বোঝা যায়?',
+                 'হ্যাঁ। "স্টকের হিসাব"-এ প্রতিটা বদল লেখা থাকে — কবে, কোন বিক্রি/অর্ডার/মাল কেনা বা হাতে বদলে, কত বাড়ল-কমল আর কে করল। '
+                 'প্রতিটা প্রোডাক্টে কত থাকলে সতর্ক করবে সেটাও ঠিক করা যায়।'),
+                ('কেজি বা লিটারে মাপা জিনিস, বা একই জিনিসের কয়েকটা বারকোড?',
+                 'দুটোই চলে। প্রোডাক্টে কেজি/লিটার/মিটার/গজ বাছলে ১.৫ কেজির মতো ভাঙা পরিমাণে বিক্রি আর স্টক হয়। আর একটা প্রোডাক্টে '
+                 'অনেকগুলো বারকোড রাখা যায় — যেকোনোটা স্ক্যান করলেই সেই প্রোডাক্ট।'),
             ],
         },
         'en': {
@@ -713,6 +719,12 @@ FEATURES = [
                  'Yes, import many products at once from a CSV file, or add each in about a minute.'),
                 ('Can I track supplier dues?',
                  'Yes. Enter what you paid when buying and the rest stays on the supplier account until you pay.'),
+                ('Can I see where stock went?',
+                 'Yes. The stock history records every change — when, which sale, order, purchase or manual edit, how much and by whom. '
+                 'You can also set a low-stock alert level for each product.'),
+                ('Items sold by weight, or one item with several barcodes?',
+                 'Both work. Choose kg, litre, metre or gauge on a product to sell and stock part quantities like 1.5 kg. '
+                 'A product can also have many barcodes — scanning any of them finds it.'),
             ],
         },
     },
@@ -1150,7 +1162,8 @@ INDUSTRIES = [
             'points': [
                 ('bi-upc-scan', 'দ্রুত বিল', 'বারকোড স্ক্যান বা নাম লিখে খোঁজা, রসিদ প্রিন্ট।'),
                 ('bi-journal-text', 'বাকির খাতা', 'কার কাছে কত, কবে দেবে বলেছে — আর তাগাদার SMS।'),
-                ('bi-boxes', 'স্টক', 'বিক্রি হলেই কমে, মাল কিনলেই বাড়ে।'),
+                ('bi-boxes', 'কেজি-লিটারে বিক্রি আর স্টক',
+                 'চাল-ডাল কেজিতে, তেল লিটারে — ১.৫ কেজিও বিক্রি হয়। বিক্রি হলেই স্টক কমে, কম পড়লে আগে জানায়।'),
                 ('bi-house-door-fill', 'হোম ডেলিভারি', 'এলাকার কাস্টমার ওয়েবসাইটে অর্ডার দেয়, ডেলিভারি চার্জ আপনার নিয়মে।'),
                 ('bi-receipt', 'খরচ আর লাভ', 'ভাড়া, বেতন লিখলে মাস শেষে আসল লাভ দেখায়।'),
                 ('bi-people-fill', 'কর্মচারীর আলাদা লগইন', 'ক্যাশিয়ার শুধু বিল করবে, হিসাব দেখবে না।'),
@@ -1160,6 +1173,9 @@ INDUSTRIES = [
                  'POS-এ বাকিতে বিক্রি করলেই বাকির খাতায় ওঠে; তাগাদার SMS এক ক্লিকে।'),
                 ('বারকোড ছাড়া প্রোডাক্ট বিক্রি করা যায়?',
                  'হ্যাঁ, নাম লিখে খুঁজে বিল করা যায়; চাইলে নিজের বারকোড স্টিকার ছাপিয়ে নিন।'),
+                ('চাল-ডাল কেজি দরে বিক্রি করা যায়?',
+                 'হ্যাঁ। প্রোডাক্টে "কেজি" বা "লিটার" বেছে দাম দিন প্রতি কেজির। POS-এ প্রোডাক্টে চাপলে কতটা জিজ্ঞেস করে — '
+                 '০.২৫, ১.৫ কেজি যা খুশি — দাম নিজে হিসাব হয়। একই মালের আলাদা কোম্পানির বারকোডও এক প্রোডাক্টে রাখা যায়।'),
                 ('ইন্টারনেট গেলে কী হবে?',
                  'SellPunch অনলাইনে চলে — তাই দোকানে ইন্টারনেট (মোবাইল ডাটা হলেও) লাগবে।'),
             ],
@@ -1175,7 +1191,8 @@ INDUSTRIES = [
             'points': [
                 ('bi-upc-scan', 'Fast billing', 'Scan barcodes or search by name; print receipts.'),
                 ('bi-journal-text', 'Due book', 'Who owes what and when they promised — with reminder SMS.'),
-                ('bi-boxes', 'Stock', 'Goes down when you sell and up when you buy.'),
+                ('bi-boxes', 'Sell and stock by weight',
+                 'Rice and lentils by the kg, oil by the litre — even 1.5 kg. Stock drops as you sell and warns you before it runs out.'),
                 ('bi-house-door-fill', 'Home delivery', 'Local customers order online; delivery charges your way.'),
                 ('bi-receipt', 'Expenses and profit', 'Add rent and salaries to see real profit at month end.'),
                 ('bi-people-fill', 'Separate staff logins', 'Cashiers bill but cannot see accounts.'),
@@ -1185,6 +1202,9 @@ INDUSTRIES = [
                  'Sell on credit at the POS and it goes into the due book; reminder SMS in one click.'),
                 ('Can I sell products without barcodes?',
                  'Yes, search by name to bill, or print your own barcode stickers.'),
+                ('Can I sell rice and lentils by the kg?',
+                 'Yes. Choose kg or litre on the product and set the price per kg. At the POS it asks how much — 0.25 or 1.5 kg, '
+                 'anything — and works out the price. Barcodes from different brands of the same item can sit on one product.'),
                 ('What if the internet goes down?',
                  'SellPunch runs online, so the shop needs internet (mobile data works).'),
             ],

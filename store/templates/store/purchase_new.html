@@ -78,7 +78,7 @@
         <section class="lg-card">
           <div class="lg-head"><div><h2><i class="bi bi-box-seam"></i> কী কী কিনলেন</h2><p>নাম বা বারকোড লিখে প্রোডাক্ট বাছুন, তারপর পরিমাণ আর প্রতিটার কেনা দাম দিন</p></div></div>
           <div class="lg-body">
-            <div class="pn-row pn-labels"><span>প্রোডাক্ট</span><span>পরিমাণ</span><span>প্রতিটার কেনা দাম</span><span style="text-align: right;">মোট</span><span></span></div>
+            <div class="pn-row pn-labels"><span>প্রোডাক্ট</span><span>পরিমাণ</span><span>কেনা দাম (প্রতিটা / প্রতি কেজি)</span><span style="text-align: right;">মোট</span><span></span></div>
             <div id="pn-rows"></div>
             <button type="button" class="pn-add" id="pn-add"><i class="bi bi-plus-lg"></i> আরেকটা প্রোডাক্ট</button>
             <div class="lg-help">নতুন প্রোডাক্ট হলে আগে <a href="{% url 'add_product' %}" target="_blank">প্রোডাক্ট যোগ করুন</a> (স্টক ০ রেখে), তারপর এখানে কেনা লিখুন।</div>
@@ -127,6 +127,8 @@
   const toBn = s => String(s).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
   const taka = n => '৳' + toBn((Math.round(n * 100) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 }));
   const num = v => { const n = parseFloat(toEn(v)); return isFinite(n) && n > 0 ? n : 0; };
+  const UNIT_BN = { kg: 'কেজি', litre: 'লিটার', metre: 'মিটার', gauge: 'গজ' };
+  const stockText = p => toBn(p.stock) + (p.unit && p.unit !== 'pcs' ? ' ' + UNIT_BN[p.unit] : 'টা');
 
   function addRow(row) {
     row = row || {};
@@ -138,7 +140,7 @@
         <input class="lg-input pn-search" type="text" placeholder="প্রোডাক্টের নাম বা বারকোড" value="${picked ? esc(picked.name) : ''}" aria-label="প্রোডাক্ট">
         <div class="pn-list"></div>
       </div>
-      <input class="lg-input num" type="text" inputmode="numeric" name="item_qty[]" placeholder="কয়টা" value="${esc(row.qty ?? '')}" aria-label="পরিমাণ">
+      <input class="lg-input num" type="text" inputmode="decimal" name="item_qty[]" placeholder="${picked && picked.unit && picked.unit !== 'pcs' ? UNIT_BN[picked.unit] : 'কয়টা'}" value="${esc(row.qty ?? '')}" aria-label="পরিমাণ">
       <input class="lg-input num" type="text" inputmode="decimal" name="item_cost[]" placeholder="৳" value="${esc(row.cost ?? '')}" aria-label="প্রতিটার কেনা দাম">
       <div class="line-total num">৳০</div>
       <button type="button" class="pn-del" aria-label="সারি মুছুন"><i class="bi bi-trash3"></i></button>`;
@@ -151,7 +153,7 @@
     const q = toEn(input.value.trim().toLowerCase());
     const hits = DATA.products.filter(p => !q || p.name.toLowerCase().includes(q) || String(p.barcode).toLowerCase().includes(q)).slice(0, 40);
     list.innerHTML = hits.length
-      ? hits.map(p => `<div class="pn-opt" data-key="${esc(p.key)}"><span>${esc(p.name)}</span><small>স্টক ${toBn(p.stock)}${p.cost ? ' · কেনা ' + taka(p.cost) : ''}</small></div>`).join('')
+      ? hits.map(p => `<div class="pn-opt" data-key="${esc(p.key)}"><span>${esc(p.name)}</span><small>স্টক ${stockText(p)}${p.cost ? ' · কেনা ' + taka(p.cost) : ''}</small></div>`).join('')
       : `<div class="pn-none">${DATA.products.length ? 'এই নামে কোনো প্রোডাক্ট নেই' : 'আগে প্রোডাক্ট যোগ করুন'}</div>`;
     list.classList.add('show');
   }
@@ -163,19 +165,23 @@
     const cost = row.querySelector('[name="item_cost[]"]');
     if (!cost.value && p.cost) cost.value = p.cost;
     const qty = row.querySelector('[name="item_qty[]"]');
+    qty.placeholder = p.unit && p.unit !== 'pcs' ? UNIT_BN[p.unit] : 'কয়টা';
     if (!qty.value) qty.focus(); else cost.focus();
     refresh();
   }
 
   function refresh() {
-    let total = 0, qty = 0;
+    let total = 0, qty = 0, loose = 0;
     rows.querySelectorAll('.pn-row').forEach(row => {
-      const q = Math.floor(num(row.querySelector('[name="item_qty[]"]').value));
-      const line = q * num(row.querySelector('[name="item_cost[]"]').value);
+      const key = row.querySelector('[name="item_key[]"]').value, p = BY_KEY.get(String(key));
+      const isLoose = p && p.unit && p.unit !== 'pcs';
+      const raw = num(row.querySelector('[name="item_qty[]"]').value);
+      const q = isLoose ? Math.round(raw * 1000) / 1000 : Math.floor(raw);   // কেজি/লিটারে দশমিক চলে
+      const line = Math.round(q * num(row.querySelector('[name="item_cost[]"]').value) * 100) / 100;
       row.querySelector('.line-total').textContent = taka(line);
-      if (row.querySelector('[name="item_key[]"]').value) { total += line; qty += q; }
+      if (key) { total += line; if (isLoose) loose += 1; else qty += q; }
     });
-    $('pn-qty').textContent = toBn(qty) + 'টা';
+    $('pn-qty').textContent = toBn(qty) + 'টা' + (loose ? ` + ${toBn(loose)}টা মাপের মাল` : '');
     $('pn-total').textContent = taka(total);
     const paidText = $('pn-paid').value.trim(), paid = paidText === '' ? total : num(paidText), due = total - paid;
     const box = $('pn-due'), supplier = $('pn-supplier').value;

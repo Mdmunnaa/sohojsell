@@ -15,7 +15,7 @@ from django.db import transaction
 from django.db.models import Count, F, Sum
 from django.utils import timezone
 
-from . import variants
+from . import units, variants
 from .models import (PAY_METHOD_CHOICES, Expense, Product, ProductVariant, Purchase, PurchaseItem, Supplier,
                      SupplierPayment)
 
@@ -145,8 +145,13 @@ def lines_from_post(post):
             continue
         try:
             key = int(raw_key)
-            qty = int(str(qtys[index] if index < len(qtys) else '').translate(BN_TO_EN).strip() or 0)
         except ValueError:
+            raise LedgerError('প্রোডাক্টটা ঠিক নেই, পেইজটা রিফ্রেশ করুন।')
+        raw_qty = str(qtys[index] if index < len(qtys) else '').translate(BN_TO_EN).strip() or '0'
+        try:
+            # কেজি/লিটারের মাল দশমিকে (২.৫ কেজি) আসতে পারে; পিসের মাল পূর্ণ সংখ্যা কিনা create_purchase() দেখে
+            qty = units.parse(raw_qty, 'kg', allow_zero=True, maximum=Decimal(MAX_QTY))
+        except units.QtyError:
             raise LedgerError('পরিমাণ সংখ্যায় লিখুন।')
         if not 0 < qty <= MAX_QTY:
             raise LedgerError('প্রতিটা মালের পরিমাণ ১ বা তার বেশি দিন।')
@@ -161,7 +166,7 @@ def lines_from_post(post):
 
 def _average_cost(old_stock, old_cost, added_qty, added_value):
     """নতুন গড় কেনা দাম। আগের দাম জানা না থাকলে (০) শুধু নতুন মালের দামই ধরা হয়।"""
-    old_stock = max(int(old_stock or 0), 0)
+    old_stock = max(Decimal(old_stock or 0), 0)
     if not old_cost or old_cost <= 0:
         old_stock = 0
     total_qty = old_stock + added_qty
@@ -185,7 +190,9 @@ def create_purchase(shop, user, *, lines, supplier=None, purchased_on=None, invo
             raise LedgerError('একটা প্রোডাক্ট আর পাওয়া যাচ্ছে না, পেইজটা রিফ্রেশ করুন।')
         if item.needs_choice:
             raise LedgerError(f'"{item.name}"-এর কোন সাইজ/রং কেনা হলো সেটা বেছে নিন।')
-        value = line['cost'] * line['qty']
+        if not item.product.is_loose and line['qty'] != int(line['qty']):
+            raise LedgerError(f'"{item.name}" পিসে বিক্রি হয় — পরিমাণ পূর্ণ সংখ্যায় দিন।')
+        value = (line['cost'] * line['qty']).quantize(CENT, rounding=ROUND_HALF_UP)
         total += value
         rows.append((item, line['qty'], line['cost']))
         bucket = per_product.setdefault(item.product.id, {'product': item.product, 'qty': 0, 'value': ZERO})
@@ -241,7 +248,7 @@ def delete_purchase(shop, purchase, user=None):
         key = ('v', holder.id) if item.variant_id else ('p', holder.id)
         needed[key] = needed.get(key, 0) + item.quantity
         if holder.stock_quantity < needed[key]:
-            raise LedgerError(f'"{item.name}" থেকে কিছু বিক্রি হয়ে গেছে (স্টকে আছে {holder.stock_quantity}টা), '
+            raise LedgerError(f'"{item.name}" থেকে কিছু বিক্রি হয়ে গেছে (স্টকে আছে {units.show(holder.stock_quantity, product.unit)}), '
                               'তাই এই কেনাটা মোছা যাবে না।')
         bucket = per_product.setdefault(product.id, {'product': product, 'qty': 0, 'value': ZERO})
         bucket['qty'] += item.quantity
@@ -283,10 +290,12 @@ def product_options(shop):
     for product in Product.objects.filter(shop=shop, is_active=True).prefetch_related('variants').order_by('name'):
         if product.has_variants:
             options += [{'key': -v.id, 'name': f'{product.name} ({v.name})', 'cost': float(product.cost_price),
-                         'stock': v.stock_quantity, 'barcode': v.barcode} for v in product.variants.all()]
+                         'stock': units.num(v.stock_quantity), 'unit': product.unit,
+                         'barcode': v.barcode} for v in product.variants.all()]
         else:
             options.append({'key': product.id, 'name': product.name, 'cost': float(product.cost_price),
-                            'stock': product.stock_quantity, 'barcode': product.barcode or ''})
+                            'stock': units.num(product.stock_quantity), 'unit': product.unit,
+                            'barcode': product.barcode or ''})
     return options
 
 

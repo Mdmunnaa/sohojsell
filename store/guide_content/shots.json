@@ -267,9 +267,13 @@
   "w": 1280,
   "h": 780
  },
+ "products-stock-history": {
+  "w": 1280,
+  "h": 780
+ },
  "products-variants": {
-  "w": 676,
-  "h": 405
+  "w": 780,
+  "h": 432
  },
  "settings-data": {
   "w": 1280,

@@ -79,7 +79,7 @@
           <div></div><div></div>
           <div class="lt">৳{{ item.get_total|floatformat:"-2g"|bn }}</div><div></div>
           {% else %}
-          <div class="oe-qty"><button type="button" data-step="-1" aria-label="কমান">−</button><input type="number" name="item_qty_{{ item.id }}" value="{{ item.quantity }}" min="0" max="9999" inputmode="numeric" data-qty aria-label="পরিমাণ"><button type="button" data-step="1" aria-label="বাড়ান">+</button></div>
+          <div class="oe-qty"><button type="button" data-step="-1" aria-label="কমান">−</button><input type="number" name="item_qty_{{ item.id }}" value="{{ item.quantity }}" min="0" max="9999" step="{% if item.product.is_loose %}any{% else %}1{% endif %}" inputmode="{% if item.product.is_loose %}decimal{% else %}numeric{% endif %}"{% if item.product.is_loose %} data-loose{% endif %} data-qty aria-label="পরিমাণ"><button type="button" data-step="1" aria-label="বাড়ান">+</button></div>
           <label class="oe-price mb-0"><span>৳</span><input type="number" step="0.01" min="0" name="item_price_{{ item.id }}" value="{{ item.price|floatformat:'-2' }}" class="form-control" data-price aria-label="দাম"></label>
           <div class="lt" data-line></div>
           <button type="button" class="oe-del" data-remove aria-label="বাদ দিন" title="বাদ দিন"><i class="bi bi-trash"></i></button>
@@ -93,9 +93,9 @@
         {% if products|length > 12 %}<input type="search" class="form-control find" id="oeFind" placeholder="প্রোডাক্ট খুঁজুন…" aria-label="প্রোডাক্ট খুঁজুন">{% endif %}
         <select class="form-select" id="oeProduct" aria-label="প্রোডাক্ট বেছে নিন">
           <option value="">+ প্রোডাক্ট যোগ করুন</option>
-          {% for p in products %}<option value="{{ p.id }}" data-price="{{ p.price|floatformat:'-2' }}" data-stock="{{ p.stock }}" data-name="{{ p.name }}">{{ p.name }} — ৳{{ p.price|floatformat:"-2g" }} (স্টক {{ p.stock }})</option>{% endfor %}
+          {% for p in products %}<option value="{{ p.id }}" data-price="{{ p.price|floatformat:'-2' }}" data-stock="{{ p.stock }}" data-unit="{{ p.unit }}" data-name="{{ p.name }}">{{ p.name }} — ৳{{ p.price|floatformat:"-2g" }}{% if p.unit != 'pcs' %}/{{ p.unit_label }}{% endif %} (স্টক {{ p.stock }})</option>{% endfor %}
         </select>
-        <input type="number" class="form-control" id="oeAddQty" value="1" min="1" inputmode="numeric" aria-label="কয়টা">
+        <input type="number" class="form-control" id="oeAddQty" value="1" min="0" step="any" inputmode="decimal" aria-label="কতটা">
         <button type="button" class="btn btn-success fw-bold" id="oeAdd"><i class="bi bi-plus-lg"></i> যোগ</button>
       </div>
       {% endif %}
@@ -210,7 +210,9 @@
     var step = e.target.closest('[data-step]'), del = e.target.closest('[data-remove]');
     if (step) {
       var q = step.parentNode.querySelector('[data-qty]');
-      q.value = Math.max(parseInt(q.min || '0', 10), Math.min(9999, (parseInt(q.value, 10) || 0) + parseInt(step.dataset.step, 10)));
+      var by = parseInt(step.dataset.step, 10) * (q.hasAttribute('data-loose') ? 0.5 : 1);    // কেজি/লিটারে আধা করে
+      var next = Math.round(((parseFloat(q.value) || 0) + by) * 1000) / 1000;
+      q.value = Math.max(parseFloat(q.min || '0'), Math.min(9999, next));
       refresh();
     } else if (del) {
       var row = del.closest('[data-row]');
@@ -238,12 +240,14 @@
   document.getElementById('oeAdd').addEventListener('click', function () {
     var opt = select.options[select.selectedIndex];
     if (!opt || !opt.value) { select.focus(); return; }
-    var qty = Math.max(1, parseInt(addQty.value, 10) || 1), stock = parseInt(opt.dataset.stock, 10);
-    if (qty > stock) { alert('স্টকে আছে মাত্র ' + bn(stock) + 'টা।'); return; }
+    var loose = opt.dataset.unit && opt.dataset.unit !== 'pcs';
+    var raw = parseFloat(addQty.value) || 1, stock = parseFloat(opt.dataset.stock);
+    var qty = loose ? Math.max(0.001, Math.round(raw * 1000) / 1000) : Math.max(1, Math.floor(raw));
+    if (qty > stock) { alert('স্টকে আছে মাত্র ' + bn(stock) + (loose ? '' : 'টা') + '।'); return; }
     var row = document.createElement('div');
     row.className = 'oe-row new'; row.setAttribute('data-row', '');
     row.innerHTML = '<div class="nm"><b></b><small>নতুন যোগ</small></div>' +
-      '<div class="oe-qty"><button type="button" data-step="-1" aria-label="কমান">−</button><input type="number" name="new_qty[]" min="1" max="' + stock + '" inputmode="numeric" data-qty aria-label="পরিমাণ"><button type="button" data-step="1" aria-label="বাড়ান">+</button></div>' +
+      '<div class="oe-qty"><button type="button" data-step="-1" aria-label="কমান">−</button><input type="number" name="new_qty[]" min="' + (loose ? '0.001' : '1') + '" max="' + stock + '" step="' + (loose ? 'any' : '1') + '"' + (loose ? ' data-loose' : '') + ' inputmode="decimal" data-qty aria-label="পরিমাণ"><button type="button" data-step="1" aria-label="বাড়ান">+</button></div>' +
       '<label class="oe-price mb-0"><span>৳</span><input type="number" step="0.01" min="0" name="new_price[]" class="form-control" data-price aria-label="দাম"></label>' +
       '<div class="lt" data-line></div>' +
       '<button type="button" class="oe-del" data-remove aria-label="বাদ দিন"><i class="bi bi-x-lg"></i></button>' +

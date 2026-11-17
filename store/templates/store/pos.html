@@ -185,6 +185,16 @@
   .var-btn .vn { font-weight: 800; font-size: 14.5px; color: var(--p-ink); }
   .var-btn .vn em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--p-go-dark); }
   .var-btn .vp { font-weight: 800; font-size: 13.5px; color: var(--p-ink2); }
+  .w-quick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
+  .w-quick button { border: 2px solid var(--p-line); background: #fff; border-radius: 12px; height: 48px; font-weight: 800; font-size: 14px; color: var(--p-ink); }
+  .w-quick button:hover { border-color: var(--p-go); background: var(--p-go-soft); }
+  .w-row { display: flex; align-items: center; gap: 10px; }
+  .w-row input { flex: 1; height: 56px; border: 2px solid var(--p-line); border-radius: 14px; padding: 0 14px; font-size: 22px; font-weight: 800; color: var(--p-ink); }
+  .w-row input:focus { outline: none; border-color: var(--p-go); }
+  .w-row span { font-weight: 800; font-size: 16px; color: var(--p-ink2); min-width: 46px; }
+  .w-price { min-height: 22px; margin: 10px 0 12px; font-weight: 800; color: var(--p-go-dark); font-size: 15px; }
+  .w-ok { width: 100%; }
+  @media (max-width: 480px) { .w-quick { grid-template-columns: repeat(3, 1fr); } }
 
   /* তালিকা (হোল্ড, আজকের বিক্রি) */
   .list-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--p-line); }
@@ -386,6 +396,20 @@
   </div>
 </div>
 
+<!-- ═══ ওজন/মাপ (কেজি, লিটার…) ═══ -->
+<div class="m-back" id="m-weight" role="dialog" aria-modal="true" aria-labelledby="w-h">
+  <div class="m-box narrow">
+    <div class="m-head"><h3 id="w-h">কতটা?</h3><button class="m-x" data-close type="button" aria-label="বন্ধ"><i class="bi bi-x-lg"></i></button></div>
+    <div class="m-body">
+      <div class="var-hint" id="w-hint"></div>
+      <div class="w-quick" id="w-quick"></div>
+      <div class="w-row"><input type="number" step="any" min="0" id="w-input" inputmode="decimal" aria-label="পরিমাণ"><span id="w-unit"></span></div>
+      <div class="w-price" id="w-price"></div>
+      <button type="button" class="btn-pay w-ok" id="w-ok">বিলে যোগ করুন <span class="kbd">Enter</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ আজকের বিক্রি ═══ -->
 <div class="m-back" id="m-sales" role="dialog" aria-modal="true">
   <div class="m-box wide">
@@ -497,13 +521,16 @@ const $ = (id) => document.getElementById(id);
 /* সাইজ/রং থাকা প্রোডাক্ট: গ্রিডে একটাই কার্ড, কার্টে প্রতিটা সাইজ/রং আলাদা (নম্বর ঋণাত্মক) */
 const PRODUCTS = new Map(), BY_BARCODE = new Map();
 function register(p) {
+  p.unit = p.unit || 'pcs'; p.suffix = p.suffix || 'টা'; p.loose = p.unit !== 'pcs';
   PRODUCTS.set(p.id, p);
   if (p.barcode) BY_BARCODE.set(String(p.barcode).toLowerCase(), p);
+  (p.codes || []).forEach(c => BY_BARCODE.set(String(c).toLowerCase(), p));     // বাড়তি বারকোড
   p.kids = (p.variants || []).map(v => {
     const kid = { id: v.id, name: `${p.name} (${v.name})`, vname: v.name, price: v.price, stock: v.stock,
-                  barcode: v.barcode, img: p.img, cat: p.cat, parent: p.id };
+                  barcode: v.barcode, img: p.img, cat: p.cat, parent: p.id, unit: p.unit, suffix: p.suffix, loose: p.loose };
     PRODUCTS.set(kid.id, kid);
     if (kid.barcode) BY_BARCODE.set(String(kid.barcode).toLowerCase(), kid);
+    (v.codes || []).forEach(c => BY_BARCODE.set(String(c).toLowerCase(), kid));
     return kid;
   });
   if (!p.kids.length) p.kids = null;
@@ -523,6 +550,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 const bnDigits = (s) => String(s).replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
 const toBn = (n) => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
 const cents = (x) => Math.round((Number(x) || 0) * 100);
+const q3 = (x) => Math.round((Number(x) || 0) * 1000) / 1000;          // পরিমাণ: ৩ দশমিক পর্যন্ত (১.২৫ কেজি)
+const qtyText = (qty, p) => toBn(q3(qty)) + ((p && p.suffix) || 'টা');   // "৩টা", "১.৫ কেজি"
 const fmt = (c) => '৳' + (c / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 });
 const store = {
   get(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (e) { return fallback; } },
@@ -564,7 +593,7 @@ let activeCat = 0, lastId = null, customer = null, lastSale = null, escArmed = 0
 function save() { store.set(KEY_CART, state); }
 
 /* ── হিসাব (সার্ভারের সাথে একই নিয়ম) ── */
-function lineCents(l) { return cents(l.price ?? PRODUCTS.get(l.id).price) * l.qty; }
+function lineCents(l) { return Math.round(cents(l.price ?? PRODUCTS.get(l.id).price) * l.qty); }
 function totals() {
   const sub = state.lines.reduce((s, l) => s + lineCents(l), 0);
   const v = Math.max(0, Number(bnDigits(state.disc)) || 0);
@@ -575,14 +604,15 @@ function totals() {
     if (CFG.vatMode === 'inclusive') vat = Math.round(taxable - taxable / (1 + pct / 100));
     else { vat = Math.round(taxable * pct / 100); total = taxable + vat; }
   }
-  return { sub, disc, vat, total, qty: state.lines.reduce((s, l) => s + l.qty, 0) };
+  // কয়টা জিনিস: পিসের প্রোডাক্ট পরিমাণ ধরে, ওজনেরটা ১টা ধরে
+  return { sub, disc, vat, total, qty: state.lines.reduce((s, l) => { const p = PRODUCTS.get(l.id); return s + (p && p.loose ? 1 : l.qty); }, 0) };
 }
 
 /* ── প্রোডাক্ট গ্রিড ── */
 function stockBadge(p) {
   const stock = stockOf(p);
   if (stock <= 0) return '<span class="p-stock none">স্টক শেষ</span>';
-  return `<span class="p-stock${stock <= 5 ? ' low' : ''}">${toBn(stock)}টা</span>`;
+  return `<span class="p-stock${stock <= 5 ? ' low' : ''}">${qtyText(stock, p)}</span>`;
 }
 function renderGrid() {
   const q = bnDigits($('q').value.trim().toLowerCase());
@@ -597,7 +627,7 @@ function renderGrid() {
   $('grid').innerHTML = list.slice(0, 600).map(p => `
     <div class="p-card${stockOf(p) <= 0 ? ' out' : ''}" data-id="${p.id}" role="button" tabindex="-1" aria-label="${esc(p.name)}">
       <div class="p-thumb">${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy" decoding="async">` : '<i class="bi bi-box-seam"></i>'}</div>
-      <span class="p-incart${inCart.has(p.id) ? ' show' : ''}">${toBn(inCart.get(p.id) || 0)}</span>
+      <span class="p-incart${inCart.has(p.id) ? ' show' : ''}">${toBn(q3(inCart.get(p.id) || 0))}</span>
       <div class="p-name">${esc(p.name)}</div>
       ${p.kids ? `<div class="p-kids"><i class="bi bi-grid-3x3-gap"></i> ${toBn(p.kids.length)}টা সাইজ/রং</div>` : ''}
       <div class="p-meta"><span class="p-price">${fmt(cents(p.price))}</span>${stockBadge(p)}</div>
@@ -609,20 +639,23 @@ function updateGridBadges() {
   document.querySelectorAll('.p-card').forEach(card => {
     const n = inCart.get(Number(card.dataset.id));
     const b = card.querySelector('.p-incart');
-    b.classList.toggle('show', !!n); b.textContent = toBn(n || 0);
+    b.classList.toggle('show', !!n); b.textContent = toBn(q3(n || 0));
   });
 }
 
 /* ── কার্ট ── */
-function add(id, qty = 1) {
+function add(id, qty) {
   const p = PRODUCTS.get(id);
   if (!p) return false;
   if (p.kids) { openVariants(p); return false; }
+  // ওজন/মাপের প্রোডাক্ট (কেজি, লিটার…): কতটা সেটা জিজ্ঞেস করে
+  if (qty === undefined && p.loose) { if (p.stock <= 0) { beep(false); toast(`"${p.name}" স্টকে নেই`, 'bad'); return false; } openWeight(p); return false; }
+  qty = qty === undefined ? 1 : q3(qty);
   const line = state.lines.find(l => l.id === id);
   const have = line ? line.qty : 0;
   if (p.stock <= 0) { beep(false); toast(`"${p.name}" স্টকে নেই`, 'bad'); return false; }
-  if (have + qty > p.stock) { beep(false); toast(`"${p.name}" স্টকে আছে মাত্র ${toBn(p.stock)}টা`, 'warn'); return false; }
-  if (line) { line.qty += qty; state.lines.splice(state.lines.indexOf(line), 1); state.lines.push(line); }
+  if (q3(have + qty) > p.stock) { beep(false); toast(`"${p.name}" স্টকে আছে মাত্র ${qtyText(p.stock, p)}`, 'warn'); return false; }
+  if (line) { line.qty = q3(line.qty + qty); state.lines.splice(state.lines.indexOf(line), 1); state.lines.push(line); }
   else state.lines.push({ id, qty, price: null });
   lastId = id; beep(true); renderCart();
   const card = document.querySelector(`.p-card[data-id="${p.parent || id}"]`);
@@ -632,9 +665,9 @@ function add(id, qty = 1) {
 function setQty(id, qty) {
   const line = state.lines.find(l => l.id === id), p = PRODUCTS.get(id);
   if (!line) return;
-  qty = Math.floor(Number(bnDigits(qty)) || 0);
+  qty = p.loose ? q3(Number(bnDigits(qty)) || 0) : Math.floor(Number(bnDigits(qty)) || 0);
   if (qty <= 0) { state.lines = state.lines.filter(l => l.id !== id); }
-  else if (qty > p.stock) { toast(`স্টকে আছে মাত্র ${toBn(p.stock)}টা`, 'warn'); line.qty = p.stock; }
+  else if (qty > p.stock) { toast(`স্টকে আছে মাত্র ${qtyText(p.stock, p)}`, 'warn'); line.qty = p.stock; }
   else line.qty = qty;
   renderCart();
 }
@@ -649,9 +682,9 @@ function renderCart() {
         ? `<button type="button" class="edit-price${changed ? ' changed' : ''}" data-id="${l.id}" title="দাম বদলান">${fmt(unit)}</button>`
         : `<span>${fmt(unit)}</span>`;
       return `<div class="c-row${l.id === lastId ? ' last' : ''}" data-id="${l.id}">
-        <div><div class="c-name">${esc(p.name)}</div><div class="c-unit">${priceHtml}<span>× ${toBn(l.qty)}</span></div></div>
-        <div class="qty"><button type="button" data-act="dec" aria-label="কমান">−</button><input type="number" min="0" value="${l.qty}" data-act="qty" aria-label="পরিমাণ"><button type="button" data-act="inc" aria-label="বাড়ান">+</button></div>
-        <div class="c-line">${fmt(unit * l.qty)}</div>
+        <div><div class="c-name">${esc(p.name)}</div><div class="c-unit">${priceHtml}${p.loose ? '<span>/' + esc(p.suffix.trim()) + '</span>' : ''}<span>× ${qtyText(l.qty, p)}</span></div></div>
+        <div class="qty"><button type="button" data-act="dec" aria-label="কমান">−</button><input type="number" min="0" step="${p.loose ? 'any' : '1'}" value="${q3(l.qty)}" data-act="qty" aria-label="পরিমাণ"><button type="button" data-act="inc" aria-label="বাড়ান">+</button></div>
+        <div class="c-line">${fmt(Math.round(unit * l.qty))}</div>
         <button type="button" class="c-del" data-act="del" aria-label="সরান"><i class="bi bi-x-lg"></i></button>
       </div>`;
     }).join('');
@@ -675,13 +708,38 @@ function clearCart(keepCustomer) {
   renderCart();
 }
 
+/* ── ওজন/মাপের প্রোডাক্ট: কতটা ── */
+let weighing = null;
+function openWeight(p) {
+  weighing = p;
+  $('w-h').textContent = p.name;
+  $('w-unit').textContent = p.suffix.trim();
+  $('w-hint').textContent = `দাম ${fmt(cents(p.price))} প্রতি ${p.suffix.trim()} · স্টকে ${qtyText(p.stock, p)}`;
+  const quick = p.unit === 'kg' || p.unit === 'litre' ? [0.25, 0.5, 1, 2, 5] : [0.5, 1, 2, 3, 5];
+  $('w-quick').innerHTML = quick.filter(v => v <= p.stock).map(v => `<button type="button" data-w="${v}">${toBn(v)} ${esc(p.suffix.trim())}</button>`).join('');
+  $('w-input').value = ''; $('w-price').textContent = '';
+  openModal('m-weight'); setTimeout(() => $('w-input').focus(), 50);
+}
+function weightDone(value) {
+  const v = q3(Number(bnDigits(value)) || 0);
+  if (!weighing || v <= 0) { $('w-input').focus(); return; }
+  if (add(weighing.id, v)) closeModal('m-weight');
+}
+$('w-quick').addEventListener('click', e => { const b = e.target.closest('[data-w]'); if (b) weightDone(b.dataset.w); });
+$('w-input').addEventListener('input', () => {
+  const v = q3(Number(bnDigits($('w-input').value)) || 0);
+  $('w-price').textContent = v > 0 && weighing ? `দাম হবে ${fmt(Math.round(cents(weighing.price) * v))}` : '';
+});
+$('w-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); weightDone($('w-input').value); } });
+$('w-ok').addEventListener('click', () => weightDone($('w-input').value));
+
 /* ── সাইজ/রং বাছাই ── */
 function openVariants(p) {
   $('var-h').textContent = p.name;
   const inCart = new Map(state.lines.map(l => [l.id, l.qty]));
   $('var-list').innerHTML = p.kids.map(k => `
     <button type="button" class="var-btn${k.stock <= 0 ? ' out' : ''}" data-var="${k.id}">
-      <span class="vn">${esc(k.vname)}${inCart.has(k.id) ? ` <em>কার্টে ${toBn(inCart.get(k.id))}টা</em>` : ''}</span>
+      <span class="vn">${esc(k.vname)}${inCart.has(k.id) ? ` <em>কার্টে ${qtyText(inCart.get(k.id), k)}</em>` : ''}</span>
       <span class="vp">${fmt(cents(k.price))}</span>
       ${stockBadge(k)}
     </button>`).join('');
@@ -689,6 +747,8 @@ function openVariants(p) {
 }
 $('var-list').addEventListener('click', e => {
   const b = e.target.closest('[data-var]'); if (!b) return;
+  const kid = PRODUCTS.get(Number(b.dataset.var));
+  if (kid && kid.loose && kid.stock > 0) { closeModal('m-variant'); openWeight(kid); return; }
   if (add(Number(b.dataset.var))) closeModal('m-variant');
 });
 
@@ -714,7 +774,8 @@ async function lookupCustomer() {
 }
 
 /* ── মোডাল ── */
-function openModal(id) { $(id).classList.add('show'); }
+// যেটা পরে খোলা, সেটা উপরে (ক্যামেরা চালু থাকা অবস্থায় সাইজ/ওজন জিজ্ঞেস করলে সেটা সামনে আসে)
+function openModal(id) { const m = $(id); if (!m.classList.contains('show')) document.body.appendChild(m); m.classList.add('show'); }
 function closeModal(id) { $(id).classList.remove('show'); if (id === 'm-camera') stopCamera(); }
 function topModal() { const open = [...document.querySelectorAll('.m-back.show')]; return open[open.length - 1]; }
 document.querySelectorAll('.m-back').forEach(m => {
@@ -849,7 +910,7 @@ async function confirmSale() {
     beep(false); $('pay-error').textContent = data.error || 'বিক্রি জমা হয়নি।'; $('pay-error').classList.add('show'); updatePayResult(); return;
   }
   // স্টক হালনাগাদ (পেইজ রিফ্রেশ না করেই)
-  state.lines.forEach(l => { const p = PRODUCTS.get(l.id); if (p) p.stock -= l.qty; });
+  state.lines.forEach(l => { const p = PRODUCTS.get(l.id); if (p) p.stock = q3(p.stock - l.qty); });
   lastSale = data.sale;
   CFG.todayCount += 1; CFG.todayTotal += data.sale.total; $('today-count').textContent = toBn(CFG.todayCount);
   closeModal('m-pay'); clearCart(); renderGrid();
@@ -945,7 +1006,7 @@ async function openReturn(id) {
 }
 function returnCalc() {
   const all = ret.items.every(i => i.back === i.qty);
-  const value = all ? cents(ret.sale.total) : ret.items.reduce((s, i) => s + cents(i.unit_value) * i.back, 0);
+  const value = all ? cents(ret.sale.total) : ret.items.reduce((s, i) => s + Math.round(cents(i.unit_value) * i.back), 0);
   const newTotal = cents(ret.sale.total) - value, paid = cents(ret.sale.paid);
   const refund = Math.max(paid - newTotal, 0);
   return { value, refund, fromDue: Math.max(value - refund, 0), any: ret.items.some(i => i.back > 0) };
@@ -953,9 +1014,9 @@ function returnCalc() {
 function renderReturn() {
   $('ret-items').innerHTML = ret.items.map((i, n) => `
     <div class="ret-row${i.back ? ' on' : ''}" data-n="${n}">
-      <div><div class="c-name">${esc(i.name)}</div><div class="c-unit">বিলে আছে ${toBn(i.qty)}টা · ${fmt(cents(i.price))} করে</div></div>
-      <div class="qty"><button type="button" data-r="dec" aria-label="কমান">−</button><input type="number" min="0" max="${i.qty}" value="${i.back}" data-r="qty" aria-label="কয়টা ফেরত"><button type="button" data-r="inc" aria-label="বাড়ান">+</button></div>
-      <div class="c-line">${i.back ? '−' + fmt(cents(i.unit_value) * i.back) : '—'}</div>
+      <div><div class="c-name">${esc(i.name)}</div><div class="c-unit">বিলে আছে ${toBn(q3(i.qty))}${i.unit && i.unit !== 'pcs' ? '' : 'টা'} · ${fmt(cents(i.price))} করে</div></div>
+      <div class="qty"><button type="button" data-r="dec" aria-label="কমান">−</button><input type="number" min="0" max="${i.qty}" step="${i.unit && i.unit !== 'pcs' ? 'any' : '1'}" value="${q3(i.back)}" data-r="qty" aria-label="কয়টা ফেরত"><button type="button" data-r="inc" aria-label="বাড়ান">+</button></div>
+      <div class="c-line">${i.back ? '−' + fmt(Math.round(cents(i.unit_value) * i.back)) : '—'}</div>
     </div>`).join('');
   const c = returnCalc();
   $('ret-value').textContent = fmt(c.value); $('ret-due').textContent = fmt(c.fromDue); $('ret-refund').textContent = fmt(c.refund);
@@ -967,12 +1028,14 @@ function renderReturn() {
 $('ret-items').addEventListener('click', e => {
   const b = e.target.closest('[data-r]'); if (!b || b.dataset.r === 'qty') return;
   const i = ret.items[Number(b.closest('.ret-row').dataset.n)];
-  i.back = Math.min(Math.max(i.back + (b.dataset.r === 'inc' ? 1 : -1), 0), i.qty); renderReturn();
+  const step = i.unit && i.unit !== 'pcs' ? 0.5 : 1;
+  i.back = Math.min(Math.max(q3(i.back + (b.dataset.r === 'inc' ? step : -step)), 0), i.qty); renderReturn();
 });
 $('ret-items').addEventListener('change', e => {
   if (e.target.dataset.r !== 'qty') return;
   const i = ret.items[Number(e.target.closest('.ret-row').dataset.n)];
-  i.back = Math.min(Math.max(Math.floor(Number(bnDigits(e.target.value)) || 0), 0), i.qty); renderReturn();
+  const raw = Number(bnDigits(e.target.value)) || 0;
+  i.back = Math.min(Math.max(i.unit && i.unit !== 'pcs' ? q3(raw) : Math.floor(raw), 0), i.qty); renderReturn();
 });
 $('ret-all').addEventListener('click', () => { const full = ret.items.every(i => i.back === i.qty); ret.items.forEach(i => i.back = full ? 0 : i.qty); renderReturn(); });
 $('btn-ret-ok').addEventListener('click', async () => {
@@ -982,7 +1045,7 @@ $('btn-ret-ok').addEventListener('click', async () => {
     method: $('ret-method').value, reason: $('ret-reason').value,
   });
   if (!data.success) { btn.disabled = false; $('ret-error').textContent = data.error; $('ret-error').classList.add('show'); return; }
-  (data.restocked || []).forEach(r => { const p = PRODUCTS.get(r.id); if (p) p.stock += r.qty; });
+  (data.restocked || []).forEach(r => { const p = PRODUCTS.get(r.id); if (p) p.stock = q3(p.stock + r.qty); });
   renderGrid(); closeModal('m-return');
   toast(data.refunded ? `ফেরত নেওয়া হলো — কাস্টমারকে দিন ${fmt(cents(data.refunded))}` : 'ফেরত নেওয়া হলো' + (data.value ? ` — বিল কমল ${fmt(cents(data.value))}` : ''));
   if (data.full) { CFG.todayCount = Math.max(CFG.todayCount - 1, 0); $('today-count').textContent = toBn(CFG.todayCount); }
@@ -1060,8 +1123,9 @@ document.addEventListener('keydown', e => {
   if (typing) return;
 
   if (e.key === '?') { openModal('m-help'); return; }
-  if ((e.key === '+' || e.key === '=') && lastId && !scanBuf) { e.preventDefault(); add(lastId); return; }
-  if (e.key === '-' && lastId && !scanBuf) { e.preventDefault(); const l = state.lines.find(x => x.id === lastId); if (l) setQty(lastId, l.qty - 1); return; }
+  const lastStep = lastId && PRODUCTS.get(lastId) && PRODUCTS.get(lastId).loose ? 0.5 : 1;
+  if ((e.key === '+' || e.key === '=') && lastId && !scanBuf) { e.preventDefault(); add(lastId, lastStep); return; }
+  if (e.key === '-' && lastId && !scanBuf) { e.preventDefault(); const l = state.lines.find(x => x.id === lastId); if (l) setQty(lastId, q3(l.qty - lastStep)); return; }
   if (e.key === 'Delete' && lastId) { e.preventDefault(); setQty(lastId, 0); lastId = state.lines.length ? state.lines[state.lines.length - 1].id : null; renderCart(); return; }
 
   const now = Date.now();
@@ -1113,8 +1177,9 @@ $('c-items').addEventListener('click', e => {
   }
   if (!act) return;
   lastId = id;
-  if (act.dataset.act === 'inc') add(id);
-  else if (act.dataset.act === 'dec') setQty(id, line.qty - 1);
+  const step = PRODUCTS.get(id).loose ? 0.5 : 1;           // ওজনের প্রোডাক্টে + − আধা কেজি করে
+  if (act.dataset.act === 'inc') add(id, step);
+  else if (act.dataset.act === 'dec') setQty(id, q3(line.qty - step));
   else if (act.dataset.act === 'del') setQty(id, 0);
 });
 $('c-items').addEventListener('change', e => { if (e.target.dataset.act === 'qty') setQty(Number(e.target.closest('.c-row').dataset.id), e.target.value); });
@@ -1181,7 +1246,7 @@ async function onCamCode(code) {
     if (after > before) {
       camAdded += after - before;
       const p = PRODUCTS.get(lastId), line = state.lines.find(l => l.id === lastId);
-      camShowLast(true, p ? p.name : code, `যোগ হলো${line ? ' — বিলে ' + toBn(line.qty) + 'টা' : ''}`);
+      camShowLast(true, p ? p.name : code, `যোগ হলো${line ? ' — বিলে ' + qtyText(line.qty, p) : ''}`);
       SPScan.feedback(true);
     } else if (topModal() === $('m-camera')) {
       camShowLast(false, code, 'বিলে যোগ হয়নি — বারকোড মেলেনি বা স্টকে নেই');

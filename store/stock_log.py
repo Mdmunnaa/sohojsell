@@ -44,3 +44,12 @@ def record_bulk(shop, rows, *, reason, user=None):
             for product, variant, qty in rows if qty])
     except Exception:    # noqa: BLE001
         logger.exception('bulk stock log failed')
+
+
+def low_stock_q():
+    """
+    "স্টক কম" — শেষ হয়ে গেছে, অথবা প্রোডাক্টে সেলারের দেওয়া সীমার (low_stock_at) সমান বা নিচে। সীমা ০ = শুধু শেষ হলে।
+    ড্যাশবোর্ড, প্রোডাক্ট তালিকার "স্টক কম" ফিল্টার আর রিপোর্ট — সব জায়গায় একই নিয়ম।
+    """
+    from django.db.models import F, Q
+    return Q(stock_quantity__lte=0) | Q(low_stock_at__gt=0, stock_quantity__lte=F('low_stock_at'))

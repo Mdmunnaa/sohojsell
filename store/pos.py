@@ -13,7 +13,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Q, Sum
 
-from . import variants
+from . import units, variants
 from .models import Customer, Order, OrderItem, Product, SalePayment, Shop
 
 ZERO = Decimal('0')
@@ -168,11 +168,13 @@ def _clean_lines(raw_items):
     merged = {}
     for raw in raw_items:
         try:
-            product_id, qty = int(raw.get('id')), int(raw.get('qty'))
+            product_id = int(raw.get('id'))
+            # ওজনের প্রোডাক্টে ভাঙা পরিমাণ (১.৫ কেজি) আসে; পিসে পূর্ণ সংখ্যা লাগে — সেটা নিচে প্রোডাক্ট মিলিয়ে দেখা হয়
+            qty = units.parse(raw.get('qty'), 'kg', maximum=Decimal(MAX_QTY))
+        except units.QtyError:
+            raise POSError('পরিমাণ ১ বা তার বেশি হতে হবে।')
         except (TypeError, ValueError, AttributeError):
             raise POSError('কার্টের তথ্য ঠিক নেই, পেইজটা রিফ্রেশ করুন।')
-        if not 0 < qty <= MAX_QTY:
-            raise POSError('পরিমাণ ১ বা তার বেশি হতে হবে।')
         line = merged.setdefault(product_id, {'qty': 0, 'price': None})
         line['qty'] += qty
         if raw.get('price') not in (None, ''):
@@ -213,8 +215,10 @@ def _create_sale(shop, user, payload, ref, can_override_price):
             raise POSError(f'"{item.name}" এখন বিক্রি বন্ধ।')
         if item.needs_choice:
             raise POSError(f'"{item.name}"-এর কোন সাইজ/রং সেটা বেছে নিন।')
+        if not item.product.is_loose and line['qty'] != line['qty'].to_integral_value():
+            raise POSError(f'"{item.name}" পিসে বিক্রি হয় — পূর্ণ সংখ্যা দিন।')
         if item.stock < line['qty']:
-            raise POSError(f'"{item.name}" স্টকে আছে মাত্র {item.stock}টা।')
+            raise POSError(f'"{item.name}" স্টকে আছে মাত্র {units.show(item.stock, item.product.unit)}।')
         price = item.price
         if can_override_price and line['price'] is not None:
             price = money(line['price'])
@@ -350,7 +354,8 @@ def return_items(shop, user, order_id, items=None, method=None, reason=''):
             wanted = {}
             for raw in items if isinstance(items, list) else []:
                 try:
-                    item_id, qty = int(raw.get('item_id')), int(raw.get('qty'))
+                    item_id = int(raw.get('item_id'))
+                    qty = units.parse(raw.get('qty'), 'kg', allow_zero=True)
                 except (TypeError, ValueError, AttributeError):
                     raise POSError('ফেরতের তথ্য ঠিক নেই, আবার চেষ্টা করুন।')
                 if qty <= 0:
@@ -363,7 +368,10 @@ def return_items(shop, user, order_id, items=None, method=None, reason=''):
         for item_id, qty in wanted.items():
             item = order_items[item_id]
             if qty > item.quantity:
-                raise POSError(f'"{item.display_name}" এই বিল থেকে সর্বোচ্চ {item.quantity}টা ফেরত নেওয়া যায়।')
+                raise POSError(f'"{item.display_name}" এই বিল থেকে সর্বোচ্চ {units.show(item.quantity, item.product.unit)} '
+                               'ফেরত নেওয়া যায়।')
+            if not item.product.is_loose and qty != qty.to_integral_value():
+                raise POSError(f'"{item.display_name}" পিসে বিক্রি হয় — পূর্ণ সংখ্যা দিন।')
 
         method = (method or default_refund_method(order)).lower()
         if method not in VALID_METHODS:
@@ -431,8 +439,8 @@ def return_items(shop, user, order_id, items=None, method=None, reason=''):
         order.note = f'{order.note}\n{note}' if order.note else note
         order.save(update_fields=['status', 'note', 'total_amount', 'discount', 'vat_amount', 'advance_paid',
                                   'stock_returned'])
-    restocked = [{'id': -order_items[i].variant_id if order_items[i].variant_id else order_items[i].product_id, 'qty': q}
-                 for i, q in wanted.items()]
+    restocked = [{'id': -order_items[i].variant_id if order_items[i].variant_id else order_items[i].product_id,
+                  'qty': units.num(q)} for i, q in wanted.items()]
     return order, sale_return, restocked
 
 
@@ -452,7 +460,8 @@ def sale_detail(shop, order_id):
     subtotal = sum((i.price * i.quantity for i in items), ZERO)
     factor = (order.total_amount / subtotal) if subtotal else ZERO
     return order, [{
-        'item_id': i.id, 'product_id': i.product_id, 'name': i.display_name, 'qty': i.quantity,
+        'item_id': i.id, 'product_id': i.product_id, 'name': i.display_name, 'qty': units.num(i.quantity),
+        'unit': i.product.unit,
         'price': i.price, 'unit_value': (i.price * factor).quantize(CENT, rounding=ROUND_HALF_UP),
     } for i in items if i.quantity > 0], default_refund_method(order)
 

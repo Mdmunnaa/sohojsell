@@ -10,7 +10,7 @@ from django.utils.text import slugify
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
-from . import reviews, seo, sf_lang
+from . import reviews, seo, sf_lang, units
 from .links import storefront_link
 from .models import LandingPage, Product, Shop
 
@@ -146,7 +146,7 @@ def storefront_landing(request, shop_slug, slug):
     meta = seo.storefront_meta(request, shop, title=f'{page.headline} — {shop.name}', description=description,
                                image=product.image if product.image else None, og_type='product',
                                price=product.price, link_name='storefront_landing', link_args=(page.slug,))
-    variant_list = [{'id': -v.id, 'name': v.name, 'price': float(v.sell_price), 'stock': v.stock_quantity}
+    variant_list = [{'id': -v.id, 'name': v.name, 'price': float(v.sell_price), 'stock': units.num(v.stock_quantity)}
                     for v in product.variants.all()] if product.has_variants else []
     zones = delivery.zones_for(shop)
     return render(request, 'store/storefront/landing.html', {

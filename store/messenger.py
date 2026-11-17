@@ -633,7 +633,7 @@ class Bot:
             return self.say(self.t('প্রোডাক্টটা এখন আর পাওয়া যাচ্ছে না।'), self.menu())
         self.set_state('o_qty', data)
         return self.say(self.t('{name} — {price}\nকয়টা নেবেন?', name=item.name, price=_money(item.price)),
-                        [(str(n), f'{P_QTY}{n}') for n in range(1, min(5, item.stock) + 1)] + [(self.t('বাতিল'), P_CANCEL)])
+                        [(str(n), f'{P_QTY}{n}') for n in range(1, min(5, int(item.stock)) + 1)] + [(self.t('বাতিল'), P_CANCEL)])
 
     def ask_name(self, data):
         self.set_state('o_name', data)
@@ -722,7 +722,7 @@ class Bot:
                 return self.ask_qty(data)
             if qty > item.stock:
                 return self.say(self.t('স্টকে আছে মাত্র {n}টা। কয়টা নেবেন?', n=item.stock),
-                                [(str(n), f'{P_QTY}{n}') for n in range(1, min(5, item.stock) + 1)])
+                                [(str(n), f'{P_QTY}{n}') for n in range(1, min(5, int(item.stock)) + 1)])
             data['qty'] = qty
             return self.ask_name(data)
 

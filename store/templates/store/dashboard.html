@@ -481,7 +481,7 @@ a.dh-prow:hover { background: var(--bg2); color: var(--ink); }
         <span class="dh-kpi-label">স্টক কম</span>
       </div>
       <div class="dh-kpi-val num">{{ stock.count }}<span class="unit">টা</span></div>
-      <div class="dh-kpi-sub">{% if stock.out %}এর মধ্যে <b class="num">{{ stock.out }}</b>টা একদম শেষ{% else %}৫টার কম বাকি আছে{% endif %}</div>
+      <div class="dh-kpi-sub">{% if stock.out %}এর মধ্যে <b class="num">{{ stock.out }}</b>টা একদম শেষ{% else %}শেষের পথে{% endif %}</div>
     </{% if can.products %}a{% else %}div{% endif %}>
     {% endif %}
   </section>
@@ -612,7 +612,7 @@ a.dh-prow:hover { background: var(--bg2); color: var(--ink); }
         <header class="dh-card-head">
           <div>
             <h2 class="dh-card-title">স্টক কম {% if stock.count %}<span class="count">{{ stock.count }}</span>{% endif %}</h2>
-            <div class="dh-card-sub">যেগুলোর ৫টার কম বাকি</div>
+            <div class="dh-card-sub">শেষ বা শেষের পথে</div>
           </div>
           {% if stock.count and can.products %}<a class="dh-more" href="{% url 'product_list' %}?status=low">সব দেখুন <i class="bi bi-arrow-right"></i></a>{% endif %}
         </header>
@@ -622,7 +622,7 @@ a.dh-prow:hover { background: var(--bg2); color: var(--ink); }
           <{% if can.products %}a href="{% url 'edit_product' product.pk %}"{% else %}div{% endif %} class="dh-prow">
             {% if product.thumb_url %}<img class="dh-thumb" src="{{ product.thumb_url }}" alt="" loading="lazy">{% else %}<span class="dh-thumb"><i class="bi bi-image"></i></span>{% endif %}
             <span class="dh-pmain"><b>{{ product.name }}</b><small class="num">৳{{ product.price|floatformat:"-2g" }}</small></span>
-            {% if product.stock_quantity == 0 %}<span class="dh-stock out">শেষ</span>{% else %}<span class="dh-stock low">আর {{ product.stock_quantity|bn }}টা</span>{% endif %}
+            {% if product.stock_quantity <= 0 %}<span class="dh-stock out">শেষ</span>{% else %}<span class="dh-stock low">আর {{ product.stock_label }}</span>{% endif %}
           </{% if can.products %}a{% else %}div{% endif %}>
           {% endfor %}
         </div>
@@ -630,7 +630,7 @@ a.dh-prow:hover { background: var(--bg2); color: var(--ink); }
         <div class="dh-empty">
           <div class="ic tone-green"><i class="bi bi-check2-circle"></i></div>
           <b>সব প্রোডাক্টের স্টক ঠিক আছে</b>
-          <p>কোনো প্রোডাক্ট ৫টার নিচে নামলে এখানে দেখাবে।</p>
+          <p>কোনো প্রোডাক্ট শেষের পথে এলে এখানে দেখাবে। কত থাকলে জানাবে, সেটা প্রোডাক্টের পাতায় ঠিক করা যায়।</p>
         </div>
         {% endif %}
       </section>

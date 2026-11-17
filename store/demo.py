@@ -195,6 +195,7 @@ def build():
         _zones(shop)
         staff_user = _staff(shop)
         state = _history(shop, rng, products, staff_user)
+        _stock_log(shop)
         _reviews(shop, rng, products, state)
         _coupons(shop, products, state['coupons_used'])
         _landing(shop, products, state)
@@ -304,9 +305,10 @@ def _shop():
 def _wipe_activity(shop):
     """হিসাবের সবকিছু মুছে ফেলা (প্রোডাক্ট, ক্যাটাগরি, ব্যানার থাকে — ওগুলো আলাদাভাবে মেলানো হয়)।"""
     from .models import (AbandonedCheckout, Coupon, Customer, Expense, LandingPage, Order, PageView, ProductReview,
-                         Purchase, SettlementRequest, ShopPayout, SmsLog, StorefrontOrder, StorefrontPayment, Supplier)
+                         Purchase, SettlementRequest, ShopPayout, SmsLog, StockMovement, StorefrontOrder,
+                         StorefrontPayment, Supplier)
     for model in (SettlementRequest, ShopPayout, StorefrontPayment, StorefrontOrder, Order, Customer, Purchase, Supplier,
-                  Expense, Coupon, AbandonedCheckout, LandingPage, SmsLog, PageView):
+                  Expense, Coupon, AbandonedCheckout, LandingPage, SmsLog, PageView, StockMovement):
         model.objects.filter(shop=shop).delete()
     for review in ProductReview.objects.filter(shop=shop).exclude(image=''):
         review.image.delete(save=False)
@@ -620,6 +622,48 @@ def _history(shop, rng, products, staff_user):
 
     return {'orders': orders, 'web_customers': web_customers, 'coupons_used': coupons_used,
             'landing_orders': landing_orders, 'walk_in': walk_in}
+
+
+def _stock_log(shop, days=14):
+    """
+    "স্টকের হিসাব" পাতার জন্য শেষ কয়েক দিনের বিক্রি আর মাল কেনার স্টক বদল (StockMovement)। পরে কত ছিল (stock_after)
+    এখনকার স্টক থেকে পেছনে হিসাব করে বসানো — তাই সারিগুলো একটার সাথে আরেকটা মেলে।
+    """
+    from .models import OrderItem, PurchaseItem, StockMovement
+    since = timezone.now() - timedelta(days=days)
+    rows = []
+    for item in (OrderItem.objects.filter(order__shop=shop, order__created_at__gte=since)
+                 .exclude(order__status__in=['Cancelled', 'Returned'])
+                 .select_related('order', 'product', 'variant')):
+        order = item.order
+        rows.append(StockMovement(shop=shop, product=item.product, variant=item.variant,
+                                  variant_name=item.variant_name, change=-item.quantity,
+                                  reason='pos_sale' if order.source == 'pos' else 'order', order=order,
+                                  order_ref=order.pk, user=order.served_by if order.source == 'pos' else None))
+        rows[-1].when = order.created_at
+    for item in (PurchaseItem.objects.filter(purchase__shop=shop, purchase__purchased_on__gte=since.date())
+                 .select_related('purchase', 'variant')):
+        purchase = item.purchase
+        when = _at(purchase.purchased_on, 11)
+        rows.append(StockMovement(shop=shop, product_id=item.product_id, variant=item.variant,
+                                  variant_name=item.variant.name if item.variant else '', change=item.quantity,
+                                  reason='purchase', purchase=purchase, user=purchase.created_by,
+                                  note=purchase.invoice_no))
+        rows[-1].when = when
+    # নতুন থেকে পুরোনো: প্রতিটার পরে কত ছিল = এখনকার স্টক থেকে পরের বদলগুলো বাদ দিয়ে
+    rows.sort(key=lambda r: r.when, reverse=True)
+    running = {}
+    for row in rows:
+        key = ('v', row.variant_id) if row.variant_id else ('p', row.product_id)
+        if key not in running:
+            holder = row.variant if row.variant_id else row.product
+            running[key] = holder.stock_quantity
+        row.stock_after = max(running[key], 0)
+        running[key] = running[key] - row.change
+    StockMovement.objects.bulk_create(rows, batch_size=500)
+    for row in rows:                    # auto_now_add এখনকার সময় বসায় — আসল সময় ফিরিয়ে দেওয়া
+        row.created_at = row.when
+    StockMovement.objects.bulk_update(rows, ['created_at'], batch_size=500)
 
 
 def _clock(rng, day, first_hour, last_hour, days_ago):

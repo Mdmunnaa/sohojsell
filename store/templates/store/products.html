@@ -1,115 +1,159 @@
 {% extends 'store/base.html' %}
-{% block title %}Products{% endblock %}
+{% load bangla %}
+{% block title %}প্রোডাক্ট - {{ request.user.shop.name }}{% endblock %}
 {% block page_title %}প্রোডাক্ট{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<style>
+  .pl-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .pl-head h1 { font-size: 21px; font-weight: 800; margin: 0 0 2px; }
+  .pl-head .meta { color: #64748B; font-size: 13px; }
+  .pl-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pl-acts .btn { border-radius: 999px; font-weight: 700; white-space: nowrap; }
+  .pl-low { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 14px; background: #FFF7ED; border: 1px solid #FED7AA; color: #9A3412; font-size: 13.5px; font-weight: 700; margin-bottom: 12px; text-decoration: none; }
+  .pl-low:hover { background: #FFEDD5; color: #7C2D12; }
+  .pl-filter { background: #fff; border: 1px solid #E2E8F0; border-radius: 16px; padding: 10px; margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .pl-filter .form-control, .pl-filter .form-select { border-radius: 999px; font-size: 14px; }
+  .pl-filter .q { flex: 1 1 220px; min-width: 0; }
+  .pl-filter .form-select { flex: 0 1 170px; }
+  .pl-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 18px; overflow: hidden; }
+  .pl-card table { margin: 0; }
+  .pl-card thead th { background: #F8FAFC; font-size: 12px; color: #64748B; font-weight: 700; padding: 12px; border-bottom: 1px solid #E2E8F0; white-space: nowrap; }
+  .pl-card td { padding: 12px; vertical-align: middle; border-color: #F1F5F9; }
+  .pl-thumb { width: 46px; height: 46px; border-radius: 10px; object-fit: cover; border: 1px solid #E2E8F0; flex-shrink: 0; }
+  .pl-thumb.none { background: #F1F5F9; display: flex; align-items: center; justify-content: center; color: #94A3B8; font-size: 19px; }
+  .pl-name { font-weight: 700; font-size: 14px; color: #0F172A; }
+  .pl-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; font-size: 11.5px; }
+  .pl-tags span { color: #64748B; }
+  .pl-tags .v { color: #4F46E5; font-weight: 700; }
+  .pl-tags .u { color: #0F766E; font-weight: 700; }
+  .pl-tags .code { font-family: ui-monospace, monospace; color: #94A3B8; }
+  .pl-stock { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 4px 10px; font-weight: 800; font-size: 12.5px; white-space: nowrap; }
+  .pl-stock.ok { background: #F0FDF4; color: #15803D; }
+  .pl-stock.low { background: #FFF7ED; color: #C2410C; }
+  .pl-stock.out { background: #FEF2F2; color: #B91C1C; }
+  .pl-off { font-size: 12px; color: #94A3B8; font-weight: 700; }
+  .pl-btns { display: flex; gap: 6px; justify-content: flex-end; }
+  .pl-btns a { width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #E2E8F0; color: #334155; text-decoration: none; }
+  .pl-btns a:hover { background: #F8FAFC; }
+  .pl-btns a.del { color: #B91C1C; }
+  .pl-empty { text-align: center; padding: 48px 16px; }
+  .pl-empty i { font-size: 42px; color: #CBD5E1; }
+  .pl-pages { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border-top: 1px solid #E2E8F0; background: #FAFAFA; flex-wrap: wrap; font-size: 13px; color: #64748B; }
+  .pl-pages a, .pl-pages b { min-width: 34px; height: 34px; padding: 0 10px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; font-weight: 700; color: #334155; border: 1px solid #E2E8F0; background: #fff; }
+  .pl-pages b { background: #0F172A; color: #fff; border-color: #0F172A; }
+  @media (max-width: 720px) {
+    .pl-card .hide-sm { display: none; }
+    .pl-filter .form-select { flex: 1 1 140px; }
+    .pl-acts .btn-primary { order: -1; }
+    /* ফোনে টেবিল না, কার্ডের মতো সারি: উপরে নাম, নিচে দাম-স্টক-বোতাম */
+    .pl-card thead { display: none; }
+    .pl-card table, .pl-card tbody { display: block; width: 100%; }
+    .pl-card tr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "prod prod prod" "price stock btns"; gap: 8px 10px; align-items: center; padding: 12px; border-bottom: 1px solid #F1F5F9; }
+    .pl-card td { padding: 0; border: 0; }
+    .pl-card td.c-prod { grid-area: prod; } .pl-card td.c-price { grid-area: price; text-align: left !important; }
+    .pl-card td.c-stock { grid-area: stock; } .pl-card td.c-btns { grid-area: btns; }
+    .pl-card td.pl-empty { grid-column: 1 / -1; }
+  }
+</style>
+
+<div class="pl-head">
   <div>
-    <h4 class="fw-bold mb-1">Inventory</h4>
-    <p class="text-muted mb-0" style="font-size:13px;">
-      {{ page_obj.paginator.count }} total products
-      {% if plan.products %} · <span class="{% if page_obj.paginator.count >= plan.products %}text-danger fw-bold{% else %}text-muted{% endif %}">প্যাকেজে সর্বোচ্চ {{ plan.products }}টা</span>{% endif %}
-    </p>
+    <h1>প্রোডাক্ট</h1>
+    <div class="meta">
+      মোট {{ page_obj.paginator.count|bn }}টা{% if filtered %} (খোঁজা অনুযায়ী){% endif %}
+      {% if plan.products %} · <span class="{% if page_obj.paginator.count >= plan.products %}text-danger fw-bold{% endif %}">প্যাকেজে সর্বোচ্চ {{ plan.products|bn }}টা</span>{% endif %}
+    </div>
   </div>
-
-  <div class="d-flex gap-2 flex-wrap">
-    <a href="{% url 'download_csv_template' %}" class="btn btn-outline-primary fw-bold rounded-pill text-nowrap">
-      <i class="bi bi-download me-1"></i> CSV Template
-    </a>
-
-    <a href="{% url 'product_import' %}" class="btn btn-warning fw-bold rounded-pill text-nowrap">
-      <i class="bi bi-box-arrow-in-down me-1"></i> অন্য জায়গা থেকে আনুন
-    </a>
-
-    <a href="{% url 'add_product' %}" class="btn btn-primary fw-bold rounded-pill shadow-sm text-nowrap">
-      <i class="bi bi-plus-lg me-1"></i> Add Product
-    </a>
+  <div class="pl-acts">
+    <a href="{% url 'stock_history' %}" class="btn btn-light border"><i class="bi bi-clock-history me-1"></i> স্টকের হিসাব</a>
+    <a href="{% url 'product_import' %}" class="btn btn-light border"><i class="bi bi-box-arrow-in-down me-1"></i> একসাথে অনেক আনুন</a>
+    <a href="{% url 'add_product' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> নতুন প্রোডাক্ট</a>
   </div>
 </div>
 
-<div class="card border-0 shadow-sm rounded-3 mb-3">
-  <div class="card-body py-2 px-3">
-    <form method="GET" class="d-flex gap-2 flex-wrap align-items-center">
-      <input type="text" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm rounded-pill" style="max-width:220px;" placeholder="Search products...">
-      <select name="cat" class="form-select form-select-sm rounded-pill" style="max-width:160px;">
-        <option value="">All Categories</option>
-        {% for cat in categories %}<option value="{{ cat.id }}" {% if request.GET.cat == cat.id|stringformat:'s' %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}
-      </select>
-      <select name="status" class="form-select form-select-sm rounded-pill" style="max-width:140px;">
-        <option value="">All Status</option>
-        <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
-        <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
-        <option value="low" {% if request.GET.status == 'low' %}selected{% endif %}>Low Stock</option>
-      </select>
-      <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">Filter</button>
-      {% if request.GET.q or request.GET.cat or request.GET.status %}
-      <a href="{% url 'product_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill">Clear</a>
-      {% endif %}
-    </form>
-  </div>
-</div>
+{% if low_count and request.GET.status != 'low' %}
+<a class="pl-low" href="?status=low">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <span>{{ low_count|bn }}টা প্রোডাক্ট শেষ বা শেষের পথে — দেখুন, নতুন মাল তুলুন</span>
+  <i class="bi bi-arrow-right ms-auto"></i>
+</a>
+{% endif %}
 
-<div class="card border-0 shadow-sm rounded-4">
+<form method="get" class="pl-filter" role="search">
+  <input type="search" name="q" value="{{ request.GET.q }}" class="form-control q" placeholder="নাম বা বারকোড দিয়ে খুঁজুন" aria-label="খুঁজুন">
+  <select name="cat" class="form-select" aria-label="ক্যাটাগরি" onchange="this.form.submit()">
+    <option value="">সব ক্যাটাগরি</option>
+    {% for cat in categories %}<option value="{{ cat.id }}" {% if request.GET.cat == cat.id|stringformat:'s' %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}
+  </select>
+  <select name="status" class="form-select" aria-label="অবস্থা" onchange="this.form.submit()">
+    <option value="">সব প্রোডাক্ট</option>
+    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>বিক্রিতে চালু</option>
+    <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>বন্ধ রাখা</option>
+    <option value="low" {% if request.GET.status == 'low' %}selected{% endif %}>স্টক কম / শেষ</option>
+  </select>
+  <button type="submit" class="btn btn-dark btn-sm rounded-pill px-3">খুঁজুন</button>
+  {% if filtered %}<a href="{% url 'product_list' %}" class="btn btn-light btn-sm rounded-pill border">সব দেখুন</a>{% endif %}
+</form>
+
+<div class="pl-card">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead style="background:#f8fafc;">
-        <tr style="font-size:12px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:.5px;">
-          <th class="px-4 py-3">Product</th>
-          <th class="py-3">Category</th>
-          <th class="py-3 text-end">Cost</th>
-          <th class="py-3 text-end">Price</th>
-          <th class="py-3 text-center">Stock</th>
-          <th class="py-3 text-center">Status</th>
-          <th class="py-3 text-end px-4">Actions</th>
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>প্রোডাক্ট</th>
+          <th class="hide-sm">ক্যাটাগরি</th>
+          <th class="text-end hide-sm">কেনা দাম</th>
+          <th class="text-end">বিক্রির দাম</th>
+          <th class="text-center">স্টক</th>
+          <th class="text-end"><span class="visually-hidden">কাজ</span></th>
         </tr>
       </thead>
       <tbody>
         {% for product in page_obj %}
         <tr>
-          <td class="px-4 py-3">
+          <td class="c-prod">
             <div class="d-flex align-items-center gap-3">
-              {% if product.image %}
-              <img src="{{ product.image.url }}" style="width:46px;height:46px;border-radius:10px;object-fit:cover;border:1px solid #e2e8f0;">
-              {% else %}
-              <div style="width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,#e8f0fe,#f0e8fe);display:flex;align-items:center;justify-content:center;font-size:20px;color:#6366F1;"><i class="bi bi-image"></i></div>
-              {% endif %}
-              <div>
-                <div class="fw-semibold" style="font-size:14px;color:#0f172a;">{{ product.name }}</div>
-                {% if product.has_variants %}<div style="font-size:11px;color:#6366F1;font-weight:700;"><i class="bi bi-grid-3x3-gap-fill"></i> সাইজ/রং আছে</div>{% endif %}
-                {% if product.barcode %}<div style="font-size:11px;color:#94a3b8;font-family:monospace;">{{ product.barcode }}</div>{% endif %}
-                <div style="font-size:11px;color:#1877F2;font-weight:700;" title="Facebook পোস্টে এই কোড লিখলে কমেন্টকারীর ইনবক্সে এই প্রোডাক্টের লিংক যাবে">FB কোড: #P{{ product.id }}</div>
+              {% if product.image %}<img class="pl-thumb" src="{{ product.thumb_url }}" alt="" loading="lazy">{% else %}<div class="pl-thumb none"><i class="bi bi-image"></i></div>{% endif %}
+              <div style="min-width:0">
+                <a href="{% url 'edit_product' product.id %}" class="pl-name text-decoration-none">{{ product.name }}</a>
+                <div class="pl-tags">
+                  {% if not product.is_active %}<span class="pl-off"><i class="bi bi-eye-slash"></i> বন্ধ</span>{% endif %}
+                  {% if product.has_variants %}<span class="v"><i class="bi bi-grid-3x3-gap-fill"></i> সাইজ/রং</span>{% endif %}
+                  {% if product.is_loose %}<span class="u"><i class="bi bi-speedometer2"></i> {{ product.get_unit_display }}-এ বিক্রি</span>{% endif %}
+                  {% if product.barcode %}<span class="code">{{ product.barcode }}</span>{% endif %}
+                  <span title="Facebook পোস্টে এই কোড লিখলে কমেন্টকারীর ইনবক্সে এই প্রোডাক্টের লিংক যায়" style="color:#1877F2;font-weight:700">#P{{ product.id }}</span>
+                </div>
               </div>
             </div>
           </td>
-          <td><span class="badge rounded-pill" style="background:#f1f5f9;color:#475569;font-weight:600;font-size:11px;">{{ product.category.name|default:"—" }}</span></td>
-          <td class="text-end" style="color:#ef4444;font-weight:700;">৳{{ product.cost_price|floatformat:0 }}</td>
-          <td class="text-end" style="color:#0f172a;font-weight:800;font-size:15px;">৳{{ product.price|floatformat:0 }}</td>
-          <td class="text-center">
-            {% if product.stock_quantity == 0 %}
-            <span class="badge bg-danger rounded-pill">Out of Stock</span>
-            {% elif product.stock_quantity <= 5 %}
-            <span class="badge rounded-pill" style="background:#fff3eb;color:#d85c14;font-weight:700;">{{ product.stock_quantity }} <i class="bi bi-exclamation-triangle-fill"></i></span>
-            {% else %}
-            <span class="badge rounded-pill" style="background:#f0fdf4;color:#16a34a;font-weight:700;">{{ product.stock_quantity }}</span>
-            {% endif %}
+          <td class="hide-sm"><span class="badge rounded-pill" style="background:#F1F5F9;color:#475569;font-weight:600;font-size:11.5px;">{{ product.category.name|default:"—" }}</span></td>
+          <td class="text-end hide-sm" style="color:#64748B;font-weight:700;">৳{{ product.cost_price|floatformat:"-2g" }}</td>
+          <td class="text-end c-price" style="font-weight:800;font-size:15px;white-space:nowrap">৳{{ product.price|floatformat:"-2g" }}{% if product.is_loose %}<small style="color:#64748B;font-weight:600">/{{ product.get_unit_display }}</small>{% endif %}</td>
+          <td class="text-center c-stock">
+            {% if product.stock_quantity <= 0 %}<span class="pl-stock out">শেষ</span>
+            {% elif product.is_low_stock %}<span class="pl-stock low"><i class="bi bi-exclamation-triangle-fill"></i> {{ product.stock_label }}</span>
+            {% else %}<span class="pl-stock ok">{{ product.stock_label }}</span>{% endif %}
           </td>
-          <td class="text-center">
-            {% if product.is_active %}
-            <span style="font-size:13px;color:#16a34a;font-weight:700;"><i class="bi bi-check-circle-fill me-1"></i>Active</span>
-            {% else %}
-            <span style="font-size:13px;color:#94a3b8;font-weight:600;"><i class="bi bi-x-circle me-1"></i>Off</span>
-            {% endif %}
-          </td>
-          <td class="text-end px-4">
-            <a href="{% url 'edit_product' product.id %}" class="btn btn-sm btn-outline-primary rounded-pill me-1"><i class="bi bi-pencil"></i></a>
-            <a href="{% url 'delete_product' product.id %}" class="btn btn-sm btn-outline-danger rounded-pill"><i class="bi bi-trash"></i></a>
+          <td class="c-btns">
+            <div class="pl-btns">
+              <a href="{% url 'edit_product' product.id %}" title="এডিট" aria-label="{{ product.name }} এডিট"><i class="bi bi-pencil"></i></a>
+              <a href="{% url 'stock_history' %}?product={{ product.id }}" title="স্টকের হিসাব" aria-label="{{ product.name }}-এর স্টকের হিসাব"><i class="bi bi-clock-history"></i></a>
+              <a href="{% url 'delete_product' product.id %}" class="del" title="মুছুন" aria-label="{{ product.name }} মুছুন"><i class="bi bi-trash"></i></a>
+            </div>
           </td>
         </tr>
         {% empty %}
-        <tr>
-          <td colspan="7" class="text-center py-5">
-            <i class="bi bi-box-seam" style="font-size:48px;color:#e2e8f0;display:block;margin-bottom:12px;"></i>
-            <div class="fw-bold text-muted">No products found</div>
-            <a href="{% url 'add_product' %}" class="btn btn-primary btn-sm mt-3 rounded-pill px-4">Add First Product</a>
+        <tr style="display:block">
+          <td colspan="6" class="pl-empty" style="display:block">
+            <i class="bi bi-box-seam d-block mb-2"></i>
+            {% if filtered %}
+            <div class="fw-bold">এই খোঁজায় কোনো প্রোডাক্ট মেলেনি</div>
+            <a href="{% url 'product_list' %}" class="btn btn-light border btn-sm mt-3 rounded-pill px-4">সব প্রোডাক্ট দেখুন</a>
+            {% else %}
+            <div class="fw-bold">এখনো কোনো প্রোডাক্ট নেই</div>
+            <div class="text-muted small mt-1">নাম, দাম আর স্টক দিলেই প্রথম প্রোডাক্ট তৈরি — এক মিনিটের কাজ।</div>
+            <a href="{% url 'add_product' %}" class="btn btn-primary btn-sm mt-3 rounded-pill px-4">প্রথম প্রোডাক্ট যোগ করুন</a>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -117,29 +161,21 @@
     </table>
   </div>
   {% if page_obj.has_other_pages %}
-  <div class="px-4 py-3 border-top d-flex justify-content-between align-items-center" style="background:#fafafa;">
-    <span style="font-size:13px;color:#64748b;">
-      Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
-    </span>
-    <nav>
-      <ul class="pagination pagination-sm mb-0 gap-1">
-        {% if page_obj.has_previous %}
-        <li class="page-item"><a class="page-link rounded-pill px-3" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.cat %}&cat={{ request.GET.cat }}{% endif %}">←</a></li>
-        {% endif %}
-        {% for num in page_obj.paginator.page_range %}
-          {% if page_obj.number == num %}
-          <li class="page-item active"><span class="page-link rounded-pill px-3">{{ num }}</span></li>
-          {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-          <li class="page-item"><a class="page-link rounded-pill px-3" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">{{ num }}</a></li>
-          {% endif %}
-        {% endfor %}
-        {% if page_obj.has_next %}
-        <li class="page-item"><a class="page-link rounded-pill px-3" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">→</a></li>
-        {% endif %}
-      </ul>
+  <div class="pl-pages">
+    <span>{{ page_obj.start_index|bn }}–{{ page_obj.end_index|bn }}, মোট {{ page_obj.paginator.count|bn }}টার মধ্যে</span>
+    <nav class="d-flex gap-1 flex-wrap" aria-label="পাতা">
+      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if query %}&{{ query }}{% endif %}" aria-label="আগের পাতা"><i class="bi bi-chevron-left"></i></a>{% endif %}
+      {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}<b>{{ num|bn }}</b>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}<a href="?page={{ num }}{% if query %}&{{ query }}{% endif %}">{{ num|bn }}</a>{% endif %}
+      {% endfor %}
+      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if query %}&{{ query }}{% endif %}" aria-label="পরের পাতা"><i class="bi bi-chevron-right"></i></a>{% endif %}
     </nav>
   </div>
   {% endif %}
 </div>
 
+<div class="text-muted small mt-3">
+  Excel থেকে আনতে চাইলে <a href="{% url 'download_csv_template' %}">নমুনা ফাইলটা নামিয়ে</a> ভরে "একসাথে অনেক আনুন"-এ দিন।
+</div>
 {% endblock %}

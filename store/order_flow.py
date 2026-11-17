@@ -11,7 +11,7 @@ import hmac
 from django.conf import settings
 from django.db import transaction
 
-from . import variants
+from . import units, variants
 from .models import Order, ProductVariant, StorefrontOrder
 
 NOT_COUNTED = ('Returned', 'Cancelled')
@@ -70,7 +70,8 @@ def _take_stock_again(order, user=None):
             continue                    # সাইজ/রংটা মুছে ফেলা হয়েছে; স্টকে হাত দেওয়া যায় না
         sellable = variants.Sellable(product, variant)
         if sellable.stock < item.quantity:
-            raise FlowError(f'"{sellable.name}" স্টকে আছে মাত্র {sellable.stock}টা, তাই অর্ডারটা আবার চালু করা যাচ্ছে না।')
+            raise FlowError(f'"{sellable.name}" স্টকে আছে মাত্র {units.show(sellable.stock, sellable.product.unit)}, '
+                            'তাই অর্ডারটা আবার চালু করা যাচ্ছে না।')
         plan.append((sellable, item.quantity))
     for sellable, qty in plan:
         variants.take(sellable, qty, reason='order_restore', order=order, user=user)
@@ -177,14 +178,17 @@ def edit_items(order, changes, additions, *, delivery_charge, discount, user=Non
             item = items.get(item_id)
             if item is None:
                 continue
+            if not units.fits(qty, item.product.unit):
+                raise FlowError(units.whole_msg(item.display_name))
             delta = qty - item.quantity
             sellable = stock.get(-item.variant_id if item.variant_id else item.product_id)
             if delta > 0:
                 if sellable is None or sellable.needs_choice:
                     raise FlowError(f'"{item.display_name}"-এর পরিমাণ বাড়ানো যাচ্ছে না — প্রোডাক্ট বা সাইজটা আর নেই।')
                 if sellable.stock < delta:
-                    raise FlowError(f'"{item.display_name}" স্টকে আছে মাত্র {sellable.stock}টা, '
-                                    f'তাই {delta}টা বাড়ানো যাচ্ছে না।')
+                    unit = item.product.unit
+                    raise FlowError(f'"{item.display_name}" স্টকে আছে মাত্র {units.show(sellable.stock, unit)}, '
+                                    f'তাই {units.show(delta, unit)} বাড়ানো যাচ্ছে না।')
                 plan_take.append((sellable, delta))
             elif delta < 0:
                 plan_give.append((item.product_id, item.variant_id, -delta))
@@ -202,9 +206,11 @@ def edit_items(order, changes, additions, *, delivery_charge, discount, user=Non
             sellable = stock.get(key)
             if sellable is None or sellable.needs_choice:
                 raise FlowError('যোগ করা একটা প্রোডাক্ট আর পাওয়া যাচ্ছে না। পাতাটা আবার খুলুন।')
+            if not units.fits(qty, sellable.product.unit):
+                raise FlowError(units.whole_msg(sellable.name))
             already = sum(t[1] for t in plan_take if t[0].key == key)
             if sellable.stock < qty + already:
-                raise FlowError(f'"{sellable.name}" স্টকে আছে মাত্র {sellable.stock}টা।')
+                raise FlowError(f'"{sellable.name}" স্টকে আছে মাত্র {units.show(sellable.stock, sellable.product.unit)}।')
             plan_take.append((sellable, qty))
             new_rows.append((sellable, qty, price))
 
@@ -215,8 +221,8 @@ def edit_items(order, changes, additions, *, delivery_charge, discount, user=Non
         subtotal = Decimal('0')
         for item in kept:
             qty, price = changes.get(item.id, (item.quantity, item.price))
-            subtotal += price * qty
-        subtotal += sum((price * qty for _s, qty, price in new_rows), Decimal('0'))
+            subtotal += units.money(price * qty)
+        subtotal += sum((units.money(price * qty) for _s, qty, price in new_rows), Decimal('0'))
         total = max(subtotal + delivery_charge - discount, Decimal('0'))
         if order.online_payment_status == Order.ONLINE_PAID and total < order.advance_paid:
             raise FlowError(f'কাস্টমার অনলাইনে ৳{order.advance_paid:,.0f} দিয়েছে, মোট এর কম করা যায় না। '

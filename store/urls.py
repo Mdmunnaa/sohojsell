@@ -15,6 +15,7 @@ from . import views_landing
 from . import views_marketing
 from . import views_facebook, views_guides
 from . import views_dues
+from . import views_stock
 from . import views_demo
 from . import hq_views
 
@@ -71,6 +72,7 @@ urlpatterns = [
     path('products/add/', views.add_product, name='add_product'),
     path('products/edit/<int:pk>/', views.edit_product, name='edit_product'),
     path('products/delete/<int:pk>/', views.delete_product, name='delete_product'),
+    path('products/stock-history/', views_stock.stock_history, name='stock_history'),
 
     # Orders (main)
     path('orders/', views.order_list, name='order_list'),

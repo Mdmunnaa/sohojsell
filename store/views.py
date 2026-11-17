@@ -21,7 +21,8 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from datetime import timedelta
 import random
 
-from .models import Shop, Product, Category, Order, OrderItem, Customer, MasterSetting, Banner, MessengerContact
+from .models import (Shop, Product, Category, Order, OrderItem, Customer, MasterSetting, Banner, MessengerContact,
+                     SaleReturnItem, StorefrontOrderItem)
 from . import backups, retention
 from .plans import (
     can_add_staff, has_custom_domain, has_facebook, plan_label, product_limit, products_remaining,
@@ -30,7 +31,7 @@ from .plans import (
 from .forms import (ShopSetupForm, ProductForm, OrderCreateForm, SteadfastSettingsForm, PathaoSettingsForm,
                     RedxSettingsForm, PosSettingsForm)
 from .links import storefront_link
-from . import couriers, offers, order_flow, pos, reviews, risk, sf_lang, sms, variants
+from . import couriers, offers, order_flow, pos, reviews, risk, sf_lang, sms, units, variants
 from .themes import THEMES
 from django.urls import reverse
 
@@ -266,7 +267,8 @@ def product_list(request):
     if q:
         # নাম বা বারকোড (সাইজ/রংয়ের বারকোডও) দিয়ে খোঁজা
         code = q.strip().translate(BN_TO_EN_DIGITS)
-        products = products.filter(Q(name__icontains=q) | Q(barcode=code) | Q(variants__barcode=code)).distinct()
+        products = products.filter(Q(name__icontains=q) | Q(barcode=code) | Q(variants__barcode=code)
+                                   | Q(extra_barcodes__code=code)).distinct()
     # Category filter
     cat_id = request.GET.get('cat', '')
     if cat_id.isdigit():
@@ -278,7 +280,7 @@ def product_list(request):
     elif status == 'inactive':
         products = products.filter(is_active=False)
     elif status == 'low':
-        products = products.filter(stock_quantity__lt=5)
+        products = products.filter(stock_log.low_stock_q())
     # Pagination
     paginator = Paginator(products, 20)
     page = request.GET.get('page', 1)
@@ -286,8 +288,13 @@ def product_list(request):
         page_obj = paginator.page(page)
     except (EmptyPage, PageNotAnInteger):
         page_obj = paginator.page(1)
-    categories = Category.objects.filter(shop=shop)
-    return render(request, 'store/products.html', {'page_obj': page_obj, 'categories': categories, 'shop': shop})
+    categories = Category.objects.filter(shop=shop).order_by('name')
+    keep = request.GET.copy()
+    keep.pop('page', None)
+    low_count = Product.objects.filter(stock_log.low_stock_q(), shop=shop, is_active=True).count()
+    return render(request, 'store/products.html', {'page_obj': page_obj, 'categories': categories, 'shop': shop,
+                                                   'query': keep.urlencode(), 'low_count': low_count,
+                                                   'filtered': bool(q or cat_id or status)})
 
 
 def _variant_rows(request, product):
@@ -315,22 +322,32 @@ def add_product(request):
 
         form = ProductForm(request.POST, request.FILES, shop=shop)
         try:
-            rows = variants.rows_from_post(request.POST)
+            rows = variants.rows_from_post(request.POST, unit=_posted_unit(request.POST))
         except variants.VariantError as exc:
             rows = None
             messages.error(request, str(exc))
         if rows is not None and form.is_valid():
-            product = form.save(commit=False)
-            product.shop = shop
-            product.save()
-            variants.save_rows(product, rows, stock_user=request.user, stock_reason='new')
-            if not product.has_variants:
-                stock_log.record(product.pk, None, product.stock_quantity, reason='new', user=request.user)
-            messages.success(request, "প্রোডাক্ট যোগ হয়েছে।")
+            with transaction.atomic():
+                product = form.save(commit=False)
+                product.shop = shop
+                product.save()
+                form.save_extra_barcodes(product)
+                variants.save_rows(product, rows, stock_user=request.user, stock_reason='new')
+                if not product.has_variants:
+                    stock_log.record(product.pk, None, product.stock_quantity, reason='new', user=request.user)
+            messages.success(request, f'"{product.name}" যোগ হয়েছে।')
+            if request.POST.get('next') == 'another':
+                return redirect('add_product')
             return redirect('product_list')
     else:
         form = ProductForm(shop=shop)
-    return render(request, 'store/add_product.html', {'form': form, 'variant_rows': _variant_rows(request, None)})
+    return render(request, 'store/product_form.html', {'form': form, 'product': None,
+                                                       'variant_rows': _variant_rows(request, None)})
+
+
+def _posted_unit(post):
+    unit = post.get('unit')
+    return unit if unit in units.LABELS else units.PCS
 
 
 @login_required(login_url='/accounts/login/')
@@ -340,32 +357,46 @@ def edit_product(request, pk):
         stock_before, had_variants = product.stock_quantity, product.has_variants
         form = ProductForm(request.POST, request.FILES, instance=product)
         try:
-            rows = variants.rows_from_post(request.POST)
+            rows = variants.rows_from_post(request.POST, unit=_posted_unit(request.POST))
         except variants.VariantError as exc:
             rows = None
             messages.error(request, str(exc))
         if rows is not None and form.is_valid():
-            form.save()
-            variants.save_rows(product, rows, stock_user=request.user)
-            if not product.has_variants and not had_variants:
-                stock_log.record(product.pk, None, product.stock_quantity - stock_before, reason='manual',
-                                 user=request.user)
-            messages.success(request, "প্রোডাক্ট আপডেট হয়েছে।")
+            with transaction.atomic():
+                form.save()
+                form.save_extra_barcodes(product)
+                variants.save_rows(product, rows, stock_user=request.user)
+                if not product.has_variants and not had_variants:
+                    stock_log.record(product.pk, None, product.stock_quantity - stock_before, reason='manual',
+                                     user=request.user)
+            messages.success(request, f'"{product.name}" সেভ হয়েছে।')
             return redirect('product_list')
     else:
         form = ProductForm(instance=product)
-    return render(request, 'store/edit_product.html', {'form': form, 'product': product,
+    return render(request, 'store/product_form.html', {'form': form, 'product': product,
                                                        'variant_rows': _variant_rows(request, product)})
 
 
 @login_required(login_url='/accounts/login/')
 def delete_product(request, pk):
     product = get_object_or_404(Product, pk=pk, shop=request.user.shop)
+    # আগে বিক্রি/অর্ডার হয়ে থাকলে মোছা যায় না: মুছলে পুরোনো অর্ডার আর রসিদ থেকে ওই লাইন হারিয়ে যেত (হিসাব ভুল হতো)।
+    # তখন শুধু বন্ধ করা হয় — ওয়েবসাইট আর POS-এ দেখায় না, পুরোনো হিসাব ঠিক থাকে।
+    used = (OrderItem.objects.filter(product=product).exists()
+            or StorefrontOrderItem.objects.filter(product=product).exists()
+            or SaleReturnItem.objects.filter(product=product).exists())
     if request.method == 'POST':
-        product.delete()
-        messages.success(request, "Product deleted!")
+        if used:
+            if product.is_active:
+                product.is_active = False
+                product.save(update_fields=['is_active'])
+            messages.success(request, f'"{product.name}" বন্ধ করা হলো — আর বিক্রিতে দেখাবে না। আগের অর্ডারে নাম থেকে যাবে।')
+        else:
+            name = product.name
+            product.delete()
+            messages.success(request, f'"{name}" মুছে ফেলা হয়েছে।')
         return redirect('product_list')
-    return render(request, 'store/delete_product.html', {'product': product})
+    return render(request, 'store/delete_product.html', {'product': product, 'used': used})
 
 
 # ============================================================
@@ -420,10 +451,12 @@ def _create_manual_order(shop, post, user=None):
             continue
         try:
             key = int(raw_id)
-            qty = int(str(quantities[index] if index < len(quantities) else '1').strip().translate(BN_TO_EN_DIGITS) or 1)
         except ValueError:
             raise order_flow.FlowError('প্রোডাক্ট বা পরিমাণ ঠিক নেই।')
-        if qty < 1 or qty > 9999:
+        raw_qty = str(quantities[index] if index < len(quantities) else '').strip() or '1'
+        try:
+            qty = _qty_field(raw_qty, 'পরিমাণ')
+        except order_flow.FlowError:
             raise order_flow.FlowError('পরিমাণ কমপক্ষে ১ হতে হবে।')
         price = _money_field(prices[index] if index < len(prices) else '', 'দাম')
         if key in lines:
@@ -441,9 +474,11 @@ def _create_manual_order(shop, post, user=None):
             item = chosen.get(key)
             if item is None or item.needs_choice:
                 raise order_flow.FlowError('একটা প্রোডাক্ট আর পাওয়া যাচ্ছে না। পাতাটা আবার খুলে চেষ্টা করুন।')
+            if not units.fits(line['qty'], item.product.unit):
+                raise order_flow.FlowError(units.whole_msg(item.name))
             if item.stock < line['qty']:
-                raise order_flow.FlowError(f'"{item.name}" স্টকে আছে মাত্র {item.stock}টা।')
-            subtotal += line['price'] * line['qty']
+                raise order_flow.FlowError(f'"{item.name}" স্টকে আছে মাত্র {units.show(item.stock, item.product.unit)}।')
+            subtotal += units.money(line['price'] * line['qty'])
         total = max(subtotal + delivery_charge - discount, 0)
         customer, _created = Customer.objects.get_or_create(shop=shop, phone=phone,
                                                             defaults={'name': name, 'address': address})
@@ -466,16 +501,30 @@ def _create_manual_order(shop, post, user=None):
 def order_create(request):
     shop = request.user.shop
 
+    posted = {}
     if request.method == 'POST':
         try:
             order = _create_manual_order(shop, request.POST, request.user)
         except order_flow.FlowError as exc:
             messages.error(request, str(exc))
-            return redirect('order_create')
-        messages.success(request, f'অর্ডার #ORD-{order.id} তৈরি হয়েছে।')
-        return redirect('order_list')
+            # ভুল হলে পুরো ফর্ম আবার খালি না করে যা লেখা ছিল তা রেখে দেখানো হয়
+            post = request.POST
+            posted = {key: post.get(key, '') for key in ('customer_name', 'customer_phone', 'customer_address',
+                                                         'delivery_charge', 'discount', 'payment_method',
+                                                         'advance_amount')}
+            posted['rows'] = [{'id': i, 'price': pr, 'qty': q} for i, pr, q in zip(
+                post.getlist('product[]'), post.getlist('price[]'), post.getlist('quantity[]')) if i][:50]
+        else:
+            messages.success(request, f'অর্ডার #ORD-{order.id} তৈরি হয়েছে।')
+            return redirect('order_list')
 
-    return render(request, 'store/order_create.html', {'products': _order_product_options(shop)})
+    from . import delivery
+    zones = [{'name': z.name, 'charge': units.num(z.charge)} for z in delivery.zones_for(shop)]
+    return render(request, 'store/order_create.html', {
+        'products': _order_product_options(shop), 'posted': posted, 'zones': zones,
+        'rows': posted.get('rows', []),
+        'phone': posted.get('customer_phone') or request.GET.get('phone', ''),
+    })
 
 
 @login_required(login_url='/accounts/login/')
@@ -587,15 +636,15 @@ def _refund_context(request, order):
 
 
 def _qty_field(raw, label, *, allow_zero=False):
-    """ফর্মের পরিমাণের ঘর → পূর্ণ সংখ্যা (১–৯৯৯৯; allow_zero হলে ০ মানে বাদ)।"""
-    text = str(raw if raw is not None else '').strip().translate(BN_TO_EN_DIGITS)
+    """
+    ফর্মের পরিমাণের ঘর → Decimal (০–৯৯৯৯; allow_zero হলে ০ মানে বাদ)। কেজি/লিটারের প্রোডাক্টে দশমিক চলে (১.৫);
+    পিসের প্রোডাক্টে পূর্ণ সংখ্যা কিনা order_flow/অর্ডার তৈরির সময় প্রোডাক্ট দেখে যাচাই হয়।
+    """
+    from decimal import Decimal
     try:
-        qty = int(text)
-    except ValueError:
-        raise order_flow.FlowError(f'{label} পূর্ণ সংখ্যায় লিখুন।')
-    if qty < (0 if allow_zero else 1) or qty > 9999:
-        raise order_flow.FlowError(f'{label} ঠিক নেই।')
-    return qty
+        return units.parse(raw, 'kg', label=label, allow_zero=allow_zero, maximum=Decimal(9999))
+    except units.QtyError as exc:
+        raise order_flow.FlowError(str(exc))
 
 
 def _order_product_options(shop):
@@ -605,10 +654,13 @@ def _order_product_options(shop):
                     .prefetch_related('variants').order_by('name')):
         if product.has_variants:
             options += [{'id': -v.id, 'name': f'{product.name} ({v.name})', 'price': v.sell_price,
-                         'stock': v.stock_quantity} for v in product.variants.all() if v.stock_quantity > 0]
+                         'stock': units.num(v.stock_quantity), 'unit': product.unit,
+                         'unit_label': units.LABELS.get(product.unit, '')}
+                        for v in product.variants.all() if v.stock_quantity > 0]
         else:
             options.append({'id': product.id, 'name': product.name, 'price': product.price,
-                            'stock': product.stock_quantity})
+                            'stock': units.num(product.stock_quantity), 'unit': product.unit,
+                            'unit_label': units.LABELS.get(product.unit, '')})
     return options
 
 
@@ -1443,7 +1495,7 @@ def storefront_product_detail(request, shop_slug, product_id):
         link_name='storefront_product_detail', link_args=(product.id,), og_type='product',
         price=product.price)
 
-    variant_list = [{'id': -v.id, 'name': v.name, 'price': float(v.sell_price), 'stock': v.stock_quantity}
+    variant_list = [{'id': -v.id, 'name': v.name, 'price': float(v.sell_price), 'stock': units.num(v.stock_quantity)}
                     for v in product.variants.all()] if product.has_variants else []
     reviews.attach([product] + related_products)
     review_msg = request.session.pop('review_msg', None)

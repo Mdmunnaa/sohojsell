@@ -1,0 +1,108 @@
+{% extends 'store/base.html' %}
+{% load bangla %}
+{% block title %}স্টকের হিসাব - {{ request.user.shop.name }}{% endblock %}
+{% block page_title %}স্টকের হিসাব{% endblock %}
+{% block content %}
+{% comment %}
+  views_stock.stock_history: প্রতিটা স্টক বদল — কবে, কোন প্রোডাক্ট, কেন, কত, পরে কত থাকল, কে করল।
+{% endcomment %}
+<style>
+  .sh-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .sh-head h1 { font-size: 21px; font-weight: 800; margin: 0 0 2px; }
+  .sh-head .meta { color: #64748B; font-size: 13px; max-width: 560px; }
+  .sh-filter { background: #fff; border: 1px solid #E2E8F0; border-radius: 16px; padding: 10px; margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .sh-filter .form-select { border-radius: 999px; font-size: 14px; flex: 0 1 200px; }
+  .sh-chip { display: inline-flex; align-items: center; gap: 8px; background: #EEF2FF; color: #3730A3; border-radius: 999px; padding: 6px 8px 6px 14px; font-weight: 700; font-size: 13px; }
+  .sh-chip a { width: 22px; height: 22px; border-radius: 50%; background: #fff; color: #3730A3; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+  .sh-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 18px; overflow: hidden; }
+  .sh-row { display: grid; grid-template-columns: 92px minmax(0, 1fr) 110px 110px; gap: 12px; align-items: center; padding: 12px 14px; border-top: 1px solid #F1F5F9; }
+  .sh-row:first-child { border-top: 0; }
+  .sh-when { font-size: 12.5px; color: #475569; line-height: 1.35; font-weight: 600; }
+  .sh-what b { font-size: 14px; color: #0F172A; }
+  .sh-what b a { color: inherit; text-decoration: none; }
+  .sh-what b a:hover { text-decoration: underline; }
+  .sh-what .sub { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 3px; font-size: 12px; color: #64748B; }
+  .sh-tag { border-radius: 999px; padding: 2px 9px; font-weight: 700; font-size: 11.5px; }
+  .sh-tag.sale { background: #F1F5F9; color: #334155; }
+  .sh-tag.in { background: #F0FDF4; color: #15803D; }
+  .sh-tag.edit { background: #EFF6FF; color: #1D4ED8; }
+  .sh-tag.warn { background: #FFF7ED; color: #C2410C; }
+  .sh-change { text-align: right; font-weight: 800; font-size: 15px; white-space: nowrap; }
+  .sh-change.up { color: #15803D; }
+  .sh-change.down { color: #B91C1C; }
+  .sh-after { text-align: right; font-size: 13px; color: #475569; white-space: nowrap; }
+  .sh-after small { display: block; font-size: 11px; color: #94A3B8; }
+  .sh-empty { text-align: center; padding: 48px 16px; color: #64748B; }
+  .sh-empty i { font-size: 40px; color: #CBD5E1; display: block; margin-bottom: 8px; }
+  .sh-pages { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border-top: 1px solid #E2E8F0; background: #FAFAFA; flex-wrap: wrap; font-size: 13px; color: #64748B; }
+  .sh-pages a { height: 34px; padding: 0 14px; border-radius: 999px; display: inline-flex; align-items: center; text-decoration: none; font-weight: 700; color: #334155; border: 1px solid #E2E8F0; background: #fff; }
+  @media (max-width: 640px) {
+    .sh-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "what change" "when after"; gap: 6px 10px; }
+    .sh-what { grid-area: what; } .sh-change { grid-area: change; } .sh-when { grid-area: when; } .sh-after { grid-area: after; }
+  }
+</style>
+
+<div class="sh-head">
+  <div>
+    <h1>স্টকের হিসাব{% if product %}: {{ product.name }}{% endif %}</h1>
+    <div class="meta">বিক্রি, ফেরত, বাতিল, মাল কেনা বা হাতে বদল — স্টক যখনই বাড়ে-কমে, এখানে লেখা থাকে। "এতগুলো ছিল, এখন কম কেন" সেটা এখানে দেখুন।</div>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if product %}<a href="{% url 'edit_product' product.pk %}" class="btn btn-light border rounded-pill fw-bold"><i class="bi bi-pencil me-1"></i> স্টক বদলান</a>{% endif %}
+    <a href="{% url 'product_list' %}{% if low_count %}?status=low{% endif %}" class="btn btn-light border rounded-pill fw-bold">
+      {% if low_count %}<i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> {{ low_count|bn }}টা স্টক কম{% else %}<i class="bi bi-box-seam me-1"></i> প্রোডাক্ট{% endif %}
+    </a>
+  </div>
+</div>
+
+<form method="get" class="sh-filter">
+  {% if product %}
+  <input type="hidden" name="product" value="{{ product.pk }}">
+  <span class="sh-chip">{{ product.name }} <a href="?{% if reason %}reason={{ reason }}{% endif %}{% if direction %}&dir={{ direction }}{% endif %}" aria-label="সব প্রোডাক্ট দেখুন"><i class="bi bi-x-lg" style="font-size:11px"></i></a></span>
+  {% endif %}
+  <select name="reason" class="form-select" aria-label="কারণ" onchange="this.form.submit()">
+    <option value="">সব কারণ</option>
+    {% for key, label in reasons %}<option value="{{ key }}" {% if reason == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <select name="dir" class="form-select" aria-label="বেড়েছে না কমেছে" onchange="this.form.submit()">
+    <option value="">বাড়া আর কমা দুটোই</option>
+    <option value="in" {% if direction == 'in' %}selected{% endif %}>শুধু বেড়েছে</option>
+    <option value="out" {% if direction == 'out' %}selected{% endif %}>শুধু কমেছে</option>
+  </select>
+  <noscript><button type="submit" class="btn btn-dark btn-sm rounded-pill px-3">দেখুন</button></noscript>
+  {% if filtered %}<a href="{% url 'stock_history' %}" class="btn btn-light btn-sm rounded-pill border">সব দেখুন</a>{% endif %}
+</form>
+
+<div class="sh-card">
+  {% for move in page_obj %}
+  <div class="sh-row">
+    <div class="sh-when">{{ move.created_at|bn_when }}</div>
+    <div class="sh-what">
+      <b>{% if move.product_id %}<a href="?product={{ move.product_id }}">{{ move.product.name }}</a>{% endif %}{% if move.variant_name %} <span style="font-weight:600;color:#475569">({{ move.variant_name }})</span>{% endif %}</b>
+      <div class="sub">
+        <span class="sh-tag {{ move.tone }}">{{ move.reason_label }}</span>
+        {% if move.link %}<a href="{{ move.link }}">#{{ move.order_ref|default:move.order_id }}</a>{% elif move.order_ref %}<span>#{{ move.order_ref }} (মোছা)</span>{% endif %}
+        {% if move.who %}<span><i class="bi bi-person"></i> {{ move.who }}</span>{% endif %}
+        {% if move.note %}<span>{{ move.note }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="sh-change {% if move.change > 0 %}up{% else %}down{% endif %}">{{ move.change_label }}</div>
+    <div class="sh-after">{% if move.after_label %}<small>পরে ছিল</small>{{ move.after_label }}{% endif %}</div>
+  </div>
+  {% empty %}
+  <div class="sh-empty">
+    <i class="bi bi-clock-history"></i>
+    {% if filtered %}এই বাছাইয়ে কোনো বদল নেই।{% else %}এখনো কোনো স্টক বদল লেখা হয়নি। প্রোডাক্ট যোগ, বিক্রি বা মাল কেনা হলেই এখানে দেখাবে।{% endif %}
+  </div>
+  {% endfor %}
+  {% if page_obj.has_other_pages %}
+  <div class="sh-pages">
+    <span>পাতা {{ page_obj.number|bn }} / {{ page_obj.paginator.num_pages|bn }}</span>
+    <span class="d-flex gap-2">
+      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if query %}&{{ query }}{% endif %}"><i class="bi bi-chevron-left me-1"></i> নতুনগুলো</a>{% endif %}
+      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if query %}&{{ query }}{% endif %}">পুরোনোগুলো <i class="bi bi-chevron-right ms-1"></i></a>{% endif %}
+    </span>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

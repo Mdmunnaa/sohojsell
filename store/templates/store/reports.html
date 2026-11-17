@@ -530,7 +530,7 @@
         <div class="rp-kpi-sub" style="margin-bottom:6px;">{{ stock.units|floatformat:"0g"|bn }} পিস · {{ stock.products|bn }}টা প্রোডাক্ট</div>
         <div class="rp-kv"><span>বিক্রি দামে</span><b>৳{{ stock.value|floatformat:"0g"|bn }}</b></div>
         <div class="rp-kv"><span>সব বিক্রি হলে লাভ</span><b>৳{{ stock.margin|floatformat:"0g"|bn }}</b></div>
-        <div class="rp-kv"><span>শেষের পথে (৫টার কম)</span><b>{{ stock.low|bn }}টা</b></div>
+        <div class="rp-kv"><span>শেষের পথে</span><b>{{ stock.low|bn }}টা</b></div>
         <div class="rp-kv"><span>স্টকে নেই</span><b>{{ stock.out|bn }}টা</b></div>
         {% if stock.missing_cost %}<div class="rp-kpi-sub" style="color:#B45309;">{{ stock.missing_cost|bn }}টা প্রোডাক্টের কেনা দাম নেই, সেগুলো কেনা দামের হিসাবে ধরা হয়নি</div>{% endif %}
       </div>

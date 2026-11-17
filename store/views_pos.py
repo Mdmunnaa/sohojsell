@@ -72,12 +72,19 @@ def _sale_json(order):
 
 
 def _product_json(p):
-    data = {'id': p.id, 'name': p.name, 'price': _num(p.price), 'stock': p.stock_quantity,
-            'cat': p.category_id or 0, 'barcode': p.barcode or '', 'img': p.thumb_url}
+    from . import units
+    extra = list(p.extra_barcodes.all())
+    data = {'id': p.id, 'name': p.name, 'price': _num(p.price), 'stock': units.num(p.stock_quantity),
+            'cat': p.category_id or 0, 'barcode': p.barcode or '', 'img': p.thumb_url,
+            # একক: পিস হলে "টা", ওজনের হলে ভাঙা পরিমাণ চলে (store/units.py)
+            'unit': p.unit, 'suffix': p.unit_suffix,
+            # বাড়তি বারকোড (store/models.ProductBarcode) — যেকোনোটা স্ক্যান করলেই এই প্রোডাক্ট
+            'codes': [b.code for b in extra if not b.variant_id]}
     if p.has_variants:
         # সাইজ/রং: কার্টে এদের নম্বর ঋণাত্মক (store/variants.py)
-        data['variants'] = [{'id': -v.id, 'name': v.name, 'price': _num(v.sell_price), 'stock': v.stock_quantity,
-                             'barcode': v.barcode} for v in p.variants.all()]
+        data['variants'] = [{'id': -v.id, 'name': v.name, 'price': _num(v.sell_price), 'stock': units.num(v.stock_quantity),
+                             'barcode': v.barcode, 'codes': [b.code for b in extra if b.variant_id == v.id]}
+                            for v in p.variants.all()]
     return data
 
 
@@ -86,7 +93,8 @@ def _product_json(p):
 @login_required(login_url=LOGIN)
 def pos_screen(request):
     shop = request.user.shop
-    products = Product.objects.filter(shop=shop, is_active=True).prefetch_related('variants').order_by('name')
+    products = (Product.objects.filter(shop=shop, is_active=True).prefetch_related('variants', 'extra_barcodes')
+                .order_by('name'))
     product_data = [_product_json(p) for p in products]
     used_categories = {p['cat'] for p in product_data}
     categories = [c for c in Category.objects.filter(shop=shop).order_by('name') if c.id in used_categories]
@@ -135,6 +143,12 @@ def pos_barcode(request):
                    .select_related('product').first())
         if variant:
             product, hit = variant.product, -variant.id
+    if product is None and barcode:
+        from .models import ProductBarcode
+        extra = (ProductBarcode.objects.filter(shop=shop, code=barcode, product__is_active=True)
+                 .select_related('product').first())
+        if extra:
+            product, hit = extra.product, (-extra.variant_id if extra.variant_id else extra.product_id)
     if product is None:
         return _error(f'এই বারকোডের কোনো প্রোডাক্ট নেই: {barcode}', status=404)
     return JsonResponse({'success': True, 'product': _product_json(product), 'hit': hit})

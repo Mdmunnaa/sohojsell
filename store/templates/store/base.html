@@ -408,6 +408,9 @@
         <a href="{% url 'barcode_print' %}" class="sb-link {% if request.resolver_match.url_name == 'barcode_print' %}active{% endif %}">
           <i class="bi bi-upc-scan"></i> <span class="sb-text-hide">বারকোড প্রিন্ট</span>
         </a>
+        <a href="{% url 'stock_history' %}" class="sb-link {% if request.resolver_match.url_name == 'stock_history' %}active{% endif %}">
+          <i class="bi bi-clock-history"></i> <span class="sb-text-hide">স্টকের হিসাব</span>
+        </a>
         {% endif %}
 
         {% if not request.user.is_shop_staff or request.user.staff_profile.can_manage_orders or request.user.staff_profile.can_manage_customers or request.user.staff_profile.can_send_sms %}

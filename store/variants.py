@@ -12,6 +12,7 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 from django.db.models import F, Sum
 
+from . import units
 from .models import Product, ProductVariant
 
 MAX_VARIANTS = 60
@@ -127,7 +128,17 @@ def _number(value, label, *, whole=False, blank_ok=False):
     return number
 
 
-def rows_from_post(post):
+def _stock(value, label, unit):
+    """সাইজ/রংয়ের স্টক: পিসে পূর্ণ সংখ্যা, কেজি/লিটারে দশমিক চলে। ফাঁকা = ০।"""
+    if not str(value if value is not None else '').strip():
+        return 0
+    try:
+        return units.parse(value, unit, label=label, allow_zero=True)
+    except units.QtyError as exc:
+        raise VariantError(str(exc))
+
+
+def rows_from_post(post, unit=units.PCS):
     """ফর্মের variant_id[] / variant_name[] / variant_price[] / variant_stock[] → পরিষ্কার সারি।"""
     ids, names = post.getlist('variant_id[]'), post.getlist('variant_name[]')
     prices, stocks = post.getlist('variant_price[]'), post.getlist('variant_stock[]')
@@ -144,7 +155,7 @@ def rows_from_post(post):
             'id': int(raw_id) if str(raw_id).isdigit() else None,
             'name': name,
             'price': _number(prices[index] if index < len(prices) else '', f'"{name}"-এর দাম', blank_ok=True),
-            'stock': _number(stocks[index] if index < len(stocks) else '', f'"{name}"-এর স্টক', whole=True),
+            'stock': _stock(stocks[index] if index < len(stocks) else '', f'"{name}"-এর স্টক', unit),
         })
     if len(rows) > MAX_VARIANTS:
         raise VariantError(f'এক প্রোডাক্টে সর্বোচ্চ {MAX_VARIANTS}টা সাইজ/রং রাখা যায়।')

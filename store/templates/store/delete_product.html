@@ -1,18 +1,29 @@
 {% extends 'store/base.html' %}
-{% block title %}Delete Product{% endblock %}
+{% block title %}প্রোডাক্ট মুছুন{% endblock %}
+{% block page_title %}প্রোডাক্ট মুছুন{% endblock %}
 
 {% block content %}
-<div class="card shadow-sm border-0 border-top border-danger border-4 mx-auto mt-5" style="max-width: 500px;">
-    <div class="card-body text-center p-5">
-        <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3rem;"></i>
-        <h4 class="fw-bold mt-3">Are you sure?</h4>
-        <p class="text-muted">Do you really want to delete <strong>"{{ product.name }}"</strong>? This process cannot be undone.</p>
-
-        <form method="POST" class="mt-4">
-            {% csrf_token %}
-            <a href="{% url 'product_list' %}" class="btn btn-secondary fw-bold px-4 me-2">Cancel</a>
-            <button type="submit" class="btn btn-danger fw-bold px-4">Yes, Delete it</button>
-        </form>
-    </div>
+<div class="card shadow-sm border-0 mx-auto mt-4" style="max-width:520px;border-radius:20px;">
+  <div class="card-body text-center p-4 p-md-5">
+    {% if used %}
+    <i class="bi bi-eye-slash text-warning" style="font-size:2.6rem;"></i>
+    <h4 class="fw-bold mt-3">"{{ product.name }}" বন্ধ করবেন?</h4>
+    <p class="text-muted mb-0">এই প্রোডাক্টে আগে বিক্রি বা অর্ডার হয়েছে, তাই পুরো মোছা যাবে না — মুছলে পুরোনো রসিদ আর হিসাব ভুল হয়ে যেত।
+      বন্ধ করলে ওয়েবসাইট আর POS-এ আর দেখাবে না; পরে চাইলে এডিট থেকে আবার চালু করা যাবে।</p>
+    {% else %}
+    <i class="bi bi-trash3 text-danger" style="font-size:2.6rem;"></i>
+    <h4 class="fw-bold mt-3">"{{ product.name }}" মুছে ফেলবেন?</h4>
+    <p class="text-muted mb-0">মুছলে আর ফেরত আনা যাবে না। শুধু বিক্রি বন্ধ রাখতে চাইলে মোছার দরকার নেই — এডিটে গিয়ে "বিক্রির জন্য চালু" বন্ধ করে দিন।</p>
+    {% endif %}
+    <form method="post" class="mt-4 d-flex gap-2 justify-content-center flex-wrap">
+      {% csrf_token %}
+      <a href="{% url 'product_list' %}" class="btn btn-light border fw-bold px-4 rounded-pill">না, থাক</a>
+      {% if used %}
+      <button type="submit" class="btn btn-warning fw-bold px-4 rounded-pill">হ্যাঁ, বন্ধ করুন</button>
+      {% else %}
+      <button type="submit" class="btn btn-danger fw-bold px-4 rounded-pill">হ্যাঁ, মুছে ফেলুন</button>
+      {% endif %}
+    </form>
+  </div>
 </div>
 {% endblock %}

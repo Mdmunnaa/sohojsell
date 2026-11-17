@@ -19,7 +19,6 @@ from .models import Banner, Order, OrderItem, PageView, Product
 from .pos import NOT_COUNTED, WALK_IN_PHONE
 
 ZERO = Decimal('0')
-LOW_STOCK = 5
 CHART_RANGES = (7, 30)
 BN_DIGITS = str.maketrans('0123456789', '০১২৩৪৫৬৭৮৯')
 # date.weekday(): সোমবার = 0
@@ -235,8 +234,9 @@ def pos_dues(shop):
 
 
 def stock_alerts(shop, limit=6):
-    low = Product.objects.filter(shop=shop, is_active=True, stock_quantity__lt=LOW_STOCK)
-    counts = low.aggregate(total=Count('id'), out=Count('id', filter=Q(stock_quantity=0)))
+    from .stock_log import low_stock_q
+    low = Product.objects.filter(low_stock_q(), shop=shop, is_active=True)
+    counts = low.aggregate(total=Count('id'), out=Count('id', filter=Q(stock_quantity__lte=0)))
     return {
         'items': list(low.order_by('stock_quantity', 'name')[:limit]),
         'count': counts['total'] or 0,
@@ -348,7 +348,7 @@ def todo_items(can, pipeline, dues, stock, messenger_waiting=0, money=None):
         items.append({'icon': 'bi-exclamation-triangle-fill', 'tone': 'amber',
                       'url': f"{reverse('product_list')}?status=low",
                       'title': f"{bn_num(low_only)}টা প্রোডাক্ট শেষের পথে",
-                      'sub': f'{bn_num(LOW_STOCK)}টার কম বাকি আছে'})
+                      'sub': 'যে পরিমাণে সতর্ক করতে বলেছেন, তার সমান বা কম বাকি'})
     if dues and dues['amount'] > 0 and can['pos']:
         amount = f"{dues['amount']:,.0f}" if dues['amount'] == dues['amount'].to_integral_value() \
             else f"{dues['amount']:,.2f}"

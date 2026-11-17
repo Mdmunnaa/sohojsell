@@ -1,8 +1,9 @@
 import re
+from decimal import Decimal
 
 from django import forms
-from .models import Shop
-from .models import Shop, Product # Product মডেল ইমপোর্ট করা হলো
+from . import units
+from .models import Shop, Product
 
 class ShopSetupForm(forms.ModelForm):
     class Meta:
@@ -11,23 +12,33 @@ class ShopSetupForm(forms.ModelForm):
         fields = ['name', 'facebook_page_url']
 
 # প্রোডাক্ট অ্যাড করার ফর্ম
+BN_DIGITS = str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789')
+MAX_EXTRA_BARCODES = 50
+
+
 class ProductForm(forms.ModelForm):
+    """প্রোডাক্ট যোগ আর এডিট — একই ফর্ম (store/templates/store/product_form.html)।"""
+    extra_barcodes = forms.CharField(
+        required=False, label='আরও বারকোড',
+        widget=forms.Textarea(attrs={'rows': 3, 'autocomplete': 'off', 'spellcheck': 'false',
+                                     'placeholder': 'প্রতি লাইনে একটা বারকোড'}))
+
     class Meta:
         model = Product
-        # এখানে 'description' অ্যাড করা হয়েছে
-        fields = ['name', 'category', 'description', 'cost_price', 'price', 'compare_price', 'stock_quantity',
-                  'barcode', 'is_active', 'image']
+        fields = ['name', 'category', 'description', 'cost_price', 'price', 'compare_price', 'unit',
+                  'stock_quantity', 'low_stock_at', 'barcode', 'is_active', 'image']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Product name'}),
-            'category': forms.Select(attrs={'class': 'form-select'}),
-            # Description এর জন্য টেক্সট এরিয়া
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Write product details here...'}),
-            'cost_price': forms.NumberInput(attrs={'class': 'form-control'}),
-            'price': forms.NumberInput(attrs={'class': 'form-control'}),
-            'compare_price': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'যেমন 1200'}),
-            'stock_quantity': forms.NumberInput(attrs={'class': 'form-control'}),
-            'image': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
-            'barcode': forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'off', 'spellcheck': 'false',
+            'name': forms.TextInput(attrs={'placeholder': 'যেমন: চিনি, বা ছেলেদের পোলো শার্ট', 'autocomplete': 'off'}),
+            'description': forms.Textarea(attrs={'rows': 3, 'placeholder': 'ওয়েবসাইটে কাস্টমার যা দেখবেন: মাপ, কাপড়, ওজন, ওয়ারেন্টি…'}),
+            'cost_price': forms.NumberInput(attrs={'step': 'any', 'min': '0', 'inputmode': 'decimal', 'placeholder': '0'}),
+            'price': forms.NumberInput(attrs={'step': 'any', 'min': '0', 'inputmode': 'decimal', 'placeholder': '0'}),
+            'compare_price': forms.NumberInput(attrs={'step': 'any', 'min': '0', 'inputmode': 'decimal', 'placeholder': 'ফাঁকা রাখা যায়'}),
+            'unit': forms.RadioSelect,
+            'stock_quantity': forms.NumberInput(attrs={'step': 'any', 'min': '0', 'inputmode': 'decimal', 'placeholder': '0'}),
+            'low_stock_at': forms.NumberInput(attrs={'step': 'any', 'min': '0', 'inputmode': 'decimal'}),
+            'image': forms.ClearableFileInput(attrs={'accept': 'image/*'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input', 'role': 'switch'}),
+            'barcode': forms.TextInput(attrs={'autocomplete': 'off', 'spellcheck': 'false',
                                               'placeholder': 'স্ক্যান করুন, লিখুন, বা ফাঁকা রাখুন'}),
         }
 
@@ -41,28 +52,105 @@ class ProductForm(forms.ModelForm):
         category.queryset = (Category.objects.filter(shop=self.shop).order_by('name') if self.shop is not None
                              else Category.objects.none())
         category.label_from_instance = lambda obj: obj.name
+        category.empty_label = 'ক্যাটাগরি ছাড়া'
+        self.fields['unit'].choices = list(units.UNITS)
+        self.fields['unit'].required = False          # না পাঠালে (পুরোনো ফর্ম/ইমপোর্ট) আগের মতো পিস
+        self.fields['low_stock_at'].required = False
+        self.fields['stock_quantity'].required = False
+        self.fields['cost_price'].required = False      # ফাঁকা = ০ (লাভের হিসাবে পরে দেওয়া যায়)
+        if not self.instance.pk and not self.is_bound:
+            self.initial.setdefault('cost_price', '')
+            self.initial.setdefault('stock_quantity', '')
+        if self.instance.pk and not self.is_bound:
+            self.initial['extra_barcodes'] = '\n'.join(
+                self.instance.extra_barcodes.filter(variant__isnull=True).values_list('code', flat=True))
+
+    def _code_owner(self, code):
+        """এই দোকানে কোডটা অন্য কোন প্রোডাক্ট/সাইজে আছে (নিজেরটা বাদে) — বার্তার জন্য নাম, নাহলে None।"""
+        if self.shop is None:
+            return None
+        from .models import Product, ProductBarcode, ProductVariant
+        same = Product.objects.filter(shop=self.shop, barcode=code).exclude(pk=self.instance.pk).first()
+        if same:
+            return f'"{same.name}"'
+        variant = (ProductVariant.objects.filter(product__shop=self.shop, barcode=code)
+                   .exclude(product_id=self.instance.pk).select_related('product').first())
+        if variant:
+            return f'"{variant.product.name}" ({variant.name})'
+        extra = (ProductBarcode.objects.filter(shop=self.shop, code=code).exclude(product_id=self.instance.pk)
+                 .select_related('product').first())
+        if extra:
+            return f'"{extra.product.name}"'
+        return None
 
     def clean_barcode(self):
-        code = (self.cleaned_data.get('barcode') or '').strip().translate(str.maketrans('০১২৩৪৫৬৭৮৯', '0123456789'))
+        code = (self.cleaned_data.get('barcode') or '').strip().translate(BN_DIGITS)
         if not code:
             return None                      # ফাঁকা থাকলে Product.save() নিজে একটা বানায়
-        if self.shop is not None:
-            from .models import Product, ProductVariant
-            same = Product.objects.filter(shop=self.shop, barcode=code).exclude(pk=self.instance.pk).first()
-            if same:
-                raise forms.ValidationError(f'এই বারকোড আগে থেকেই "{same.name}" প্রোডাক্টে আছে।')
-            variant = (ProductVariant.objects.filter(product__shop=self.shop, barcode=code)
-                       .exclude(product_id=self.instance.pk).select_related('product').first())
-            if variant:
-                raise forms.ValidationError(f'এই বারকোড "{variant.product.name}" ({variant.name})-এ আছে।')
+        owner = self._code_owner(code)
+        if owner:
+            raise forms.ValidationError(f'এই বারকোড আগে থেকেই {owner} প্রোডাক্টে আছে।')
         return code
+
+    def clean_extra_barcodes(self):
+        raw = (self.cleaned_data.get('extra_barcodes') or '').translate(BN_DIGITS)
+        codes = []
+        for code in re.split(r'[\s,;]+', raw):
+            code = code.strip()
+            if code and code not in codes:
+                codes.append(code)
+        if len(codes) > MAX_EXTRA_BARCODES:
+            raise forms.ValidationError(f'এক প্রোডাক্টে সর্বোচ্চ {MAX_EXTRA_BARCODES}টা বাড়তি বারকোড রাখা যায়।')
+        for code in codes:
+            if len(code) > 50:
+                raise forms.ValidationError(f'"{code[:20]}…" বারকোডটা অনেক লম্বা (৫০ অক্ষরের বেশি)।')
+            if self.instance.pk:
+                from .models import ProductVariant
+                variant = ProductVariant.objects.filter(product=self.instance, barcode=code).first()
+                if variant:
+                    raise forms.ValidationError(f'"{code}" এই প্রোডাক্টের "{variant.name}" সাইজ/রংয়ের বারকোড — আলাদা করে দেওয়ার দরকার নেই।')
+            owner = self._code_owner(code)
+            if owner:
+                raise forms.ValidationError(f'"{code}" বারকোড আগে থেকেই {owner} প্রোডাক্টে আছে।')
+        return codes
+
+    def _qty(self, name, unit, label):
+        value = self.cleaned_data.get(name)
+        if value is None:
+            return 0
+        try:
+            return units.parse(value, unit, label=label, allow_zero=True)
+        except units.QtyError as exc:
+            self.add_error(name, str(exc))
+            return value
 
     def clean(self):
         data = super().clean()
         compare, price = data.get('compare_price'), data.get('price')
         if compare is not None and price is not None and compare <= price:
             self.add_error('compare_price', 'আগের দাম বিক্রির দামের চেয়ে বেশি হতে হবে, নইলে ফাঁকা রাখুন।')
+        if 'cost_price' in data and data['cost_price'] is None:
+            data['cost_price'] = Decimal('0')
+        unit = data.get('unit') or getattr(self.instance, 'unit', None) or units.PCS
+        if not data.get('unit'):
+            data['unit'] = unit
+        if 'stock_quantity' in data:
+            data['stock_quantity'] = self._qty('stock_quantity', unit, 'স্টক')
+        if 'low_stock_at' in data:
+            data['low_stock_at'] = self._qty('low_stock_at', unit, 'সতর্ক করার পরিমাণ')
+        main = data.get('barcode')
+        if main and main in (data.get('extra_barcodes') or []):
+            data['extra_barcodes'].remove(main)              # মূল বারকোডটাই আবার লিখলে চুপচাপ বাদ
         return data
+
+    def save_extra_barcodes(self, product):
+        """বাড়তি বারকোড (সাইজ/রং ছাড়া) ফর্মের তালিকার সাথে মেলায়।"""
+        from .models import ProductBarcode
+        codes = self.cleaned_data.get('extra_barcodes') or []
+        product.extra_barcodes.filter(variant__isnull=True).exclude(code__in=codes).delete()
+        have = set(product.extra_barcodes.values_list('code', flat=True))
+        ProductBarcode.objects.bulk_create([ProductBarcode(shop=product.shop, product=product, code=code)
+                                            for code in codes if code not in have])
 
 
 class OrderCreateForm(forms.Form):

@@ -1,281 +1,263 @@
 {% extends 'store/base.html' %}
-
-{% block title %}Create New Order - {{ request.user.shop.name }}{% endblock %}
+{% load bangla %}
+{% block title %}নতুন অর্ডার - {{ request.user.shop.name }}{% endblock %}
+{% block page_title %}নতুন অর্ডার{% endblock %}
 
 {% block content %}
+{% comment %}
+  ফোন/ফেসবুকে পাওয়া অর্ডার হাতে লেখা (views.order_create → _create_manual_order)। মোট এখানে শুধু দেখানোর জন্য —
+  সার্ভার নিজে আবার হিসাব করে আর স্টক থেকে কাটে। ভুল হলে যা লেখা ছিল সেটা রেখেই পাতা ফেরে (posted)।
+{% endcomment %}
 {% include 'store/partials/risk_styles.html' %}
-<div class="container-fluid px-0">
-    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-        <div>
-            <h3 class="fw-bolder text-dark mb-1"><i class="bi bi-cart-plus text-primary me-2"></i>Create New Order</h3>
-            <p class="text-muted fw-medium mb-0">Fill in the details to generate a new customer order.</p>
-        </div>
-        <a href="{% url 'order_list' %}" class="btn btn-light shadow-sm fw-bold px-4 py-2 rounded-pill hover-lift">
-            <i class="bi bi-arrow-left me-2"></i>Back to Orders
-        </a>
+<style>
+  .oc { max-width: 1040px; margin: 0 auto; }
+  .oc-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .oc-head h1 { font-size: 21px; font-weight: 800; margin: 0; }
+  .oc-head .meta { color: #64748B; font-size: 13px; }
+  .oc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
+  .oc-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 18px; padding: 18px; margin-bottom: 14px; }
+  .oc-card h2 { font-size: 16px; font-weight: 800; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  .oc-card label { font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 4px; }
+  .oc-card .form-control, .oc-card .form-select { border-radius: 10px; }
+  .oc-side { position: sticky; top: 76px; }
+  .oc-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px 120px 90px 36px; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid #F1F5F9; }
+  .oc-row:first-child { border-top: 0; }
+  .oc-row .nm b { display: block; font-size: 14.5px; }
+  .oc-row .nm small { color: #64748B; font-size: 12px; }
+  .oc-row .lt { text-align: right; font-weight: 800; white-space: nowrap; }
+  .oc-qty { display: flex; align-items: center; border: 1px solid #CBD5E1; border-radius: 10px; overflow: hidden; }
+  .oc-qty button { border: 0; background: #F8FAFC; width: 32px; height: 38px; font-size: 18px; font-weight: 700; color: #334155; }
+  .oc-qty input { border: 0; width: 100%; text-align: center; font-weight: 800; height: 38px; min-width: 0; }
+  .oc-price { position: relative; margin: 0; } .oc-price span { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #64748B; font-weight: 700; }
+  .oc-price input { padding-left: 24px; }
+  .oc-del { border: 0; background: #FEF2F2; color: #B91C1C; width: 36px; height: 36px; border-radius: 10px; }
+  .oc-empty { color: #64748B; font-size: 13.5px; padding: 6px 0 2px; }
+  .oc-add { display: grid; grid-template-columns: minmax(0, 1fr) 100px auto; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #CBD5E1; }
+  .oc-add .find { grid-column: 1 / -1; }
+  .oc-zones { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .oc-zones button { border: 1px solid #CBD5E1; background: #fff; border-radius: 999px; padding: 4px 10px; font-size: 12.5px; font-weight: 700; color: #334155; }
+  .oc-zones button.on { background: #0F172A; border-color: #0F172A; color: #fff; }
+  .oc-pay { display: grid; gap: 6px; }
+  .oc-pay label { display: flex; gap: 10px; align-items: center; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 10px 12px; margin: 0; cursor: pointer; font-size: 14px; color: #0F172A; }
+  .oc-pay label small { display: block; color: #64748B; font-weight: 500; font-size: 12px; }
+  .oc-pay input:checked + span b { color: #047857; }
+  .oc-pay label:has(input:checked) { border-color: #059669; background: #F0FDF4; }
+  .oc-sum { display: grid; gap: 6px; font-size: 14px; margin-top: 12px; }
+  .oc-sum div { display: flex; justify-content: space-between; }
+  .oc-sum .total { font-size: 19px; font-weight: 800; border-top: 1px solid #E2E8F0; padding-top: 8px; margin-top: 4px; }
+  .oc-sum .cod { color: #B45309; font-weight: 700; }
+  .oc-go { width: 100%; border: 0; border-radius: 14px; background: #059669; color: #fff; font-weight: 800; font-size: 16px; padding: 14px; margin-top: 14px; box-shadow: 0 8px 18px rgba(5,150,105,.22); }
+  .oc-go:hover { background: #047857; }
+  @media (max-width: 900px) { .oc-grid { grid-template-columns: 1fr; } .oc-side { position: static; } }
+  @media (max-width: 640px) {
+    .oc-row { grid-template-columns: minmax(0, 1fr) 36px; grid-template-areas: "nm del" "qty price" "lt lt"; gap: 8px; }
+    .oc-row .nm { grid-area: nm; } .oc-row .oc-del { grid-area: del; } .oc-row .oc-qty { grid-area: qty; }
+    .oc-row .oc-price { grid-area: price; } .oc-row .lt { grid-area: lt; }
+    .oc-add { grid-template-columns: minmax(0, 1fr) 90px; } .oc-add button { grid-column: 1 / -1; }
+  }
+</style>
+
+<div class="oc">
+  <div class="oc-head">
+    <div>
+      <h1>নতুন অর্ডার</h1>
+      <div class="meta">ফোন, ফেসবুক বা হোয়াটসঅ্যাপে পাওয়া অর্ডার এখানে লিখুন — স্টক থেকে কেটে যাবে, কুরিয়ারে পাঠানো যাবে।</div>
     </div>
+    <a href="{% url 'order_list' %}" class="btn btn-light rounded-pill fw-bold"><i class="bi bi-arrow-left me-1"></i> অর্ডারে ফিরুন</a>
+  </div>
 
-    <form method="POST" action="" id="orderForm">
-        {% csrf_token %}
-        <div class="row">
-
-            <div class="col-lg-8 mb-4">
-
-                <div class="card border-0 shadow-sm rounded-4 mb-4">
-                    <div class="card-header bg-white border-bottom-0 py-3 px-4 rounded-top-4">
-                        <h5 class="fw-bolder text-primary mb-0"><i class="bi bi-person-lines-fill me-2"></i>Customer Information</h5>
-                    </div>
-                    <div class="card-body px-4 pb-4">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold text-muted small">Customer Name <span class="text-danger">*</span></label>
-                                <input type="text" name="customer_name" class="form-control bg-light border-0 py-2" placeholder="e.g. Depook Kumar" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold text-muted small">Phone Number <span class="text-danger">*</span></label>
-                                <input type="text" name="customer_phone" id="oc-phone" class="form-control bg-light border-0 py-2" placeholder="e.g. 01712345678" required value="{{ request.GET.phone|default:'' }}">
-                                <div id="oc-risk" class="mt-2" aria-live="polite"></div>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label fw-bold text-muted small">Delivery Address <span class="text-danger">*</span></label>
-                                <textarea name="customer_address" class="form-control bg-light border-0" rows="2" placeholder="Full address for courier delivery" required></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card border-0 shadow-sm rounded-4">
-                    <div class="card-header bg-white border-bottom-0 py-3 px-4 rounded-top-4 d-flex justify-content-between align-items-center">
-                        <h5 class="fw-bolder text-success mb-0"><i class="bi bi-box-seam me-2"></i>Order Details</h5>
-                        <button type="button" id="addProductBtn" class="btn btn-sm btn-success rounded-pill fw-bold shadow-sm px-3">
-                            <i class="bi bi-plus-lg me-1"></i> Add Product
-                        </button>
-                    </div>
-                    <div class="card-body px-4 pb-4">
-                        <div class="table-responsive">
-                            <table class="table table-borderless align-middle mb-0" id="productTable">
-                                <thead class="border-bottom text-muted small text-uppercase fw-bold">
-                                    <tr>
-                                        <th style="width: 45%;">Select Product</th>
-                                        <th style="width: 20%;">Price (Tk)</th>
-                                        <th style="width: 20%;">Quantity</th>
-                                        <th style="width: 15%; text-align: right;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="productBody">
-                                    <tr class="product-row border-bottom">
-                                        <td class="py-3">
-                                            <select name="product[]" class="form-select bg-light border-0 product-select" required>
-                                                <option value="" data-price="0">-- Choose a Product --</option>
-                                                {% for product in products %}
-                                                <option value="{{ product.id }}" data-price="{{ product.price|default:'0' }}">{{ product.name }} (স্টক: {{ product.stock }})</option>
-                                                {% endfor %}
-                                            </select>
-                                        </td>
-                                        <td class="py-3">
-                                            <input type="number" name="price[]" class="form-control bg-light border-0 product-price" min="0" step="0.01" required>
-                                        </td>
-                                        <td class="py-3">
-                                            <input type="number" name="quantity[]" class="form-control bg-light border-0 product-qty" value="1" min="1" required>
-                                        </td>
-                                        <td class="py-3 text-end">
-                                            <button type="button" class="btn btn-sm btn-light text-danger rounded-circle shadow-sm remove-row-btn" style="width: 35px; height: 35px;" disabled>
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
+  <form method="post" id="ocForm">
+    {% csrf_token %}
+    <div class="oc-grid">
+      <div>
+        <div class="oc-card">
+          <h2><i class="bi bi-person"></i> কাস্টমার</h2>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="oc-phone">মোবাইল নম্বর</label>
+              <input type="tel" name="customer_phone" id="oc-phone" class="form-control" inputmode="tel" placeholder="০১৭XXXXXXXX" required value="{{ phone }}" autocomplete="off">
+              <div id="oc-risk" class="mt-2" aria-live="polite"></div>
             </div>
-
-            <div class="col-lg-4 mb-4">
-
-                <div class="card border-0 shadow-sm rounded-4 sticky-top" style="top: 20px;">
-                    <div class="card-header bg-white border-bottom-0 py-3 px-4 rounded-top-4">
-                        <h5 class="fw-bolder text-dark mb-0"><i class="bi bi-calculator me-2"></i>Order Summary</h5>
-                    </div>
-                    <div class="card-body px-4 pb-4">
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-muted small">Delivery Charge (Tk)</label>
-                            <input type="number" name="delivery_charge" id="deliveryCharge" class="form-control bg-light border-0 py-2 calculate-input" value="0" min="0">
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-muted small">Discount (Tk)</label>
-                            <input type="number" name="discount" id="discount" class="form-control bg-light border-0 py-2 calculate-input" value="0" min="0">
-                        </div>
-
-                        <div class="bg-light p-3 rounded-3 mb-4">
-                            <div class="d-flex justify-content-between mb-2 text-muted fw-medium">
-                                <span>Subtotal:</span>
-                                <span>Tk. <span id="summarySubtotal">0.00</span></span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2 text-muted fw-medium">
-                                <span>Delivery:</span>
-                                <span>+ Tk. <span id="summaryDelivery">0.00</span></span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2 text-success fw-medium border-bottom pb-2">
-                                <span>Discount:</span>
-                                <span>- Tk. <span id="summaryDiscount">0.00</span></span>
-                            </div>
-                            <div class="d-flex justify-content-between mt-2 fw-bolder text-dark fs-5">
-                                <span>Grand Total:</span>
-                                <span>Tk. <span id="summaryTotal">0.00</span></span>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-muted small">Payment Method <span class="text-danger">*</span></label>
-                            {# Full Paid = "Paid" (কুরিয়ার ৳০ তুলবে); আগে "Full Paid" জমা হতো, কুরিয়ার পুরো টাকা আবার তুলত #}
-                            <select name="payment_method" id="payMethod" class="form-select bg-light border-0 py-2 fw-bold text-primary" required>
-                                <option value="COD">Cash on Delivery (COD)</option>
-                                <option value="Paid">Full Paid (bKash/Bank)</option>
-                                <option value="Partial Paid">Partial Paid (Advance)</option>
-                            </select>
-                            <div id="advanceBox" class="mt-2" hidden>
-                                <label class="form-label fw-bold text-muted small" for="advanceAmount">অগ্রিম কত টাকা পেয়েছেন</label>
-                                <input type="number" min="0" step="1" name="advance_amount" id="advanceAmount" class="form-control bg-light border-0 py-2" placeholder="যেমন 150">
-                                <div class="small text-muted mt-1">কুরিয়ার বাকিটা তুলবে: Tk. <b id="codLeft">0</b></div>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100 fw-bold rounded-pill shadow-sm py-3 fs-5 transition-all hover-lift">
-                            <i class="bi bi-check-circle-fill me-2"></i>Confirm Order
-                        </button>
-                    </div>
-                </div>
-
+            <div class="col-md-6">
+              <label for="oc-name">নাম</label>
+              <input type="text" name="customer_name" id="oc-name" class="form-control" placeholder="কাস্টমারের নাম" required value="{{ posted.customer_name|default:'' }}">
             </div>
+            <div class="col-12">
+              <label for="oc-address">ঠিকানা</label>
+              <textarea name="customer_address" id="oc-address" class="form-control" rows="2" placeholder="বাসা, রোড, এলাকা, থানা, জেলা — কুরিয়ার যেন খুঁজে পায়" required>{{ posted.customer_address|default:'' }}</textarea>
+            </div>
+          </div>
+          <div class="small text-muted mt-2">আগের কাস্টমার হলে নম্বর লিখলেই নাম-ঠিকানা নিজে বসে যায়, আর তার আগের ডেলিভারি-ফেরতের হিসাব দেখায়।</div>
         </div>
-    </form>
+
+        <div class="oc-card">
+          <h2><i class="bi bi-box-seam"></i> প্রোডাক্ট</h2>
+          <div id="ocRows"></div>
+          <div class="oc-empty" id="ocEmpty">এখনো কিছু যোগ হয়নি — নিচে খুঁজে প্রোডাক্ট বেছে "যোগ করুন" চাপুন।</div>
+          <div class="oc-add">
+            {% if products %}
+            <input type="search" class="form-control find" id="ocFind" placeholder="প্রোডাক্টের নাম লিখে খুঁজুন" autocomplete="off" aria-label="প্রোডাক্ট খুঁজুন">
+            <select class="form-select" id="ocProduct" aria-label="প্রোডাক্ট">
+              <option value="">প্রোডাক্ট বাছুন</option>
+              {% for p in products %}<option value="{{ p.id }}">{{ p.name }} — ৳{{ p.price|floatformat:"-2g" }}{% if p.unit != 'pcs' %}/{{ p.unit_label }}{% endif %} (স্টক {{ p.stock|bn }})</option>{% endfor %}
+            </select>
+            <input type="number" class="form-control" id="ocAddQty" value="1" min="0" step="any" inputmode="decimal" aria-label="কতটা">
+            <button type="button" class="btn btn-dark fw-bold rounded-3" id="ocAdd"><i class="bi bi-plus-lg me-1"></i> যোগ করুন</button>
+            {% else %}
+            <div class="oc-empty" style="grid-column:1/-1">স্টকে কোনো প্রোডাক্ট নেই। আগে <a href="{% url 'add_product' %}">প্রোডাক্ট যোগ করুন</a> বা স্টক বাড়ান।</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="oc-side">
+        <div class="oc-card">
+          <h2><i class="bi bi-calculator"></i> হিসাব</h2>
+          <div class="mb-3">
+            <label for="ocDc">ডেলিভারি চার্জ</label>
+            <input type="number" name="delivery_charge" id="ocDc" class="form-control" min="0" step="any" inputmode="decimal" value="{{ posted.delivery_charge|default:'0' }}">
+            {% if zones %}<div class="oc-zones" id="ocZones">{% for z in zones %}<button type="button" data-charge="{{ z.charge }}">{{ z.name }} ৳{{ z.charge|bn }}</button>{% endfor %}</div>{% endif %}
+          </div>
+          <div class="mb-3">
+            <label for="ocDs">ছাড়</label>
+            <input type="number" name="discount" id="ocDs" class="form-control" min="0" step="any" inputmode="decimal" value="{{ posted.discount|default:'0' }}">
+          </div>
+          <label class="d-block">টাকা কীভাবে</label>
+          <div class="oc-pay" role="radiogroup">
+            <label><input type="radio" name="payment_method" value="COD" {% if posted.payment_method != 'Paid' and posted.payment_method != 'Partial Paid' %}checked{% endif %}><span><b>ক্যাশ অন ডেলিভারি</b><small>পুরো টাকা কুরিয়ার তুলবে</small></span></label>
+            <label><input type="radio" name="payment_method" value="Paid" {% if posted.payment_method == 'Paid' %}checked{% endif %}><span><b>পুরো টাকা পেয়েছি</b><small>bKash/ব্যাংকে আগেই দিয়েছে — কুরিয়ার কিছু তুলবে না</small></span></label>
+            <label><input type="radio" name="payment_method" value="Partial Paid" {% if posted.payment_method == 'Partial Paid' %}checked{% endif %}><span><b>কিছু অগ্রিম পেয়েছি</b><small>বাকিটা কুরিয়ার তুলবে</small></span></label>
+          </div>
+          <div id="ocAdvanceBox" class="mt-2" hidden>
+            <label for="ocAdvance">অগ্রিম কত পেয়েছেন</label>
+            <input type="number" min="0" step="any" inputmode="decimal" name="advance_amount" id="ocAdvance" class="form-control" placeholder="যেমন ১৫০" value="{{ posted.advance_amount|default:'' }}">
+          </div>
+
+          <div class="oc-sum">
+            <div><span>প্রোডাক্টের দাম</span><b id="ocSub">৳০</b></div>
+            <div><span>ডেলিভারি</span><span id="ocDcShow">৳০</span></div>
+            <div><span>ছাড়</span><span id="ocDsShow">− ৳০</span></div>
+            <div class="total"><span>মোট</span><span id="ocTotal">৳০</span></div>
+            <div class="cod"><span>কুরিয়ার তুলবে</span><span id="ocCod">৳০</span></div>
+          </div>
+          <button type="submit" class="oc-go"><i class="bi bi-check2-circle me-1"></i> অর্ডার তৈরি করুন</button>
+        </div>
+      </div>
+    </div>
+  </form>
 </div>
 
+{{ products|json_script:"oc-products" }}
+{{ rows|json_script:"oc-posted-rows" }}
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const productBody = document.getElementById("productBody");
-        const addProductBtn = document.getElementById("addProductBtn");
+(function () {
+  var PRODUCTS = JSON.parse(document.getElementById('oc-products').textContent || '[]');
+  var BY_ID = {}; PRODUCTS.forEach(function (p) { BY_ID[String(p.id)] = p; });
+  var rows = document.getElementById('ocRows'), empty = document.getElementById('ocEmpty');
+  function bn(n) { return String(n).replace(/[0-9]/g, function (d) { return '০১২৩৪৫৬৭৮৯'[d]; }); }
+  function en(s) { return String(s == null ? '' : s).replace(/[০-৯]/g, function (d) { return '০১২৩৪৫৬৭৮৯'.indexOf(d); }); }
+  function money(n) { n = Math.round(n * 100) / 100; return '৳' + bn(n.toLocaleString('en-IN', { maximumFractionDigits: 2 })); }
+  function num(el) { var v = parseFloat(en(el && el.value)); return isNaN(v) ? 0 : v; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function loose(p) { return p && p.unit && p.unit !== 'pcs'; }
 
-        const summarySubtotal = document.getElementById("summarySubtotal");
-        const summaryDelivery = document.getElementById("summaryDelivery");
-        const summaryDiscount = document.getElementById("summaryDiscount");
-        const summaryTotal = document.getElementById("summaryTotal");
-
-        const deliveryInput = document.getElementById("deliveryCharge");
-        const discountInput = document.getElementById("discount");
-
-        // --- ডাইনামিক রো অ্যাড করা ---
-        addProductBtn.addEventListener("click", function() {
-            // প্রথম রো-টাকে টেমপ্লেট হিসেবে ধরছি
-            const firstRow = document.querySelector(".product-row");
-            const newRow = firstRow.cloneNode(true);
-
-            // ভ্যালুগুলো রিসেট করা
-            newRow.querySelector('.product-select').value = "";
-            newRow.querySelector('.product-price').value = "";
-            newRow.querySelector('.product-qty').value = "1";
-
-            // ডিলিট বাটন এনাবল করা
-            const deleteBtn = newRow.querySelector('.remove-row-btn');
-            deleteBtn.disabled = false;
-
-            productBody.appendChild(newRow);
-            attachRowEvents(newRow); // নতুন রো তে ইভেন্ট বসানো
-            calculateGrandTotal(); // টোটাল রিক্যালকুলেট
-        });
-
-        // --- রো ডিলিট করা ---
-        productBody.addEventListener("click", function(e) {
-            if (e.target.closest(".remove-row-btn")) {
-                const btn = e.target.closest(".remove-row-btn");
-                if (!btn.disabled) {
-                    btn.closest(".product-row").remove();
-                    calculateGrandTotal();
-                }
-            }
-        });
-
-        // --- লাইভ ক্যালকুলেশন ফাংশন ---
-        // আংশিক অগ্রিম: কত পেয়েছেন লিখলে কুরিয়ার কত তুলবে দেখায়
-        function updateCodLeft() {
-            const total = parseFloat(document.getElementById('summaryTotal').innerText) || 0;
-            const advance = parseFloat(document.getElementById('advanceAmount').value) || 0;
-            document.getElementById('codLeft').innerText = Math.max(0, total - advance).toFixed(0);
-        }
-        document.getElementById('payMethod').addEventListener('change', e => {
-            const partial = e.target.value === 'Partial Paid';
-            document.getElementById('advanceBox').hidden = !partial;
-            document.getElementById('advanceAmount').required = partial;
-            updateCodLeft();
-        });
-        document.getElementById('advanceAmount').addEventListener('input', updateCodLeft);
-
-        function calculateGrandTotal() {
-            let subtotal = 0;
-
-            // সবগুলো রো এর প্রাইস * কোয়ান্টিটি যোগ করা
-            document.querySelectorAll(".product-row").forEach(row => {
-                const price = parseFloat(row.querySelector(".product-price").value) || 0;
-                const qty = parseInt(row.querySelector(".product-qty").value) || 1;
-                subtotal += (price * qty);
-            });
-
-            const delivery = parseFloat(deliveryInput.value) || 0;
-            const discount = parseFloat(discountInput.value) || 0;
-
-            const grandTotal = (subtotal + delivery) - discount;
-
-            // UI তে আপডেট করা
-            summarySubtotal.innerText = subtotal.toFixed(2);
-            summaryDelivery.innerText = delivery.toFixed(2);
-            summaryDiscount.innerText = discount.toFixed(2);
-            summaryTotal.innerText = Math.max(0, grandTotal).toFixed(2); // মাইনাস যাতে না হয়
-            updateCodLeft();
-        }
-
-        // --- ইনপুট দিলে যাতে অটো হিসাব হয় ---
-        function attachRowEvents(row) {
-            const select = row.querySelector(".product-select");
-            const priceInput = row.querySelector(".product-price");
-            const qtyInput = row.querySelector(".product-qty");
-
-            // প্রোডাক্ট সিলেক্ট করলে অটো প্রাইস বসে যাবে (ফাইনাল ফিক্স)
-            select.addEventListener("change", function() {
-                if (this.value === "") {
-                    priceInput.value = ""; // যদি "Choose a Product" সিলেক্ট করে
-                } else {
-                    const selectedOption = this.options[this.selectedIndex];
-                    const price = selectedOption.getAttribute("data-price");
-                    priceInput.value = price ? parseFloat(price).toFixed(2) : "0.00";
-                }
-                calculateGrandTotal();
-            });
-
-            // প্রাইস বা কোয়ান্টিটি চেঞ্জ করলে অটো হিসাব হবে
-            priceInput.addEventListener("input", calculateGrandTotal);
-            qtyInput.addEventListener("input", calculateGrandTotal);
-        }
-
-        // ডেলিভারি বা ডিসকাউন্ট চেঞ্জ করলেও হিসাব হবে
-        deliveryInput.addEventListener("input", calculateGrandTotal);
-        discountInput.addEventListener("input", calculateGrandTotal);
-
-        // পেজ লোড হওয়ার সাথে সাথে প্রথম রো-তে ইভেন্ট বসিয়ে দেওয়া
-        attachRowEvents(document.querySelector(".product-row"));
-    });
-</script>
-
-<script>
-  // Modal Freeze Fix (Moves modal to body to avoid z-index trap)
-  document.addEventListener('DOMContentLoaded', function() {
-    var bulkModal = document.getElementById('bulkUploadModal');
-    if (bulkModal) {
-      document.body.appendChild(bulkModal);
+  function addRow(p, qty, price) {
+    var existing = rows.querySelector('[data-id="' + p.id + '"]');
+    if (existing) {                                   // একই প্রোডাক্ট আবার: পরিমাণ বাড়ে, নতুন সারি না
+      var q = existing.querySelector('[data-qty]');
+      q.value = Math.round((num(q) + qty) * 1000) / 1000; refresh(); return;
     }
+    var row = document.createElement('div');
+    row.className = 'oc-row'; row.dataset.id = p.id;
+    row.innerHTML =
+      '<div class="nm"><b>' + esc(p.name) + '</b><small>স্টকে ' + bn(p.stock) + (loose(p) ? ' ' + esc(p.unit_label) : 'টা') + '</small></div>' +
+      '<div class="oc-qty"><button type="button" data-step="-1" aria-label="কমান">−</button>' +
+      '<input type="number" name="quantity[]" min="' + (loose(p) ? '0.001' : '1') + '" max="' + p.stock + '" step="' + (loose(p) ? 'any' : '1') + '" inputmode="decimal" data-qty aria-label="পরিমাণ">' +
+      '<button type="button" data-step="1" aria-label="বাড়ান">+</button></div>' +
+      '<label class="oc-price"><span>৳</span><input type="number" step="any" min="0" name="price[]" class="form-control" data-price aria-label="দাম' + (loose(p) ? ' (প্রতি ' + esc(p.unit_label) + ')' : '') + '"></label>' +
+      '<div class="lt" data-line></div>' +
+      '<button type="button" class="oc-del" data-remove aria-label="বাদ দিন"><i class="bi bi-x-lg"></i></button>' +
+      '<input type="hidden" name="product[]" value="' + esc(p.id) + '">';
+    row.querySelector('[data-qty]').value = qty;
+    row.querySelector('[data-price]').value = price;
+    rows.appendChild(row);
+    refresh();
+  }
+
+  function refresh() {
+    var sub = 0, list = rows.querySelectorAll('.oc-row');
+    list.forEach(function (row) {
+      var line = Math.round(Math.max(num(row.querySelector('[data-qty]')), 0) * Math.max(num(row.querySelector('[data-price]')), 0) * 100) / 100;
+      row.querySelector('[data-line]').textContent = money(line);
+      sub += line;
+    });
+    empty.hidden = list.length > 0;
+    var dc = num(document.getElementById('ocDc')), ds = num(document.getElementById('ocDs'));
+    var total = Math.max(sub + dc - ds, 0);
+    var method = (document.querySelector('input[name="payment_method"]:checked') || {}).value;
+    var advance = method === 'Paid' ? total : method === 'Partial Paid' ? Math.min(num(document.getElementById('ocAdvance')), total) : 0;
+    document.getElementById('ocSub').textContent = money(sub);
+    document.getElementById('ocDcShow').textContent = money(dc);
+    document.getElementById('ocDsShow').textContent = '− ' + money(ds);
+    document.getElementById('ocTotal').textContent = money(total);
+    document.getElementById('ocCod').textContent = money(Math.max(total - advance, 0));
+    document.getElementById('ocAdvanceBox').hidden = method !== 'Partial Paid';
+    document.getElementById('ocAdvance').required = method === 'Partial Paid';
+    document.querySelectorAll('#ocZones button').forEach(function (b) { b.classList.toggle('on', parseFloat(b.dataset.charge) === dc); });
+  }
+
+  rows.addEventListener('click', function (e) {
+    var step = e.target.closest('[data-step]'), del = e.target.closest('[data-remove]');
+    if (step) {
+      var q = step.parentNode.querySelector('[data-qty]'), p = BY_ID[step.closest('.oc-row').dataset.id];
+      var by = parseInt(step.dataset.step, 10) * (loose(p) ? 0.5 : 1);
+      var next = Math.round((num(q) + by) * 1000) / 1000;
+      q.value = Math.max(parseFloat(q.min) || 0, Math.min(p ? p.stock : 9999, next));
+      refresh();
+    } else if (del) { del.closest('.oc-row').remove(); refresh(); }
   });
+  rows.addEventListener('input', refresh);
+  ['ocDc', 'ocDs', 'ocAdvance'].forEach(function (id) { document.getElementById(id).addEventListener('input', refresh); });
+  document.querySelectorAll('input[name="payment_method"]').forEach(function (r) { r.addEventListener('change', refresh); });
+  document.querySelectorAll('#ocZones button').forEach(function (b) {
+    b.addEventListener('click', function () { document.getElementById('ocDc').value = b.dataset.charge; refresh(); });
+  });
+
+  var select = document.getElementById('ocProduct'), addQty = document.getElementById('ocAddQty'), find = document.getElementById('ocFind');
+  if (find) {
+    find.addEventListener('input', function () {
+      var term = find.value.trim().toLowerCase(), first = null;
+      Array.prototype.forEach.call(select.options, function (o, i) {
+        if (!i) return;
+        var show = !term || o.text.toLowerCase().indexOf(term) >= 0;
+        o.hidden = !show; if (show && !first) first = o;
+      });
+      select.value = first ? first.value : '';
+    });
+    find.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('ocAdd').click(); } });
+  }
+  var addBtn = document.getElementById('ocAdd');
+  if (addBtn) addBtn.addEventListener('click', function () {
+    var p = BY_ID[select.value];
+    if (!p) { (find || select).focus(); return; }
+    var raw = num(addQty) || 1, qty = loose(p) ? Math.round(raw * 1000) / 1000 : Math.max(1, Math.floor(raw));
+    var inCart = rows.querySelector('[data-id="' + p.id + '"] [data-qty]');
+    if (qty + (inCart ? num(inCart) : 0) > p.stock) { alert('স্টকে আছে মাত্র ' + bn(p.stock) + (loose(p) ? ' ' + p.unit_label : 'টা') + '।'); return; }
+    addRow(p, qty, parseFloat(p.price) || 0);
+    select.value = ''; addQty.value = 1;
+    if (find) { find.value = ''; find.dispatchEvent(new Event('input')); select.value = ''; find.focus(); }
+  });
+
+  // ভুল হয়ে ফিরে এলে আগের সারিগুলো
+  JSON.parse(document.getElementById('oc-posted-rows').textContent || '[]').forEach(function (r) {
+    var p = BY_ID[String(r.id)]; if (p) addRow(p, parseFloat(en(r.qty)) || 1, en(r.price));
+  });
+
+  document.getElementById('ocForm').addEventListener('submit', function (e) {
+    if (!rows.querySelector('.oc-row')) { e.preventDefault(); alert('অন্তত একটা প্রোডাক্ট যোগ করুন।'); (find || select).focus(); }
+  });
+  refresh();
+})();
 </script>
 <script>
 /* মোবাইল নম্বর লিখলে এই কাস্টমারের আগের ডেলিভারি-ফেরতের হিসাব (ভুয়া অর্ডার ধরতে) */
@@ -284,11 +266,12 @@
   if (!phone || !box) return;
   const ICON = { good: 'bi-shield-check', new: 'bi-person-plus', watch: 'bi-exclamation-triangle', risk: 'bi-shield-exclamation', blocked: 'bi-slash-circle' };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const digits = () => phone.value.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)).replace(/\D/g, '');
   let last = '';
   async function check() {
     const value = phone.value.trim();
     if (value === last) return; last = value;
-    if (value.replace(/\D/g, '').length < 11) { box.innerHTML = ''; return; }
+    if (digits().length < 11) { box.innerHTML = ''; return; }
     try {
       const data = await (await fetch("{% url 'order_risk' %}?phone=" + encodeURIComponent(value))).json();
       if (!data.ok) { box.innerHTML = ''; return; }
@@ -300,8 +283,8 @@
     } catch (e) { box.innerHTML = ''; }
   }
   phone.addEventListener('blur', check);
-  if (phone.value.replace(/\D/g, '').length >= 11) check();     // অসম্পূর্ণ অর্ডার থেকে এলে নম্বর আগে থেকেই বসানো
-  phone.addEventListener('input', () => { if (phone.value.replace(/\D/g, '').length >= 11) check(); });
+  if (digits().length >= 11) check();     // অসম্পূর্ণ অর্ডার থেকে এলে নম্বর আগে থেকেই বসানো
+  phone.addEventListener('input', () => { if (digits().length >= 11) check(); });
 })();
 </script>
 {% endblock %}

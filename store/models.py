@@ -1,4 +1,5 @@
 from django.db import models
+from .fields import QtyField
 from .themes import DEFAULT_DESIGN, DEFAULT_THEME, DESIGN_CHOICES, THEME_CHOICES
 from django.conf import settings
 from decimal import Decimal
@@ -235,7 +236,13 @@ class Product(models.Model):
     # সেলারের দেওয়া আগের দাম; বিক্রির দামের চেয়ে বেশি হলে ওয়েবসাইটে কেটে দেওয়া দাম আর % ছাড় দেখায়
     compare_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True,
                                         help_text='আগের দাম (ছাড় দেখাতে)')
-    stock_quantity = models.PositiveIntegerField(default=0)
+    # স্টক দশমিকে (QtyField) যাতে ওজনে বিক্রি চলে (১২.৫ কেজি); পিসের প্রোডাক্টে সবসময় পূর্ণ সংখ্যা
+    stock_quantity = QtyField(default=0)
+    # কীভাবে বিক্রি হয়: পিস, নাকি কেজি/লিটার/মিটার/গজ (ভাঙা পরিমাণ চলে) — store/units.py
+    unit = models.CharField(max_length=10, default='pcs', choices=[
+        ('pcs', 'পিস'), ('kg', 'কেজি'), ('litre', 'লিটার'), ('metre', 'মিটার'), ('gauge', 'গজ')])
+    # স্টক এত বা কম হলে ড্যাশবোর্ডে "স্টক শেষের পথে" (০ = সতর্ক করবে না)
+    low_stock_at = QtyField(default=5)
     # দোকানের ভেতরে আলাদা (আগে পুরো সাইটে ছিল — দুই দোকানে একই কোম্পানির প্রোডাক্ট, মানে একই EAN, রাখা যেত না)
     barcode = models.CharField(max_length=50, blank=True, null=True, db_index=True, help_text='Leave blank to auto-generate')
     is_active = models.BooleanField(default=True)
@@ -271,6 +278,27 @@ class Product(models.Model):
         return self.image.url if self.image else ''
 
     @property
+    def is_loose(self):
+        """ওজন/মাপে বিক্রি (কেজি, লিটার…) — ভাঙা পরিমাণ চলে।"""
+        return self.unit != 'pcs'
+
+    @property
+    def unit_suffix(self):
+        """পরিমাণের পরে: "টা" বা " কেজি"।"""
+        from .units import SUFFIX
+        return SUFFIX.get(self.unit, 'টা')
+
+    @property
+    def stock_label(self):
+        from .units import show
+        return show(self.stock_quantity, self.unit)
+
+    @property
+    def is_low_stock(self):
+        """store/stock_log.low_stock_q()-এর একই নিয়ম।"""
+        return self.stock_quantity <= 0 or (self.low_stock_at > 0 and self.stock_quantity <= self.low_stock_at)
+
+    @property
     def discount_percent(self):
         """আগের দাম থেকে কত % কম (পূর্ণ সংখ্যা)। ছাড় না থাকলে 0।"""
         if self.compare_price and self.price and self.compare_price > self.price:
@@ -289,7 +317,7 @@ class ProductVariant(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
     name = models.CharField(max_length=80)
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    stock_quantity = models.PositiveIntegerField(default=0)
+    stock_quantity = QtyField(default=0)
     # দোকানের ভেতরে আলাদা হলেই চলে (আগে সব দোকান মিলিয়ে unique ছিল — এক দোকানের বারকোড অন্য দোকান বসাতে পারত না)
     barcode = models.CharField(max_length=50, blank=True, db_index=True)
     position = models.PositiveSmallIntegerField(default=0)
@@ -462,7 +490,7 @@ class SaleReturnItem(models.Model):
     sale_return = models.ForeignKey(SaleReturn, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     product_name = models.CharField(max_length=200)
-    quantity = models.PositiveIntegerField()
+    quantity = QtyField()
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     value = models.DecimalField(max_digits=10, decimal_places=2)
 
@@ -470,7 +498,7 @@ class SaleReturnItem(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField(default=1)
+    quantity = QtyField(default=1)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     # কোন সাইজ/রং বিক্রি হয়েছে; ভ্যারিয়েন্ট পরে মুছে গেলেও নামটা বিলে থেকে যায়
@@ -561,7 +589,7 @@ class StorefrontOrder(models.Model):
 class StorefrontOrderItem(models.Model):
     order = models.ForeignKey(StorefrontOrder, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField(default=1)
+    quantity = QtyField(default=1)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     variant_name = models.CharField(max_length=80, blank=True, default='')
 
@@ -1008,7 +1036,7 @@ class PurchaseItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     name = models.CharField(max_length=290, help_text='কেনার সময়ের নাম; প্রোডাক্ট মুছে গেলেও থাকে')
-    quantity = models.PositiveIntegerField()
+    quantity = QtyField()
     unit_cost = models.DecimalField(max_digits=10, decimal_places=2)
 
     def get_total(self):
@@ -1325,8 +1353,8 @@ class StockMovement(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='stock_movements')
     variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     variant_name = models.CharField(max_length=80, blank=True, default='')
-    change = models.DecimalField(max_digits=12, decimal_places=3)
-    stock_after = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    change = QtyField()
+    stock_after = QtyField(null=True, blank=True)
     reason = models.CharField(max_length=20, choices=REASONS, default='other')
     order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     order_ref = models.PositiveIntegerField(null=True, blank=True)      # অর্ডার মুছে গেলেও নম্বরটা থাকে
@@ -1375,3 +1403,23 @@ class CustomerRefund(models.Model):
 
     def __str__(self):
         return f'Refund ৳{self.amount} #{self.order_ref} ({self.way}/{self.status})'
+
+
+class ProductBarcode(models.Model):
+    """
+    একটা প্রোডাক্টের (বা তার সাইজ/রংয়ের) বাড়তি বারকোড — একই জিনিস কয়েক কোম্পানি/ব্যাচে আলাদা বারকোডে আসলে, বা
+    ইলেকট্রনিক্সে প্রতিটা পিসে আলাদা কোড থাকলে। POS-এ যেকোনোটা স্ক্যান করলেই সেই প্রোডাক্ট (store/views_pos.py)।
+    দোকানের ভেতরে একটা কোড একবারই।
+    """
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='extra_barcodes')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='extra_barcodes')
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True, related_name='extra_barcodes')
+    code = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+        constraints = [models.UniqueConstraint(fields=['shop', 'code'], name='unique_extra_barcode_per_shop')]
+
+    def __str__(self):
+        return self.code

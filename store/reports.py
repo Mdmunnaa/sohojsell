@@ -20,6 +20,7 @@ from django.utils import timezone
 from .dashboard import (BN_MONTHS, BN_MONTHS_SHORT, BN_WEEKDAYS_SHORT, ITEM_COST, NET_OF_VAT, SALE_VALUE, STATUS_LABELS,
                         _change, bn_date, bn_num, nice_ceiling, short_taka)
 from .models import Customer, Order, OrderItem, Product, SalePayment, StorefrontPayment
+from .stock_log import low_stock_q
 from .pos import NOT_COUNTED, WALK_IN_PHONE
 
 ZERO = Decimal('0')
@@ -440,7 +441,7 @@ def stock_value(shop):
         value=Sum(ExpressionWrapper(F('stock_quantity') * F('price'), output_field=DecimalField(max_digits=16, decimal_places=2))))
     cost, value = agg['cost'] or ZERO, agg['value'] or ZERO
     return {'products': products.count(), 'units': agg['units'] or 0, 'cost': cost, 'value': value,
-            'margin': value - cost, 'low': products.filter(stock_quantity__lt=5, stock_quantity__gt=0).count(),
+            'margin': value - cost, 'low': products.filter(low_stock_q(), stock_quantity__gt=0).count(),
             'out': products.filter(stock_quantity__lte=0).count(),
             'missing_cost': in_stock.filter(cost_price__lte=0).count()}
 
