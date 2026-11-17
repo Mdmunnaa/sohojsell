@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ড্যাশবোর্ড{% endblock %} — {{ site.name }}</title>
-    {% include 'store/partials/brand_head.html' %}
+    {% include 'store/partials/brand_head.html' with theme='#F0F2F6' %}
+    {% include 'store/partials/app_sw.html' with remember=1 %}
     <link href="{% static 'vendor/bootstrap/bootstrap-app.min.css' %}" rel="stylesheet">
     {% include 'store/partials/icons_app.html' %}
     {% include 'store/partials/fonts.html' with hind=1 syne=1 dmsans=1 %}
@@ -253,6 +254,10 @@
       font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -.2px;
     }
     .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    .topbar-back { background: #fff; border: 1px solid var(--border); width: 36px; height: 36px; border-radius: 50%;
+      display: grid; place-items: center; color: var(--text); font-size: 17px; cursor: pointer; flex-shrink: 0; }
+    .topbar-back[hidden] { display: none; }
 
     /* Page content */
     .sb-new-badge { font-size:10.5px; background:#EF4444; color:#fff; font-weight:700; min-width:20px; padding:3px 6px; border-radius:999px; }
@@ -526,6 +531,10 @@
         {% endif %}
 
       {% endif %}
+      {# ফোন/কম্পিউটারে অ্যাপ হিসেবে বসানো (partials/app_install.html) — অ্যাপের ভেতর থেকে খুললে লুকানো থাকে #}
+      <a href="#" class="sb-link" data-app-install role="button" onclick="sbClose()">
+        <i class="bi bi-download"></i> <span class="sb-text-hide">অ্যাপ বসান</span>
+      </a>
       {# গাইড সেন্টার — মালিক আর স্টাফ সবার জন্য, নতুন ট্যাবে (কাজের পাতা বন্ধ হয় না) #}
       <a href="{% url 'guide_index' %}" class="sb-link" target="_blank" rel="noopener">
         <i class="bi bi-question-circle"></i> <span class="sb-text-hide">গাইড ও সাহায্য</span>
@@ -572,6 +581,8 @@
         <i class="bi bi-list"></i>
       </button>
 
+      {# অ্যাপের ভেতরে (বসানো অবস্থায়) ব্রাউজারের ফেরত বাটন নেই — iPhone-এ তো কোনো ফেরত বাটনই নেই #}
+      <button class="topbar-back" type="button" id="app-back" hidden aria-label="আগের পাতায় ফিরুন" title="আগের পাতায় ফিরুন"><i class="bi bi-arrow-left"></i></button>
       <div class="topbar-title">{% block page_title %}ড্যাশবোর্ড{% endblock %}</div>
       <div class="topbar-right">
         {% if ai_help %}<button type="button" class="aih-btn" data-bs-toggle="modal" data-bs-target="#aiHelp" title="ChatGPT, Claude বা যেকোনো AI-কে এই পাতা নিয়ে জিজ্ঞেস করুন"><i class="bi bi-robot" aria-hidden="true"></i><span>AI সাহায্য</span></button>{% endif %}
@@ -625,6 +636,21 @@
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
 <script src="{% static 'vendor/sweetalert2/sweetalert2.all.min.js' %}"></script>
 {% include 'store/partials/shrink_uploads.html' %}
+{% include 'store/partials/app_install.html' %}
+<script>
+/* অ্যাপের ভেতরে ফেরত বাটন: ড্যাশবোর্ড আর POS ছাড়া সব পাতায়; আগের পাতা না থাকলে ড্যাশবোর্ডে */
+(function () {
+  var back = document.getElementById('app-back');
+  if (!back || !(window.spApp && spApp.standalone)) return;
+  var path = location.pathname;
+  if (path === '{% url "dashboard" %}' || path === '{% url "pos" %}') return;
+  back.hidden = false;
+  back.addEventListener('click', function () {
+    var fromHere = document.referrer && document.referrer.indexOf(location.origin + '/') === 0;
+    if (fromHere && history.length > 1) history.back(); else location.href = '{% url "dashboard" %}';
+  });
+})();
+</script>
 {% if ai_help %}{% include 'store/partials/ai_help.html' %}{% endif %}
 {% if ai_help %}{% include 'store/partials/order_pulse.html' %}{% endif %}
 <script>

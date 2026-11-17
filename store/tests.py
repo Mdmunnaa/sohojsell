@@ -7018,23 +7018,23 @@ class OfflinePOSTests(ShopTestMixin, TestCase):
         self.assertEqual(catalog['dueCustomers'], [{'phone': '01712340000', 'name': 'বাকিওয়ালা', 'due': 300}])
         self.assertEqual(self.client.get(reverse('pos_ping')).json()['shop'], self.shop.id)
         page = self.client.get(reverse('pos')).content.decode()
-        for needle in ('id="net-pill"', 'id="m-offline"', 'id="btn-install"', reverse('pos_manifest'),
-                       '"dueCustomers"', '"generatedAt"', 'নেট না থাকলে কী চলে, কী চলে না'):
+        for needle in ('id="net-pill"', 'id="m-offline"', 'data-app-install="auto"', reverse('webmanifest'),
+                       reverse('app_sw'), '"dueCustomers"', '"generatedAt"', 'নেট না থাকলে কী চলে, কী চলে না'):
             self.assertIn(needle, page)
         self.client.logout()
-        sw = self.client.get(reverse('pos_sw'))
+        sw = self.client.get(reverse('app_sw'))
         self.assertEqual(sw.status_code, 200)
         self.assertIn('javascript', sw['Content-Type'])
-        self.assertEqual(sw['Service-Worker-Allowed'], '/pos/')
         body = sw.content.decode()
         self.assertIn("const POS_URL = '/pos/'", body)
         self.assertNotIn('{%', body)
-        manifest = json.loads(self.client.get(reverse('pos_manifest')).content)
-        self.assertEqual((manifest['start_url'], manifest['scope'], manifest['display']), ('/pos/', '/pos/', 'standalone'))
+        manifest = json.loads(self.client.get(reverse('webmanifest')).content)
+        self.assertEqual((manifest['start_url'], manifest['scope'], manifest['display']), ('/app/', '/', 'standalone'))
         # মেয়াদ শেষ হলেও service worker নামে (নইলে পুরনোটা আটকে থাকে)
         self.shop.is_locked = True
         self.shop.save()
         self.client.force_login(self.user)
+        self.assertEqual(self.client.get(reverse('app_sw')).status_code, 200)
         self.assertEqual(self.client.get(reverse('pos_sw')).status_code, 200)
         self.assertEqual(self.client.get(reverse('pos_checkout')).status_code, 302)
         self.client.logout()
@@ -7062,3 +7062,112 @@ class OfflinePOSTests(ShopTestMixin, TestCase):
         self.assertContains(bad, 'স্টক মাইনাস লেখা যায় না')
         summary = pos_module.day_summary(self.shop, timezone.localdate())
         self.assertEqual(summary['offline_count'], 1)
+
+
+class AppInstallTests(ShopTestMixin, TestCase):
+    """পুরো সাইট এক অ্যাপ (store/views_app.py): manifest, /sw.js, /app/, হোমপেজের "অ্যাপ ডাউনলোড"।"""
+
+    def setUp(self):
+        self.user, self.shop = self.make_shop()
+
+    def test_one_manifest_for_the_whole_site(self):
+        from django.contrib.staticfiles import finders
+        response = self.client.get(reverse('webmanifest'))
+        self.assertEqual(response['Content-Type'], 'application/manifest+json')
+        data = json.loads(response.content)
+        # আগের POS অ্যাপের id রাখা — যাদের ফোনে সেটা আছে, ব্রাউজার নিজেই পুরো অ্যাপে বদলে নেয়
+        self.assertEqual((data['id'], data['start_url'], data['scope'], data['display']), ('/pos/', '/app/', '/', 'standalone'))
+        self.assertEqual(json.loads(self.client.get(reverse('pos_manifest')).content), data)
+        self.assertEqual({i['purpose'] for i in data['icons']}, {'any', 'maskable'})
+        for item in data['icons'] + data['screenshots']:
+            self.assertTrue(finders.find(item['src'].replace('/static/', '', 1)), item['src'])
+        self.assertEqual({s['form_factor'] for s in data['screenshots']}, {'narrow', 'wide'})
+        for shortcut in data['shortcuts']:
+            self.assertEqual(self.client.get(shortcut['url']).status_code, 200, shortcut['url'])
+        link = f'<link rel="manifest" href="{reverse("webmanifest")}">'
+        pages = [reverse('dashboard'), reverse('pos'), reverse('order_list')]
+        for url in pages:
+            self.assertContains(self.client.get(url), link, msg_prefix=url)
+        self.client.logout()
+        for url in ['/', reverse('landing_page_en'), reverse('login'), reverse('signup'), reverse('privacy_policy')]:
+            self.assertContains(self.client.get(url), link, msg_prefix=url)
+
+    def test_service_worker_and_legacy_pos_worker(self):
+        self.client.logout()
+        sw = self.client.get(reverse('app_sw'))
+        self.assertEqual((sw.status_code, sw['Cache-Control']), (200, 'no-cache'))
+        body = sw.content.decode()
+        for needle in ("const POS_URL = '/pos/'", "const APP_URL = '/app/'", "request.method !== 'GET'", 'offlinePage'):
+            self.assertIn(needle, body)
+        self.assertNotIn('{%', body)
+        legacy = self.client.get(reverse('pos_sw'))
+        self.assertEqual(legacy['Service-Worker-Allowed'], '/pos/')
+        self.assertIn('self.registration.unregister()', legacy.content.decode())
+        # লগইন, ড্যাশবোর্ড আর POS-এ service worker বসে; হোমপেজে না (সেখানে অকারণে কিছু নামে না)
+        self.assertContains(self.client.get(reverse('login')), reverse('app_sw'))
+        self.assertNotContains(self.client.get('/'), 'serviceWorker.register')
+        self.client.force_login(self.user)
+        self.assertContains(self.client.get(reverse('dashboard')), reverse('app_sw'))
+        # মেয়াদ শেষ হলেও (দোকান লক) service worker আর manifest নামে
+        self.shop.is_locked = True
+        self.shop.save()
+        self.assertEqual(self.client.get(reverse('app_sw')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('webmanifest')).status_code, 200)
+
+    def test_app_icon_opens_the_right_page(self):
+        from .models import StaffProfile
+        app = reverse('app_start')
+        self.assertRedirects(self.client.get(app), reverse('dashboard'), fetch_redirect_response=False)
+        self.client.cookies['sp_app'] = 'pos'          # অ্যাপে শেষবার POS-এ ছিলেন
+        self.assertRedirects(self.client.get(app), reverse('pos'), fetch_redirect_response=False)
+        self.client.cookies['sp_app'] = 'dash'
+        self.assertRedirects(self.client.get(app), reverse('dashboard'), fetch_redirect_response=False)
+        self.client.logout()
+        self.assertRedirects(self.client.get(app), reverse('login'), fetch_redirect_response=False)
+        # শুধু POS-এর অনুমতি থাকা স্টাফ: লগইনের পরেও সোজা POS-এ
+        cashier = User.objects.create_user(phone_number='01722222222', password='Test-pass-123')
+        StaffProfile.objects.create(user=cashier, shop=self.shop, can_use_pos=True)
+        login = self.client.post(reverse('login'), {'username': '01722222222', 'password': 'Test-pass-123'})
+        self.assertRedirects(login, reverse('pos'), fetch_redirect_response=False)
+        self.assertRedirects(self.client.get(app), reverse('pos'), fetch_redirect_response=False)
+        self.client.logout()
+        manager = User.objects.create_user(phone_number='01733333333', password='Test-pass-123')
+        StaffProfile.objects.create(user=manager, shop=self.shop, can_use_pos=True, can_manage_orders=True)
+        self.client.force_login(manager)
+        self.assertRedirects(self.client.get(app), reverse('dashboard'), fetch_redirect_response=False)
+        no_pos = User.objects.create_user(phone_number='01744444444', password='Test-pass-123')
+        StaffProfile.objects.create(user=no_pos, shop=self.shop, can_use_pos=False, can_manage_orders=True)
+        self.client.force_login(no_pos)
+        self.client.cookies['sp_app'] = 'pos'
+        self.assertRedirects(self.client.get(app), reverse('dashboard'), fetch_redirect_response=False)
+        boss = User.objects.create_superuser(phone_number='01755555555', password='Test-pass-123')
+        self.client.force_login(boss)
+        self.assertRedirects(self.client.get(app), reverse('master_dashboard'), fetch_redirect_response=False)
+
+    def test_download_app_on_home_pages_dashboard_and_pos(self):
+        dashboard = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn('class="sb-link" data-app-install', dashboard)
+        self.assertIn('id="spi"', dashboard)
+        self.assertIn('id="app-back"', dashboard)
+        self.assertIn('data-app-install="auto"', self.client.get(reverse('pos')).content.decode())
+        self.client.logout()
+        home = self.client.get('/').content.decode()
+        for needle in ('<section id="app">', 'অ্যাপ ডাউনলোড করুন', 'href="#app"', 'id="spi"', 'Add to Home Screen',
+                       'Install app', 'Open in Chrome', 'html.sp-standalone [data-app-install]'):
+            self.assertIn(needle, home)
+        english = self.client.get(reverse('landing_page_en')).content.decode()
+        for needle in ('<section id="app">', 'Download the app', 'Install the SellPunch app', 'Add to Home Screen'):
+            self.assertIn(needle, english)
+        self.assertNotIn('SellPunch অ্যাপ বসান', english)
+
+    def test_login_page_is_bangla_and_app_like(self):
+        self.client.logout()
+        login = self.client.get(reverse('login')).content.decode()
+        for english in ('Login to Dashboard', 'Enter your password', 'Create Free Shop', '>Password<',
+                        'Privacy Policy', 'Terms of Service', 'Made in Bangladesh'):
+            self.assertNotIn(english, login)
+        self.assertIn('@media (display-mode: standalone)', login)
+        # লগইন থাকা অবস্থায় উপরের "ড্যাশবোর্ড" বাটন সত্যিই ড্যাশবোর্ডে যায় (আগে হোমপেজে যেত)
+        self.client.force_login(self.user)
+        self.assertContains(self.client.get(reverse('privacy_policy')),
+                            f'<a href="{reverse("dashboard")}" class="ss-btn-brand">')

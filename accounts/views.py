@@ -79,10 +79,9 @@ def check_subdomain(request):
 
 
 def user_login(request):
+    from store.views_app import home_for     # অ্যাপ/লগইনের পর কোথা থেকে শুরু: ড্যাশবোর্ড, বা POS-এর লোক হলে POS
     if request.user.is_authenticated:
-        if request.user.is_superuser:
-            return redirect('master_dashboard')
-        return redirect('dashboard')
+        return redirect(home_for(request))
 
     if request.method == 'POST':
         from .forms import normalize_bd_mobile
@@ -101,9 +100,7 @@ def user_login(request):
             ratelimit.clear('login-phone', phone)
             login(request, user)
             messages.success(request, "আবার স্বাগতম!")
-            if user.is_superuser:
-                return redirect('master_dashboard')
-            return redirect('dashboard')
+            return redirect(home_for(request))
         ratelimit.hit('login-phone', phone, LOGIN_WINDOW)
         ratelimit.hit('login-ip', ip, LOGIN_WINDOW)
         messages.error(request, "মোবাইল নম্বর বা পাসওয়ার্ড ভুল।")

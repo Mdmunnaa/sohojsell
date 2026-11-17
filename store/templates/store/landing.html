@@ -28,6 +28,7 @@
       <a href="#features">যা যা আছে</a>
       <a href="#how">কীভাবে শুরু</a>
       <a href="#pricing">দাম</a>
+      <a href="#app">অ্যাপ</a>
       <a href="{% url 'guide_index' %}">গাইড</a>
       <a href="#faq">প্রশ্নোত্তর</a>
     </div>
@@ -44,6 +45,7 @@
     <a href="#how" onclick="toggleMenu()">কীভাবে শুরু</a>
     <a href="#pricing" onclick="toggleMenu()">দাম</a>
     <a href="#faq" onclick="toggleMenu()">প্রশ্নোত্তর</a>
+    <a href="#app" onclick="toggleMenu()" data-app-install><i class="bi bi-download"></i> অ্যাপ ডাউনলোড</a>
     <a href="{% url 'guide_index' %}">গাইড সেন্টার</a>
     <a rel="nofollow" href="{% url 'demo_start' %}">লাইভ ডেমো দেখুন</a>
     <a href="{% url 'login' %}">লগইন</a>
@@ -66,6 +68,7 @@
         <span><i class="bi bi-check-circle-fill"></i> কার্ড লাগে না</span>
         <span><i class="bi bi-check-circle-fill"></i> ১ মিনিটে ওয়েবসাইট চালু</span>
         <span><i class="bi bi-check-circle-fill"></i> মোবাইল থেকেই চালানো যায়</span>
+        <a href="#app" class="hero-app"><i class="bi bi-download"></i> অ্যাপ ডাউনলোড</a>
       </div>
     </div>
     <div class="hero-shot">
@@ -332,6 +335,40 @@
   </div>
 </section>
 
+<!-- ================= অ্যাপ ডাউনলোড (partials/app_install.html, store/views_app.py) ================= -->
+<section id="app">
+  <div class="wrap">
+    <div class="appdl">
+      <div class="appdl-text">
+        <span class="kicker">অ্যাপ</span>
+        <h2>ফোন আর কম্পিউটারে {{ site.name }} অ্যাপ</h2>
+        <p class="lead">Play Store বা App Store লাগে না — এই পাতা থেকেই বসিয়ে নিন। হোম স্ক্রিনের আইকন চাপলেই খোলে, পুরো পর্দা জুড়ে, উপরে ব্রাউজারের ঠিকানার ঘর ছাড়া — একদম সফটওয়্যারের মতো।</p>
+        <ul class="appdl-list">
+          <li><i class="bi bi-wifi-off"></i><span><b>নেট ছাড়াও বিক্রি</b>নেট চলে গেলেও POS-এ বিল হয়, নেট এলে নিজে থেকে জমা হয়।</span></li>
+          <li><i class="bi bi-phone"></i><span><b>সব ডিভাইসে</b>Android, iPhone, iPad, Windows আর Mac — একই অ্যাকাউন্ট।</span></li>
+          <li><i class="bi bi-arrow-repeat"></i><span><b>আপডেট নিজে থেকে</b>নতুন ফিচার এলে আলাদা করে কিছু নামাতে হয় না।</span></li>
+          <li><i class="bi bi-lightning-charge"></i><span><b>খুব কম জায়গা</b>ফোনের মেমোরি ভরে না, পুরনো ফোনেও চলে।</span></li>
+        </ul>
+        <div class="appdl-cta">
+          <button type="button" class="btn btn-lg btn-brand" data-app-install><i class="bi bi-download"></i> অ্যাপ ডাউনলোড করুন</button>
+          <small>অ্যাপের জন্য আলাদা টাকা লাগে না</small>
+        </div>
+        <div class="appdl-os">
+          <span><i class="bi bi-android2"></i> Android</span>
+          <span><i class="bi bi-apple"></i> iPhone / iPad</span>
+          <span><i class="bi bi-windows"></i> Windows</span>
+          <span><i class="bi bi-laptop"></i> Mac</span>
+        </div>
+      </div>
+      <div class="appdl-shot">
+        <div class="phone"><img src="{% static 'landing/pos-phone.webp' %}" srcset="{% img_srcset 'landing/pos-phone.webp' 780 %}" sizes="250px" alt="ফোনে {{ site.name }} অ্যাপে POS" width="780" height="1688" loading="lazy"></div>
+        <div class="appdl-icon"><img src="{% static 'brand/sellpunch-app-icon.svg' %}" alt="{{ site.name }} অ্যাপের আইকন" width="60" height="60" loading="lazy">{{ site.name }}</div>
+        <div class="appdl-off"><div class="ic"><i class="bi bi-wifi-off"></i></div><div><b>নেট নেই? বিক্রি চলবে</b>নেট এলে নিজে থেকে জমা</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ================= PRICING ================= -->
 <section id="pricing">
   <div class="wrap" id="pricing-wrap">
@@ -406,6 +443,7 @@
     </div>
     <div class="faq">
       <details open><summary>কম্পিউটার বা টেকনিক্যাল জ্ঞান না থাকলে চালাতে পারব?</summary><p>হ্যাঁ। পুরো সফটওয়্যার বাংলায়, আর মোবাইল থেকেই সব কাজ করা যায়। প্রোডাক্ট তোলা, অর্ডার দেখা, POS-এ বিল করা — Facebook চালানোর চেয়ে কঠিন কিছু না। আটকে গেলে WhatsApp-এ আমরা আছি।</p></details>
+      <details><summary>মোবাইল বা কম্পিউটারের অ্যাপ আছে?</summary><p>হ্যাঁ। এই পাতার <a href="#app" style="color:var(--brand);font-weight:700">অ্যাপ ডাউনলোড</a> থেকে Android, iPhone, iPad, Windows বা Mac-এ {{ site.name }} বসিয়ে নিন — Play Store লাগে না, অ্যাপের জন্য আলাদা টাকাও লাগে না। হোম স্ক্রিনের আইকন থেকে পুরো পর্দায় খোলে, আর নেট না থাকলেও POS-এ বিক্রি চলে। না বসিয়ে ব্রাউজারেও সব করা যায়।</p></details>
       <details><summary>Facebook পেজে অটো রিপ্লাই আছে?</summary><p>হ্যাঁ — Standard আর Premium প্যাকেজে, আর ফ্রি ট্রায়ালেও। পেজ যুক্ত করলে কমেন্টকারীর ইনবক্সে দাম আর অর্ডারের লিংক যায়, Messenger-এ দাম, ডেলিভারি চার্জ আর অর্ডার কোথায় — এসবের উত্তর বট দেয়, আর চ্যাটেই নাম-ঠিকানা নিয়ে অর্ডার নেয়।{% if not facebook_live %} Facebook-এর নিয়মে Meta অ্যাপটা যাচাই করছে, শেষ হলেই সব দোকানে চালু হবে।{% endif %} বিস্তারিত: <a href="{% url 'mk_feature' 'facebook-auto-reply' %}" style="color:var(--brand);font-weight:700">Facebook অটো রিপ্লাই</a>।</p></details>
       <details><summary>অন্য প্ল্যাটফর্মে (Shopify, WooCommerce, Excel) দোকান আছে — সব প্রোডাক্ট আবার লিখতে হবে?</summary><p>না। আগের জায়গা থেকে প্রোডাক্টের ফাইল নামিয়ে <b>সব প্রোডাক্ট → অন্য জায়গা থেকে আনুন</b>-এ তুলুন — Shopify আর WooCommerce-এর export সরাসরি চলে, যেকোনো Excel/CSV-ও (কলামের নাম বাংলা বা ইংরেজি)। ছবি, দাম, আগের দাম, স্টক আর সাইজ-রং আসে; তোলার আগে দেখায় কয়টা আসবে। কাস্টমারের তালিকাও আনা যায়। ধাপে ধাপে: <a href="{% url 'mk_feature' 'move-to-sellpunch' %}" style="color:var(--brand);font-weight:700">অন্য প্ল্যাটফর্ম থেকে আসুন</a>।</p></details>
       <details><summary>নতুন ব্যবসা শুরু করছি — কোথা থেকে শুরু করব?</summary><p>প্রোডাক্ট আর দাম ঠিক করে {{ site.name }}-এ অ্যাকাউন্ট খুলুন — ১ মিনিটে ওয়েবসাইট চালু। প্রোডাক্ট তুলে লিংকটা Facebook পেজ আর WhatsApp-এ দিন; অর্ডার এলে এক ক্লিকে কুরিয়ারে পাঠান। ধাপে ধাপে: <a href="{% url 'mk_industry' 'new-business' %}" style="color:var(--brand);font-weight:700">নতুন ব্যবসা শুরু</a> আর <a href="{% url 'guide_index' %}" style="color:var(--brand);font-weight:700">গাইড সেন্টার</a>।</p></details>
@@ -449,7 +487,7 @@
       </div>
       <div>
         <h3>সফটওয়্যার</h3>
-        <div class="lk"><a href="{{ features_url }}">সব ফিচার</a><a href="{% url 'mk_feature' 'online-shop' %}">ই-কমার্স ওয়েবসাইট</a><a href="{% url 'mk_feature' 'pos-software' %}">POS সফটওয়্যার</a><a href="#pricing">দাম</a><a rel="nofollow" href="{% url 'demo_start' %}">লাইভ ডেমো</a><a href="{% url 'signup' %}">ফ্রি শুরু করুন</a><a href="{% url 'login' %}">লগইন</a></div>
+        <div class="lk"><a href="{{ features_url }}">সব ফিচার</a><a href="{% url 'mk_feature' 'online-shop' %}">ই-কমার্স ওয়েবসাইট</a><a href="{% url 'mk_feature' 'pos-software' %}">POS সফটওয়্যার</a><a href="#pricing">দাম</a><a rel="nofollow" href="{% url 'demo_start' %}">লাইভ ডেমো</a><a href="#app">অ্যাপ ডাউনলোড</a><a href="{% url 'signup' %}">ফ্রি শুরু করুন</a><a href="{% url 'login' %}">লগইন</a></div>
       </div>
       <div>
         <h3>যোগাযোগ</h3>
@@ -477,5 +515,6 @@
 </footer>
 
 {% include 'store/partials/landing_script.html' %}
+{% include 'store/partials/app_install.html' %}
 </body>
 </html>

@@ -98,7 +98,7 @@ def robots_txt(shop, request):
 MAIN_PRIVATE_PATHS = ('/accounts/', '/admin/', '/saas-master/', '/demo/', '/dashboard/', '/setup-shop/', '/pos/',
                       '/orders/', '/products/', '/customers/', '/reports/', '/dues/', '/website/', '/sms/', '/offers/',
                       '/landing/', '/purchases/', '/settings/', '/billing/', '/payment/', '/staff/', '/facebook/',
-                      '/internal/')
+                      '/internal/', '/app/')
 MAIN_PUBLIC_PAGES = ('about', 'security', 'contact', 'privacy_policy', 'terms', 'refund_policy')
 
 
@@ -299,8 +299,24 @@ def main_llms_txt(request):
         '"আবার লগইন করুন" and sends after logging in to the same shop; on an expired plan they send after paying.',
         '- A sale that the server rejects (usually a product deleted after the offline sale) shows in red as "জমা হয়নি" '
         'with the reason; fix and press "আবার চেষ্টা", or the shop owner can discard it ("বাদ দিন").',
-        '- Install as an app: the POS top bar button "অ্যাপ বসান" (Android/computer Chrome or Edge), or Safari Share → '
-        'Add to Home Screen on iPhone/iPad.',
+        '- Works best as the installed app (see "SellPunch app" below): with no internet, tapping the app icon opens the POS.',
+        '',
+        '## SellPunch app (install on phone or computer)',
+        f"Download: {base}/#app (home page section \"অ্যাপ ডাউনলোড\"); also the sidebar item \"অ্যাপ বসান\" and the POS "
+        'top bar button "অ্যাপ বসান". It is a web app (PWA) — no Play Store or App Store, no extra cost, updates itself.',
+        '- The whole site is one app: login, dashboard, orders and POS all open inside it, full screen, without the browser '
+        'address bar. Install: Android Chrome — "অ্যাপ ডাউনলোড" → Install (or Chrome menu ⋮ → Install app / Add to Home '
+        'screen); iPhone/iPad Safari — Share → Add to Home Screen → Add; computer Chrome/Edge — install icon in the '
+        'address bar → Install (opens in its own window). Samsung Internet: ≡ → Add page to → Home screen; Mac Safari: '
+        'File → Add to Dock. Firefox and the Facebook/Messenger in-app browser cannot install — open the page in '
+        'Chrome/Safari first.',
+        '- Opening the app: not logged in → login page; staff with only the POS permission → POS; otherwise it resumes '
+        'where the user last was in the app (POS or dashboard). With no internet the icon opens the POS (if it was '
+        'opened online once); other pages show "নেট নেই" with a "POS খুলুন" button. Long-press the icon for shortcuts: '
+        'POS, new order, all orders, products.',
+        '- An older install that was POS-only (named "POS", showing a browser-like bar on login/dashboard) usually '
+        'updates itself to the full app after being opened online; otherwise remove it and install again from the home '
+        'page — after any unsent offline sales have synced. On iPhone/iPad the app has its own login, separate from Safari.',
         '',
         '## Moving to SellPunch from another platform',
         f"Details: {base}{reverse('mk_feature_en', args=['move-to-sellpunch'])}; step-by-step guide (Bangla): "

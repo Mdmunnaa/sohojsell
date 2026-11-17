@@ -2,5 +2,11 @@
 <link rel="icon" href="{% static 'brand/favicon.ico' %}" sizes="any">
 <link rel="icon" href="{% static 'brand/sellpunch-mark.svg' %}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="{% static 'brand/apple-touch-icon.png' %}">
-{% if pos_manifest %}<link rel="manifest" href="{% url 'pos_manifest' %}">{% else %}<link rel="manifest" href="{% url 'webmanifest' %}">{% endif %}
-<meta name="theme-color" content="#D63A2F">
+{# পুরো সাইট এক অ্যাপ (store/views_app.py) — সব পাতায় একই manifest, তাই অ্যাপের ভেতরে কোনো পাতায় ব্রাউজারের বার আসে না #}
+<link rel="manifest" href="{% url 'webmanifest' %}">
+<meta name="theme-color" content="{{ theme|default:'#D63A2F' }}">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="{{ site.name }}">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="application-name" content="{{ site.name }}">

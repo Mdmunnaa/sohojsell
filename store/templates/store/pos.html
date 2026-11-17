@@ -299,7 +299,7 @@
       </div>
       <span class="p-scan-pill" id="scan-pill" title="বারকোড স্ক্যানার যেকোনো সময় কাজ করে"><i class="bi bi-upc-scan"></i><span class="lbl">স্ক্যানার চালু</span></span>
       <button class="p-net" type="button" id="net-pill" hidden title="নেট আর অফলাইনের বিক্রি"></button>
-      <button class="p-tool" type="button" id="btn-install" hidden title="POS অ্যাপ হিসেবে বসান"><i class="bi bi-download"></i><span class="lbl">অ্যাপ বসান</span></button>
+      <button class="p-tool" type="button" id="btn-install" data-app-install="auto" hidden title="SellPunch অ্যাপ হিসেবে বসান — নেট ছাড়াও POS খোলে"><i class="bi bi-download"></i><span class="lbl">অ্যাপ বসান</span></button>
       <button class="p-tool" type="button" id="btn-camera" title="মোবাইলের ক্যামেরায় স্ক্যান"><i class="bi bi-camera"></i><span class="lbl">ক্যামেরা</span></button>
       <button class="p-tool" type="button" id="btn-held" title="হোল্ড রাখা বিল (F9)"><i class="bi bi-pause-circle"></i><span class="lbl">হোল্ড</span><span class="count zero" id="held-count">0</span></button>
       <button class="p-tool" type="button" id="btn-sales" title="আজকের বিক্রি"><i class="bi bi-receipt"></i><span class="lbl">আজকের বিক্রি</span><span class="count" id="today-count">0</span></button>
@@ -558,21 +558,6 @@
     <div class="m-foot">
       <button class="btn-soft" data-close type="button" style="flex:1;">বন্ধ</button>
       <button class="btn-pay" id="off-sync" type="button" style="flex:1.6;"><i class="bi bi-cloud-arrow-up"></i> এখন পাঠান</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ iPhone/iPad-এ অ্যাপ বসানো ═══ -->
-<div class="m-back" id="m-install" role="dialog" aria-modal="true" aria-labelledby="ins-h">
-  <div class="m-box narrow">
-    <div class="m-head"><h3 id="ins-h">POS অ্যাপ হিসেবে বসান</h3><button class="m-x" data-close type="button" aria-label="বন্ধ"><i class="bi bi-x-lg"></i></button></div>
-    <div class="m-body" style="font-size:14px;line-height:1.7;">
-      <ol style="padding-left:18px;margin:0;">
-        <li>Safari-তে নিচের <b>Share</b> বোতাম (<i class="bi bi-box-arrow-up"></i>) চাপুন।</li>
-        <li><b>Add to Home Screen</b> বেছে <b>Add</b> চাপুন।</li>
-        <li>হোম স্ক্রিনের "POS" থেকে খুলুন — নেট না থাকলেও চলবে।</li>
-      </ol>
-      <p class="small mt-3 mb-0" style="color:var(--p-muted);">iPhone/iPad-এ অফলাইনের বিক্রি পাঠানো হয় POS খোলা থাকলে বা আবার খুললে। তাই নেট এলে একবার POS খুলুন।</p>
     </div>
   </div>
 </div>
@@ -1584,7 +1569,7 @@ async function refreshCatalog() {
   CFG.generatedAt = r.data.generatedAt; CFG.dueCustomers = r.data.dueCustomers || CFG.dueCustomers;
   queue().forEach(x => subtractLines(x.payload.items));     // এখনো না-পাঠানোগুলো সার্ভারের স্টকে নেই
   renderGrid(); renderCart();
-  swMessage({ type: 'cache', urls: [], page: true });      // নেট ছাড়া খোলার কপিটাও নতুন হোক
+  if (window.spApp) spApp.post({ type: 'cache', urls: [], page: true });      // নেট ছাড়া খোলার কপিটাও নতুন হোক
 }
 
 function offlineReceipt(item) {
@@ -1692,33 +1677,14 @@ document.addEventListener('submit', e => {
   if (net === 'offline' && !e.target.closest('#pos-app')) { e.preventDefault(); toast('নেট নেই — এই কাজে নেট লাগবে', 'warn'); }
 }, true);
 
-// service worker: POS-এর পাতা আর ফাইল ডিভাইসে রাখা
-function swMessage(msg) {
-  if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.ready.then(reg => { if (reg.active) reg.active.postMessage(msg); }).catch(() => {});
-}
-if ('serviceWorker' in navigator && window.isSecureContext && CFG.urls.sw) {
-  navigator.serviceWorker.register(CFG.urls.sw, { scope: CFG.urls.pos }).catch(() => {});
-  const firstVisit = !navigator.serviceWorker.controller;
-  swMessage({ type: 'cache', page: firstVisit,
-              urls: performance.getEntriesByType('resource').map(x => x.name)
-                .filter(u => u.indexOf(location.origin + '/static/') === 0).concat(CFG.precache || []) });
+// service worker (partials/app_sw.html, base.html-এ বসানো): POS-এর পাতা আর ফাইল ডিভাইসে রাখা
+if (window.spApp && 'serviceWorker' in navigator) {
+  spApp.post({ type: 'cache', page: !navigator.serviceWorker.controller,
+               urls: performance.getEntriesByType('resource').map(x => x.name)
+                 .filter(u => u.indexOf(location.origin + '/static/') === 0).concat(CFG.precache || []) });
 }
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-
-// অ্যাপ হিসেবে বসানো (Android/কম্পিউটারে Chrome-Edge নিজে জিজ্ঞেস করে; iPhone/iPad-এ Share → Add to Home Screen)
-let installEvent = null;
-const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
-const apple = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvent = e; $('btn-install').hidden = false; });
-window.addEventListener('appinstalled', () => { $('btn-install').hidden = true; installEvent = null; toast('POS অ্যাপ বসানো হলো'); });
-if (!standalone && apple) $('btn-install').hidden = false;
-$('btn-install').addEventListener('click', async () => {
-  if (!installEvent) { openModal('m-install'); return; }
-  installEvent.prompt();
-  try { const choice = await installEvent.userChoice; if (choice.outcome === 'accepted') $('btn-install').hidden = true; } catch (e) { /* বন্ধ করেছেন */ }
-  installEvent = null;
-});
+// অ্যাপ হিসেবে বসানো: টুলবারের "অ্যাপ বসান" (partials/app_install.html, base.html-এ)
 
 /* ── শুরু ── */
 adjustStock();

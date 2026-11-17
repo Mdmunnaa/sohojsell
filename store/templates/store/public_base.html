@@ -62,6 +62,14 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
 .ss-footer-bottom{padding-top:20px;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);flex-wrap:wrap;gap:10px}
 
 @media(max-width:992px){.ss-footer-top{grid-template-columns:1fr 1fr}}
+/* অ্যাপ হিসেবে খোলা (হোম স্ক্রিন/ডেস্কটপের আইকন — store/views_app.py): ওয়েবসাইটের মেনু আর নিচের অংশ লুকানো,
+   লগইন-সাইনআপ পাতা যেন সফটওয়্যারের পাতার মতো দেখায় */
+@media (display-mode: standalone){
+  .ss-links,.ss-cta,.ss-ham,.ss-mob,.ss-footer{display:none!important}
+  .ss-nav{position:static;background:transparent;border-bottom:0;backdrop-filter:none}
+  .ss-nav-inner{justify-content:center;height:72px}
+  .ss-main{padding-bottom:24px}
+}
 @media(max-width:768px){
   .ss-links,.ss-cta{display:none}
   .ss-ham{display:block}
@@ -85,7 +93,7 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
     </nav>
     <div class="ss-cta">
       {% if user.is_authenticated %}
-        <a href="{% url 'landing_page' %}" class="ss-btn-brand"><i class="bi bi-speedometer2"></i> ড্যাশবোর্ড</a>
+        <a href="{% url 'dashboard' %}" class="ss-btn-brand"><i class="bi bi-speedometer2"></i> ড্যাশবোর্ড</a>
       {% else %}
         <a href="{% url 'login' %}" class="ss-btn-ghost">লগইন</a>
         <a href="{% url 'signup' %}" class="ss-btn-brand"><i class="bi bi-rocket-takeoff-fill"></i> ফ্রি শুরু করুন</a>
@@ -100,7 +108,7 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
     <a href="{% url 'landing_page' %}#how">কীভাবে শুরু</a>
     <a href="{% url 'landing_page' %}#pricing">দাম</a>
     {% if user.is_authenticated %}
-      <a href="{% url 'landing_page' %}" style="color:var(--brand);font-weight:700;">ড্যাশবোর্ড</a>
+      <a href="{% url 'dashboard' %}" style="color:var(--brand);font-weight:700;">ড্যাশবোর্ড</a>
     {% else %}
       <a href="{% url 'login' %}" style="color:var(--brand);font-weight:700;">লগইন</a>
       <a href="{% url 'signup' %}" class="ss-btn-brand justify-content-center mt-1">ফ্রি শুরু করুন</a>
@@ -159,16 +167,16 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
       <div>
         <div class="ss-footer-title">নিয়ম ও নীতি</div>
         <div class="ss-footer-links">
-          <a href="{% url 'privacy_policy' %}">Privacy Policy</a>
-          <a href="{% url 'terms' %}">Terms of Service</a>
-          <a href="{% url 'refund_policy' %}">Refund Policy</a>
-          <a href="{% url 'data_deletion' %}">Data Deletion</a>
+          <a href="{% url 'privacy_policy' %}">প্রাইভেসি পলিসি</a>
+          <a href="{% url 'terms' %}">ব্যবহারের শর্ত</a>
+          <a href="{% url 'refund_policy' %}">রিফান্ড পলিসি</a>
+          <a href="{% url 'data_deletion' %}">ডেটা মুছে ফেলা</a>
         </div>
       </div>
     </div>
     <div class="ss-footer-bottom">
       <span>© {% now "Y" %} {{ site.name }} — {{ company.name_bn }}-এর একটি পণ্য · <a href="{% url 'about' %}">ট্রেড লাইসেন্স আইডি {{ company.licence_id }}</a></span>
-      <span>Made in Bangladesh</span>
+      <span>বাংলাদেশে তৈরি</span>
     </div>
   </div>
 </footer>

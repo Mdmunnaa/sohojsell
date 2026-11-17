@@ -195,6 +195,30 @@ footer{background:#fff;border-top:1px solid var(--line);padding:56px 0 30px}
 .ft .soc a:hover{color:var(--brand);border-color:var(--brand)}
 .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:22px;font-size:13.5px;color:var(--muted)}
 
+/* ---------- app download (partials/app_install.html) ---------- */
+.appdl{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;background:linear-gradient(135deg,#FFF6F5 0%,#FFFFFF 55%,#EFF6FF 100%);border:1px solid var(--line);border-radius:28px;padding:56px 56px 0;overflow:hidden}
+.appdl-text{padding-bottom:56px}
+.appdl .lead{font-size:17px;color:var(--ink2);line-height:1.7;margin-top:14px;max-width:540px}
+.appdl-list{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:16px 22px;margin:26px 0 30px}
+.appdl-list li{display:flex;gap:12px;align-items:flex-start;font-size:14.5px;color:var(--ink2);line-height:1.55}
+.appdl-list li>i{flex-shrink:0;width:38px;height:38px;border-radius:11px;background:#fff;border:1px solid var(--line);color:var(--brand);font-size:18px;display:flex;align-items:center;justify-content:center}
+.appdl-list b{display:block;color:var(--ink);font-size:15.5px}
+.appdl-cta{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.appdl-cta small{font-size:13.5px;color:var(--muted);font-weight:600}
+.appdl-os{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
+.appdl-os span{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:var(--pill);padding:5px 12px;font-size:13px;color:var(--ink2);font-weight:700}
+.appdl-os i{font-size:15px}
+.appdl-shot{position:relative;align-self:end;display:flex;justify-content:center}
+.appdl-shot .phone{width:250px;height:440px;border-radius:36px 36px 0 0;padding:10px 10px 0}
+.appdl-shot .phone img{border-radius:27px 27px 0 0;width:100%;height:100%;object-fit:cover;object-position:top}
+.appdl-icon{position:absolute;left:2%;top:22%;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 16px 10px;box-shadow:var(--shadow-lg);text-align:center;font-size:13px;font-weight:700;color:var(--ink);font-family:'Plus Jakarta Sans',sans-serif}
+.appdl-icon img{width:60px;height:60px;border-radius:15px;margin:0 auto 6px}
+.appdl-off{position:absolute;right:0;top:8%;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow-lg);font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:10px;max-width:220px;line-height:1.4}
+.appdl-off .ic{flex-shrink:0;width:34px;height:34px;border-radius:10px;background:var(--green-light);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:17px}
+.appdl-off b{display:block;font-size:14px;color:var(--ink)}
+.hero-app{display:inline-flex;align-items:center;gap:6px;color:var(--brand-dark);font-weight:700}
+.hero-app:hover{color:var(--brand)}
+
 @media (max-width:1024px){
   h1{font-size:42px}
   .hero-grid{grid-template-columns:1fr;gap:40px}
@@ -205,6 +229,8 @@ footer{background:#fff;border-top:1px solid var(--line);padding:56px 0 30px}
   .feat.rev .feat-text{order:0}
   .feat-shot{margin-bottom:24px}
   .demo{grid-template-columns:1fr;padding:40px 28px}
+  .appdl{grid-template-columns:1fr;padding:44px 36px 0}
+  .appdl-text{padding-bottom:0}
   .ft{grid-template-columns:1fr 1fr}
 }
 @media (max-width:768px){
@@ -225,6 +251,13 @@ footer{background:#fff;border-top:1px solid var(--line);padding:56px 0 30px}
   .plan.pop{order:-1}
   .demo{padding:32px 22px;border-radius:18px}
   .demo .cta .btn{width:100%}
+  .appdl{padding:30px 20px 0;border-radius:20px;gap:28px}
+  .appdl-list{grid-template-columns:1fr}
+  .appdl-cta .btn{width:100%}
+  .appdl-shot .phone{width:220px;height:380px}
+  .appdl-icon{left:0;top:26%;padding:10px 12px 8px}
+  .appdl-icon img{width:48px;height:48px}
+  .appdl-off{right:-4px;top:4%;max-width:180px}
   .final h2{font-size:30px}
   .final .cta .btn{width:100%}
 }

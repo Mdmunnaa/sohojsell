@@ -1,0 +1,214 @@
+{% load static %}{% comment %}
+  "অ্যাপ ডাউনলোড" — ফোন, ট্যাবলেট বা কম্পিউটারে SellPunch বসানো (PWA, store/views_app.py)।
+  যেকোনো বাটনে data-app-install দিলেই হয়:
+    data-app-install        → অ্যাপের ভেতরে (বসানো অবস্থায়) লুকানো, বাকি সময় দেখায় (হোমপেজ, ড্যাশবোর্ডের মেনু)
+    data-app-install="auto" → শুধু যখন এক চাপে বসানো যায় বা iPhone/iPad (POS-এর টুলবার — জায়গা কম)
+  চাপলে: Chrome/Edge নিজে "Install" জিজ্ঞেস করে; না পারলে (iPhone, Facebook-এর ভেতরের ব্রাউজার ইত্যাদি) ধাপগুলো দেখায়।
+  en=1: ইংরেজি হোমপেজের জন্য।
+{% endcomment %}
+<style>
+  .spi-back { position: fixed; inset: 0; z-index: 2100; background: rgba(15, 23, 42, .55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .spi-back[hidden] { display: none !important; }
+  .spi-box:focus { outline: none; }
+  .spi-box { background: #fff; color: #0F172A; width: 100%; max-width: 460px; max-height: calc(100vh - 32px); overflow-y: auto; border-radius: 22px; box-shadow: 0 30px 80px -20px rgba(15, 23, 42, .45); font-size: 15px; line-height: 1.6; text-align: left; }
+  .spi-head { display: flex; align-items: center; gap: 12px; padding: 18px 18px 12px; }
+  .spi-head img { width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0; }
+  .spi-head h2 { font-size: 18px; font-weight: 800; margin: 0; line-height: 1.3; color: #0F172A; letter-spacing: 0; }
+  .spi-head p { margin: 2px 0 0; font-size: 13px; color: #64748B; }
+  .spi-x { margin-left: auto; align-self: flex-start; width: 36px; height: 36px; border-radius: 50%; border: 0; background: #F1F5F9; color: #334155; cursor: pointer; display: grid; place-items: center; flex-shrink: 0; font-size: 14px; }
+  .spi-x:hover { background: #E2E8F0; }
+  .spi-body { padding: 0 18px 18px; }
+  .spi-warn { background: #FFF7ED; border: 1px solid #FED7AA; color: #9A3412; border-radius: 14px; padding: 12px 14px; font-size: 14px; margin-bottom: 14px; }
+  .spi-warn b { color: #7C2D12; }
+  .spi-copy { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #FDBA74; color: #9A3412; border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; }
+  .spi-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: #F1F5F9; border-radius: 14px; padding: 4px; margin-bottom: 14px; }
+  .spi-tab { border: 0; background: transparent; border-radius: 10px; padding: 8px 4px; font: inherit; font-size: 13.5px; font-weight: 700; color: #475569; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+  .spi-tab.on { background: #fff; color: #0F172A; box-shadow: 0 1px 3px rgba(15, 23, 42, .12); }
+  .spi-steps { list-style: none; margin: 0; padding: 0; counter-reset: spi; }
+  .spi-steps li { position: relative; padding: 0 0 12px 40px; counter-increment: spi; color: #1E293B; }
+  .spi-steps li::before { content: counter(spi); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; background: #FDEDEB; color: #B32A20; font-weight: 800; font-size: 14px; display: grid; place-items: center; }
+  .spi-steps i.bi { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: #F1F5F9; color: #0F172A; font-size: 14px; vertical-align: -6px; margin: 0 2px; }
+  .spi-steps b { color: #0F172A; }
+  .spi-note { font-size: 13px; color: #64748B; background: #F8FAFC; border-radius: 12px; padding: 10px 12px; margin-top: 2px; }
+  .spi-facts { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #E2E8F0; font-size: 13px; color: #475569; }
+  .spi-facts span { display: inline-flex; align-items: center; gap: 5px; }
+  .spi-facts i { color: #15803D; }
+  .spi-done { text-align: center; padding: 6px 4px 4px; }
+  .spi-done i.bi-check-circle-fill { font-size: 44px; color: #15803D; display: block; margin-bottom: 6px; }
+  .spi-done h3 { font-size: 18px; font-weight: 800; margin: 0 0 6px; color: #0F172A; }
+  .spi-done p { color: #475569; margin: 0; }
+  html.sp-standalone [data-app-install], [data-app-install][hidden] { display: none !important; }
+</style>
+
+<div class="spi-back" id="spi" role="dialog" aria-modal="true" aria-labelledby="spi-h" hidden>
+  <div class="spi-box" tabindex="-1">
+    <div class="spi-head">
+      <img src="{% static 'brand/icon-192.png' %}" alt="{% if en %}{{ site.name }} app icon{% else %}{{ site.name }} অ্যাপের আইকন{% endif %}" width="48" height="48">
+      <div>
+        <h2 id="spi-h">{% if en %}Install the {{ site.name }} app{% else %}{{ site.name }} অ্যাপ বসান{% endif %}</h2>
+        <p>{% if en %}Phone, tablet or computer — no Play Store needed{% else %}ফোন, ট্যাবলেট বা কম্পিউটারে — Play Store লাগে না{% endif %}</p>
+      </div>
+      <button class="spi-x" type="button" data-spi-close aria-label="{% if en %}Close{% else %}বন্ধ{% endif %}"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="spi-body" id="spi-steps-wrap">
+      <div class="spi-warn" id="spi-inapp" hidden>
+        {% if en %}
+        <b>You are inside the Facebook / Messenger browser.</b> Apps can't be installed from here. Tap the <b>⋮</b> or <b>···</b> menu at the top and choose <b>Open in Chrome</b> (on iPhone: <b>Open in Safari</b>), then tap "Download app" again.
+        {% else %}
+        <b>আপনি Facebook / Messenger-এর ভেতরের ব্রাউজারে আছেন</b> — এখান থেকে অ্যাপ বসানো যায় না। উপরের <b>⋮</b> বা <b>···</b> মেনু থেকে <b>Open in Chrome</b> (iPhone-এ <b>Open in Safari</b>) চাপুন, তারপর আবার "অ্যাপ ডাউনলোড" চাপুন।
+        {% endif %}
+        <br><button class="spi-copy" type="button" id="spi-copy"><i class="bi bi-link-45deg"></i> <span>{% if en %}Copy link{% else %}লিংক কপি করুন{% endif %}</span></button>
+      </div>
+
+      <div class="spi-tabs" role="tablist">
+        <button class="spi-tab" type="button" role="tab" data-spi-tab="android"><i class="bi bi-android2"></i> Android</button>
+        <button class="spi-tab" type="button" role="tab" data-spi-tab="ios"><i class="bi bi-apple"></i> iPhone/iPad</button>
+        <button class="spi-tab" type="button" role="tab" data-spi-tab="desktop"><i class="bi bi-laptop"></i> {% if en %}Computer{% else %}কম্পিউটার{% endif %}</button>
+      </div>
+
+      <div data-spi-pane="android" role="tabpanel">
+        <ol class="spi-steps">
+          {% if en %}
+          <li>Open this page in <b>Chrome</b> and tap the <i class="bi bi-three-dots-vertical"></i> menu at the top right.</li>
+          <li>Tap <b>Install app</b> (or <b>Add to Home screen</b>).</li>
+          <li>Tap <b>Install</b> — the {{ site.name }} icon appears on your home screen. Open it from there: full screen, no address bar.</li>
+          {% else %}
+          <li><b>Chrome</b>-এ এই পাতা খুলে উপরের ডান কোণের <i class="bi bi-three-dots-vertical"></i> মেনু চাপুন।</li>
+          <li><b>Install app</b> (অ্যাপ ইনস্টল করুন) বা <b>Add to Home screen</b> (হোম স্ক্রিনে যোগ করুন) চাপুন।</li>
+          <li><b>Install</b> চাপুন — হোম স্ক্রিনে {{ site.name }}-এর আইকন চলে আসবে। সেখান থেকে খুললে পুরো পর্দা জুড়ে চলে, উপরে ঠিকানার ঘর থাকে না।</li>
+          {% endif %}
+        </ol>
+        <div class="spi-note">{% if en %}Samsung Internet: tap <b>≡</b> at the bottom → <b>Add page to</b> → <b>Home screen</b>.{% else %}Samsung Internet-এ: নিচের <b>≡</b> মেনু → <b>Add page to</b> → <b>Home screen</b>।{% endif %}</div>
+      </div>
+
+      <div data-spi-pane="ios" role="tabpanel" hidden>
+        <ol class="spi-steps">
+          {% if en %}
+          <li>Open this page in <b>Safari</b> (Chrome works too on recent iOS).</li>
+          <li>Tap the <b>Share</b> button <i class="bi bi-box-arrow-up"></i> — at the bottom on iPhone, at the top on iPad.</li>
+          <li>Scroll down, tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>
+          <li>Open {{ site.name }} from the home screen icon.</li>
+          {% else %}
+          <li><b>Safari</b>-তে এই পাতা খুলুন (নতুন iPhone-এ Chrome-এও হয়)।</li>
+          <li><b>Share</b> বাটন <i class="bi bi-box-arrow-up"></i> চাপুন — iPhone-এ নিচে, iPad-এ উপরে।</li>
+          <li>একটু নিচে নেমে <b>Add to Home Screen</b> (হোম স্ক্রিনে যোগ করুন) চাপুন, তারপর <b>Add</b>।</li>
+          <li>হোম স্ক্রিনের {{ site.name }} আইকন থেকে খুলুন।</li>
+          {% endif %}
+        </ol>
+        <div class="spi-note">{% if en %}On iPhone/iPad, sales made offline in POS are sent when POS is open — open POS once after the internet is back.{% else %}iPhone/iPad-এ নেট ছাড়া POS-এ করা বিক্রি পাঠানো হয় POS খোলা থাকলে। তাই নেট এলে একবার POS খুলুন।{% endif %}</div>
+      </div>
+
+      <div data-spi-pane="desktop" role="tabpanel" hidden>
+        <ol class="spi-steps">
+          {% if en %}
+          <li>Open this page in <b>Chrome</b> or <b>Microsoft Edge</b>.</li>
+          <li>Click the install icon <i class="bi bi-download"></i> at the right end of the address bar. Don't see it? Chrome: <i class="bi bi-three-dots-vertical"></i> → <b>Cast, save and share</b> → <b>Install {{ site.name }}</b>. Edge: <b>···</b> → <b>Apps</b> → <b>Install {{ site.name }}</b>.</li>
+          <li>Click <b>Install</b> — {{ site.name }} opens in its own window and appears on the desktop and Start menu / Dock.</li>
+          {% else %}
+          <li><b>Chrome</b> বা <b>Microsoft Edge</b>-এ এই পাতা খুলুন।</li>
+          <li>ঠিকানার ঘরের ডান পাশে ইনস্টল আইকন <i class="bi bi-download"></i> চাপুন। না দেখলে — Chrome: <i class="bi bi-three-dots-vertical"></i> → <b>Cast, save and share</b> → <b>Install {{ site.name }}</b>; Edge: <b>···</b> → <b>Apps</b> → <b>Install {{ site.name }}</b>।</li>
+          <li><b>Install</b> চাপুন — {{ site.name }} আলাদা জানালায় খুলবে, ডেস্কটপ আর Start মেনু / Dock-এ আইকন থাকবে।</li>
+          {% endif %}
+        </ol>
+        <div class="spi-note">{% if en %}Mac Safari: <b>File</b> → <b>Add to Dock</b>. Firefox can't install apps — use Chrome or Edge.{% else %}Mac-এর Safari-তে: <b>File</b> → <b>Add to Dock</b>। Firefox-এ অ্যাপ বসানো যায় না — Chrome বা Edge দিয়ে খুলুন।{% endif %}</div>
+      </div>
+
+      <div class="spi-facts">
+        {% if en %}
+        <span><i class="bi bi-check-circle-fill"></i> Free</span>
+        <span><i class="bi bi-check-circle-fill"></i> Updates itself</span>
+        <span><i class="bi bi-check-circle-fill"></i> POS works without internet</span>
+        {% else %}
+        <span><i class="bi bi-check-circle-fill"></i> ফ্রি</span>
+        <span><i class="bi bi-check-circle-fill"></i> আপডেট নিজে থেকে হয়</span>
+        <span><i class="bi bi-check-circle-fill"></i> নেট ছাড়াও POS চলে</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="spi-body spi-done" id="spi-done" hidden>
+      <i class="bi bi-check-circle-fill"></i>
+      <h3>{% if en %}{{ site.name }} is installed{% else %}{{ site.name }} বসানো হয়েছে{% endif %}</h3>
+      <p>{% if en %}Open it from the {{ site.name }} icon on your home screen or app list.{% else %}হোম স্ক্রিন বা অ্যাপের তালিকায় {{ site.name }} আইকন থেকে খুলুন।{% endif %}</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var app = window.spApp = window.spApp || {};
+  var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  app.standalone = standalone;
+  if (standalone) document.documentElement.classList.add('sp-standalone');
+  var ua = navigator.userAgent || '';
+  var ios = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var android = /android/i.test(ua);
+  {# Facebook, Messenger, Instagram-এর ভেতরের ব্রাউজার — সেখান থেকে অ্যাপ বসানো যায় না (মন্তব্যগুলো Django-র, ইংরেজি হোমপেজে বাংলা যায় না) #}
+  var inApp = /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Messenger|MicroMessenger|Line\//i.test(ua);
+  var promptEvent = null;
+  var box = document.getElementById('spi');
+  var lastFocus = null;
+
+  function sync() {
+    var all = document.querySelectorAll('[data-app-install]');
+    for (var i = 0; i < all.length; i++) {
+      var auto = all[i].getAttribute('data-app-install') === 'auto';
+      all[i].hidden = standalone || (auto && !promptEvent && !ios);
+    }
+  }
+  function tab(name) {
+    var tabs = box.querySelectorAll('[data-spi-tab]'), panes = box.querySelectorAll('[data-spi-pane]');
+    for (var i = 0; i < tabs.length; i++) {
+      var on = tabs[i].getAttribute('data-spi-tab') === name;
+      tabs[i].classList.toggle('on', on); tabs[i].setAttribute('aria-selected', on ? 'true' : 'false');
+    }
+    for (var j = 0; j < panes.length; j++) panes[j].hidden = panes[j].getAttribute('data-spi-pane') !== name;
+  }
+  function open(done) {
+    lastFocus = document.activeElement;
+    document.getElementById('spi-steps-wrap').hidden = !!done;
+    document.getElementById('spi-done').hidden = !done;
+    document.getElementById('spi-inapp').hidden = !inApp;
+    tab(ios ? 'ios' : android ? 'android' : 'desktop');
+    box.hidden = false;
+    box.querySelector('.spi-box').focus();      {# পপআপের ভেতরে কিবোর্ড (Tab) শুরু হয় #}
+  }
+  function close() {
+    box.hidden = true;
+    if (lastFocus && lastFocus.focus) try { lastFocus.focus(); } catch (e) { /* gone */ }
+  }
+  app.install = function () {
+    if (promptEvent && !inApp) {
+      var evt = promptEvent; promptEvent = null; sync();
+      evt.prompt();
+      return;
+    }
+    open(false);
+  };
+
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); promptEvent = e; sync(); });
+  window.addEventListener('appinstalled', function () { promptEvent = null; sync(); open(true); });
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('[data-app-install]');
+    if (btn) { e.preventDefault(); app.install(); return; }
+    if (box.hidden) return;
+    var t = e.target.closest && e.target.closest('[data-spi-tab]');
+    if (t) { tab(t.getAttribute('data-spi-tab')); return; }
+    if (e.target === box || (e.target.closest && e.target.closest('[data-spi-close]'))) close();
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !box.hidden) close(); });
+  document.getElementById('spi-copy').addEventListener('click', function () {
+    var btn = this, label = btn.querySelector('span'), url = location.href;
+    var ok = function () { label.textContent = '{% if en %}Copied — paste it in Chrome{% else %}কপি হয়েছে — Chrome-এ পেস্ট করুন{% endif %}'; };
+    {# কপি করা না গেলে লিংকটা দেখানো, নিজে কপি করে নেবেন #}
+    var show = function () {
+      var input = document.createElement('input');
+      input.readOnly = true; input.value = url; input.style.cssText = 'display:block;width:100%;margin-top:8px;padding:8px 10px;border:1px solid #FDBA74;border-radius:10px;font-size:13px';
+      btn.replaceWith(input); input.focus(); input.select();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok, show);
+    else show();
+  });
+  sync();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sync);
+})();
+</script>

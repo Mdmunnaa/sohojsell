@@ -3,6 +3,8 @@
  {"id": "gs-dashboard", "path": "/dashboard/", "viewport": "desktop"},
  {"id": "gs-store-info", "path": "/website/?tab=store", "viewport": "desktop", "css": "#subdomain-result{visibility:hidden!important}"},
  {"id": "gs-storefront-mobile", "path": "/shop/{slug}/", "viewport": "mobile", "anon": true},
+ {"id": "gs-app-download", "path": "/", "viewport": "mobile", "anon": true, "element": "#app .appdl-text", "css": ".nav{display:none!important}"},
+ {"id": "gs-app-install", "path": "/", "viewport": "mobile", "anon": true, "js": "(() => { spApp.install(); document.querySelector('[data-spi-tab=android]').click(); })()", "element": "#spi .spi-box"},
  {"id": "products-list", "path": "/products/", "viewport": "desktop"},
  {"id": "products-add", "path": "/products/add/", "viewport": "desktop"},
  {"id": "products-add-mobile", "path": "/products/add/", "viewport": "mobile"},

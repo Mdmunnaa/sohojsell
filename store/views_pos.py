@@ -129,7 +129,6 @@ def pos_screen(request):
     return render(request, 'store/pos.html', {
         'shop': shop,
         'categories': categories,
-        'pos_manifest': True,
         'pos_config': {
             'products': product_data,
             # অফলাইন POS: কখনকার তথ্য, কে বিক্রি করছে, রসিদে কী ছাপা হবে, আর বাকি থাকা কাস্টমার
@@ -160,7 +159,6 @@ def pos_screen(request):
                 'dayClose': reverse('pos_day_close'),
                 'catalog': reverse('pos_catalog'),
                 'ping': reverse('pos_ping'),
-                'sw': reverse('pos_sw'),
                 'pos': reverse('pos'),
             },
         },
@@ -220,56 +218,6 @@ def pos_catalog(request):
 def pos_ping(request):
     """নেট আর লগইন ঠিক আছে কিনা (অফলাইন থেকে ফেরার সময় POS ছোট করে জিজ্ঞেস করে)।"""
     return JsonResponse({'success': True, 'shop': request.user.shop.id})
-
-
-POS_SW_VERSION = '1'      # pos_sw.js-এর নিয়ম বদলালে বাড়ান
-
-
-def pos_sw(request):
-    """
-    অফলাইন POS-এর service worker (/pos/sw.js — তাই শুধু /pos/ পাতাগুলো এর আওতায়)। লগইন লাগে না, ভেতরে কারো তথ্য নেই।
-    আগে থেকে রাখা ফাইলের তালিকা static() থেকে, তাই নতুন deploy-এ ফাইলের নাম বদলালে নতুন সংস্করণ নিজে নামে।
-    """
-    import hashlib
-    from django.http import HttpResponse
-    from django.template.loader import render_to_string
-    from django.templatetags.static import static
-    files = ['vendor/bootstrap/bootstrap-app.min.css', 'vendor/bootstrap/bootstrap.bundle.min.js',
-             'vendor/sweetalert2/sweetalert2.all.min.js', 'vendor/html5-qrcode/html5-qrcode.min.js',
-             'vendor/jsbarcode/JsBarcode.all.min.js', 'brand/sellpunch-logo.svg', 'brand/sellpunch-mark.svg',
-             'brand/icon-192.png']
-    precache = []
-    for name in files:
-        try:
-            precache.append(static(name))
-        except ValueError:          # manifest-এ নেই (টেস্ট/লোকাল) — বাদ
-            continue
-    version = hashlib.sha1((POS_SW_VERSION + '|' + '|'.join(precache)).encode()).hexdigest()[:12]
-    from django.conf import settings
-    body = render_to_string('store/pos_sw.js', {'version': version, 'precache': json.dumps(precache),
-                                                 'pos_url': reverse('pos'), 'network_first': settings.DEBUG})
-    response = HttpResponse(body, content_type='application/javascript; charset=utf-8')
-    response['Cache-Control'] = 'no-cache'
-    response['Service-Worker-Allowed'] = reverse('pos')
-    return response
-
-
-def pos_manifest(request):
-    """POS-কে আলাদা অ্যাপ হিসেবে বসানোর manifest (হোম স্ক্রিন/ডেস্কটপে "SellPunch POS")।"""
-    from django.conf import settings
-    from django.templatetags.static import static
-    site = getattr(settings, 'SITE_NAME', 'SellPunch')
-    data = {
-        'name': f'{site} POS', 'short_name': 'POS', 'id': reverse('pos'), 'start_url': reverse('pos'),
-        'scope': reverse('pos'), 'display': 'standalone', 'background_color': '#F8FAFC', 'theme_color': '#059669',
-        'lang': 'bn', 'description': 'দোকানে বিক্রি — নেট না থাকলেও চলে, নেট এলে নিজে থেকে জমা হয়।',
-        'icons': [{'src': static('brand/icon-192.png'), 'sizes': '192x192', 'type': 'image/png'},
-                  {'src': static('brand/icon-512.png'), 'sizes': '512x512', 'type': 'image/png',
-                   'purpose': 'any maskable'}],
-    }
-    response = JsonResponse(data, json_dumps_params={'ensure_ascii': False})
-    response['Content-Type'] = 'application/manifest+json; charset=utf-8'
-    return response
 
 
 @login_required(login_url=LOGIN)

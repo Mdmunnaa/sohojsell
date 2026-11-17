@@ -51,7 +51,8 @@ FEATURES = [
                 ('কোড বা ওয়েবসাইট বানানো জানতে হবে?',
                  'না। Facebook চালাতে পারলেই পারবেন — প্রোডাক্টের ছবি, নাম, দাম আর স্টক লিখে সেভ করলেই ওয়েবসাইটে চলে আসে।'),
                 ('মোবাইল দিয়ে চালানো যাবে?',
-                 'হ্যাঁ, কোনো অ্যাপ ইনস্টল লাগে না। ফোনের ব্রাউজার থেকেই প্রোডাক্ট তোলা, অর্ডার দেখা, কুরিয়ারে পাঠানো — সব।'),
+                 'হ্যাঁ, কোনো অ্যাপ ইনস্টল লাগে না। ফোনের ব্রাউজার থেকেই প্রোডাক্ট তোলা, অর্ডার দেখা, কুরিয়ারে পাঠানো — সব। '
+                 'চাইলে হোম স্ক্রিনে SellPunch অ্যাপ হিসেবেও বসাতে পারেন, Play Store লাগে না।'),
                 ('পরে নিজের ডোমেইন (.com) লাগানো যাবে?',
                  'Premium প্যাকেজে নিজের ডোমেইন লাগানো যায়। তার আগ পর্যন্ত yourshop.sellpunch.com ঠিকানা ফ্রি।'),
             ],
@@ -97,7 +98,8 @@ FEATURES = [
                  'No. If you can use Facebook you can use SellPunch — type the product photo, name, price and stock, save, '
                  'and it is on your website.'),
                 ('Can I run it from my phone?',
-                 'Yes, no app to install. Add products, see orders and send parcels from your phone browser.'),
+                 'Yes, nothing to install. Add products, see orders and send parcels from your phone browser — or add SellPunch '
+                 'to your home screen as an app, no Play Store needed.'),
                 ('Can I use my own .com domain later?',
                  'Yes, on the Premium plan. Until then your yourshop.sellpunch.com address is free.'),
             ],
@@ -906,7 +908,7 @@ INDUSTRIES = [
                 ('bi-graph-up-arrow', 'শুরু থেকেই লাভের হিসাব',
                  'কেনা দাম আর খরচ (বুস্ট, প্যাকেজিং) লিখলে আসল লাভ দেখায় — কোন প্রোডাক্টে লাভ বেশি।'),
                 ('bi-phone', 'শুধু মোবাইল দিয়েই',
-                 'কম্পিউটার লাগে না, অ্যাপ ইনস্টলও না — ফোনের ব্রাউজারেই সব।'),
+                 'কম্পিউটার লাগে না, Play Store থেকে কিছু নামাতেও হয় না — ফোনের ব্রাউজারেই সব, চাইলে হোম স্ক্রিনে অ্যাপ হিসেবে বসিয়ে নিন।'),
                 ('bi-shop', 'পরে দোকান খুললেও একই সফটওয়্যার',
                  'দোকান বা শোরুম দিলে POS-এ বারকোড স্ক্যান করে বিল — ওয়েবসাইট আর দোকানের স্টক এক।'),
             ],
@@ -959,7 +961,8 @@ INDUSTRIES = [
                 ('bi-graph-up-arrow', 'Profit from the start',
                  'Add buying prices and costs (boosts, packaging) to see real profit — and which products earn the most.'),
                 ('bi-phone', 'Just your phone',
-                 'No computer and no app to install — everything works in the phone browser.'),
+                 'No computer and nothing to download from the Play Store — it all works in the phone browser, or install it as an '
+                 'app on your home screen.'),
                 ('bi-shop', 'Same software when you open a shop',
                  'Open a shop or showroom later and bill with the barcode POS — website and shop share one stock.'),
             ],
@@ -1299,7 +1302,7 @@ INDUSTRIES = [
                 ('ট্রেড লাইসেন্স ছাড়া ওয়েবসাইট খোলা যায়?',
                  'SellPunch-এ সাইনআপের জন্য ট্রেড লাইসেন্স লাগে না; ব্যবসা বড় হলে আইন অনুযায়ী লাইসেন্স করে নেওয়া ভালো।'),
                 ('কম্পিউটার না থাকলে চলবে?',
-                 'হ্যাঁ, পুরোটা মোবাইল থেকে চালানো যায়, অ্যাপ ইনস্টল লাগে না।'),
+                 'হ্যাঁ, পুরোটা মোবাইল থেকে চালানো যায় — ব্রাউজারে, বা হোম স্ক্রিনে অ্যাপ হিসেবে বসিয়ে (Play Store লাগে না)।'),
             ],
         },
         'en': {
@@ -1324,7 +1327,8 @@ INDUSTRIES = [
                 ('Can I open a website without a trade licence?',
                  'Signing up to SellPunch does not need a trade licence; as the business grows, getting one under the law is wise.'),
                 ('Do I need a computer?',
-                 'No, everything works from your phone, no app to install.'),
+                 'No, everything works from your phone — in the browser, or installed as an app on your home screen (no Play Store '
+                 'needed).'),
             ],
         },
     },

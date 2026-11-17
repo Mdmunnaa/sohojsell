@@ -91,17 +91,17 @@
 
                 <div class="mb-4">
                     <div class="d-flex justify-content-between">
-                        <label class="form-label fw-bold text-secondary small" for="login-password">Password</label>
+                        <label class="form-label fw-bold text-secondary small" for="login-password">পাসওয়ার্ড</label>
                         <a href="{% url 'password_forgot' %}" class="small text-decoration-none text-primary">পাসওয়ার্ড ভুলে গেছেন?</a>
                     </div>
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock-fill"></i></span>
-                        <input type="password" id="login-password" name="password" class="form-control border-start-0" placeholder="Enter your password" autocomplete="current-password" required>
+                        <input type="password" id="login-password" name="password" class="form-control border-start-0" placeholder="আপনার পাসওয়ার্ড" autocomplete="current-password" required>
                     </div>
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-login w-100 shadow-sm">
-                    <i class="bi bi-box-arrow-in-right me-2"></i> Login to Dashboard
+                    <i class="bi bi-box-arrow-in-right me-2"></i> লগইন করুন
                 </button>
             </form>
 
@@ -127,7 +127,7 @@
             {% endif %}
 
             <div class="text-center mt-3 pt-3 border-top">
-                <p class="text-muted small mb-0">একাউন্ট নেই? <a href="{% url 'signup' %}" class="fw-bold text-decoration-none text-primary">Create Free Shop</a></p>
+                <p class="text-muted small mb-0">একাউন্ট নেই? <a href="{% url 'signup' %}" class="fw-bold text-decoration-none text-primary">ফ্রি দোকান খুলুন</a></p>
             </div>
         </div>
 
@@ -141,4 +141,5 @@
    অফলাইনের না-পাঠানো বিক্রি মোছে না — সেগুলো দোকান অনুযায়ী আলাদা রাখা, আবার লগইন করলে জমা হয়। */
 try { if ('caches' in window) caches.delete('sp-pos-pages'); } catch (e) { /* পুরনো ব্রাউজার */ }
 </script>
+{% include 'store/partials/app_sw.html' %}
 {% endblock %}

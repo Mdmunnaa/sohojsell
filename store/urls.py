@@ -8,6 +8,7 @@ from . import views_cron
 from . import views_import
 from . import payment_views
 from . import views_pos
+from . import views_app
 from . import views_sms
 from . import views_ledger
 from . import views_offers
@@ -27,8 +28,10 @@ def favicon(request):
 
 urlpatterns = [
     path('favicon.ico', favicon),
-    path('site.webmanifest', TemplateView.as_view(template_name='store/site.webmanifest',
-                                                  content_type='application/manifest+json'), name='webmanifest'),
+    # ফোন/কম্পিউটারে বসানো অ্যাপ (store/views_app.py): manifest, service worker, আইকন চাপলে কোথায় যাবে
+    path('site.webmanifest', views_app.manifest, name='webmanifest'),
+    path('sw.js', views_app.service_worker, name='app_sw'),
+    path('app/', views_app.app_start, name='app_start'),
     # Landing
     path('', views.landing_page, name='landing_page'),
     path('en/', views.landing_page_en, name='landing_page_en'),
@@ -135,8 +138,9 @@ urlpatterns = [
     path('pos/day-close/', views_pos.pos_day_close, name='pos_day_close'),
     path('pos/catalog/', views_pos.pos_catalog, name='pos_catalog'),
     path('pos/ping/', views_pos.pos_ping, name='pos_ping'),
-    path('pos/sw.js', views_pos.pos_sw, name='pos_sw'),
-    path('pos/manifest.webmanifest', views_pos.pos_manifest, name='pos_manifest'),
+    # আগের POS-অ্যাপের ঠিকানা — যাদের ফোনে আছে তাদের জন্য (service worker নিজেকে সরায়, manifest এখন পুরো অ্যাপের)
+    path('pos/sw.js', views_app.legacy_pos_sw, name='pos_sw'),
+    path('pos/manifest.webmanifest', views_app.manifest, name='pos_manifest'),
 
     # Customers & Reports
     path('customers/', views.customer_list, name='customer_list'),

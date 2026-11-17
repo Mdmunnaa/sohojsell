@@ -1,0 +1,48 @@
+{% comment %}
+  পুরো SellPunch এক অ্যাপ (store/views_app.py): /sw.js বসানো — নেট না থাকলে POS খোলে, অন্য পাতায় "নেট নেই" দেখায়।
+  base.html (ড্যাশবোর্ড, POS) আর লগইন/সাইনআপ পাতায় থাকে; হোমপেজ বা গাইডে না (সেখানে অকারণে কিছু বসে না)।
+  window.spApp.post(msg): service worker-কে বার্তা (POS: কোন ফাইল ডিভাইসে রাখতে হবে)।
+  remember=1 (base.html): অ্যাপের ভেতরে শেষবার কোথায় ছিলেন (POS না ড্যাশবোর্ড) — পরের বার অ্যাপ খুললে সেখানেই খোলে।
+{% endcomment %}
+<script>
+(function () {
+  var app = window.spApp = window.spApp || {};
+  app.standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  app.post = function () {};
+  {% if remember %}if (app.standalone) {
+    document.cookie = 'sp_app=' + (location.pathname.indexOf('{% url "pos" %}') === 0 ? 'pos' : 'dash')
+      + ';path=/;max-age=31536000;samesite=lax' + (location.protocol === 'https:' ? ';secure' : '');
+  }{% endif %}
+  var sw = navigator.serviceWorker;
+  if (!sw || !window.isSecureContext) return;
+  // পাতা পুরো খোলার পর বসানো — পাতার নিজের ফাইল আগে আসে
+  var ready = new Promise(function (resolve) {
+    function go() { resolve(sw.register('{% url "app_sw" %}', { scope: '/' }).catch(function () { return null; })); }
+    if (document.readyState === 'complete') go(); else window.addEventListener('load', go);
+  });
+  app.post = function (msg) {
+    ready.then(function (reg) {
+      if (!reg) return;
+      var seen = [];
+      [reg.installing, reg.waiting, reg.active].forEach(function (w) {
+        if (w && seen.indexOf(w) < 0) { seen.push(w); w.postMessage(msg); }
+      });
+    });
+  };
+  // আগের সংস্করণে POS-এর আলাদা service worker (/pos/) ছিল — নতুনটা চালু হওয়ার পর সেটা আর তার ফাইল সরানো
+  ready.then(function (reg) {
+    if (!reg || !sw.getRegistrations) return;
+    function cleanup() {
+      sw.getRegistrations().then(function (all) {
+        all.forEach(function (x) { if (/\/pos\/$/.test(x.scope)) x.unregister(); });
+      }).catch(function () {});
+      if (window.caches) caches.keys().then(function (keys) {
+        keys.forEach(function (k) { if (k.indexOf('sp-pos-static-') === 0) caches.delete(k); });
+      }).catch(function () {});
+    }
+    var w = reg.installing || reg.waiting;
+    if (reg.active) cleanup();
+    else if (w) w.addEventListener('statechange', function () { if (w.state === 'activated') cleanup(); });
+  });
+})();
+</script>

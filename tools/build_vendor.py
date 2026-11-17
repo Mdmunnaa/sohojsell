@@ -30,6 +30,7 @@ PUBLIC_SOURCES = [
     *sorted((TEMPLATES / 'storefront').glob('*.html')),
     TEMPLATES / 'landing.html', TEMPLATES / 'landing_en.html',
     *sorted((TEMPLATES / 'partials').glob('landing_*.html')),
+    TEMPLATES / 'partials' / 'app_install.html',          # হোমপেজের "অ্যাপ ডাউনলোড"
     ROOT / 'store' / 'views.py', ROOT / 'store' / 'views_landing.py',
     *sorted((TEMPLATES / 'marketing').glob('*.html')), TEMPLATES / 'partials' / 'mk_footer.html',
     ROOT / 'store' / 'marketing.py', ROOT / 'store' / 'views_marketing.py',      # SEO পাতা (/features/, /for/)
