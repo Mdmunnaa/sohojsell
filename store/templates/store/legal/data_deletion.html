@@ -2,6 +2,7 @@
 {% block title %}ডেটা মুছে ফেলার নির্দেশনা | {{ site.name }}{% endblock %}
 {% block meta_description %}{{ site.name }} থেকে Facebook-এর তথ্য বা পুরো অ্যাকাউন্টের তথ্য কীভাবে মুছে ফেলবেন।{% endblock %}
 {% block page_title %}ডেটা মুছে ফেলার নির্দেশনা (Data Deletion){% endblock %}
+{% block english_link %}<a class="legal-lang" href="#english" hreflang="en" lang="en">Read in English</a>{% endblock %}
 
 {% block legal_body %}
 <p>আপনি যেকোনো সময় {{ site.name }}-এ রাখা আপনার Facebook-এর তথ্য, অথবা পুরো অ্যাকাউন্টের সব তথ্য মুছে ফেলতে পারেন।</p>
@@ -10,13 +11,20 @@
 <p><strong>{{ site.name }} থেকে:</strong></p>
 <ol>
   <li>{{ site.name }}-এ লগইন করুন।</li>
-  <li><strong>Settings</strong> পেইজে গিয়ে <strong>Facebook Page Disconnect</strong> চাপুন।</li>
-  <li>সাথে সাথে আপনার পেইজের তথ্য আর Facebook অ্যাক্সেস টোকেন আমাদের সার্ভার থেকে মুছে যাবে, আর আমরা আপনার পেইজে কোনো কাজ করতে পারব না।</li>
+  <li><strong>সেটিংস → Facebook</strong> খুলে নিচের <strong>সংযোগ সরান</strong> বাটনে চাপুন।</li>
+  <li>সাথে সাথে আমাদের সার্ভার থেকে এগুলো মুছে যাবে, আর আমরা আপনার পেইজে কোনো কাজ করতে পারব না:
+    <ul>
+      <li>পেইজের তথ্য (নাম, আইডি, ছবি, ফলোয়ার সংখ্যা)</li>
+      <li>পেইজ আর আপনার Facebook অ্যাকাউন্টের অ্যাক্সেস টোকেন</li>
+      <li>যারা কমেন্ট করেছেন বা Messenger-এ মেসেজ দিয়েছেন, তাদের নাম, Facebook-এর দেওয়া আইডি আর কমেন্ট বা মেসেজের লেখা</li>
+    </ul>
+  </li>
 </ol>
+<p>চ্যাটে বা কমেন্টের লিংক থেকে যে অর্ডার এসেছে, সেগুলো আপনার দোকানের অর্ডার, তাই অর্ডারের তালিকায় থেকে যায়। সেগুলোও মুছতে চাইলে নিচের ২ নম্বর নিয়মে পুরো অ্যাকাউন্ট মুছুন।</p>
 <p><strong>Facebook থেকেও সরাতে চাইলে:</strong></p>
 <ol>
   <li>Facebook-এ <strong>Settings &amp; privacy → Settings</strong> খুলুন।</li>
-  <li><strong>Apps and websites</strong>-এ যান।</li>
+  <li><strong>Business integrations</strong>-এ যান (কিছু অ্যাকাউন্টে <strong>Apps and websites</strong> নামে থাকে)।</li>
   <li>তালিকা থেকে {{ site.name }} বেছে <strong>Remove</strong> চাপুন।</li>
 </ol>
 
@@ -26,11 +34,53 @@
   <li>আপনার অ্যাকাউন্ট আর স্টাফ অ্যাকাউন্ট</li>
   <li>দোকানের তথ্য, প্রোডাক্ট, ছবি আর ব্যানার</li>
   <li>কাস্টমার আর অর্ডারের তথ্য</li>
-  <li>Facebook পেইজের সংযোগ আর টোকেন</li>
+  <li>Facebook পেইজের সংযোগ, টোকেন, আর কমেন্ট ও Messenger-এর রেকর্ড</li>
 </ul>
 <p>শুধু পেমেন্টের রেকর্ড আইন ও হিসাবের প্রয়োজনে যতদিন দরকার ততদিন রাখা হতে পারে। মুছে ফেলার আগে সেটিংস → ডাটা ও ব্যাকআপ থেকে সব তথ্য Excel-এ নামিয়ে নিতে পারেন।</p>
 <p>অনুরোধ না করলেও, মেয়াদ শেষের পর টানা ৯০ দিন বিল না দিলে SMS-এ কয়েকবার জানিয়ে সব তথ্য মুছে ফেলা হয় (<a href="{% url 'terms' %}#data-deletion">শর্তাবলি, ধারা ৩</a>)।</p>
 
 <h2>৩. যোগাযোগ</h2>
 {% include 'store/legal/_contact_box.html' %}
+{% endblock %}
+
+{% block english %}
+<section class="legal-card legal-en" id="english" lang="en">
+{% include 'store/legal/_en_head.html' with title='Data Deletion Instructions' %}
+<p>You can delete the Facebook data that {{ site.name }} keeps for you, or all the data of your whole account, at any time.</p>
+
+<h2>1. To delete only your Facebook data</h2>
+<p><strong>From {{ site.name }}:</strong></p>
+<ol>
+  <li>Log in to {{ site.name }}.</li>
+  <li>Open <strong>Settings → Facebook</strong> and press the <strong>Disconnect</strong> button at the bottom (labelled "সংযোগ সরান" in Bengali).</li>
+  <li>The following is deleted from our servers immediately, and we can no longer do anything on your Page:
+    <ul>
+      <li>Page details (name, ID, picture, follower count)</li>
+      <li>The access tokens for the Page and for your Facebook account</li>
+      <li>The name, the ID given by Facebook and the comment or message text of people who commented on your Page or messaged it on Messenger</li>
+    </ul>
+  </li>
+</ol>
+<p>Orders that came from the chat or from a comment link are your shop's orders, so they stay in your order list. To delete those too, delete your whole account as described in section 2.</p>
+<p><strong>To remove {{ site.name }} from Facebook as well:</strong></p>
+<ol>
+  <li>On Facebook, open <strong>Settings &amp; privacy → Settings</strong>.</li>
+  <li>Go to <strong>Business integrations</strong> (on some accounts it is called <strong>Apps and websites</strong>).</li>
+  <li>Select {{ site.name }} in the list and press <strong>Remove</strong>.</li>
+</ol>
+
+<h2>2. To delete your whole account and all data</h2>
+<p>Send us "I want to delete my account" with your account's mobile number using any of the contacts below. We will contact that number to confirm you own the account. Once confirmed, the following is deleted <strong>within 30 days</strong>:</p>
+<ul>
+  <li>Your account and staff accounts</li>
+  <li>Shop details, products, images and banners</li>
+  <li>Customer and order information</li>
+  <li>The Facebook Page connection, tokens, and comment and Messenger records</li>
+</ul>
+<p>Only payment records may be kept for as long as the law and accounting require. Before deletion you can download all your data to Excel from Settings → Data and backup.</p>
+<p>Even without a request, if a subscription stays unpaid for 90 days in a row after it ends, all data is deleted after several SMS reminders (<a href="{% url 'terms' %}#english-data-deletion">Terms of Service, section 3</a>).</p>
+
+<h2>3. Contact</h2>
+{% include 'store/legal/_contact_box_en.html' %}
+</section>
 {% endblock %}

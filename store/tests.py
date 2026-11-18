@@ -72,6 +72,28 @@ class PublicPagesTests(TestCase):
             self.assertIn(reverse('privacy_policy'), html, name)               # footer-এর Legal লিংক
             self.assertIn(reverse('data_deletion'), html, name)
 
+    def test_policies_have_a_full_english_version_on_the_same_page(self):
+        """Meta-র রিভিউয়ার (আর বিদেশি পেমেন্ট/প্ল্যাটফর্ম) যেন একই লিংকে ইংরেজিতে পড়তে পারেন।"""
+        expected = {
+            'privacy_policy': ('Privacy Policy', 'We do not sell your information', 'deleted when you disconnect the Page'),
+            'terms': ('Terms of Service', 'The 90-day rule', 'governed by the laws of Bangladesh'),
+            'data_deletion': ('Data Deletion Instructions', 'Business integrations', 'within 30 days'),
+        }
+        for name, needles in expected.items():
+            html = self.client.get(reverse(name)).content.decode()
+            self.assertIn('href="#english"', html, name)
+            self.assertIn('id="english" lang="en"', html, name)
+            english = html.split('id="english" lang="en"', 1)[1].split('</section>', 1)[0]
+            for needle in needles:
+                self.assertIn(needle, english, (name, needle))
+            # ইংরেজি অংশে বাংলা লেখা নেই (শুধু বোতামের নাম বোঝাতে একটা উদ্ধৃতি ছাড়া)
+            leftover = re.sub(r'"সংযোগ সরান"', '', english)
+            self.assertIsNone(re.search(r'[ঀ-৿]', leftover), name)
+            self.assertIn('Last updated: 18 November 2026', english, name)
+            self.assertIn('trade licence ID 16-0223-01249-00000048', english, name)
+            self.assertIn('Pangsha, Rajbari 7721', english, name)
+        self.assertIn('সর্বশেষ হালনাগাদ: ১৮ নভেম্বর ২০২৬', self.client.get(reverse('privacy_policy')).content.decode())
+
     def test_login_and_signup_use_public_base(self):
         for name in ['login', 'signup']:
             html = self.client.get(reverse(name)).content.decode()
@@ -283,6 +305,36 @@ class FacebookDisconnectTests(ShopTestMixin, TestCase):
         self.assertFalse(FacebookPageConnection.objects.filter(shop=shop).exists())
         self.assertFalse(SocialToken.objects.filter(account=account).exists())
         self.assertTrue(SocialAccount.objects.filter(pk=account.pk).exists())   # লগইন সংযোগ থাকে
+
+    def test_disconnect_deletes_comment_and_messenger_records_but_keeps_orders(self):
+        """Meta-র নিয়ম: সেলার সংযোগ সরালে কমেন্ট/মেসেজকারীর নাম, আইডি আর লেখা মুছবে (Data Deletion পেইজে লেখা)।"""
+        from .models import Customer, FacebookCommentReply, MessengerContact
+        user, shop = self.make_shop()
+        other_user, other = self.make_shop(phone='01722222222')
+        self.client.force_login(user)
+        FacebookPageConnection.objects.create(shop=shop, page_id='1', page_name='Page', page_access_token='t')
+        FacebookCommentReply.objects.create(shop=shop, page_id='1', post_id='1_2', comment_id='c1',
+                                            commenter_id='u1', commenter_name='Rahim', message='price?')
+        contact = MessengerContact.objects.create(shop=shop, page_id='1', psid='p1', name='Karim', last_text='hi')
+        customer = Customer.objects.create(shop=shop, name='Karim', phone='01733333333', address='Dhaka')
+        order = Order.objects.create(shop=shop, customer=customer, total_amount=500,
+                                     messenger_contact=contact, fb_source='messenger')
+        FacebookCommentReply.objects.create(shop=other, page_id='9', post_id='9_2', comment_id='c9', message='x')
+        MessengerContact.objects.create(shop=other, page_id='9', psid='p9')
+
+        response = self.client.post(reverse('fb_disconnect'), follow=True)
+        self.assertContains(response, 'কমেন্ট ও Messenger-এর রেকর্ড মুছে ফেলা হয়েছে')
+        self.assertFalse(FacebookCommentReply.objects.filter(shop=shop).exists())
+        self.assertFalse(MessengerContact.objects.filter(shop=shop).exists())
+        order.refresh_from_db()
+        self.assertIsNone(order.messenger_contact)
+        self.assertEqual(order.fb_source, 'messenger')
+        # অন্য দোকানের কিছু মোছে না
+        self.assertEqual(FacebookCommentReply.objects.filter(shop=other).count(), 1)
+        self.assertEqual(MessengerContact.objects.filter(shop=other).count(), 1)
+        deletion = self.client.get(reverse('data_deletion')).content.decode()
+        self.assertIn('কমেন্ট বা মেসেজের লেখা', deletion)
+        self.assertIn('the comment or message text', deletion)
 
 
 class SubdomainAndStorefrontTests(ShopTestMixin, TestCase):
@@ -5333,18 +5385,26 @@ class FacebookAutomationTests(ShopTestMixin, TestCase):
         sent = self.graph.sent()[-1]
         self.assertEqual(sent['messaging_type'], 'RESPONSE')
         self.assertIn(f'অর্ডার নং {order.id} কনফার্ম হয়েছে', sent['message']['text'])
-        MessengerContact.objects.filter(pk=contact.pk).update(last_in_at=timezone.now() - timedelta(days=3))
         order.refresh_from_db()
         order.steadfast_tracking_code = 'SF1'
         order.save()
         order_flow.set_status(order, 'Shipped')
         sent = self.graph.sent()[-1]
-        self.assertEqual((sent['messaging_type'], sent['tag']), ('MESSAGE_TAG', 'POST_PURCHASE_UPDATE'))
         self.assertIn('ট্র্যাকিং কোড: SF1', sent['message']['text'])
+        # ২৪ ঘণ্টা পার হলে কিছু যায় না — Meta ২৭ এপ্রিল ২০২৬ থেকে POST_PURCHASE_UPDATE ট্যাগ বন্ধ করেছে (error 100)
+        from . import messenger
+        MessengerContact.objects.filter(pk=contact.pk).update(last_in_at=timezone.now() - timedelta(days=3))
+        count = len(self.graph.sent())
+        order.refresh_from_db()
+        order_flow.set_status(order, 'Delivered')
+        self.assertEqual(len(self.graph.sent()), count)
+        self.assertFalse(any('tag' in body for body in self.graph.sent()))
+        # সেলার বন্ধ রাখলে ২৪ ঘণ্টার মধ্যেও যায় না
+        MessengerContact.objects.filter(pk=contact.pk).update(last_in_at=timezone.now())
         self.conn.order_updates_enabled = False
         self.conn.save()
-        count = len(self.graph.sent())
-        order_flow.set_status(order, 'Delivered')
+        order.refresh_from_db()
+        self.assertFalse(messenger.order_update(order, 'Cancelled'))
         self.assertEqual(len(self.graph.sent()), count)
 
     # ---------------------------------------------------------- ড্যাশবোর্ড

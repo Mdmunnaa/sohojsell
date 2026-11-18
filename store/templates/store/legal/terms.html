@@ -2,6 +2,7 @@
 {% block title %}শর্তাবলি | {{ site.name }}{% endblock %}
 {% block meta_description %}{{ site.name }} ব্যবহারের শর্তাবলি — অ্যাকাউন্ট, সাবস্ক্রিপশন, বিল আর দায়দায়িত্ব।{% endblock %}
 {% block page_title %}শর্তাবলি (Terms of Service){% endblock %}
+{% block english_link %}<a class="legal-lang" href="#english" hreflang="en" lang="en">Read in English</a>{% endblock %}
 
 {% block legal_body %}
 <p>{{ site.name }}-এ অ্যাকাউন্ট খুলে বা ব্যবহার করে আপনি এই শর্তগুলো মেনে নিচ্ছেন। একমত না হলে দয়া করে সার্ভিসটি ব্যবহার করবেন না।</p>
@@ -62,4 +63,68 @@
 
 <h2>১২. যোগাযোগ</h2>
 {% include 'store/legal/_contact_box.html' %}
+{% endblock %}
+
+{% block english %}
+<section class="legal-card legal-en" id="english" lang="en">
+{% include 'store/legal/_en_head.html' with title='Terms of Service' %}
+<p>By opening an account on {{ site.name }} or using it, you accept these terms. If you do not agree, please do not use the service.</p>
+
+<h2>1. The service</h2>
+<p>{{ site.name }} is online software that shop owners and online sellers use to manage products, orders, stock, invoices, POS, an online store, SMS and couriers. We do not buy or sell any goods ourselves; your shop's sales are between you and your customers.</p>
+
+<h2>2. Accounts</h2>
+<ul>
+  <li>You must be at least 18 years old to open an account, and you must give a correct mobile number and correct shop details.</li>
+  <li>You are responsible for keeping your password secret and for everything done from your account and your staff accounts.</li>
+  <li>If you think someone has entered your account without permission, tell us immediately.</li>
+</ul>
+
+<h2>3. Free trial, subscription and billing</h2>
+<ul>
+  <li>New accounts get a 30-day free trial.</li>
+  <li>After the trial you need to buy a package to keep using the service. Package prices and features are shown on the Billing page of the dashboard. Each payment usually adds 30 days.</li>
+  <li>Payment is online only, through the PayStation payment gateway (bKash, Nagad, Rocket or card). The package starts automatically as soon as the money is taken, and a receipt is available on the billing page.</li>
+  <li>When the subscription ends, the dashboard is locked; it opens again when the bill is paid. The shop's website stays open for 7 more days and then shows "temporarily closed".</li>
+  <li id="english-data-deletion"><strong>The 90-day rule:</strong> if the bill is not paid for <strong>90 days</strong> in a row after a subscription (free trial or paid package) ends, <strong>all of the shop's data</strong> (products, images, orders, customers, due book, accounts and website) and <strong>all owner and staff accounts are permanently deleted</strong>. Before that, an SMS goes to the owner's mobile on day 7, 30, 60 and 80 after the end date, and deletion happens at least 7 days after the last SMS. During this whole time you can pay and continue as before, or download all your data to Excel from Settings (even while the dashboard is locked). Deleted data cannot be recovered.</li>
+  <li>SMS is bought separately, and each SMS is taken from your own SMS balance.</li>
+  <li>If prices change, we tell you at least 15 days in advance. The new price does not apply to time you have already paid for.</li>
+  <li>Refund rules are in the <a href="{% url 'refund_policy' %}">refund policy</a>.</li>
+</ul>
+
+<h2>4. What you must not do</h2>
+<ul>
+  <li>Sell goods or services that are illegal in Bangladesh (for example drugs, weapons, counterfeit or stolen goods)</li>
+  <li>Commit fraud, run fake offers or run a shop in someone else's name</li>
+  <li>Send promotional or harassing SMS to people without their permission</li>
+  <li>Try to hack the service, try to access another shop's data, or do anything that slows the servers down</li>
+  <li>Break Meta's rules while using the Facebook features</li>
+</ul>
+<p>If you do any of these, we may suspend or close the account without notice.</p>
+
+<h2>5. Your data and content</h2>
+<p>Your product images, descriptions, customers and orders belong to you. You allow us to use them only as far as needed to run the service (for example, to show them in your online store or send them to a courier). If an image or text you upload breaks someone else's copyright, you are responsible for it. How we keep data is explained in the <a href="{% url 'privacy_policy' %}#english">privacy policy</a>.</p>
+
+<h2>6. Connections to other services</h2>
+<p>Couriers, the SMS gateway, the payment gateway and Facebook are services of other companies. We are not responsible for their mistakes, delays, charges or rule changes, but we will help you solve any problem.</p>
+
+<h2>7. Availability</h2>
+<p>We try to keep the service running at all times, but it may sometimes be unavailable for maintenance or technical problems. If the server goes down, we work to bring it back within {{ company.outage_fix_hours }} hours, and we reply to every support request within {{ company.support_reply_hours }} hours at most. Keep your own backups of important information.</p>
+<p>If {{ site.name }} ever has to close for good, we will give at least {{ company.shutdown_notice_days }} days' notice by SMS to each shop owner's number and on this website. During that time you can download all your data to Excel.</p>
+
+<h2>8. Limitation of liability</h2>
+<p>As far as the law allows, we are not liable for any indirect business loss caused by using the service (for example lower profit or lost sales). In any case, our total liability will not be more than the subscription fees you paid in the last 3 months.</p>
+
+<h2>9. Closing your account</h2>
+<p>You can ask us to close your account at any time. How to do this is explained on the <a href="{% url 'data_deletion' %}#english">data deletion instructions</a> page.</p>
+
+<h2>10. Governing law</h2>
+<p>These terms are governed by the laws of Bangladesh. If a dispute arises, we will first try to solve it by discussion.</p>
+
+<h2>11. Changes to these terms</h2>
+<p>When these terms change, the new version is published on this page with a new date. If you keep using the service after a change, you are taken to have accepted the new terms.</p>
+
+<h2>12. Contact</h2>
+{% include 'store/legal/_contact_box_en.html' %}
+</section>
 {% endblock %}

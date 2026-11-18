@@ -45,7 +45,7 @@
         <div class="mc-meta">
           {% if c.last_in_at %}শেষ মেসেজ {{ c.last_in_at|bn_when }}{% endif %}
           {% if c.last_product %} · প্রোডাক্ট: {{ c.last_product.name }}{% endif %}
-          {% if c.waiting_since and not row.in_window %} · <span class="text-danger fw-bold">২৪ ঘণ্টা পার হয়ে গেছে — Facebook-এর নিয়মে এখন শুধু অর্ডারের খবর পাঠানো যায়</span>{% endif %}
+          {% if c.waiting_since and not row.in_window %} · <span class="text-danger fw-bold">২৪ ঘণ্টা পার হয়ে গেছে — Facebook-এর নিয়মে এখন Messenger-এ কিছু পাঠানো যায় না, ফোন বা SMS-এ জানান</span>{% endif %}
         </div>
         <div class="mc-actions">
           {% if c.waiting_since %}

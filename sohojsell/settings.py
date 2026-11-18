@@ -1,4 +1,5 @@
 from pathlib import Path
+import datetime
 import os
 import sys
 
@@ -260,7 +261,8 @@ BUSINESS_LEGAL_NAME = os.environ.get('BUSINESS_LEGAL_NAME') or _COMPANY['name_bn
 BUSINESS_ADDRESS = os.environ.get('BUSINESS_ADDRESS') or _COMPANY['address_bn']
 FACEBOOK_PAGE_URL = os.environ.get('FACEBOOK_PAGE_URL', '')
 STATUS_PAGE_URL = os.environ.get('STATUS_PAGE_URL', '')     # UptimeRobot-এর পাবলিক স্ট্যাটাস পাতা (যেমন https://status.sellpunch.com)
-POLICY_UPDATED_ON = '১৬ নভেম্বর ২০২৬'
+# নীতিমালা (প্রাইভেসি, শর্তাবলি, ডেটা মুছে ফেলা...) শেষ কবে বদলানো হয়েছে — পাতায় বাংলা আর ইংরেজি দুই ভাবেই দেখায়
+POLICY_UPDATED_ON = datetime.date(2026, 11, 18)
 
 # ============================================================
 # PayStation পেমেন্ট গেটওয়ে (paystation.com.bd)

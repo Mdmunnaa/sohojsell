@@ -450,7 +450,7 @@
       </a>
 
       <form method="post" action="{% url 'fb_disconnect' %}" class="danger-zone">{% csrf_token %}
-        <div><b>পেইজের সংযোগ সরান</b>পেইজের তথ্য আর Facebook টোকেন আমাদের সার্ভার থেকে মুছে যাবে, কমেন্টের উত্তরও বন্ধ হবে।</div>
+        <div><b>পেইজের সংযোগ সরান</b>পেইজের তথ্য, Facebook টোকেন আর Facebook থেকে আসা কমেন্ট ও Messenger-এর রেকর্ড আমাদের সার্ভার থেকে মুছে যাবে, কমেন্টের উত্তরও বন্ধ হবে। চ্যাটে নেওয়া অর্ডার অর্ডারের তালিকায় থেকে যাবে।</div>
         <button type="submit" class="btn-del" data-confirm="Facebook পেইজের সংযোগ সরাবেন?"><i class="bi bi-x-circle"></i> সংযোগ সরান</button>
       </form>
 

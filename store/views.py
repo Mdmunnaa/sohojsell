@@ -2473,21 +2473,27 @@ def fb_page_select(request):
 @login_required(login_url='/accounts/login/')
 def fb_disconnect(request):
     """
-    Facebook Page disconnect — পেইজের সংযোগ আর সেভ করা Facebook টোকেন মুছে দেয়।
-    (Data Deletion পেইজে এটাই লেখা আছে।) শুধু POST, যাতে কোনো লিংকে ক্লিক করিয়ে
-    কেউ ডিসকানেক্ট করাতে না পারে।
+    Facebook Page disconnect — পেইজের সংযোগ, সেভ করা Facebook টোকেন আর Facebook থেকে আসা কমেন্ট ও Messenger-এর
+    রেকর্ড (কে কমেন্ট/মেসেজ করেছে, তার আইডি আর লেখা) মুছে দেয় — Meta-র নিয়মে ব্যবহারকারী চাইলে এই তথ্য মুছতে হয়।
+    চ্যাট বা কমেন্টের লিংক থেকে আসা অর্ডার দোকানের নিজের অর্ডার, সেগুলো থাকে (messenger_contact খালি হয়ে যায়)।
+    Data Deletion পেইজে (store/legal/data_deletion.html) ঠিক এটাই লেখা আছে — একটা বদলালে অন্যটাও বদলান।
+    শুধু POST, যাতে কোনো লিংকে ক্লিক করিয়ে কেউ ডিসকানেক্ট করাতে না পারে।
     """
     if request.method != 'POST':
         return redirect(_settings_url('facebook'))
     shop = getattr(request.user, 'shop', None)
     if shop:
         from .facebook_bot import unsubscribe_page
+        from .models import FacebookCommentReply, MessengerContact
         for connection in FacebookPageConnection.objects.filter(shop=shop):
             unsubscribe_page(connection.page_id, connection.page_access_token)
-        FacebookPageConnection.objects.filter(shop=shop).delete()
-        SocialToken.objects.filter(account__user=request.user, account__provider='facebook').delete()
-        messages.success(request, 'Facebook পেইজের সংযোগ সরানো হয়েছে, আর সেভ করা Facebook টোকেন মুছে ফেলা হয়েছে।',
-                         extra_tags='facebook')
+        with transaction.atomic():
+            FacebookPageConnection.objects.filter(shop=shop).delete()
+            FacebookCommentReply.objects.filter(shop=shop).delete()
+            MessengerContact.objects.filter(shop=shop).delete()
+            SocialToken.objects.filter(account__user=request.user, account__provider='facebook').delete()
+        messages.success(request, 'Facebook পেইজের সংযোগ সরানো হয়েছে। সেভ করা Facebook টোকেন আর কমেন্ট ও '
+                                  'Messenger-এর রেকর্ড মুছে ফেলা হয়েছে।', extra_tags='facebook')
     return redirect(_settings_url('facebook'))
 
 

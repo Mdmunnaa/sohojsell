@@ -4,7 +4,8 @@ from django.core.cache import cache
 
 def site_info(request):
     """পাবলিক পেইজের footer, যোগাযোগ আর নীতিমালায় ব্যবসার তথ্য (settings / env থেকে)।"""
-    from .company import company_context
+    from .company import bn_date, company_context
+    updated = settings.POLICY_UPDATED_ON
     whatsapp = ''.join(ch for ch in settings.SUPPORT_WHATSAPP if ch.isdigit())
     phone = settings.SUPPORT_PHONE
     return {
@@ -21,7 +22,8 @@ def site_info(request):
             'legal_name': settings.BUSINESS_LEGAL_NAME,
             'address': settings.BUSINESS_ADDRESS,
             'facebook_url': settings.FACEBOOK_PAGE_URL,
-            'policy_updated_on': settings.POLICY_UPDATED_ON,
+            'policy_updated_on': bn_date(updated),
+            'policy_updated_on_en': f'{updated.day} {updated:%B %Y}',
             'store_domain': settings.STORE_BASE_DOMAIN or 'sellpunch.com',
             'fb_domain_verification': getattr(settings, 'FACEBOOK_DOMAIN_VERIFICATION', ''),
         }

@@ -2,6 +2,7 @@
 {% block title %}প্রাইভেসি পলিসি | {{ site.name }}{% endblock %}
 {% block meta_description %}{{ site.name }} কোন তথ্য সংগ্রহ করে, কেন করে, কার সাথে শেয়ার হয় আর কীভাবে মুছে ফেলতে পারবেন।{% endblock %}
 {% block page_title %}প্রাইভেসি পলিসি (Privacy Policy){% endblock %}
+{% block english_link %}<a class="legal-lang" href="#english" hreflang="en" lang="en">Read in English</a>{% endblock %}
 
 {% block legal_body %}
 <p>{{ site.name }} ("আমরা") দোকানদার ও অনলাইন সেলারদের ("আপনি") জন্য অর্ডার, স্টক, ইনভয়েস, অনলাইন স্টোর আর কুরিয়ার ম্যানেজ করার একটি সফটওয়্যার। এই পলিসিতে বলা আছে আমরা কোন তথ্য রাখি, কেন রাখি আর আপনি কীভাবে তা নিয়ন্ত্রণ করতে পারেন।</p>
@@ -13,7 +14,7 @@
   <li><strong>আপনার কাস্টমারদের তথ্য:</strong> অর্ডার নেওয়া আর ডেলিভারির জন্য আপনি বা আপনার অনলাইন স্টোরের কাস্টমার যে নাম, ফোন, ঠিকানা আর অর্ডারের বিবরণ দেন। এই তথ্য আপনার ব্যবসার, আমরা শুধু আপনার হয়ে সংরক্ষণ করি।</li>
   <li><strong>স্টাফ অ্যাকাউন্ট:</strong> আপনি যে স্টাফ যোগ করেন তাদের নাম, মোবাইল নম্বর আর পারমিশন।</li>
   <li><strong>পেমেন্টের তথ্য:</strong> সাবস্ক্রিপশন বা SMS কেনার পরিমাণ, লেনদেন নম্বর, পেমেন্টের মাধ্যম আর পাঠানোর নম্বর। কার্ড নম্বর বা bKash/Nagad-এর PIN আমরা কখনো দেখি না বা রাখি না, সেগুলো পেমেন্ট গেটওয়ে নিজে নেয়।</li>
-  <li><strong>Facebook পেইজের তথ্য (কানেক্ট করলে):</strong> পেইজের নাম, আইডি, ছবি, ফলোয়ার সংখ্যা আর পেইজ পরিচালনার অ্যাক্সেস টোকেন। আপনি অটোমেশন চালু করলে পেইজের পোস্টের কমেন্ট আর ইনবক্সের মেসেজ শুধু অর্ডার নেওয়া আর উত্তর পাঠানোর কাজে ব্যবহার হয়।</li>
+  <li><strong>Facebook পেইজের তথ্য (কানেক্ট করলে):</strong> পেইজের নাম, আইডি, ছবি, ফলোয়ার সংখ্যা আর পেইজ পরিচালনার অ্যাক্সেস টোকেন। আপনি অটোমেশন চালু করলে পেইজের পোস্টে যারা কমেন্ট করেন বা পেইজে মেসেজ পাঠান, তাদের নাম, Facebook-এর দেওয়া আইডি আর কমেন্ট বা মেসেজের লেখা রাখা হয়। এগুলো শুধু উত্তর পাঠানো আর অর্ডার নেওয়ার কাজে ব্যবহার হয়, আর পেইজ ডিসকানেক্ট করলে মুছে যায়।</li>
   <li><strong>প্রযুক্তিগত তথ্য:</strong> লগইন রাখার জন্য সেশন কুকি, নিরাপত্তার জন্য CSRF কুকি, আর স্টোরের ভিজিট গোনার জন্য IP ঠিকানা। আমরা বিজ্ঞাপনের জন্য কোনো ট্র্যাকিং কুকি ব্যবহার করি না।</li>
 </ul>
 
@@ -66,4 +67,72 @@
 <h2>১০. যোগাযোগ</h2>
 <p>প্রাইভেসি নিয়ে যেকোনো প্রশ্নে যোগাযোগ করুন:</p>
 {% include 'store/legal/_contact_box.html' %}
+{% endblock %}
+
+{% block english %}
+<section class="legal-card legal-en" id="english" lang="en">
+{% include 'store/legal/_en_head.html' with title='Privacy Policy' %}
+<p>{{ site.name }} ("we") is software for shop owners and online sellers ("you") to manage orders, stock, invoices, an online store and courier deliveries. This policy explains what information we keep, why we keep it and how you can control it.</p>
+
+<h2>1. Information we collect</h2>
+<ul>
+  <li><strong>Your account:</strong> mobile number, name and password. We never store the password itself, only an encrypted form of it.</li>
+  <li><strong>Your shop:</strong> shop name, address, phone, logo, banner, social links, products, prices and stock.</li>
+  <li><strong>Your customers:</strong> the name, phone, address and order details that you or the customers of your online store enter to place and deliver orders. This information belongs to your business; we only store it on your behalf.</li>
+  <li><strong>Staff accounts:</strong> the name, mobile number and permissions of staff you add.</li>
+  <li><strong>Payments:</strong> the amount paid for a subscription or SMS, the transaction number, the payment method and the paying number. We never see or store card numbers or bKash/Nagad PINs; the payment gateway collects those itself.</li>
+  <li><strong>Facebook Page data (only if you connect a Page):</strong> the Page name, ID, picture, follower count and the access token used to manage the Page. If you turn on automation, we keep the name, the ID given by Facebook and the text of the comment or message of people who comment on your Page's posts or message your Page. This is used only to send replies and take orders, and it is deleted when you disconnect the Page.</li>
+  <li><strong>Technical data:</strong> a session cookie to keep you logged in, a CSRF cookie for security, and IP addresses to count visits to online stores. We do not use any advertising or tracking cookies.</li>
+</ul>
+
+<h2>2. Why we use information</h2>
+<ul>
+  <li>To run your account, your shop and your online store</li>
+  <li>To create orders, invoices, stock records and reports</li>
+  <li>To send SMS to customers and book parcels with couriers when you ask us to</li>
+  <li>To bill subscriptions and verify payments</li>
+  <li>To run the automation that takes orders from your Facebook Page (if you turn it on)</li>
+  <li>To prevent fraud, keep the service secure and answer your questions</li>
+</ul>
+<p>We do not sell your information or your customers' information to anyone, and we do not use it to show advertising.</p>
+
+<h2>3. Who we share information with</h2>
+<p>Only what is needed to run the service goes to these organisations:</p>
+<ul>
+  <li><strong>Couriers (Steadfast, Pathao, RedX):</strong> when you send a parcel, the customer's name, phone, address and the cash-on-delivery amount.</li>
+  <li><strong>SMS gateway:</strong> when you send an SMS, the customer's number and the message.</li>
+  <li><strong>Payment gateway (PayStation):</strong> the bill amount, invoice number, shop name and phone.</li>
+  <li><strong>Meta (Facebook):</strong> when you connect Facebook, requests go to Facebook's API to work with your Page.</li>
+  <li><strong>Hosting and storage (Render, Neon, Cloudflare):</strong> our servers, database and images are kept with them.</li>
+</ul>
+<p>We may give information to the relevant authorities when the law requires us to.</p>
+
+<h2>4. How long we keep information</h2>
+<p>We keep information while your account is active. If you ask us to delete your account, your shop, products, orders and customer information are deleted within 30 days. Only payment records may be kept for as long as the law and accounting require.</p>
+<p><strong>If the bill is not paid:</strong> if a subscription stays unpaid for 90 days in a row after it ends, all of the shop's data and all of its accounts are permanently deleted, after the owner is told by SMS on day 7, 30, 60 and 80. During this whole time the owner can download all the data (details: <a href="{% url 'terms' %}#english-data-deletion">Terms of Service, section 3</a>).</p>
+<p>Deleted information also disappears from our encrypted backup copies within 12 months at most. During that time we do not restore a deleted shop's data from backups.</p>
+
+<h2>5. Your rights</h2>
+<ul>
+  <li>See and correct your shop, product and customer information from the dashboard</li>
+  <li>Disconnect your Facebook Page at any time (from Settings)</li>
+  <li>Ask for a copy of all your data, or ask us to delete your whole account. How to do this is explained on the <a href="{% url 'data_deletion' %}#english">data deletion instructions</a> page.</li>
+</ul>
+
+<h2>6. Security</h2>
+<p>The whole site is encrypted with HTTPS, passwords are stored encrypted, and each shop's information can be seen only by that shop's owner and the staff they allow. No system on the internet is 100% secure, so never share your password with anyone.</p>
+
+<h2>7. Your responsibility to your customers</h2>
+<p>You are responsible for how you use your customers' information. Do not send them promotional SMS without their permission.</p>
+
+<h2>8. Children</h2>
+<p>{{ site.name }} is made for businesses. Nobody under 18 may open an account themselves.</p>
+
+<h2>9. Changes to this policy</h2>
+<p>When this policy changes, the new version is published on this page with a new date. For major changes we also tell you on the dashboard or by SMS.</p>
+
+<h2>10. Contact</h2>
+<p>For any privacy question, contact us:</p>
+{% include 'store/legal/_contact_box_en.html' %}
+</section>
 {% endblock %}

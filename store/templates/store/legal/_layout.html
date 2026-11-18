@@ -17,6 +17,11 @@
 .legal-provider{font-size:13.5px!important;color:var(--muted)!important;background:var(--bg);border-radius:10px;padding:10px 14px;margin-bottom:22px}
 .legal-contact{background:var(--bg);border-radius:12px;padding:16px 18px;margin-top:8px}
 .legal-contact div{font-size:15px;color:var(--ink2);margin-bottom:4px}
+.legal-lang{margin-left:12px;font-weight:700;color:var(--brand-dark);text-decoration:none;white-space:nowrap}
+.legal-lang:hover{text-decoration:underline}
+.legal-en{margin-top:24px;scroll-margin-top:84px}
+.legal-en-title{font-size:24px!important;font-weight:800;margin:0 0 4px!important;color:var(--ink)}
+.legal-en-date{color:var(--muted)!important;font-size:14px!important;margin-bottom:16px}
 @media(max-width:576px){.legal-card{padding:22px 18px}.legal-head h1{font-size:25px}}
 </style>
 {% endblock %}
@@ -25,11 +30,18 @@
 <div class="legal-wrap">
   <div class="legal-head">
     <h1>{% block page_title %}{% endblock %}</h1>
-    <p>সর্বশেষ হালনাগাদ: {{ site.policy_updated_on }}</p>
+    <p>সর্বশেষ হালনাগাদ: {{ site.policy_updated_on }}{% block english_link %}{% endblock %}</p>
   </div>
   <div class="legal-card">
     <p class="legal-provider">{{ site.name }} পরিচালনা করে <strong>{{ company.name_bn }}</strong> — {{ company.kind_bn }}, ট্রেড লাইসেন্স আইডি {{ company.licence_id }}, {{ company.address_bn }}। এই পাতায় "আমরা" মানে {{ company.name_bn }}। <a href="{% url 'about' %}">বিস্তারিত</a></p>
     {% block legal_body %}{% endblock %}
   </div>
+  {% comment %}
+    ইংরেজি সংস্করণ (একই পাতায়, নিচে) — Meta-র রিভিউয়ার আর বিদেশি পেমেন্ট/প্ল্যাটফর্ম যারা পড়েন তাদের জন্য।
+    পাতা নিজের english_link আর english ব্লক দিলে দেখায়: english ব্লকে <section class="legal-card legal-en" id="english"
+    lang="en">, শুরুতে store/legal/_en_head.html (with title=...), শেষে store/legal/_contact_box_en.html।
+    বাংলা অংশ বদলালে ইংরেজিটাও একই রকম বদলাবেন — দুটো যেন আলাদা কথা না বলে।
+  {% endcomment %}
+  {% block english %}{% endblock %}
 </div>
 {% endblock %}

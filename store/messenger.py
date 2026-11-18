@@ -10,11 +10,14 @@ Messenger বট — দোকানের Facebook পেইজের ইনব
 - কাস্টমার "মানুষের সাথে কথা" চাইলে, ছবি পাঠালে বা বট না বুঝলে: দোকানদারের জন্য "উত্তরের অপেক্ষায়" দেখায়।
   দোকানদার নিজে Page Inbox থেকে উত্তর দিলে (Meta echo পাঠায়, আমাদের চিহ্ন ছাড়া) বট ১২ ঘণ্টা চুপ থাকে।
 - দোকান বন্ধের সময়ে (সেলার ঠিক করলে) দিনে একবার জানায় কখন উত্তর পাবে।
-- অর্ডারের অবস্থা বদলালে (কনফার্ম, কুরিয়ারে, ডেলিভারি, বাতিল) Messenger-এ খবর — ২৪ ঘণ্টা পার হলে
-  POST_PURCHASE_UPDATE ট্যাগ দিয়ে (Meta এটা শুধু কেনাকাটার খবরের জন্য দেয়, প্রচারের জন্য না)।
+- অর্ডারের অবস্থা বদলালে (কনফার্ম, কুরিয়ারে, ডেলিভারি, বাতিল) Messenger-এ খবর — কাস্টমারের শেষ মেসেজের
+  ২৪ ঘণ্টার মধ্যে হলে। তার পরে আর যায় না (SMS চালু থাকলে SMS যায়)।
 
-Meta-র নিয়ম: কাস্টমারের শেষ মেসেজের ২৪ ঘণ্টার মধ্যে যেকোনো উত্তর দেওয়া যায়; তার পরে শুধু ট্যাগ দেওয়া
-নির্দিষ্ট ধরনের মেসেজ। সবাইকে একসাথে প্রচারের মেসেজ (ব্রডকাস্ট) পাঠানো যায় না — এখানে সেরকম কিছু নেই।
+Meta-র নিয়ম: কাস্টমারের শেষ মেসেজের ২৪ ঘণ্টার মধ্যে যেকোনো উত্তর দেওয়া যায়; তার পরে কিছু না। আগে
+POST_PURCHASE_UPDATE ট্যাগ দিয়ে ২৪ ঘণ্টা পরেও অর্ডারের খবর যেত, কিন্তু Meta ২৭ এপ্রিল ২০২৬ থেকে এই ট্যাগ
+(CONFIRMED_EVENT_UPDATE আর ACCOUNT_UPDATE-ও) বন্ধ করেছে — পাঠালে error 100। এর বদলে Meta-র "utility message"
+টেমপ্লেট আছে (আগে Meta-র অনুমোদন লাগে), সেটা এখানে নেই। সবাইকে একসাথে প্রচারের মেসেজ (ব্রডকাস্ট) পাঠানো যায়
+না — এখানে সেরকম কিছু নেই।
 """
 import logging
 import re
@@ -131,18 +134,15 @@ def in_window(contact, now=None):
     return bool(contact.last_in_at) and now - contact.last_in_at < WINDOW
 
 
-def send(connection, contact, message, *, tag=None):
+def send(connection, contact, message):
     """
-    একটা মেসেজ (dict: text/quick_replies বা attachment)। ২৪ ঘণ্টার মধ্যে সাধারণ উত্তর; পরে শুধু tag থাকলে।
+    একটা মেসেজ (dict: text/quick_replies বা attachment) — শুধু কাস্টমারের শেষ মেসেজের ২৪ ঘণ্টার মধ্যে।
     সব মেসেজে আমাদের চিহ্ন (metadata) — Meta ফেরত দেখালে (echo) বুঝি এটা বট, দোকানদার না।
     """
-    body = {'recipient': {'id': contact.psid}, 'message': {**message, 'metadata': facebook_bot.BOT_TAG}}
-    if in_window(contact):
-        body['messaging_type'] = 'RESPONSE'
-    elif tag:
-        body.update(messaging_type='MESSAGE_TAG', tag=tag)
-    else:
+    if not in_window(contact):
         return False
+    body = {'recipient': {'id': contact.psid}, 'message': {**message, 'metadata': facebook_bot.BOT_TAG},
+            'messaging_type': 'RESPONSE'}
     ok, result = facebook_bot._post(f'{connection.page_id}/messages', connection.page_access_token, json=body)
     if ok:
         contact.last_out_at = timezone.now()
@@ -840,7 +840,7 @@ def order_update(order, status):
             if order.steadfast_tracking_code:
                 text += '\n' + sf_lang.t('ট্র্যাকিং কোড: {code}', shop, code=order.steadfast_tracking_code)
             text += '\n' + sf_lang.t('কোথায় আছে দেখুন: {link}', shop, link=order_flow.track_link(shop, order))
-        ok = send(connection, contact, text_message(text), tag='POST_PURCHASE_UPDATE')
+        ok = send(connection, contact, text_message(text))
         if ok:
             type(contact).objects.filter(pk=contact.pk).update(last_out_at=contact.last_out_at)
         return ok
@@ -859,7 +859,7 @@ def order_received(order):
         shop = connection.shop
         text = sf_lang.t('অর্ডার পেয়েছি! অর্ডার নং {n}, মোট {total}।\nঅর্ডারের অবস্থা দেখতে: {link}', shop,
                          n=str(order.id), total=_money(order.total_amount), link=order_flow.track_link(shop, order))
-        ok = send(connection, contact, text_message(text), tag='POST_PURCHASE_UPDATE')
+        ok = send(connection, contact, text_message(text))
         if ok:
             type(contact).objects.filter(pk=contact.pk).update(last_out_at=contact.last_out_at)
         return ok
