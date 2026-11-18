@@ -22,6 +22,13 @@ const CONTAINER_ERRORS = [
 /** আবার চেষ্টার আগে কতক্ষণ থামা (মিলিসেকেন্ড) — মোট ৩ বার আবার, প্রায় ৪ সেকেন্ড */
 export const RETRY_WAITS = [300, 1000, 2500];
 
+/**
+ * কন্টেইনার একেবারে নতুন করে চালু হলে (Cloudflare সার্ভার বদলালে) প্রতিবার চেষ্টায় ২০–৩০ সেকেন্ড অপেক্ষা হতে পারে —
+ * মোট এর বেশি হয়ে গেলে আর আবার না পাঠিয়ে বুঝিয়ে বলা পাতা (সেটা নিজে কয়েক সেকেন্ড পর আবার খোলে)। মানুষ যেন
+ * এক মিনিটের বেশি সাদা পাতার দিকে তাকিয়ে না থাকেন।
+ */
+export const RETRY_BUDGET_MS = 40_000;
+
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 /** কন্টেইনারের সংযোগের সাময়িক সমস্যা কিনা (Django-র ৫০০ পাতা হলে না — সেটা আবার চেষ্টায় ঠিক হয় না) */
@@ -41,9 +48,12 @@ export type Send = (request: Request) => Promise<Response>;
 
 /**
  * কন্টেইনারে পাঠানো; সংযোগ কেটে গেলে GET/HEAD আবার পাঠায়। শেষ পর্যন্ত না হলে বুঝিয়ে বলা 503।
- * waits বদলানো যায় শুধু পরীক্ষার জন্য।
+ * waits আর budgetMs বদলানো যায় শুধু পরীক্ষার জন্য।
  */
-export async function sendWithRetry(send: Send, request: Request, waits: number[] = RETRY_WAITS): Promise<Response> {
+export async function sendWithRetry(
+	send: Send, request: Request, waits: number[] = RETRY_WAITS, budgetMs: number = RETRY_BUDGET_MS,
+): Promise<Response> {
+	const started = Date.now();
 	const url = new URL(request.url);
 	const safe = SAFE_METHODS.has(request.method);
 	let problem = '';
@@ -61,9 +71,10 @@ export async function sendWithRetry(send: Send, request: Request, waits: number[
 		} catch (e) {
 			problem = e instanceof Error ? e.message : String(e);
 		}
-		const retry = safe && attempt < waits.length;
+		const waited = Date.now() - started;
+		const retry = safe && attempt < waits.length && waited < budgetMs;
 		console.error(
-			JSON.stringify({ event: 'container_disconnected', attempt, retry, method: request.method, host: url.host, path: url.pathname, problem }),
+			JSON.stringify({ event: 'container_disconnected', attempt, retry, waited, method: request.method, host: url.host, path: url.pathname, problem }),
 		);
 		if (!retry) return unavailable(request);
 		await sleep(waits[attempt]);

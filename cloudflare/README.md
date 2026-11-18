@@ -123,6 +123,18 @@ Render-এর build.sh যা করত, Cloudflare-এ কোথায় হ�
 `container_stopped` (`exitCode` 137 = মেমরি ফুরিয়ে বা জোর করে বন্ধ — বারবার হলে `instance_type` বড় করুন; 0/143 = deploy বা
 স্বাভাবিক বদল)। deploy-এর সময় ছাড়াও ঘনঘন `container_stopped` দেখালে সেটা আসল সমস্যা।
 
+লগে Cloudflare-এর নিজের এই লেখাগুলোও আসে — এগুলো একা থাকলে কাস্টমারের সমস্যা না:
+
+| লেখা | মানে |
+| --- | --- |
+| `Runtime signalled the container to exit due to a new version rollout` | নতুন deploy — প্রতিটা push-এ একবার |
+| `Durable Object reset because its code was updated` | একই, deploy-এর সময় |
+| `Connection closed: this Durable Object instance is no longer active` | Cloudflare নিয়ন্ত্রক অংশটা অন্য সার্ভারে সরিয়েছে (কয়েক ঘণ্টায় একবার); কন্টেইনার লাইব্রেরির ভেতরের কাজ থেমেছে, পরের রিকোয়েস্টে নিজে ঠিক হয় |
+| `Container connectivity was lost` | কন্টেইনারের সাথে Cloudflare-এর সংযোগ গেছে — পরের রিকোয়েস্টে নতুন করে চালু হয় |
+| তারিখ লেখা (`Tue Nov 17 2026 …`) এরর | ওপরের যেকোনোটার সাথে একই সময়ে লাইব্রেরির alarm বন্ধ হওয়া |
+
+আসল প্রশ্ন একটাই: কাস্টমার ভুল দেখেছেন কিনা — সেটা `container_disconnected` (`retry: false` মানে মানুষ বুঝিয়ে বলা পাতা দেখেছেন)।
+
 ## খরচ
 
 `standard-1` (১/২ vCPU, 4 GiB) সারাক্ষণ চালু: মোটামুটি মাসে $৩০–৩৫ (Workers Paid-সহ), Startup ক্রেডিট থেকে কাটে।
