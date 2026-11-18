@@ -27,10 +27,12 @@ a{color:inherit;text-decoration:none}
 
 /* ---------- nav ---------- */
 .nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-.nav-in{height:68px;display:flex;align-items:center;justify-content:space-between;gap:20px}
-.nav-links{display:flex;gap:28px;font-weight:600;font-size:15px;color:var(--ink2)}
-.nav-links a:hover{color:var(--brand)}
-.nav-cta{display:flex;align-items:center;gap:10px}
+.nav-in{height:68px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.nav-in>a:first-child{flex-shrink:0}
+.nav-links{display:flex;align-items:center;gap:4px;font-weight:600;font-size:16px;color:var(--ink2);white-space:nowrap}
+.nav-links a{padding:8px 14px;border-radius:var(--pill);line-height:1.2}
+.nav-links a:hover{color:var(--brand);background:var(--brand-soft)}
+.nav-cta{display:flex;align-items:center;gap:8px;white-space:nowrap;flex-shrink:0}
 .nav-lang{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:14px;color:var(--ink2);padding:7px 12px;border-radius:var(--pill)}
 .nav-lang:hover{color:var(--brand);background:var(--brand-soft)}
 html[lang="en"] body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}
@@ -232,6 +234,11 @@ footer{background:#fff;border-top:1px solid var(--line);padding:56px 0 30px}
   .appdl{grid-template-columns:1fr;padding:44px 36px 0}
   .appdl-text{padding-bottom:0}
   .ft{grid-template-columns:1fr 1fr}
+}
+/* small laptops/tablets: when the nav links can't fit on one line, they move into the menu button */
+@media (max-width:1100px){
+  .nav-links,.nav-cta .btn-out,.nav-cta .nav-lang{display:none}
+  .nav-burger{display:block}
 }
 @media (max-width:768px){
   .nav-links,.nav-cta .btn-out,.nav-cta .nav-login,.nav-cta .nav-lang{display:none}

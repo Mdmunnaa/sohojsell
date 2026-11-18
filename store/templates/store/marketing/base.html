@@ -58,6 +58,7 @@
     <div class="nav-links">
       <a href="{{ index_url }}">{{ ui.features }}</a>
       <a href="{{ home_url }}#pricing">{{ ui.pricing }}</a>
+      <a href="{{ home_url }}#app">{% if lang == 'en' %}App{% else %}অ্যাপ{% endif %}</a>
       <a href="{% url 'guide_index' %}">{% if lang == 'en' %}Guides{% else %}গাইড{% endif %}</a>
       <a href="{{ home_url }}#faq">{{ ui.faq }}</a>
     </div>

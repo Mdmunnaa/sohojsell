@@ -31,7 +31,7 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
 .ss-logo:hover{color:var(--ink)}
 .ss-logo-mark{width:34px;height:34px;border-radius:9px;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px}
 .ss-links{display:flex;gap:4px;margin-left:auto}
-.ss-links a{padding:7px 14px;border-radius:8px;font-size:14px;font-weight:600;color:var(--ink2);text-decoration:none}
+.ss-links a{padding:7px 14px;border-radius:8px;font-size:15px;font-weight:600;color:var(--ink2);text-decoration:none;white-space:nowrap}
 .ss-links a:hover{background:var(--bg);color:var(--ink)}
 .ss-cta{display:flex;gap:10px;flex-shrink:0}
 .ss-btn-ghost,.ss-btn-brand{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:var(--r-pill);font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap;transition:.15s}
@@ -87,9 +87,10 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
       <img src="{% static 'brand/sellpunch-logo.svg' %}" alt="{{ site.name }}" height="34" style="height:34px;width:auto;display:block;">
     </a>
     <nav class="ss-links" aria-label="মূল মেনু">
-      <a href="{% url 'landing_page' %}#features">যা যা আছে</a>
-      <a href="{% url 'landing_page' %}#how">কীভাবে শুরু</a>
+      <a href="{% url 'landing_page' %}#features">ফিচার</a>
       <a href="{% url 'landing_page' %}#pricing">দাম</a>
+      <a href="{% url 'landing_page' %}#app">অ্যাপ</a>
+      <a href="{% url 'guide_index' %}">গাইড</a>
     </nav>
     <div class="ss-cta">
       {% if user.is_authenticated %}
@@ -104,9 +105,11 @@ body{font-family:'Plus Jakarta Sans','Hind Siliguri',sans-serif;background:var(-
     </button>
   </div>
   <div class="ss-mob" id="ss-mob">
-    <a href="{% url 'landing_page' %}#features">যা যা আছে</a>
+    <a href="{% url 'landing_page' %}#features">ফিচার — যা যা আছে</a>
     <a href="{% url 'landing_page' %}#how">কীভাবে শুরু</a>
     <a href="{% url 'landing_page' %}#pricing">দাম</a>
+    <a href="{% url 'landing_page' %}#app">অ্যাপ ডাউনলোড</a>
+    <a href="{% url 'guide_index' %}">গাইড</a>
     {% if user.is_authenticated %}
       <a href="{% url 'dashboard' %}" style="color:var(--brand);font-weight:700;">ড্যাশবোর্ড</a>
     {% else %}
