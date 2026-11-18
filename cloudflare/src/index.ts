@@ -10,8 +10,10 @@
  * - *.sellpunch.com-এর সব ঠিকানা এই Worker-এ আসে; ছবির ডোমেইন (R2_PUBLIC_DOMAIN) আর PASS_THROUGH_HOSTS-এর
  *   ঠিকানাগুলো Django-তে না পাঠিয়ে সরাসরি নিজের জায়গায় যায়।
  * - মূল ঠিকানা একটাই (PRIMARY_HOST): www.sellpunch.com আর cf.sellpunch.com সেখানে পাঠিয়ে দেয় (Google-এ দুই কপি না)।
+ * - কন্টেইনারের সাথে সংযোগ হঠাৎ কেটে গেলে পাতা খোলার অনুরোধ নিজে আবার পাঠায়, বাকিগুলোয় বাংলায় বুঝিয়ে বলে (src/retry.ts)।
  */
-import { Container, getContainer } from '@cloudflare/containers';
+import { Container, getContainer, type StopParams } from '@cloudflare/containers';
+import { sendWithRetry } from './retry';
 
 // Env টাইপ wrangler.jsonc থেকে বানানো (npm run types → worker-configuration.d.ts)
 
@@ -32,6 +34,16 @@ export class SellPunchApp extends Container<Env> {
 	// চালু হয়েছে কিনা এই ঠিকানায় দেখে (Django-র /healthz/, ডাটাবেস ছোঁয় না)
 	pingEndpoint = 'localhost/healthz/';
 	envVars = appEnv(this.env);
+
+	// কন্টেইনার কখন চালু/বন্ধ হলো, কেন — Observability-র লগে। exitCode 137 = মেমরি ফুরিয়ে বা জোর করে বন্ধ,
+	// 0/143 = deploy বা Cloudflare-এর স্বাভাবিক বদল। "Container suddenly disconnected" কেন হলো সেটা এখান থেকে বোঝা যায়।
+	override onStart(): void {
+		console.log(JSON.stringify({ event: 'container_started' }));
+	}
+
+	override onStop(params: StopParams): void {
+		console.log(JSON.stringify({ event: 'container_stopped', exitCode: params.exitCode, reason: params.reason }));
+	}
 }
 
 /** সরাসরি Cloudflare-এ ঢোকার ঠিকানা — মূল ঠিকানা অন্য হলে সেখানে পাঠিয়ে দেয় */
@@ -107,7 +119,8 @@ export default {
 			if (cached) return cached;
 		}
 
-		const response = await (await app(env)).fetch(forwarded);
+		// প্রতিবার নতুন stub — Durable Object নিজে নতুন করে চালু হলে (deploy) পুরনো stub আর কাজ করে না
+		const response = await sendWithRetry(async (req) => (await app(env)).fetch(req), forwarded);
 
 		if (cacheable && response.status === 200) {
 			ctx.waitUntil(caches.default.put(request, response.clone()));
