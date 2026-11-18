@@ -15,7 +15,7 @@ Facebook পেইজের কমেন্ট থেকে অর্ডার�
 Messenger-এর মেসেজ (একই webhook-এ আসে) store/messenger.py দেখে।
 
 Meta-র নিয়ম: Private Reply — POST /{page-id}/messages, recipient = {"comment_id": ...}।
-লাগবে pages_messaging, pages_manage_metadata, pages_read_engagement; কমেন্টে উত্তর দিতে/লুকাতে pages_manage_engagement।
+লাগবে pages_messaging, pages_manage_metadata, pages_read_engagement, pages_read_user_content (কমেন্ট পড়া); কমেন্টে উত্তর দিতে/লুকাতে pages_manage_engagement।
 """
 import hashlib
 import hmac

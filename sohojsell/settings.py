@@ -361,16 +361,18 @@ SOCIALACCOUNT_PROVIDERS = {
     'facebook': {
         'METHOD': 'oauth2',
         'SDK_URL': '//connect.facebook.net/{locale}/sdk.js',
+        # Meta-র App Review-এ ঠিক এই কয়টাই চাওয়া হয় — যা কাজে লাগে না সেটা চাইলে রিভিউ বাতিল হয়।
+        # (FACEBOOK_LOGIN_CONFIG_ID থাকলে এই তালিকা না, Meta-র Login Configuration-এ বাছাই করা permission চলে —
+        #  সেখানেও হুবহু এগুলোই রাখবেন।)
         'SCOPE': [
             'email',
             'public_profile',
-            'pages_show_list',          # পেইজ লিস্ট দেখার জন্য
-            'pages_read_engagement',    # পোস্টে কমেন্ট পড়ার জন্য
-            'pages_manage_posts',       # পোস্ট করার জন্য
-            'pages_messaging',          # ইনবক্সে মেসেজ পাঠানোর জন্য
-            'pages_manage_metadata',    # পেইজে webhook subscribe করার জন্য
-            'pages_manage_engagement',  # কমেন্টের নিচে "ইনবক্স চেক করুন" লেখার জন্য
-            'pages_read_user_engagement',  # কে কমেন্ট করেছে পড়ার জন্য
+            'pages_show_list',          # সেলার কোন কোন পেইজের মালিক, সেই তালিকা
+            'pages_read_engagement',    # পেইজের নাম, ছবি আর পেইজের নিজের পোস্ট
+            'pages_read_user_content',  # কাস্টমারের কমেন্ট পড়া (কে কী লিখল)
+            'pages_manage_engagement',  # কমেন্টের নিচে উত্তর, ফোন নম্বর/লিংকওয়ালা কমেন্ট লুকানো
+            'pages_messaging',          # Messenger-এ উত্তর, কমেন্টের পর ইনবক্সে মেসেজ, চ্যাটে অর্ডার
+            'pages_manage_metadata',    # পেইজের নতুন কমেন্ট/মেসেজের খবর (webhook) চালু করা
         ],
         'AUTH_PARAMS': {
             'auth_type': 'reauthenticate',
