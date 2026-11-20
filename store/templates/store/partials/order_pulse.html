@@ -12,6 +12,13 @@
   .op-card b { display: block; font-size: 14.5px; }
   .op-card small { color: #64748B; font-size: 12.5px; }
   .op-card .x { margin-left: auto; border: 0; background: none; color: #94A3B8; font-size: 18px; line-height: 1; padding: 4px; cursor: pointer; }
+  /* ফোনে নিচু কার্ড, যাতে নিচের বোতামগুলো ঢেকে না যায় */
+  @media (max-width: 576px) {
+    .op-box { right: 8px; left: 8px; bottom: 8px; width: auto; gap: 6px; }
+    .op-card { padding: 8px 10px; gap: 10px; border-radius: 12px; border-left-width: 4px; }
+    .op-card .ic { width: 30px; height: 30px; border-radius: 9px; font-size: 15px; }
+    .op-card b { font-size: 13.5px; } .op-card small { font-size: 12px; }
+  }
 </style>
 <div class="op-box" id="opBox" aria-live="polite"></div>
 <script>

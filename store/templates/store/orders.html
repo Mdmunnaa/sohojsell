@@ -212,7 +212,7 @@
   </div>
 </div>
 
-<script src="{% static 'vendor/sweetalert2/sweetalert2.all.min.js' %}"></script>
+{# SweetAlert আর spToast base.html থেকে আসে (পাতার শেষে লোড হয়, তাই নিচের কোড শুধু DOMContentLoaded-এর পরে চলে) #}
 <script>
     let courierAddress = '';
     let redxAreas = null;
@@ -276,18 +276,6 @@
         const dropdowns = document.querySelectorAll('.status-dropdown');
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-        const Toast = Swal.mixin({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 2500,
-            timerProgressBar: true,
-            didOpen: (toast) => {
-                toast.addEventListener('mouseenter', Swal.stopTimer)
-                toast.addEventListener('mouseleave', Swal.resumeTimer)
-            }
-        });
-
         dropdowns.forEach(dropdown => {
             dropdown.dataset.prev = dropdown.value;
             dropdown.addEventListener('change', function() {
@@ -310,15 +298,15 @@
                 .then(data => {
                     if (data.success) {
                         select.dataset.prev = newStatus;
-                        Toast.fire({ icon: 'success', title: data.message });
+                        spToast('success', data.message);
                     } else {
                         select.value = select.dataset.prev;      // বদলানো যায়নি, আগের অবস্থায় ফেরত
-                        Toast.fire({ icon: 'error', title: data.error });
+                        spToast('error', data.error);
                     }
                 })
                 .catch(error => {
                     select.value = select.dataset.prev;
-                    Toast.fire({ icon: 'error', title: "ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন" });
+                    spToast('error', 'ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন');
                 });
             });
         });

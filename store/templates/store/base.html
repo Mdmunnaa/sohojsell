@@ -359,6 +359,28 @@
     .aih-foot a { font-size:13.5px; font-weight:600; text-decoration:none; color:#2563eb; margin:0; }
     .aih-foot a i { margin-right:3px; }
     @media (max-width: 420px) { .aih-actions { grid-template-columns:1fr; } .aih-btn { padding:6px 10px; font-size:13px; } }
+
+    /* ছোট নোটিফিকেশন (spToast) — "সেভ হয়েছে", "পাঠানো হয়েছে" ইত্যাদি। SweetAlert-এর বড় বাক্স না: একটা চিকন সারি,
+       ফোনে উপরে মাঝখানে পুরো চওড়া (কিন্তু নিচু), কম্পিউটারে উপরে ডানে। চাপলে সাথে সাথে চলে যায়। */
+    .swal2-container.sp-toast-wrap { padding: 12px !important; }
+    .swal2-popup.sp-toast { display: flex !important; align-items: flex-start; gap: 9px; width: auto !important; max-width: 380px;
+      padding: 10px 14px 10px 12px !important; border-radius: 12px !important; background: #fff; border: 1px solid var(--border);
+      border-left: 4px solid var(--spt, #2563eb); box-shadow: 0 10px 28px rgba(15,23,42,.14) !important; cursor: pointer;
+      font-family: var(--fn-body); overflow: hidden; }
+    .sp-toast .spt-ic { color: var(--spt, #2563eb); font-size: 17px; line-height: 1.25; flex-shrink: 0; }
+    .sp-toast .swal2-html-container { margin: 0 !important; padding: 0 !important; display: flex !important; gap: 9px;
+      align-items: flex-start; text-align: left !important; font-size: 14px !important; font-weight: 600; line-height: 1.45; color: var(--text); }
+    .sp-toast .swal2-timer-progress-bar-container { left: 0; right: 0; bottom: 0; height: 2px; }
+    .sp-toast .swal2-timer-progress-bar { height: 2px; background: var(--spt, #2563eb); opacity: .45; }
+    .sp-toast-success { --spt: #16a34a; } .sp-toast-error { --spt: #dc2626; }
+    .sp-toast-warning { --spt: #d97706; } .sp-toast-info { --spt: #2563eb; }
+    @media (max-width: 576px) {
+      body.swal2-toast-shown .swal2-container.sp-toast-wrap { width: 100% !important; left: 0 !important; right: 0 !important;
+        transform: none !important; padding: 8px !important; }
+      .swal2-popup.sp-toast { width: 100% !important; max-width: 480px; padding: 8px 12px 8px 10px !important; border-radius: 10px !important; }
+      .sp-toast .swal2-html-container { font-size: 13.5px !important; line-height: 1.4; }
+      .sp-toast .spt-ic { font-size: 16px; }
+    }
     </style>
 </head>
 <body>
@@ -679,24 +701,41 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('sidebar').classList.add('collapsed');
   }
 
-  // SweetAlert Setup
-  const Toast = Swal.mixin({
-    toast: true, position: 'top-end',
-    showConfirmButton: false, timer: 3500, timerProgressBar: true,
-    didOpen: t => { t.addEventListener('mouseenter', Swal.stopTimer); t.addEventListener('mouseleave', Swal.resumeTimer); }
-  });
-
   {% block message_toasts %}{% if messages %}
     {% for message in messages %}
       (function(){
         var tag = "{{ message.level_tag }}";
-        var icon = ['error','warning','success'].includes(tag) ? tag : 'info';
-        Toast.fire({ icon: icon, title: "{{ message|escapejs }}" });
+        spToast(tag, "{{ message|escapejs }}");
         if (tag === 'error' || tag === 'warning') (window.spPageMsgs = window.spPageMsgs || []).push("{{ message|escapejs }}");
       })();
     {% endfor %}
   {% endif %}{% endblock %}
 });
+
+/*
+  spToast(kind, text) — ড্যাশবোর্ডের সব ছোট নোটিফিকেশন এটা দিয়ে (Django message, অর্ডারের অবস্থা বদল ইত্যাদি)।
+  kind: success | error | warning | info। লেখা সাধারণ টেক্সট হিসেবে বসে (HTML না) — দোকানের/প্রোডাক্টের নাম যা-ই থাকুক।
+  লম্বা লেখা একটু বেশিক্ষণ থাকে; মাউস রাখলে থামে; চাপলে চলে যায়। একটার পর আরেকটা এলে আগেরটা বদলে যায়।
+*/
+window.spToast = function (kind, text) {
+  if (!window.Swal) return;
+  kind = ['success', 'error', 'warning', 'info'].indexOf(kind) >= 0 ? kind : 'info';
+  var icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
+  var row = document.createElement('div');
+  var ic = document.createElement('i'); ic.className = 'bi spt-ic ' + icons[kind]; ic.setAttribute('aria-hidden', 'true');
+  var span = document.createElement('span'); span.textContent = String(text || '');
+  row.appendChild(ic); row.appendChild(span);
+  var phone = window.matchMedia && matchMedia('(max-width: 576px)').matches;
+  return Swal.fire({
+    toast: true, position: phone ? 'top' : 'top-end', html: row.innerHTML,
+    showConfirmButton: false, timerProgressBar: true, timer: Math.min(7000, 2600 + span.textContent.length * 45),
+    customClass: { container: 'sp-toast-wrap', popup: 'sp-toast sp-toast-' + kind },
+    didOpen: function (t) {
+      t.addEventListener('mouseenter', Swal.stopTimer); t.addEventListener('mouseleave', Swal.resumeTimer);
+      t.addEventListener('click', function () { Swal.close(); });
+    }
+  });
+};
 
 /* sidebar scroll save/restore */
 (function(){

@@ -34,8 +34,8 @@ def demo_start(request):
             return render(request, 'store/demo_switch.html', {'to': request.GET.get('to', '')})
         logout(request)
     if not demo.is_demo_user(request.user):
+        # স্বাগত বার্তা আলাদা নোটিফিকেশনে না — ড্যাশবোর্ডের উপরের হলুদ "লাইভ ডেমো" ফিতায় একই কথা সবসময় লেখা থাকে
         login(request, shop.user, backend='django.contrib.auth.backends.ModelBackend')
-        messages.success(request, f'এটা "{shop.name}" — একটা ডেমো দোকান। যা খুশি করে দেখুন; রোজ রাতে সব আবার আগের মতো হয়ে যায়।')
     return redirect(destination)
 
 

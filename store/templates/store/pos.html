@@ -219,7 +219,7 @@
 
   /* টোস্ট */
   #p-toast { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); z-index: 3000; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
-  .p-toast { background: var(--p-ink); color: #fff; font-weight: 700; font-size: 13.5px; padding: 10px 18px; border-radius: 999px; box-shadow: 0 10px 25px rgba(0,0,0,.2); animation: pop .15s ease; }
+  .p-toast { background: var(--p-ink); color: #fff; font-weight: 700; font-size: 13.5px; line-height: 1.4; padding: 9px 16px; border-radius: 18px; max-width: calc(100vw - 32px); text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,.2); animation: pop .15s ease; }
   .p-toast.bad { background: var(--p-bad); }
   .p-toast.warn { background: var(--p-warn); }
   .p-toast.ok { background: var(--p-go); }
